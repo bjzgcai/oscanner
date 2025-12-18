@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engineer Capability Assessment Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .input-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group button {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .input-group button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .input-group button:active {
+            transform: translateY(0);
+        }
+
+        .input-group button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .autocomplete-container {
+            position: relative;
+            flex: 1;
+        }
+
+        .autocomplete-container input {
+            width: 100%;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 5px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .autocomplete-dropdown.active {
+            display: block;
+        }
+
+        .autocomplete-option {
+            padding: 12px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .autocomplete-option:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-option:hover {
+            background: #f8f9fa;
+        }
+
+        .autocomplete-option.highlighted {
+            background: #e8eaf6;
+        }
+
+        .autocomplete-option-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .autocomplete-option-url {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .note {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .repo-info {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .repo-info h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .repo-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .contributor-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .contributor-header {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .contributor-header label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .contributor-select {
+            width: 100%;
+            position: relative;
+        }
+
+        .select-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            position: relative;
+        }
+
+        .select-header:hover {
+            border-color: #667eea;
+        }
+
+        .select-header.active {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .select-header::after {
+            content: '▼';
+            position: absolute;
+            right: 15px;
+            font-size: 0.8rem;
+            color: #666;
+            transition: transform 0.3s;
+        }
+
+        .select-header.active::after {
+            transform: rotate(180deg);
+        }
+
+        .select-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #667eea;
+            flex-shrink: 0;
+        }
+
+        .select-text {
+            flex: 1;
+            color: #333;
+        }
+
+        .select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 5px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .select-dropdown.active {
+            display: block;
+        }
+
+        .select-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .select-option:hover {
+            background: #f8f9fa;
+        }
+
+        .select-option.selected {
+            background: #e8eaf6;
+        }
+
+        .select-option img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #667eea;
+            flex-shrink: 0;
+        }
+
+        .select-option-text {
+            flex: 1;
+            color: #333;
+        }
+
+        .select-option-commits {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 30px 0;
+        }
+
+        .dimensions-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .dimension-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .dimension-card h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .dimension-card .score {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .dimension-card .description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .contributors-list {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .contributors-list h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .contributor-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .contributor-item:hover {
+            background: #f8f9fa;
+        }
+
+        .contributor-item.active {
+            background: #e8eaf6;
+        }
+
+        .contributor-item img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+
+        .contributor-item-info {
+            flex: 1;
+        }
+
+        .contributor-item-info .name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .contributor-item-info .commits {
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Engineer Capability Assessment</h1>
+            <p>Six-Dimensional Engineering Skills Evaluation System</p>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <div class="autocomplete-container">
+                    <input
+                        type="text"
+                        id="repoUrl"
+                        
+                        placeholder="Enter GitHub repository URL (e.g., https://github.com/username/repository)"
+                        value=""
+                        autocomplete="off">
+                    <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+                </div>
+                <button id="analyzeBtn" onclick="analyzeRepository()">Analyze</button>
+            </div>
+            <div class="note">
+                Enter a GitHub repository URL to analyze contributors' engineering capabilities
+            </div>
+        </div>
+
+        <div class="error" id="errorMessage"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing repository and contributors...</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="repo-info" id="repoInfo"></div>
+            <div class="contributor-section" id="contributorSection"></div>
+            <div class="contributors-list" id="contributorsList"></div>
+        </div>
+    </div>
+
+    <script>
+        let repoData = null;
+        let contributorsData = [];
+        let currentContributor = null;
+        let chart = null;
+
+        // Six dimensions of engineering capability
+        const dimensions = [
+            {
+                name: "AI Model Full-Stack",
+                key: "ai_fullstack",
+                description: "AI model development, optimization, and end-to-end implementation"
+            },
+            {
+                name: "AI Native Architecture",
+                key: "ai_architecture",
+                description: "AI-first architecture design and communication patterns"
+            },
+            {
+                name: "Cloud Native Engineering",
+                key: "cloud_native",
+                description: "Containerization, infrastructure as code, and CI/CD practices"
+            },
+            {
+                name: "Open Source Collaboration",
+                key: "open_source",
+                description: "Contribution quality, issue management, and requirements translation"
+            },
+            {
+                name: "Intelligent Development",
+                key: "intelligent_dev",
+                description: "AI-assisted development, automation, and human-machine collaboration"
+            },
+            {
+                name: "Engineering Leadership",
+                key: "leadership",
+                description: "Technical decision making, system trade-offs, and mentorship"
+            }
+        ];
+
+        async function analyzeRepository() {
+            const repoUrl = document.getElementById('repoUrl').value.trim();
+
+            if (!repoUrl) {
+                showError('Please enter a GitHub repository URL');
+                return;
+            }
+
+            // Parse GitHub URL
+            const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+            if (!match) {
+                showError('Invalid GitHub URL format. Please use: https://github.com/username/repository');
+                return;
+            }
+
+            const owner = match[1];
+            const repo = match[2].replace(/\.git$/, '');
+
+            showLoading(true);
+            hideError();
+            hideResults();
+            hideAutocomplete();
+
+            try {
+                // Fetch repository data
+                const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+                if (!repoResponse.ok) {
+                    throw new Error('Repository not found or API rate limit exceeded');
+                }
+                repoData = await repoResponse.json();
+
+                // Save to history
+                saveToHistory(repoUrl, repoData.full_name);
+
+                // Fetch contributors
+                const contributorsResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contributors`);
+                if (!contributorsResponse.ok) {
+                    throw new Error('Failed to fetch contributors');
+                }
+                const contributors = await contributorsResponse.json();
+
+                // Fetch detailed commit data for top contributors
+                contributorsData = await Promise.all(
+                    contributors.slice(0, 10).map(async (contributor) => {
+                        const commitsResponse = await fetch(
+                            `https://api.github.com/repos/${owner}/${repo}/commits?author=${contributor.login}&per_page=100`
+                        );
+                        const commits = commitsResponse.ok ? await commitsResponse.json() : [];
+
+                        return {
+                            ...contributor,
+                            commits: commits,
+                            commitCount: contributor.contributions
+                        };
+                    })
+                );
+
+                // Display results
+                displayRepoInfo();
+                // displayContributorsList();
+
+                // Show top contributor by default
+                if (contributorsData.length > 0) {
+                    selectContributor(0);
+                }
+
+                showResults();
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayRepoInfo() {
+            const html = `
+                <h2>${repoData.full_name}</h2>
+                <p>${repoData.description || 'No description available'}</p>
+                <div class="repo-stats">
+                    <div class="stat">
+                        <div class="stat-value">${repoData.stargazers_count}</div>
+                        <div class="stat-label">Stars</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${repoData.forks_count}</div>
+                        <div class="stat-label">Forks</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${repoData.open_issues_count}</div>
+                        <div class="stat-label">Open Issues</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${contributorsData.length}</div>
+                        <div class="stat-label">Contributors</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('repoInfo').innerHTML = html;
+        }
+
+        async function selectContributor(index) {
+            currentContributor = contributorsData[index];
+
+            // Update active state
+            document.querySelectorAll('.contributor-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+
+            // Evaluate contributor
+            const evaluation = await evaluateContributor(currentContributor);
+            displayContributorEvaluation(evaluation);
+        }
+
+        async function evaluateContributor(contributor) {
+            // Analyze commit patterns and code quality
+            const commits = contributor.commits || [];
+            const commitMessages = commits.map(c => c.commit?.message || '').join(' ').toLowerCase();
+            const commitCount = contributor.commitCount;
+
+            // Calculate scores based on various metrics
+            const scores = {};
+
+            // 1. AI Model Full-Stack - look for AI/ML related commits
+            const aiKeywords = ['model', 'training', 'tensorflow', 'pytorch', 'neural', 'deep learning', 'ml', 'ai', 'inference', 'optimization'];
+            scores.ai_fullstack = calculateKeywordScore(commitMessages, aiKeywords, commitCount);
+
+            // 2. AI Native Architecture - look for architecture and API design
+            const archKeywords = ['api', 'architecture', 'design', 'interface', 'endpoint', 'service', 'microservice', 'docs', 'documentation'];
+            scores.ai_architecture = calculateKeywordScore(commitMessages, archKeywords, commitCount);
+
+            // 3. Cloud Native - look for cloud and DevOps practices
+            const cloudKeywords = ['docker', 'kubernetes', 'k8s', 'ci/cd', 'pipeline', 'deploy', 'container', 'cloud', 'aws', 'gcp', 'azure', 'terraform'];
+            scores.cloud_native = calculateKeywordScore(commitMessages, cloudKeywords, commitCount);
+
+            // 4. Open Source Collaboration - based on contribution patterns
+            const collabKeywords = ['fix', 'issue', 'pr', 'pull request', 'review', 'merge', 'refactor', 'improve'];
+            scores.open_source = calculateKeywordScore(commitMessages, collabKeywords, commitCount);
+
+            // 5. Intelligent Development - look for automation and tooling
+            const intelligentKeywords = ['auto', 'script', 'tool', 'generator', 'automation', 'test', 'lint', 'format', 'cli'];
+            scores.intelligent_dev = calculateKeywordScore(commitMessages, intelligentKeywords, commitCount);
+
+            // 6. Engineering Leadership - look for architectural decisions and best practices
+            const leadershipKeywords = ['architecture', 'refactor', 'optimize', 'performance', 'security', 'best practice', 'pattern', 'design'];
+            scores.leadership = calculateKeywordScore(commitMessages, leadershipKeywords, commitCount);
+
+            return {
+                contributor,
+                scores
+            };
+        }
+
+        function calculateKeywordScore(text, keywords, commitCount) {
+            // Count keyword occurrences
+            let keywordMatches = 0;
+            keywords.forEach(keyword => {
+                const regex = new RegExp(keyword, 'gi');
+                const matches = text.match(regex);
+                if (matches) {
+                    keywordMatches += matches.length;
+                }
+            });
+
+            // Base score on commit count (normalized to 0-50)
+            const commitScore = Math.min(50, (commitCount / 100) * 50);
+
+            // Keyword relevance score (0-50)
+            const keywordScore = Math.min(50, keywordMatches * 5);
+
+            // Total score (0-100)
+            return Math.round(commitScore + keywordScore);
+        }
+
+        function displayContributorEvaluation(evaluation) {
+            const { contributor, scores } = evaluation;
+
+            const currentIndex = contributorsData.findIndex(c => c.login === contributor.login);
+
+            const headerHtml = `
+                <div class="contributor-header">
+                    <label for="contributorSelect">Select Contributor</label>
+                    <div class="contributor-select" id="contributorSelect">
+                        <div class="select-header" onclick="toggleDropdown()">
+                            <img src="${contributor.avatar_url}" alt="${contributor.login}" class="select-avatar">
+                            <span class="select-text">${contributor.login} (${contributor.commitCount} commits)</span>
+                        </div>
+                        <div class="select-dropdown" id="selectDropdown">
+                            ${contributorsData.map((c, index) => `
+                                <div class="select-option ${index === currentIndex ? 'selected' : ''}" onclick="handleContributorChange(${index})">
+                                    <img src="${c.avatar_url}" alt="${c.login}">
+                                    <span class="select-option-text">${c.login}</span>
+                                    <span class="select-option-commits">${c.commitCount} commits</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="skillsChart"></canvas>
+                </div>
+                <div class="dimensions-list">
+                    ${dimensions.map(dim => `
+                        <div class="dimension-card">
+                            <h4>${dim.name}</h4>
+                            <div class="score">${scores[dim.key]}</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${scores[dim.key]}%"></div>
+                            </div>
+                            <div class="description">${dim.description}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            document.getElementById('contributorSection').innerHTML = headerHtml;
+
+            // Create radar chart
+            createChart(scores);
+        }
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('selectDropdown');
+            const header = dropdown.previousElementSibling;
+            dropdown.classList.toggle('active');
+            header.classList.toggle('active');
+        }
+
+        function handleContributorChange(index) {
+            const dropdown = document.getElementById('selectDropdown');
+            const header = dropdown.previousElementSibling;
+            dropdown.classList.remove('active');
+            header.classList.remove('active');
+            selectContributor(parseInt(index));
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const select = document.getElementById('contributorSelect');
+            if (select && !select.contains(event.target)) {
+                const dropdown = document.getElementById('selectDropdown');
+                const header = document.querySelector('.select-header');
+                if (dropdown) dropdown.classList.remove('active');
+                if (header) header.classList.remove('active');
+            }
+        });
+
+        function createChart(scores) {
+            const ctx = document.getElementById('skillsChart').getContext('2d');
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: dimensions.map(d => d.name),
+                    datasets: [{
+                        label: 'Engineering Skills',
+                        data: dimensions.map(d => scores[d.key]),
+                        fill: true,
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        borderColor: 'rgb(102, 126, 234)',
+                        pointBackgroundColor: 'rgb(102, 126, 234)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(102, 126, 234)',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            ticks: {
+                                stepSize: 20
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('active', show);
+            document.getElementById('analyzeBtn').disabled = show;
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.classList.add('active');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('active');
+        }
+
+        function showResults() {
+            document.getElementById('results').classList.add('active');
+        }
+
+        function hideResults() {
+            document.getElementById('results').classList.remove('active');
+        }
+
+        // Autocomplete functionality
+        let repoHistory = [];
+        let currentHighlightedIndex = -1;
+
+        // Load repository history from localStorage
+        function loadRepoHistory() {
+            const saved = localStorage.getItem('repoHistory');
+            if (saved) {
+                try {
+                    repoHistory = JSON.parse(saved);
+                } catch (e) {
+                    repoHistory = [];
+                }
+            }
+        }
+
+        // Save repository to history
+        function saveToHistory(url, name) {
+            const repo = { url, name, timestamp: Date.now() };
+            // Remove duplicate if exists
+            repoHistory = repoHistory.filter(r => r.url !== url);
+            // Add to beginning
+            repoHistory.unshift(repo);
+            // Keep only last 10
+            repoHistory = repoHistory.slice(0, 10);
+            localStorage.setItem('repoHistory', JSON.stringify(repoHistory));
+        }
+
+        // Show autocomplete suggestions
+        function showAutocomplete(value) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            if (!value || value.length < 3) {
+                // Show all history if input is short
+                if (repoHistory.length > 0) {
+                    renderAutocomplete(repoHistory);
+                } else {
+                    hideAutocomplete();
+                }
+                return;
+            }
+
+            // Filter history based on input
+            const filtered = repoHistory.filter(repo =>
+                repo.url.toLowerCase().includes(value.toLowerCase()) ||
+                repo.name.toLowerCase().includes(value.toLowerCase())
+            );
+
+            if (filtered.length > 0) {
+                renderAutocomplete(filtered);
+            } else {
+                hideAutocomplete();
+            }
+        }
+
+        // Render autocomplete dropdown
+        function renderAutocomplete(items) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            dropdown.innerHTML = items.map((repo, index) => `
+                <div class="autocomplete-option" data-url="${repo.url}" data-index="${index}">
+                    <div class="autocomplete-option-name">${repo.name}</div>
+                    <div class="autocomplete-option-url">${repo.url}</div>
+                </div>
+            `).join('');
+            dropdown.classList.add('active');
+            currentHighlightedIndex = -1;
+
+            // Add click handlers
+            dropdown.querySelectorAll('.autocomplete-option').forEach((option, index) => {
+                option.addEventListener('click', function() {
+                    selectAutocompleteOption(this.dataset.url);
+                });
+            });
+        }
+
+        // Hide autocomplete
+        function hideAutocomplete() {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            dropdown.classList.remove('active');
+            dropdown.innerHTML = '';
+            currentHighlightedIndex = -1;
+        }
+
+        // Select an autocomplete option
+        function selectAutocompleteOption(url) {
+            document.getElementById('repoUrl').value = url;
+            hideAutocomplete();
+        }
+
+        // Highlight option with keyboard
+        function highlightOption(direction) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const options = dropdown.querySelectorAll('.autocomplete-option');
+
+            if (options.length === 0) return;
+
+            // Remove current highlight
+            if (currentHighlightedIndex >= 0 && currentHighlightedIndex < options.length) {
+                options[currentHighlightedIndex].classList.remove('highlighted');
+            }
+
+            // Update index
+            if (direction === 'down') {
+                currentHighlightedIndex = (currentHighlightedIndex + 1) % options.length;
+            } else if (direction === 'up') {
+                currentHighlightedIndex = currentHighlightedIndex <= 0
+                    ? options.length - 1
+                    : currentHighlightedIndex - 1;
+            }
+
+            // Add new highlight
+            if (currentHighlightedIndex >= 0 && currentHighlightedIndex < options.length) {
+                options[currentHighlightedIndex].classList.add('highlighted');
+                options[currentHighlightedIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        // Input event listener
+        document.getElementById('repoUrl').addEventListener('input', function(e) {
+            showAutocomplete(e.target.value);
+        });
+
+        // Focus event listener
+        document.getElementById('repoUrl').addEventListener('focus', function(e) {
+            showAutocomplete(e.target.value);
+        });
+
+        // Keyboard navigation
+        document.getElementById('repoUrl').addEventListener('keydown', function(e) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const isOpen = dropdown.classList.contains('active');
+
+            if (e.key === 'ArrowDown' && isOpen) {
+                e.preventDefault();
+                highlightOption('down');
+            } else if (e.key === 'ArrowUp' && isOpen) {
+                e.preventDefault();
+                highlightOption('up');
+            } else if (e.key === 'Enter') {
+                if (isOpen && currentHighlightedIndex >= 0) {
+                    e.preventDefault();
+                    const options = dropdown.querySelectorAll('.autocomplete-option');
+                    if (options[currentHighlightedIndex]) {
+                        selectAutocompleteOption(options[currentHighlightedIndex].dataset.url);
+                    }
+                } else {
+                    analyzeRepository();
+                }
+            } else if (e.key === 'Escape' && isOpen) {
+                hideAutocomplete();
+            }
+        });
+
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.querySelector('.autocomplete-container');
+            if (container && !container.contains(event.target)) {
+                hideAutocomplete();
+            }
+        });
+
+        // Load history on page load
+        loadRepoHistory();
+    </script>
+</body>
+</html>
