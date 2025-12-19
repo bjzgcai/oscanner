@@ -12,14 +12,19 @@ if [ ! -d "venv" ]; then
     python3 -m venv venv
 fi
 
-# Activate virtual environment
-echo "Activating virtual environment..."
-source venv/bin/activate
+# Use explicit venv paths for reliability
+VENV_PYTHON="venv/bin/python"
+VENV_PIP="venv/bin/pip"
 
-# Install dependencies if needed
-if ! python -c "import fastapi" 2>/dev/null; then
+# Install/update dependencies
+echo "Checking dependencies..."
+if [ ! -f "venv/.deps_installed" ] || [ "requirements.txt" -nt "venv/.deps_installed" ]; then
     echo "Installing dependencies..."
-    pip install -q -r requirements.txt
+    $VENV_PIP install -q -r requirements.txt
+    # Create marker file to track installation
+    touch venv/.deps_installed
+else
+    echo "Dependencies already installed"
 fi
 
 # Set GitHub token if provided
@@ -41,4 +46,4 @@ echo "Note: If port is in use, it will auto-select the next available port"
 echo "=================================================="
 echo ""
 
-python server.py
+$VENV_PYTHON server.py
