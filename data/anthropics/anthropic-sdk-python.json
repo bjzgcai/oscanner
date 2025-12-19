@@ -1,0 +1,16 @@
+{
+  "cached_at": "2025-12-19T08:32:50.706105",
+  "repo_url": "https://github.com/anthropics/anthropic-sdk-python",
+  "data": {
+    "repo_name": "anthropics/anthropic-sdk-python",
+    "languages": [],
+    "has_dockerfile": false,
+    "has_kubernetes": false,
+    "has_cicd": false,
+    "has_iac": false,
+    "ml_frameworks": [],
+    "commit_count": 0,
+    "pr_count": 0,
+    "issue_count": 0
+  }
+}

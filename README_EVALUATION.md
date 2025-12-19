@@ -4,7 +4,7 @@ LLM-powered system for evaluating engineering capabilities by analyzing GitHub c
 
 ## Features
 
-- **AI-Powered Analysis**: Uses Claude 3.5 Sonnet via OpenRouter to analyze commits
+- **AI-Powered Analysis**: Uses Claude 4.5 Haiku via OpenRouter to analyze commits
 - **Six Dimensions**: Evaluates engineers across six key capability dimensions
 - **Real Commit Analysis**: Analyzes actual code changes, diffs, and commit patterns
 - **Caching System**: Efficiently caches GitHub API data to reduce API calls
@@ -122,7 +122,7 @@ Response:
 - Caches data locally in `./data/{owner}/{repo}/commits/`
 
 ### 2. LLM Analysis
-The system sends commit data to Claude 3.5 Sonnet with:
+The system sends commit data to Claude 4.5 Haiku with:
 - Commit messages
 - File changes (additions/deletions)
 - Code diffs (patches)
@@ -250,7 +250,7 @@ GitHubCollector          CommitEvaluator
     ↓                            ↓
 GitHub API              OpenRouter API
     ↓                            ↓
-Cache (data/)            Claude 3.5 Sonnet
+Cache (data/)            Claude 4.5 Haiku
 ```
 
 ## Future Enhancements
