@@ -1,0 +1,16 @@
+{
+  "cached_at": "2025-12-20T15:17:07.273750",
+  "repo_url": "https://gitee.com/zgca/NeuroQuant",
+  "data": {
+    "repo_name": "zgca/NeuroQuant",
+    "languages": [],
+    "has_dockerfile": false,
+    "has_kubernetes": false,
+    "has_cicd": false,
+    "has_iac": false,
+    "ml_frameworks": [],
+    "commit_count": 0,
+    "pr_count": 0,
+    "issue_count": 0
+  }
+}

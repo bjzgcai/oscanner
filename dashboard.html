@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Engineer Skill Evaluator - LLM-Powered Analysis</title>
+    <title>GitHub & Gitee Engineer Skill Evaluator - LLM-Powered Analysis</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <style>
         * {
@@ -451,7 +451,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>GitHub Engineer Skill Evaluator</h1>
+            <h1>Git Engineer Skill Evaluator</h1>
             <p>LLM-Powered Six-Dimensional Engineering Capability Analysis</p>
             <div class="badge">Powered by Claude 4.5 haiku</div>
         </div>
@@ -462,7 +462,7 @@
                     <input
                         type="text"
                         id="repoUrl"
-                        placeholder="Enter GitHub repository URL (e.g., https://github.com/octocat/Hello-World)"
+                        placeholder="Enter GitHub or Gitee repository URL (e.g., https://github.com/owner/repo, https://gitee.com/owner/repo, or https://z.gitee.cn/namespace/repos/owner/repo)"
                         value=""
                         autocomplete="on">
                     <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
@@ -470,7 +470,7 @@
                 <button id="analyzeBtn" onclick="analyzeRepository()">Analyze Repository</button>
             </div>
             <div class="note">
-                Enter a GitHub repository URL to analyze contributors' engineering capabilities using AI-powered commit analysis
+                Enter a GitHub or Gitee repository URL to analyze contributors' engineering capabilities using AI-powered commit analysis. Supports both public Gitee (gitee.com) and enterprise Gitee (z.gitee.cn).
             </div>
         </div>
 
@@ -730,22 +730,70 @@
             }
         });
 
+        function detectPlatform(repoUrl) {
+            // Detect if URL is GitHub or Gitee
+            if (repoUrl.includes('github.com')) {
+                return 'github';
+            } else if (repoUrl.includes('gitee.com') || repoUrl.includes('z.gitee.cn')) {
+                return 'gitee';
+            }
+            return null;
+        }
+
+        function parseRepoUrl(repoUrl) {
+            // Parse GitHub URL
+            let match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+            if (match) {
+                return {
+                    platform: 'github',
+                    owner: match[1],
+                    repo: match[2].replace(/\.git$/, ''),
+                    isEnterprise: false
+                };
+            }
+
+            // Parse z.gitee.cn premium format: /namespace/repos/owner/repo/sources
+            match = repoUrl.match(/z\.gitee\.cn\/([^\/]+)\/repos\/([^\/]+)\/([^\/]+)/);
+            if (match) {
+                return {
+                    platform: 'gitee',
+                    owner: match[2],
+                    repo: match[3],
+                    isEnterprise: true
+                };
+            }
+
+            // Parse standard Gitee URL: gitee.com/owner/repo
+            match = repoUrl.match(/gitee\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/|$)/);
+            if (match) {
+                return {
+                    platform: 'gitee',
+                    owner: match[1],
+                    repo: match[2],
+                    isEnterprise: false
+                };
+            }
+
+            return null;
+        }
+
         async function analyzeRepository() {
             const repoUrl = document.getElementById('repoUrl').value.trim();
 
             if (!repoUrl) {
-                showError('Please enter a GitHub repository URL');
+                showError('Please enter a repository URL');
                 return;
             }
 
-            const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-            if (!match) {
-                showError('Invalid GitHub URL format. Please use: https://github.com/username/repository');
+            const parsed = parseRepoUrl(repoUrl);
+            if (!parsed) {
+                showError('Invalid repository URL format. Please use:\n• GitHub: https://github.com/owner/repo\n• Gitee: https://gitee.com/owner/repo or https://z.gitee.cn/namespace/repos/owner/repo');
                 return;
             }
 
-            const owner = match[1];
-            const repo = match[2].replace(/\.git$/, '');
+            const { platform, owner, repo, isEnterprise } = parsed;
+            const apiPrefix = platform === 'gitee' ? '/api/gitee' : '/api';
+            const enterpriseParam = isEnterprise ? '&is_enterprise=true' : '';
 
             showLoading(true, 'Fetching repository data...');
             hideError();
@@ -755,7 +803,7 @@
                 // Fetch commits list
                 setLoadingText('Fetching commits...');
                 const commitsResponse = await fetch(
-                    `${API_SERVER_URL}/api/commits/${owner}/${repo}?limit=100`
+                    `${API_SERVER_URL}${apiPrefix}/commits/${owner}/${repo}?limit=100${enterpriseParam}`
                 );
 
                 if (!commitsResponse.ok) {
@@ -789,8 +837,10 @@
                     .slice(0, 20);
 
                 repoData = {
+                    platform,
                     owner,
                     repo,
+                    isEnterprise,
                     full_name: `${owner}/${repo}`,
                     url: repoUrl
                 };
@@ -838,9 +888,13 @@
             showLoading(true, `Analyzing ${contributor.login}'s commits with AI...`);
 
             try {
+                // Determine API endpoint based on platform
+                const apiPrefix = repoData.platform === 'gitee' ? '/api/gitee' : '/api';
+                const enterpriseParam = repoData.isEnterprise ? '&is_enterprise=true' : '';
+
                 // Call evaluation API
                 const response = await fetch(
-                    `${API_SERVER_URL}/api/evaluate/${repoData.owner}/${repoData.repo}/${contributor.login}?limit=30`,
+                    `${API_SERVER_URL}${apiPrefix}/evaluate/${repoData.owner}/${repoData.repo}/${contributor.login}?limit=30${enterpriseParam}`,
                     { method: 'POST' }
                 );
 
