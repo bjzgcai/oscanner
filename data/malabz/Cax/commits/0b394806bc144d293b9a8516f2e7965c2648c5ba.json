@@ -1,0 +1,142 @@
+{
+  "cached_at": "2025-12-20T14:33:35.213187",
+  "commit_sha": "0b394806bc144d293b9a8516f2e7965c2648c5ba",
+  "repo": "malabz/Cax",
+  "data": {
+    "sha": "0b394806bc144d293b9a8516f2e7965c2648c5ba",
+    "node_id": "C_kwDOPt61otoAKDBiMzk0ODA2YmMxNDRkMjkzYjlhODUxNmYyZTc5NjVjMjY0OGM1YmE",
+    "commit": {
+      "author": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-09-18T16:06:51Z"
+      },
+      "committer": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-09-18T16:06:51Z"
+      },
+      "message": "feat: 添加交互式终端界面和命令提示功能，支持 RaMAx 流程配置",
+      "tree": {
+        "sha": "3d7a11fafbb88a206763c140e47d7da699b0e1bb",
+        "url": "https://api.github.com/repos/malabz/Cax/git/trees/3d7a11fafbb88a206763c140e47d7da699b0e1bb"
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/git/commits/0b394806bc144d293b9a8516f2e7965c2648c5ba",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/malabz/Cax/commits/0b394806bc144d293b9a8516f2e7965c2648c5ba",
+    "html_url": "https://github.com/malabz/Cax/commit/0b394806bc144d293b9a8516f2e7965c2648c5ba",
+    "comments_url": "https://api.github.com/repos/malabz/Cax/commits/0b394806bc144d293b9a8516f2e7965c2648c5ba/comments",
+    "author": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "9aed28083f894a9567cb5713be0a08db20afdcb2",
+        "url": "https://api.github.com/repos/malabz/Cax/commits/9aed28083f894a9567cb5713be0a08db20afdcb2",
+        "html_url": "https://github.com/malabz/Cax/commit/9aed28083f894a9567cb5713be0a08db20afdcb2"
+      }
+    ],
+    "stats": {
+      "total": 336,
+      "additions": 204,
+      "deletions": 132
+    },
+    "files": [
+      {
+        "sha": "5b17d8994b61a06a6c12cf65337d61721986acdb",
+        "filename": "README.md",
+        "status": "added",
+        "additions": 73,
+        "deletions": 0,
+        "changes": 73,
+        "blob_url": "https://github.com/malabz/Cax/blob/0b394806bc144d293b9a8516f2e7965c2648c5ba/README.md",
+        "raw_url": "https://github.com/malabz/Cax/raw/0b394806bc144d293b9a8516f2e7965c2648c5ba/README.md",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/README.md?ref=0b394806bc144d293b9a8516f2e7965c2648c5ba",
+        "patch": "@@ -0,0 +1,73 @@\n+# Cactus-RaMAx\n+\n+Cactus-RaMAx 帮助你在 `cactus-prepare` 生成的多轮对齐计划中，挑选部分轮次改用 RaMAx，再一键执行完整流程。项目提供一个 Textual 驱动的交互式终端界面：输入 `cactus-prepare` 指令即可解析输出、浏览每个步骤、切换 RaMAx 替换，并最终执行或导出命令列表。\n+\n+## 环境准备\n+\n+推荐使用 Conda 新建独立环境，并从源代码安装：\n+\n+```bash\n+conda create -n cax python=3.10 -y\n+conda activate cax\n+\n+# 安装依赖并以开发模式挂载\n+pip install -e .\n+```\n+\n+如需在隔离环境之外使用，可将仓库打包后安装：\n+\n+```bash\n+python -m build\n+pip install dist/cactus_ramax-*.whl\n+```\n+\n+## 快速上手\n+\n+### 1. 启动交互式 UI\n+\n+直接运行：\n+\n+```bash\n+cax ui\n+```\n+\n+- 若未提供 `--prepare-args` 或 `--from-file`，程序会先弹出一个 Textual 输入框，提示你填写完整的 `cactus-prepare` 指令（例如 `cactus-prepare examples/... --outDir ...`）。\n+- 按 Enter 后，工具会执行该指令、解析输出，并进入计划编辑界面。\n+- 仍支持脚本化使用：\n+  ```bash\n+  cax ui --prepare-args \"examples/evolverMammals.txt --outDir steps-output --outSeqFile ... --outHal ... --jobStore jobstore\"\n+  ```\n+  或提供现有输出：\n+  ```bash\n+  cax ui --from-file steps-output/prepare_output.txt\n+  ```\n+\n+### 2. 在 UI 中操作\n+\n+- 列表展示所有对齐轮次，按空格切换是否使用 RaMAx；\n+- 面板展示当前轮次的原始命令或生成的 RaMAx 命令；\n+- `R`：立即执行完整计划；\n+- `S`：导出所有需要运行的命令到 `ramax_commands.txt`；\n+- `P`：刷新总览；\n+- `Q`：退出。\n+\n+保存时会在 `--outDir` 或当前目录下创建 `ramax_commands.txt`，内容为逐行排列的 shell 命令，可直接用于批量执行或进一步修改。\n+\n+## 日志与调试\n+\n+- `cactus-prepare` 的原始输出会保存为 `steps-output/cax_prepare_debug.txt`（若 `--outDir` 变化则跟随调整），便于复现与排错。\n+- 执行阶段会沿用原始计划中的日志目录（如 `steps-output/logs/`），每个步骤输出各自的 log 文件。\n+\n+## 从源代码构建\n+\n+开发者可使用以下命令运行单元测试、格式化等工具（若仓库包含对应脚本）：\n+\n+```bash\n+pip install -r requirements-dev.txt  # 若提供\n+pytest\n+ruff check\n+```\n+\n+## 反馈\n+\n+欢迎提交 issue 或 PR，帮助我们继续完善 Cactus 与 RaMAx 的联合流程体验。"
+      },
+      {
+        "sha": "fdd95520c6763dc00439463fc26d184651561d18",
+        "filename": "cax/cli.py",
+        "status": "modified",
+        "additions": 21,
+        "deletions": 126,
+        "changes": 147,
+        "blob_url": "https://github.com/malabz/Cax/blob/0b394806bc144d293b9a8516f2e7965c2648c5ba/cax%2Fcli.py",
+        "raw_url": "https://github.com/malabz/Cax/raw/0b394806bc144d293b9a8516f2e7965c2648c5ba/cax%2Fcli.py",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/cax%2Fcli.py?ref=0b394806bc144d293b9a8516f2e7965c2648c5ba",
+        "patch": "@@ -1,34 +1,27 @@\n-\"\"\"Typer-powered command line interface for the CAX toolkit.\"\"\"\n+\"\"\"Typer-powered command line interface for the streamlined CAX toolkit.\"\"\"\n from __future__ import annotations\n \n from pathlib import Path\n import shlex\n import subprocess\n-from typing import Iterable, Optional\n-\n+from typing import Optional\n \n import typer\n from rich import print\n \n-from . import config, parser, planner, render, ui as ui_module\n-from .models import Plan\n+from . import command_prompt, parser, render, ui as ui_module\n from .runner import PlanRunner\n \n-FallbackValues = {'cactus', 'abort'}\n-\n-app = typer.Typer(help=\"Cactus-RaMAx helper tools\")\n-\n+app = typer.Typer(help=\"Cactus-RaMAx interactive tools (ui only)\")\n \n-def _fallback_value(value: str) -> str:\n-    normalized = value.lower()\n-    if normalized not in FallbackValues:\n-        raise typer.BadParameter(f\"fallback must be one of {sorted(FallbackValues)}\")\n-    return normalized\n \n-\n-def _load_prepare_text(prepare_args: Optional[str], from_file: Optional[Path]) -> str:\n-    if prepare_args:\n-        cmd = [\"cactus-prepare\", *shlex.split(prepare_args)]\n+def _load_prepare_text(\n+    prepare_args: Optional[str],\n+    from_file: Optional[Path],\n+    executable: str = \"cactus-prepare\",\n+) -> str:\n+    if prepare_args is not None:\n+        cmd = [executable, *shlex.split(prepare_args)]\n         typer.echo(f\"[cax] running: {' '.join(cmd)}\")\n         result = subprocess.run(cmd, check=False, capture_output=True, text=True)\n         if result.returncode != 0:\n@@ -45,17 +38,6 @@ def _load_prepare_text(prepare_args: Optional[str], from_file: Optional[Path]) -\n     raise typer.Exit(code=1)\n \n \n-def _update_round_replacements(plan: Plan, replace_rounds: Iterable[str]) -> None:\n-    selected = {name.strip() for name in replace_rounds if name.strip()}\n-    if not selected:\n-        return\n-    for round_entry in plan.rounds:\n-        base_name = round_entry.name\n-        plain_name = base_name.split(\" (\")[0]\n-        if base_name in selected or plain_name in selected:\n-            round_entry.replace_with_ramax = True\n-\n-\n @app.command()\n def ui(\n     prepare_args: Optional[str] = typer.Option(None, help=\"Arguments passed through to cactus-prepare\"),\n@@ -64,7 +46,16 @@ def ui(\n ) -> None:\n     \"\"\"Launch the interactive Textual UI for plan editing.\"\"\"\n \n-    text = _load_prepare_text(prepare_args, from_file)\n+    executable = \"cactus-prepare\"\n+    if prepare_args is None and from_file is None:\n+        prompt_result = command_prompt.prompt_prepare_command()\n+        if prompt_result.action == \"quit\":\n+            typer.echo(\"[cax] 已取消。\")\n+            return\n+        prepare_args = prompt_result.args\n+        executable = prompt_result.executable or executable\n+\n+    text = _load_prepare_text(prepare_args, from_file, executable=executable)\n     plan = parser.parse_prepare_script(text)\n     result = ui_module.launch(plan)\n     plan = result.plan\n@@ -75,101 +66,5 @@ def ui(\n         print(render.plan_overview(plan))\n \n \n-@app.command()\n-def plan(\n-    output: Path = typer.Option(..., help=\"Destination YAML file for the plan\"),\n-    prepare_args: Optional[str] = typer.Option(None, help=\"Arguments to pass to cactus-prepare\"),\n-    from_file: Optional[Path] = typer.Option(None, help=\"Read cactus-prepare output from file\"),\n-    replace_rounds: Optional[str] = typer.Option(None, help=\"Comma-separated round names to replace with RaMAx\"),\n-    fallback: str = typer.Option(\"cactus\", help=\"Fallback policy when RaMAx fails\", show_default=True),\n-    dry_run: bool = typer.Option(False, help=\"Mark the plan as dry-run\"),\n-    run_script: Optional[Path] = typer.Option(None, help=\"Optional run.sh export path\"),\n-) -> None:\n-    \"\"\"Generate a YAML plan without executing it.\"\"\"\n-\n-    text = _load_prepare_text(prepare_args, from_file)\n-    plan_obj = parser.parse_prepare_script(text)\n-    plan_obj.fallback_policy = _fallback_value(fallback)  # type: ignore[assignment]\n-    plan_obj.dry_run = dry_run\n-    if replace_rounds:\n-        _update_round_replacements(plan_obj, replace_rounds.split(\",\"))\n-    config.save_plan(plan_obj, output)\n-    typer.echo(f\"Plan saved to {output}\")\n-    if run_script:\n-        commands = planner.build_execution_plan(plan_obj)\n-        run_text = render.render_run_script(plan_obj, commands)\n-        run_script.parent.mkdir(parents=True, exist_ok=True)\n-        run_script.write_text(run_text, encoding=\"utf-8\")\n-        typer.echo(f\"Run script written to {run_script}\")\n-\n-\n-@app.command()\n-def run(\n-    config_path: Path = typer.Option(..., help=\"Path to a previously saved plan YAML\"),\n-    dry_run: Optional[bool] = typer.Option(None, help=\"Override the plan's dry-run flag\"),\n-    run_script: Optional[Path] = typer.Option(None, help=\"Export a run.sh alongside execution\"),\n-    quiet: bool = typer.Option(False, help=\"Silence live command output\"),\n-) -> None:\n-    \"\"\"Execute a saved plan.\"\"\"\n-\n-    plan_obj = config.load_plan(config_path)\n-    if dry_run is not None:\n-        plan_obj.dry_run = dry_run\n-    commands = planner.build_execution_plan(plan_obj)\n-    if run_script:\n-        run_text = render.render_run_script(plan_obj, commands)\n-        run_script.parent.mkdir(parents=True, exist_ok=True)\n-        run_script.write_text(run_text, encoding=\"utf-8\")\n-        typer.echo(f\"Run script written to {run_script}\")\n-    runner = PlanRunner(plan_obj, mirror_stdout=not quiet)\n-    runner.run()\n-\n-\n-@app.command()\n-def go(\n-    seq_file: Path = typer.Argument(..., help=\"Input sequence file passed to cactus-prepare\"),\n-    out_dir: Path = typer.Option(..., help=\"--outDir value for cactus-prepare\"),\n-    out_seq_file: Path = typer.Option(..., help=\"--outSeqFile value\"),\n-    out_hal: Path = typer.Option(..., help=\"--outHal value\"),\n-    job_store: str = typer.Option(..., help=\"--jobStore value\"),\n-    replace_rounds: Optional[str] = typer.Option(None, help=\"Comma-separated round names to replace\"),\n-    fallback: str = typer.Option(\"cactus\", help=\"Fallback policy [cactus|abort]\"),\n-    dry_run: bool = typer.Option(False, help=\"Enable dry-run mode\"),\n-    ramax_opt: Optional[list[str]] = typer.Option(None, help=\"Additional --ramax-opt flags\"),\n-    run_script: Optional[Path] = typer.Option(None, help=\"Export run.sh before executing\"),\n-    quiet: bool = typer.Option(False, help=\"Silence live command output\"),\n-) -> None:\n-    \"\"\"Shortcut: prepare, configure replacements, and execute immediately.\"\"\"\n-\n-    prepare_tokens = [\n-        str(seq_file),\n-        \"--outDir\",\n-        str(out_dir),\n-        \"--outSeqFile\",\n-        str(out_seq_file),\n-        \"--outHal\",\n-        str(out_hal),\n-        \"--jobStore\",\n-        job_store,\n-    ]\n-    prepare_args = shlex.join(prepare_tokens)\n-    script_text = _load_prepare_text(prepare_args, None)\n-    plan_obj = parser.parse_prepare_script(script_text)\n-    plan_obj.fallback_policy = _fallback_value(fallback)  # type: ignore[assignment]\n-    plan_obj.dry_run = dry_run\n-    if ramax_opt:\n-        plan_obj.global_ramax_opts = list(ramax_opt)\n-    if replace_rounds:\n-        _update_round_replacements(plan_obj, replace_rounds.split(\",\"))\n-    commands = planner.build_execution_plan(plan_obj)\n-    if run_script:\n-        run_text = render.render_run_script(plan_obj, commands)\n-        run_script.parent.mkdir(parents=True, exist_ok=True)\n-        run_script.write_text(run_text, encoding=\"utf-8\")\n-        typer.echo(f\"Run script written to {run_script}\")\n-    runner = PlanRunner(plan_obj, mirror_stdout=not quiet)\n-    runner.run()\n-\n-\n if __name__ == \"__main__\":\n     app()"
+      },
+      {
+        "sha": "b74a240b9e5546ecbfe2fef9cf69e67ec1a7b6f8",
+        "filename": "cax/command_prompt.py",
+        "status": "added",
+        "additions": 102,
+        "deletions": 0,
+        "changes": 102,
+        "blob_url": "https://github.com/malabz/Cax/blob/0b394806bc144d293b9a8516f2e7965c2648c5ba/cax%2Fcommand_prompt.py",
+        "raw_url": "https://github.com/malabz/Cax/raw/0b394806bc144d293b9a8516f2e7965c2648c5ba/cax%2Fcommand_prompt.py",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/cax%2Fcommand_prompt.py?ref=0b394806bc144d293b9a8516f2e7965c2648c5ba",
+        "patch": "@@ -0,0 +1,102 @@\n+\"\"\"Textual prompt for collecting cactus-prepare commands from the user.\"\"\"\n+from __future__ import annotations\n+\n+from dataclasses import dataclass\n+from pathlib import Path\n+import shlex\n+from typing import Literal\n+\n+from textual.app import App, ComposeResult\n+from textual.binding import Binding\n+from textual.widgets import Footer, Header, Input, Static\n+\n+\n+@dataclass\n+class PromptResult:\n+    \"\"\"Result returned from the command prompt.\"\"\"\n+\n+    executable: str\n+    args: str\n+    action: Literal[\"submit\", \"quit\"]\n+\n+\n+class PrepareCommandPrompt(App[PromptResult]):\n+    \"\"\"Minimal Textual app that requests a cactus-prepare command.\"\"\"\n+\n+    CSS = \"\"\"\n+    Screen {\n+        layout: vertical;\n+    }\n+    #instructions {\n+        padding: 1 2;\n+    }\n+    #command {\n+        margin: 1 2;\n+    }\n+    #status {\n+        padding: 0 2 1 2;\n+    }\n+    \"\"\"\n+\n+    BINDINGS = [\n+        Binding(\"escape\", \"quit\", \"退出\"),\n+        Binding(\"ctrl+c\", \"quit\", \"退出\"),\n+    ]\n+\n+    def __init__(self) -> None:\n+        super().__init__()\n+        self._command_input: Input | None = None\n+        self._status: Static | None = None\n+\n+    def compose(self) -> ComposeResult:\n+        yield Header(show_clock=True)\n+        yield Static(\"请输入完整的 cactus-prepare 指令，按 Enter 提交。\", id=\"instructions\")\n+        command_input = Input(placeholder=\"cactus-prepare ...\", id=\"command\")\n+        self._command_input = command_input\n+        yield command_input\n+        status = Static(\"\", id=\"status\")\n+        self._status = status\n+        yield status\n+        yield Footer()\n+\n+    def on_mount(self) -> None:  # type: ignore[override]\n+        if self._command_input:\n+            self._command_input.focus()\n+\n+    def on_input_submitted(self, event: Input.Submitted) -> None:  # type: ignore[override]\n+        command = event.value.strip()\n+        if not command:\n+            self._update_status(\"[red]命令不能为空[/red]\")\n+            return\n+        try:\n+            tokens = shlex.split(command)\n+        except ValueError as exc:\n+            self._update_status(f\"[red]命令解析失败：{exc}[/red]\")\n+            return\n+        if not tokens:\n+            self._update_status(\"[red]命令不能为空[/red]\")\n+            return\n+        executable = Path(tokens[0]).name\n+        if executable != \"cactus-prepare\":\n+            self._update_status(\"[red]请以 'cactus-prepare' 开头[/red]\")\n+            return\n+        args = shlex.join(tokens[1:])\n+        self.exit(PromptResult(executable=tokens[0], args=args, action=\"submit\"))\n+\n+    def action_quit(self) -> None:\n+        value = self._command_input.value.strip() if self._command_input else \"\"\n+        self.exit(PromptResult(executable=\"\", args=value, action=\"quit\"))\n+\n+    def _update_status(self, message: str) -> None:\n+        if self._status:\n+            self._status.update(message)\n+\n+\n+def prompt_prepare_command() -> PromptResult:\n+    \"\"\"Launch the Textual prompt and return the user's command selection.\"\"\"\n+\n+    app = PrepareCommandPrompt()\n+    result = app.run()\n+    if isinstance(result, PromptResult):\n+        return result\n+    return PromptResult(executable=\"\", args=\"\", action=\"quit\")"
+      },
+      {
+        "sha": "2dc49e6176e090942a6bf43c8ecb47a12b30fb50",
+        "filename": "cax/ui.py",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 6,
+        "changes": 14,
+        "blob_url": "https://github.com/malabz/Cax/blob/0b394806bc144d293b9a8516f2e7965c2648c5ba/cax%2Fui.py",
+        "raw_url": "https://github.com/malabz/Cax/raw/0b394806bc144d293b9a8516f2e7965c2648c5ba/cax%2Fui.py",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/cax%2Fui.py?ref=0b394806bc144d293b9a8516f2e7965c2648c5ba",
+        "patch": "@@ -10,7 +10,7 @@\n from textual.containers import Container\n from textual.widgets import Footer, Header, ListItem, ListView, Static\n \n-from . import config, planner, render\n+from . import planner, render\n from .models import Plan, Round\n \n \n@@ -61,7 +61,7 @@ class PlanUIApp(App[UIResult]):\n         Binding(\"space\", \"toggle_round\", \"Toggle RaMAx\"),\n         Binding(\"e\", \"edit_round\", \"Edit workdir (todo)\"),\n         Binding(\"p\", \"preview_plan\", \"Preview\"),\n-        Binding(\"s\", \"save_yaml\", \"Save YAML\"),\n+        Binding(\"s\", \"save_commands\", \"Save commands\"),\n         Binding(\"r\", \"run_plan\", \"Run\"),\n         Binding(\"q\", \"quit\", \"Quit\"),\n     ]\n@@ -110,13 +110,15 @@ def action_preview_plan(self) -> None:\n     def action_run_plan(self) -> None:\n         self.exit(UIResult(plan=self.plan, action=\"run\"))\n \n-    def action_save_yaml(self) -> None:\n+    def action_save_commands(self) -> None:\n         output_dir = Path(self.plan.out_dir or self.base_dir)\n         output_dir.mkdir(parents=True, exist_ok=True)\n-        output_path = output_dir / \"ramax_plan.yaml\"\n-        config.save_plan(self.plan, output_path)\n+        output_path = output_dir / \"ramax_commands.txt\"\n+        commands = planner.build_execution_plan(self.plan, self.base_dir)\n+        lines = [cmd.shell_preview() for cmd in commands]\n+        output_path.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")\n         if self.detail_panel:\n-            self.detail_panel.update(f\"Saved plan to {output_path}\")\n+            self.detail_panel.update(f\"Saved commands to {output_path}\")\n \n     def action_quit(self) -> None:\n         self.exit(UIResult(plan=self.plan, action=\"quit\"))"
+      }
+    ]
+  }
+}

@@ -1,0 +1,1640 @@
+{
+  "cached_at": "2025-12-20T14:33:27.610088",
+  "repo": "malabz/Cax",
+  "data": [
+    {
+      "sha": "984c1351d8e705217fde3c46d58fd89e3006d364",
+      "node_id": "C_kwDOPt61otoAKDk4NGMxMzUxZDhlNzA1MjE3ZmRlM2M0NmQ1OGZkODllMzAwNmQzNjQ",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-12-14T06:09:36Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-12-14T06:09:36Z"
+        },
+        "message": "0.4.0",
+        "tree": {
+          "sha": "7cefeda409cd93266215a9513710839d52875a73",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/7cefeda409cd93266215a9513710839d52875a73"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/984c1351d8e705217fde3c46d58fd89e3006d364",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/984c1351d8e705217fde3c46d58fd89e3006d364",
+      "html_url": "https://github.com/malabz/Cax/commit/984c1351d8e705217fde3c46d58fd89e3006d364",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/984c1351d8e705217fde3c46d58fd89e3006d364/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "044e2806686d7c7acc8b2cd5bef18bd73c05c198",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/044e2806686d7c7acc8b2cd5bef18bd73c05c198",
+          "html_url": "https://github.com/malabz/Cax/commit/044e2806686d7c7acc8b2cd5bef18bd73c05c198"
+        }
+      ]
+    },
+    {
+      "sha": "044e2806686d7c7acc8b2cd5bef18bd73c05c198",
+      "node_id": "C_kwDOPt61otoAKDA0NGUyODA2Njg2ZDdjN2FjYzhiMmNkNWJlZjE4YmQ3M2MwNWMxOTg",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-12-02T17:19:36Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-12-02T17:19:36Z"
+        },
+        "message": "Start 0.4.0-dev: subtree mode + flow view",
+        "tree": {
+          "sha": "40b62e4c2c7ac4d8dcafab93c04549d2531e0896",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/40b62e4c2c7ac4d8dcafab93c04549d2531e0896"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/044e2806686d7c7acc8b2cd5bef18bd73c05c198",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/044e2806686d7c7acc8b2cd5bef18bd73c05c198",
+      "html_url": "https://github.com/malabz/Cax/commit/044e2806686d7c7acc8b2cd5bef18bd73c05c198",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/044e2806686d7c7acc8b2cd5bef18bd73c05c198/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+          "html_url": "https://github.com/malabz/Cax/commit/bda6344bae4859b8889bfcdd4d02c8fba4179cef"
+        }
+      ]
+    },
+    {
+      "sha": "bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+      "node_id": "C_kwDOPt61otoAKGJkYTYzNDRiYWU0ODU5Yjg4ODliZmNkZDRkMDJjOGZiYTQxNzljZWY",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-11-25T09:33:51Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-11-25T09:33:51Z"
+        },
+        "message": "Refine 0.3.0 changelog",
+        "tree": {
+          "sha": "ebee30a25a0bbe8c373d16f0187c8e299ca92a5d",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/ebee30a25a0bbe8c373d16f0187c8e299ca92a5d"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+      "html_url": "https://github.com/malabz/Cax/commit/bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/bda6344bae4859b8889bfcdd4d02c8fba4179cef/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "0b4473799c13cc2679e5305f14268d2c2c523a92",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/0b4473799c13cc2679e5305f14268d2c2c523a92",
+          "html_url": "https://github.com/malabz/Cax/commit/0b4473799c13cc2679e5305f14268d2c2c523a92"
+        }
+      ]
+    },
+    {
+      "sha": "0b4473799c13cc2679e5305f14268d2c2c523a92",
+      "node_id": "C_kwDOPt61otoAKDBiNDQ3Mzc5OWMxM2NjMjY3OWU1MzA1ZjE0MjY4ZDJjMmM1MjNhOTI",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-11-25T09:26:17Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-11-25T09:26:17Z"
+        },
+        "message": "Release 0.3.0",
+        "tree": {
+          "sha": "4c5588763176308ed3baa521f1871b8d4ed74822",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/4c5588763176308ed3baa521f1871b8d4ed74822"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/0b4473799c13cc2679e5305f14268d2c2c523a92",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/0b4473799c13cc2679e5305f14268d2c2c523a92",
+      "html_url": "https://github.com/malabz/Cax/commit/0b4473799c13cc2679e5305f14268d2c2c523a92",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/0b4473799c13cc2679e5305f14268d2c2c523a92/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "c7826a78095e1d7bd33955b97df0509f95720b15",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/c7826a78095e1d7bd33955b97df0509f95720b15",
+          "html_url": "https://github.com/malabz/Cax/commit/c7826a78095e1d7bd33955b97df0509f95720b15"
+        }
+      ]
+    },
+    {
+      "sha": "c7826a78095e1d7bd33955b97df0509f95720b15",
+      "node_id": "C_kwDOPt61otoAKGM3ODI2YTc4MDk1ZTFkN2JkMzM5NTViOTdkZjA1MDlmOTU3MjBiMTU",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-11-21T01:34:31Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-11-21T01:34:31Z"
+        },
+        "message": "Rewrite plan UI and enhance Newick support",
+        "tree": {
+          "sha": "40a1d5e568deeec45b37030b8eddde70d2af46c7",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/40a1d5e568deeec45b37030b8eddde70d2af46c7"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/c7826a78095e1d7bd33955b97df0509f95720b15",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/c7826a78095e1d7bd33955b97df0509f95720b15",
+      "html_url": "https://github.com/malabz/Cax/commit/c7826a78095e1d7bd33955b97df0509f95720b15",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/c7826a78095e1d7bd33955b97df0509f95720b15/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "5c62f9b5dbdab43440503e22b8799d27ff39faf0",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/5c62f9b5dbdab43440503e22b8799d27ff39faf0",
+          "html_url": "https://github.com/malabz/Cax/commit/5c62f9b5dbdab43440503e22b8799d27ff39faf0"
+        }
+      ]
+    },
+    {
+      "sha": "5c62f9b5dbdab43440503e22b8799d27ff39faf0",
+      "node_id": "C_kwDOPt61otoAKDVjNjJmOWI1ZGJkYWI0MzQ0MDUwM2UyMmI4Nzk5ZDI3ZmYzOWZhZjA",
+      "commit": {
+        "author": {
+          "name": "metaphysicser",
+          "email": "zpl010720@qq.com",
+          "date": "2025-11-08T09:19:18Z"
+        },
+        "committer": {
+          "name": "metaphysicser",
+          "email": "zpl010720@qq.com",
+          "date": "2025-11-08T09:19:18Z"
+        },
+        "message": "feat: enhance quiet progress telemetry and release 0.2.2",
+        "tree": {
+          "sha": "219900cf454a4bd6f38eb096b125aa96d67d760c",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/219900cf454a4bd6f38eb096b125aa96d67d760c"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/5c62f9b5dbdab43440503e22b8799d27ff39faf0",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/5c62f9b5dbdab43440503e22b8799d27ff39faf0",
+      "html_url": "https://github.com/malabz/Cax/commit/5c62f9b5dbdab43440503e22b8799d27ff39faf0",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/5c62f9b5dbdab43440503e22b8799d27ff39faf0/comments",
+      "author": {
+        "login": "metaphysicser",
+        "id": 62839294,
+        "node_id": "MDQ6VXNlcjYyODM5Mjk0",
+        "avatar_url": "https://avatars.githubusercontent.com/u/62839294?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/metaphysicser",
+        "html_url": "https://github.com/metaphysicser",
+        "followers_url": "https://api.github.com/users/metaphysicser/followers",
+        "following_url": "https://api.github.com/users/metaphysicser/following{/other_user}",
+        "gists_url": "https://api.github.com/users/metaphysicser/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/metaphysicser/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/metaphysicser/subscriptions",
+        "organizations_url": "https://api.github.com/users/metaphysicser/orgs",
+        "repos_url": "https://api.github.com/users/metaphysicser/repos",
+        "events_url": "https://api.github.com/users/metaphysicser/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/metaphysicser/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "metaphysicser",
+        "id": 62839294,
+        "node_id": "MDQ6VXNlcjYyODM5Mjk0",
+        "avatar_url": "https://avatars.githubusercontent.com/u/62839294?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/metaphysicser",
+        "html_url": "https://github.com/metaphysicser",
+        "followers_url": "https://api.github.com/users/metaphysicser/followers",
+        "following_url": "https://api.github.com/users/metaphysicser/following{/other_user}",
+        "gists_url": "https://api.github.com/users/metaphysicser/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/metaphysicser/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/metaphysicser/subscriptions",
+        "organizations_url": "https://api.github.com/users/metaphysicser/orgs",
+        "repos_url": "https://api.github.com/users/metaphysicser/repos",
+        "events_url": "https://api.github.com/users/metaphysicser/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/metaphysicser/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "4c088b5d4e1d277a416947f05903296701a514aa",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/4c088b5d4e1d277a416947f05903296701a514aa",
+          "html_url": "https://github.com/malabz/Cax/commit/4c088b5d4e1d277a416947f05903296701a514aa"
+        }
+      ]
+    },
+    {
+      "sha": "4c088b5d4e1d277a416947f05903296701a514aa",
+      "node_id": "C_kwDOPt61otoAKDRjMDg4YjVkNGUxZDI3N2E0MTY5NDdmMDU5MDMyOTY3MDFhNTE0YWE",
+      "commit": {
+        "author": {
+          "name": "ripple-jmx",
+          "email": "mingxuanjiang@hust.edu.cn",
+          "date": "2025-11-08T08:38:18Z"
+        },
+        "committer": {
+          "name": "ripple-jmx",
+          "email": "mingxuanjiang@hust.edu.cn",
+          "date": "2025-11-08T08:38:18Z"
+        },
+        "message": "feat: add dedicated run settings screen and runtime configs",
+        "tree": {
+          "sha": "0b34ca244643cba4bbdb9d81821d3e152e7e0d50",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/0b34ca244643cba4bbdb9d81821d3e152e7e0d50"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/4c088b5d4e1d277a416947f05903296701a514aa",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/4c088b5d4e1d277a416947f05903296701a514aa",
+      "html_url": "https://github.com/malabz/Cax/commit/4c088b5d4e1d277a416947f05903296701a514aa",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/4c088b5d4e1d277a416947f05903296701a514aa/comments",
+      "author": {
+        "login": "ripple-jmx",
+        "id": 55392975,
+        "node_id": "MDQ6VXNlcjU1MzkyOTc1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/55392975?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/ripple-jmx",
+        "html_url": "https://github.com/ripple-jmx",
+        "followers_url": "https://api.github.com/users/ripple-jmx/followers",
+        "following_url": "https://api.github.com/users/ripple-jmx/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ripple-jmx/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/ripple-jmx/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ripple-jmx/subscriptions",
+        "organizations_url": "https://api.github.com/users/ripple-jmx/orgs",
+        "repos_url": "https://api.github.com/users/ripple-jmx/repos",
+        "events_url": "https://api.github.com/users/ripple-jmx/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/ripple-jmx/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "ripple-jmx",
+        "id": 55392975,
+        "node_id": "MDQ6VXNlcjU1MzkyOTc1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/55392975?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/ripple-jmx",
+        "html_url": "https://github.com/ripple-jmx",
+        "followers_url": "https://api.github.com/users/ripple-jmx/followers",
+        "following_url": "https://api.github.com/users/ripple-jmx/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ripple-jmx/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/ripple-jmx/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ripple-jmx/subscriptions",
+        "organizations_url": "https://api.github.com/users/ripple-jmx/orgs",
+        "repos_url": "https://api.github.com/users/ripple-jmx/repos",
+        "events_url": "https://api.github.com/users/ripple-jmx/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/ripple-jmx/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "b549253116f9c2205d594b9a48fd8c4c6e7d090d",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/b549253116f9c2205d594b9a48fd8c4c6e7d090d",
+          "html_url": "https://github.com/malabz/Cax/commit/b549253116f9c2205d594b9a48fd8c4c6e7d090d"
+        }
+      ]
+    },
+    {
+      "sha": "b549253116f9c2205d594b9a48fd8c4c6e7d090d",
+      "node_id": "C_kwDOPt61otoAKGI1NDkyNTMxMTZmOWMyMjA1ZDU5NGI5YTQ4ZmQ4YzRjNmU3ZDA5MGQ",
+      "commit": {
+        "author": {
+          "name": "ripple-jmx",
+          "email": "mingxuanjiang@hust.edu.cn",
+          "date": "2025-11-08T06:58:59Z"
+        },
+        "committer": {
+          "name": "ripple-jmx",
+          "email": "mingxuanjiang@hust.edu.cn",
+          "date": "2025-11-08T06:58:59Z"
+        },
+        "message": "feat(prompt): make prepare wizard layout responsive",
+        "tree": {
+          "sha": "f2b3183518aaf538957d996cbc6831d64c70ea61",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/f2b3183518aaf538957d996cbc6831d64c70ea61"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/b549253116f9c2205d594b9a48fd8c4c6e7d090d",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/b549253116f9c2205d594b9a48fd8c4c6e7d090d",
+      "html_url": "https://github.com/malabz/Cax/commit/b549253116f9c2205d594b9a48fd8c4c6e7d090d",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/b549253116f9c2205d594b9a48fd8c4c6e7d090d/comments",
+      "author": {
+        "login": "ripple-jmx",
+        "id": 55392975,
+        "node_id": "MDQ6VXNlcjU1MzkyOTc1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/55392975?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/ripple-jmx",
+        "html_url": "https://github.com/ripple-jmx",
+        "followers_url": "https://api.github.com/users/ripple-jmx/followers",
+        "following_url": "https://api.github.com/users/ripple-jmx/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ripple-jmx/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/ripple-jmx/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ripple-jmx/subscriptions",
+        "organizations_url": "https://api.github.com/users/ripple-jmx/orgs",
+        "repos_url": "https://api.github.com/users/ripple-jmx/repos",
+        "events_url": "https://api.github.com/users/ripple-jmx/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/ripple-jmx/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "ripple-jmx",
+        "id": 55392975,
+        "node_id": "MDQ6VXNlcjU1MzkyOTc1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/55392975?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/ripple-jmx",
+        "html_url": "https://github.com/ripple-jmx",
+        "followers_url": "https://api.github.com/users/ripple-jmx/followers",
+        "following_url": "https://api.github.com/users/ripple-jmx/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ripple-jmx/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/ripple-jmx/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ripple-jmx/subscriptions",
+        "organizations_url": "https://api.github.com/users/ripple-jmx/orgs",
+        "repos_url": "https://api.github.com/users/ripple-jmx/repos",
+        "events_url": "https://api.github.com/users/ripple-jmx/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/ripple-jmx/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+          "html_url": "https://github.com/malabz/Cax/commit/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89"
+        }
+      ]
+    },
+    {
+      "sha": "afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+      "node_id": "C_kwDOPt61otoAKGFmYjNlMGMyYzFkMGY5OTc2ZTRmMDFjNjM3OWUwZmM5MjcwNWZmODk",
+      "commit": {
+        "author": {
+          "name": "ripple-jmx",
+          "email": "mingxuanjiang@hust.edu.cn",
+          "date": "2025-11-07T08:37:05Z"
+        },
+        "committer": {
+          "name": "ripple-jmx",
+          "email": "mingxuanjiang@hust.edu.cn",
+          "date": "2025-11-07T08:37:05Z"
+        },
+        "message": "docs: refresh README for 0.2.1 workflow",
+        "tree": {
+          "sha": "0ad9242796d1c845b0dd2a18fab45d5adb062feb",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/0ad9242796d1c845b0dd2a18fab45d5adb062feb"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+      "html_url": "https://github.com/malabz/Cax/commit/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89/comments",
+      "author": {
+        "login": "ripple-jmx",
+        "id": 55392975,
+        "node_id": "MDQ6VXNlcjU1MzkyOTc1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/55392975?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/ripple-jmx",
+        "html_url": "https://github.com/ripple-jmx",
+        "followers_url": "https://api.github.com/users/ripple-jmx/followers",
+        "following_url": "https://api.github.com/users/ripple-jmx/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ripple-jmx/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/ripple-jmx/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ripple-jmx/subscriptions",
+        "organizations_url": "https://api.github.com/users/ripple-jmx/orgs",
+        "repos_url": "https://api.github.com/users/ripple-jmx/repos",
+        "events_url": "https://api.github.com/users/ripple-jmx/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/ripple-jmx/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "ripple-jmx",
+        "id": 55392975,
+        "node_id": "MDQ6VXNlcjU1MzkyOTc1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/55392975?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/ripple-jmx",
+        "html_url": "https://github.com/ripple-jmx",
+        "followers_url": "https://api.github.com/users/ripple-jmx/followers",
+        "following_url": "https://api.github.com/users/ripple-jmx/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ripple-jmx/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/ripple-jmx/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ripple-jmx/subscriptions",
+        "organizations_url": "https://api.github.com/users/ripple-jmx/orgs",
+        "repos_url": "https://api.github.com/users/ripple-jmx/repos",
+        "events_url": "https://api.github.com/users/ripple-jmx/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/ripple-jmx/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "04ba16813105c0252beb02959a44bbba0857fc93",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/04ba16813105c0252beb02959a44bbba0857fc93",
+          "html_url": "https://github.com/malabz/Cax/commit/04ba16813105c0252beb02959a44bbba0857fc93"
+        }
+      ]
+    },
+    {
+      "sha": "04ba16813105c0252beb02959a44bbba0857fc93",
+      "node_id": "C_kwDOPt61otoAKDA0YmExNjgxMzEwNWMwMjUyYmViMDI5NTlhNDRiYmJhMDg1N2ZjOTM",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-11-07T08:30:48Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-11-07T08:30:48Z"
+        },
+        "message": "feat: improve cactus-prepare UX and templates",
+        "tree": {
+          "sha": "45a088104f99dbaafbdda394a5237beef546da43",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/45a088104f99dbaafbdda394a5237beef546da43"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/04ba16813105c0252beb02959a44bbba0857fc93",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/04ba16813105c0252beb02959a44bbba0857fc93",
+      "html_url": "https://github.com/malabz/Cax/commit/04ba16813105c0252beb02959a44bbba0857fc93",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/04ba16813105c0252beb02959a44bbba0857fc93/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "d6c64fee265b51d1a91afa2586f3659ce2780f66",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/d6c64fee265b51d1a91afa2586f3659ce2780f66",
+          "html_url": "https://github.com/malabz/Cax/commit/d6c64fee265b51d1a91afa2586f3659ce2780f66"
+        }
+      ]
+    },
+    {
+      "sha": "d6c64fee265b51d1a91afa2586f3659ce2780f66",
+      "node_id": "C_kwDOPt61otoAKGQ2YzY0ZmVlMjY1YjUxZDFhOTFhZmEyNTg2ZjM2NTljZTI3ODBmNjY",
+      "commit": {
+        "author": {
+          "name": "metaphysicser",
+          "email": "zpl010720@qq.com",
+          "date": "2025-11-03T08:52:41Z"
+        },
+        "committer": {
+          "name": "metaphysicser",
+          "email": "zpl010720@qq.com",
+          "date": "2025-11-03T08:52:41Z"
+        },
+        "message": "feat: improve cactus-prepare onboarding UX\n\n- persist recent commands and allow quick selection from history\n- add parameter wizard and template picker to simplify command entry\n- introduce example/custom template management for generating standard cactus-prepare invocations",
+        "tree": {
+          "sha": "c0494849d37a67181c43fab10df440f322ba92fc",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/c0494849d37a67181c43fab10df440f322ba92fc"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/d6c64fee265b51d1a91afa2586f3659ce2780f66",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/d6c64fee265b51d1a91afa2586f3659ce2780f66",
+      "html_url": "https://github.com/malabz/Cax/commit/d6c64fee265b51d1a91afa2586f3659ce2780f66",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/d6c64fee265b51d1a91afa2586f3659ce2780f66/comments",
+      "author": {
+        "login": "metaphysicser",
+        "id": 62839294,
+        "node_id": "MDQ6VXNlcjYyODM5Mjk0",
+        "avatar_url": "https://avatars.githubusercontent.com/u/62839294?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/metaphysicser",
+        "html_url": "https://github.com/metaphysicser",
+        "followers_url": "https://api.github.com/users/metaphysicser/followers",
+        "following_url": "https://api.github.com/users/metaphysicser/following{/other_user}",
+        "gists_url": "https://api.github.com/users/metaphysicser/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/metaphysicser/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/metaphysicser/subscriptions",
+        "organizations_url": "https://api.github.com/users/metaphysicser/orgs",
+        "repos_url": "https://api.github.com/users/metaphysicser/repos",
+        "events_url": "https://api.github.com/users/metaphysicser/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/metaphysicser/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "metaphysicser",
+        "id": 62839294,
+        "node_id": "MDQ6VXNlcjYyODM5Mjk0",
+        "avatar_url": "https://avatars.githubusercontent.com/u/62839294?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/metaphysicser",
+        "html_url": "https://github.com/metaphysicser",
+        "followers_url": "https://api.github.com/users/metaphysicser/followers",
+        "following_url": "https://api.github.com/users/metaphysicser/following{/other_user}",
+        "gists_url": "https://api.github.com/users/metaphysicser/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/metaphysicser/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/metaphysicser/subscriptions",
+        "organizations_url": "https://api.github.com/users/metaphysicser/orgs",
+        "repos_url": "https://api.github.com/users/metaphysicser/repos",
+        "events_url": "https://api.github.com/users/metaphysicser/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/metaphysicser/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "21a3d0beddc8039f4bb00ea91ed2c57958fca539",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/21a3d0beddc8039f4bb00ea91ed2c57958fca539",
+          "html_url": "https://github.com/malabz/Cax/commit/21a3d0beddc8039f4bb00ea91ed2c57958fca539"
+        }
+      ]
+    },
+    {
+      "sha": "21a3d0beddc8039f4bb00ea91ed2c57958fca539",
+      "node_id": "C_kwDOPt61otoAKDIxYTNkMGJlZGRjODAzOWY0YmIwMGVhOTFlZDJjNTc5NThmY2E1Mzk",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-28T08:25:22Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-28T08:25:22Z"
+        },
+        "message": "  feat: responsive Environment Summary & Plan Overview; add RaMAx options editor\n\n  - UI: Environment Summary rendered as Rich Panel with auto-resize; Plan Overview\n    switched to Panel/Table (expand + overflow=fold) to avoid overflow/misalignment\n    on narrow terminals\n  - UI: Added RaMAx options editor for plan.global_ramax_opts and round.ramax_opts;\n    supports add/remove and is integrated into the E-key edit flow; previews auto-append\n    options\n  - Detect: Report cactus path/version; version prefers `pip show cactus | grep -i ^Version`\n    with fallback to `python -m pip show cactus`; filter NVML noise lines\n  - CSS: Removed unsupported `gap`; use margins for spacing\n  - CLI: Stop echoing the full `cactus-prepare` command to reduce noise\n  - Docs: Update CHANGELOG; release 0.2.0 (2025-10-28)",
+        "tree": {
+          "sha": "4adece6ac1a04994c8fcfe7f722ab8a9d0bf1684",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/4adece6ac1a04994c8fcfe7f722ab8a9d0bf1684"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/21a3d0beddc8039f4bb00ea91ed2c57958fca539",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/21a3d0beddc8039f4bb00ea91ed2c57958fca539",
+      "html_url": "https://github.com/malabz/Cax/commit/21a3d0beddc8039f4bb00ea91ed2c57958fca539",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/21a3d0beddc8039f4bb00ea91ed2c57958fca539/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "83f3304baffd03ac6d291738bb1a904afeaa9693",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/83f3304baffd03ac6d291738bb1a904afeaa9693",
+          "html_url": "https://github.com/malabz/Cax/commit/83f3304baffd03ac6d291738bb1a904afeaa9693"
+        }
+      ]
+    },
+    {
+      "sha": "83f3304baffd03ac6d291738bb1a904afeaa9693",
+      "node_id": "C_kwDOPt61otoAKDgzZjMzMDRiYWZmZDAzYWM2ZDI5MTczOGJiMWE5MDRhZmVhYTk2OTM",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-28T06:12:31Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-28T06:12:31Z"
+        },
+        "message": "feat: add pre-run cleanup prompt and plan-level verbose controls",
+        "tree": {
+          "sha": "ae7441df84d7db2a8c04442f1f794b67ff65bf88",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/ae7441df84d7db2a8c04442f1f794b67ff65bf88"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/83f3304baffd03ac6d291738bb1a904afeaa9693",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/83f3304baffd03ac6d291738bb1a904afeaa9693",
+      "html_url": "https://github.com/malabz/Cax/commit/83f3304baffd03ac6d291738bb1a904afeaa9693",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/83f3304baffd03ac6d291738bb1a904afeaa9693/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "1f509f44a23649bcef0792f19f01a327ca9f663d",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/1f509f44a23649bcef0792f19f01a327ca9f663d",
+          "html_url": "https://github.com/malabz/Cax/commit/1f509f44a23649bcef0792f19f01a327ca9f663d"
+        }
+      ]
+    },
+    {
+      "sha": "1f509f44a23649bcef0792f19f01a327ca9f663d",
+      "node_id": "C_kwDOPt61otoAKDFmNTA5ZjQ0YTIzNjQ5YmNlZjA3OTJmMTlmMDFhMzI3Y2E5ZjY2M2Q",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-25T06:32:17Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-25T06:32:17Z"
+        },
+        "message": "docs: add 0.1.0 release notes and version manifest",
+        "tree": {
+          "sha": "85e3889cd38e808e886c7f01a6ba0867e91f3958",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/85e3889cd38e808e886c7f01a6ba0867e91f3958"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/1f509f44a23649bcef0792f19f01a327ca9f663d",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/1f509f44a23649bcef0792f19f01a327ca9f663d",
+      "html_url": "https://github.com/malabz/Cax/commit/1f509f44a23649bcef0792f19f01a327ca9f663d",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/1f509f44a23649bcef0792f19f01a327ca9f663d/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+          "html_url": "https://github.com/malabz/Cax/commit/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45"
+        }
+      ]
+    },
+    {
+      "sha": "dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+      "node_id": "C_kwDOPt61otoAKGRhYzVlMGFmMGRjMGZkNTY2YWFlMmE0ZDYzYTFlNmRmZDBhZmVkNDU",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-25T06:26:27Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-25T06:26:27Z"
+        },
+        "message": "feat: add tree-based subtree switching and filtered execution for 0.1 release",
+        "tree": {
+          "sha": "9f4c68beb05bddcba604347124de9061917fb0c3",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/9f4c68beb05bddcba604347124de9061917fb0c3"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+      "html_url": "https://github.com/malabz/Cax/commit/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "7fc8f1878bdb556818f0ca47d2dec0d4c831183e",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/7fc8f1878bdb556818f0ca47d2dec0d4c831183e",
+          "html_url": "https://github.com/malabz/Cax/commit/7fc8f1878bdb556818f0ca47d2dec0d4c831183e"
+        }
+      ]
+    },
+    {
+      "sha": "7fc8f1878bdb556818f0ca47d2dec0d4c831183e",
+      "node_id": "C_kwDOPt61otoAKDdmYzhmMTg3OGJkYjU1NjgxOGYwY2E0N2QyZGVjMGQ0YzgzMTE4M2U",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-25T06:09:21Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-10-25T06:09:21Z"
+        },
+        "message": "feat: add tree-based subtree switching and filtered execution for 0.1 release",
+        "tree": {
+          "sha": "b0161e20e6818b7068bd1af157e5c7ca98d98fb0",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/b0161e20e6818b7068bd1af157e5c7ca98d98fb0"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/7fc8f1878bdb556818f0ca47d2dec0d4c831183e",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/7fc8f1878bdb556818f0ca47d2dec0d4c831183e",
+      "html_url": "https://github.com/malabz/Cax/commit/7fc8f1878bdb556818f0ca47d2dec0d4c831183e",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/7fc8f1878bdb556818f0ca47d2dec0d4c831183e/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "2dc5f901cd82da1e2a405b924d150c9b49895722",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/2dc5f901cd82da1e2a405b924d150c9b49895722",
+          "html_url": "https://github.com/malabz/Cax/commit/2dc5f901cd82da1e2a405b924d150c9b49895722"
+        }
+      ]
+    },
+    {
+      "sha": "2dc5f901cd82da1e2a405b924d150c9b49895722",
+      "node_id": "C_kwDOPt61otoAKDJkYzVmOTAxY2Q4MmRhMWUyYTQwNWI5MjRkMTUwYzliNDk4OTU3MjI",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-09-19T09:46:13Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-09-19T09:46:13Z"
+        },
+        "message": "fix: 更新命令行启动方式，简化用户输入",
+        "tree": {
+          "sha": "b5e173d4549e49538eb957baac3fd8e26fe5c44e",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/b5e173d4549e49538eb957baac3fd8e26fe5c44e"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/2dc5f901cd82da1e2a405b924d150c9b49895722",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/2dc5f901cd82da1e2a405b924d150c9b49895722",
+      "html_url": "https://github.com/malabz/Cax/commit/2dc5f901cd82da1e2a405b924d150c9b49895722",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/2dc5f901cd82da1e2a405b924d150c9b49895722/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "d80cf7fbadac934e0aaa08b32b91f35b2b833f97",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/d80cf7fbadac934e0aaa08b32b91f35b2b833f97",
+          "html_url": "https://github.com/malabz/Cax/commit/d80cf7fbadac934e0aaa08b32b91f35b2b833f97"
+        }
+      ]
+    },
+    {
+      "sha": "d80cf7fbadac934e0aaa08b32b91f35b2b833f97",
+      "node_id": "C_kwDOPt61otoAKGQ4MGNmN2ZiYWRhYzkzNGUwYWFhMDhiMzJiOTFmMzViMmI4MzNmOTc",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-09-19T09:35:51Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-09-19T09:35:51Z"
+        },
+        "message": "chore: 移除从源代码构建的开发者指南部分",
+        "tree": {
+          "sha": "1b68a2d94c6c5b8c04cf205e2e50e34abc7ef3f6",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/1b68a2d94c6c5b8c04cf205e2e50e34abc7ef3f6"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/d80cf7fbadac934e0aaa08b32b91f35b2b833f97",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/d80cf7fbadac934e0aaa08b32b91f35b2b833f97",
+      "html_url": "https://github.com/malabz/Cax/commit/d80cf7fbadac934e0aaa08b32b91f35b2b833f97",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/d80cf7fbadac934e0aaa08b32b91f35b2b833f97/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "0b394806bc144d293b9a8516f2e7965c2648c5ba",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/0b394806bc144d293b9a8516f2e7965c2648c5ba",
+          "html_url": "https://github.com/malabz/Cax/commit/0b394806bc144d293b9a8516f2e7965c2648c5ba"
+        }
+      ]
+    },
+    {
+      "sha": "0b394806bc144d293b9a8516f2e7965c2648c5ba",
+      "node_id": "C_kwDOPt61otoAKDBiMzk0ODA2YmMxNDRkMjkzYjlhODUxNmYyZTc5NjVjMjY0OGM1YmE",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-09-18T16:06:51Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-09-18T16:06:51Z"
+        },
+        "message": "feat: 添加交互式终端界面和命令提示功能，支持 RaMAx 流程配置",
+        "tree": {
+          "sha": "3d7a11fafbb88a206763c140e47d7da699b0e1bb",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/3d7a11fafbb88a206763c140e47d7da699b0e1bb"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/0b394806bc144d293b9a8516f2e7965c2648c5ba",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/0b394806bc144d293b9a8516f2e7965c2648c5ba",
+      "html_url": "https://github.com/malabz/Cax/commit/0b394806bc144d293b9a8516f2e7965c2648c5ba",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/0b394806bc144d293b9a8516f2e7965c2648c5ba/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "9aed28083f894a9567cb5713be0a08db20afdcb2",
+          "url": "https://api.github.com/repos/malabz/Cax/commits/9aed28083f894a9567cb5713be0a08db20afdcb2",
+          "html_url": "https://github.com/malabz/Cax/commit/9aed28083f894a9567cb5713be0a08db20afdcb2"
+        }
+      ]
+    },
+    {
+      "sha": "9aed28083f894a9567cb5713be0a08db20afdcb2",
+      "node_id": "C_kwDOPt61otoAKDlhZWQyODA4M2Y4OTRhOTU2N2NiNTcxM2JlMGEwOGRiMjBhZmRjYjI",
+      "commit": {
+        "author": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-09-18T15:14:26Z"
+        },
+        "committer": {
+          "name": "LoadStar822",
+          "email": "992247533@qq.com",
+          "date": "2025-09-18T15:14:26Z"
+        },
+        "message": "feat: Add core functionality for CAX workflow integration",
+        "tree": {
+          "sha": "86ad90cc5d873719e331803c68b76a75d7eb58e3",
+          "url": "https://api.github.com/repos/malabz/Cax/git/trees/86ad90cc5d873719e331803c68b76a75d7eb58e3"
+        },
+        "url": "https://api.github.com/repos/malabz/Cax/git/commits/9aed28083f894a9567cb5713be0a08db20afdcb2",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/commits/9aed28083f894a9567cb5713be0a08db20afdcb2",
+      "html_url": "https://github.com/malabz/Cax/commit/9aed28083f894a9567cb5713be0a08db20afdcb2",
+      "comments_url": "https://api.github.com/repos/malabz/Cax/commits/9aed28083f894a9567cb5713be0a08db20afdcb2/comments",
+      "author": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "LoadStar822",
+        "id": 56856603,
+        "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+        "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/LoadStar822",
+        "html_url": "https://github.com/LoadStar822",
+        "followers_url": "https://api.github.com/users/LoadStar822/followers",
+        "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+        "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+        "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+        "repos_url": "https://api.github.com/users/LoadStar822/repos",
+        "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": []
+    }
+  ]
+}

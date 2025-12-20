@@ -1,0 +1,118 @@
+{
+  "cached_at": "2025-12-20T14:33:32.681193",
+  "commit_sha": "1f509f44a23649bcef0792f19f01a327ca9f663d",
+  "repo": "malabz/Cax",
+  "data": {
+    "sha": "1f509f44a23649bcef0792f19f01a327ca9f663d",
+    "node_id": "C_kwDOPt61otoAKDFmNTA5ZjQ0YTIzNjQ5YmNlZjA3OTJmMTlmMDFhMzI3Y2E5ZjY2M2Q",
+    "commit": {
+      "author": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-10-25T06:32:17Z"
+      },
+      "committer": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-10-25T06:32:17Z"
+      },
+      "message": "docs: add 0.1.0 release notes and version manifest",
+      "tree": {
+        "sha": "85e3889cd38e808e886c7f01a6ba0867e91f3958",
+        "url": "https://api.github.com/repos/malabz/Cax/git/trees/85e3889cd38e808e886c7f01a6ba0867e91f3958"
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/git/commits/1f509f44a23649bcef0792f19f01a327ca9f663d",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/malabz/Cax/commits/1f509f44a23649bcef0792f19f01a327ca9f663d",
+    "html_url": "https://github.com/malabz/Cax/commit/1f509f44a23649bcef0792f19f01a327ca9f663d",
+    "comments_url": "https://api.github.com/repos/malabz/Cax/commits/1f509f44a23649bcef0792f19f01a327ca9f663d/comments",
+    "author": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+        "url": "https://api.github.com/repos/malabz/Cax/commits/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+        "html_url": "https://github.com/malabz/Cax/commit/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45"
+      }
+    ],
+    "stats": {
+      "total": 17,
+      "additions": 17,
+      "deletions": 0
+    },
+    "files": [
+      {
+        "sha": "bc4a0689c1630259352201f79fbb884c0c6282a6",
+        "filename": "CHANGELOG.md",
+        "status": "added",
+        "additions": 16,
+        "deletions": 0,
+        "changes": 16,
+        "blob_url": "https://github.com/malabz/Cax/blob/1f509f44a23649bcef0792f19f01a327ca9f663d/CHANGELOG.md",
+        "raw_url": "https://github.com/malabz/Cax/raw/1f509f44a23649bcef0792f19f01a327ca9f663d/CHANGELOG.md",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/CHANGELOG.md?ref=1f509f44a23649bcef0792f19f01a327ca9f663d",
+        "patch": "@@ -0,0 +1,16 @@\n+# Changelog\n+\n+All notable changes to this project will be documented in this file.\n+\n+## [0.1.0] - 2025-10-25\n+\n+The inaugural release of Cactus-RaMAx introduces an interactive workflow for remixing `cactus-prepare` plans with RaMAx substitutions.\n+\n+### Highlights\n+- Tree-aware editor that visualises the cactus progressive alignment hierarchy and supports toggling RaMAx across entire subtrees with a single keystroke.\n+- Execution planner that automatically suppresses cactus rounds and `halAppendSubtree` steps inside RaMAx-controlled subtrees, eliminating duplicate merges and related HAL errors.\n+\n+### Documentation & Tooling\n+- Added this changelog to document future releases.\n+- Refreshed the quick-start guide and in-app messaging to match the new workflow.\n+- Captured the canonical project version in the new `VERSION` file."
+      },
+      {
+        "sha": "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38",
+        "filename": "VERSION",
+        "status": "added",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "blob_url": "https://github.com/malabz/Cax/blob/1f509f44a23649bcef0792f19f01a327ca9f663d/VERSION",
+        "raw_url": "https://github.com/malabz/Cax/raw/1f509f44a23649bcef0792f19f01a327ca9f663d/VERSION",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/VERSION?ref=1f509f44a23649bcef0792f19f01a327ca9f663d",
+        "patch": "@@ -0,0 +1 @@\n+0.1.0"
+      }
+    ]
+  }
+}

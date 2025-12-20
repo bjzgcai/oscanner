@@ -1,0 +1,106 @@
+{
+  "cached_at": "2025-12-20T14:31:16.995991",
+  "commit_sha": "1593838cfb44dddd12a3122cfc96cf346ce48295",
+  "repo": "liwenyu2002/mamage-server",
+  "data": {
+    "sha": "1593838cfb44dddd12a3122cfc96cf346ce48295",
+    "node_id": "C_kwDOQYJTNNoAKDE1OTM4MzhjZmI0NGRkZGQxMmEzMTIyY2ZjOTZjZjM0NmNlNDgyOTU",
+    "commit": {
+      "author": {
+        "name": "HIT_LWY",
+        "email": "75512499+liwenyu2002@users.noreply.github.com",
+        "date": "2025-12-09T05:59:55Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "date": "2025-12-09T05:59:55Z"
+      },
+      "message": "Update deploy.yml",
+      "tree": {
+        "sha": "30f56524d412dbde4e38f378e77757522a78157b",
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/trees/30f56524d412dbde4e38f378e77757522a78157b"
+      },
+      "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/commits/1593838cfb44dddd12a3122cfc96cf346ce48295",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpN7rbCRC1aQ7uu5UhlAAA4gMQAHmVqlpCp4rq2xg+SM2CyyIC\nGSD3h7Rt5/l6qgFv/okvgp4ofI3Uqsx+ekhKZYC4QaO/jwF15CsrkNueJyWt8eyZ\n7umuWIwsauZ6gOYUh+1A5aUbL+4jWFgVLfiy5+sCLz12fvsTlVoRTCicENQ7MyEJ\nMn/8wmXilYUDqTN9RsBygJ4+lZBtRWR/bAUks3GNW2aWhNNXvlr7oJDQo/cK5cIf\nycLYfo0wYFLfsw/yRogDnIArphRlM5j34qMLgGzSbYTRPIjOnx785MJaPPHAInPz\niRCoVa5BUEn8X5srwNuwpzflPCEOV8c6UvQPyQuDIPS4NQ5qHVR/gMDZenYpZMii\nIXeedwCUwX0i8v6JXxhmdnnPCW7QOJn5Qb5dqG/8FmZ622lkq86VLSASDfPIaGDR\nXTi7MPaeqWu4Vz5VgBf5M5fnKD5q74zM5gRWh8j3iZCPMxGBRYKLr7VEzQvGGAAh\nVKf8h+OhpxEnpIImcPt1W5+t071DVpaXYYy4XPAqpCtuQX+4hBgjULJ616j8wPYj\nV8zlz9PWu89850NSetiQRzfPU/KVDePzR7CeqClRzwsgL0cYcGEBBytKq1l7prpu\ncZtTl+9Sr/9SNxWitNqD/DMQCvgIScCCbFf+oNhwtHBFTA6MIHW3ecKs83VTSsd0\nu85/oQ/ZKR8Km9+t+9lO\n=EE3Y\n-----END PGP SIGNATURE-----\n",
+        "payload": "tree 30f56524d412dbde4e38f378e77757522a78157b\nparent d9d9e3ced1976275f10a8e542b4c1c2e6da097cf\nauthor HIT_LWY <75512499+liwenyu2002@users.noreply.github.com> 1765259995 +0800\ncommitter GitHub <noreply@github.com> 1765259995 +0800\n\nUpdate deploy.yml",
+        "verified_at": "2025-12-09T05:59:56Z"
+      }
+    },
+    "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/1593838cfb44dddd12a3122cfc96cf346ce48295",
+    "html_url": "https://github.com/liwenyu2002/mamage-server/commit/1593838cfb44dddd12a3122cfc96cf346ce48295",
+    "comments_url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/1593838cfb44dddd12a3122cfc96cf346ce48295/comments",
+    "author": {
+      "login": "liwenyu2002",
+      "id": 75512499,
+      "node_id": "MDQ6VXNlcjc1NTEyNDk5",
+      "avatar_url": "https://avatars.githubusercontent.com/u/75512499?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/liwenyu2002",
+      "html_url": "https://github.com/liwenyu2002",
+      "followers_url": "https://api.github.com/users/liwenyu2002/followers",
+      "following_url": "https://api.github.com/users/liwenyu2002/following{/other_user}",
+      "gists_url": "https://api.github.com/users/liwenyu2002/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/liwenyu2002/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/liwenyu2002/subscriptions",
+      "organizations_url": "https://api.github.com/users/liwenyu2002/orgs",
+      "repos_url": "https://api.github.com/users/liwenyu2002/repos",
+      "events_url": "https://api.github.com/users/liwenyu2002/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/liwenyu2002/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "web-flow",
+      "id": 19864447,
+      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+      "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/web-flow",
+      "html_url": "https://github.com/web-flow",
+      "followers_url": "https://api.github.com/users/web-flow/followers",
+      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+      "organizations_url": "https://api.github.com/users/web-flow/orgs",
+      "repos_url": "https://api.github.com/users/web-flow/repos",
+      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/web-flow/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "d9d9e3ced1976275f10a8e542b4c1c2e6da097cf",
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/d9d9e3ced1976275f10a8e542b4c1c2e6da097cf",
+        "html_url": "https://github.com/liwenyu2002/mamage-server/commit/d9d9e3ced1976275f10a8e542b4c1c2e6da097cf"
+      }
+    ],
+    "stats": {
+      "total": 2,
+      "additions": 1,
+      "deletions": 1
+    },
+    "files": [
+      {
+        "sha": "b077c4b01cd3921d8564d59a92c60ce9c8c8fdb7",
+        "filename": ".github/workflows/deploy.yml",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "blob_url": "https://github.com/liwenyu2002/mamage-server/blob/1593838cfb44dddd12a3122cfc96cf346ce48295/.github%2Fworkflows%2Fdeploy.yml",
+        "raw_url": "https://github.com/liwenyu2002/mamage-server/raw/1593838cfb44dddd12a3122cfc96cf346ce48295/.github%2Fworkflows%2Fdeploy.yml",
+        "contents_url": "https://api.github.com/repos/liwenyu2002/mamage-server/contents/.github%2Fworkflows%2Fdeploy.yml?ref=1593838cfb44dddd12a3122cfc96cf346ce48295",
+        "patch": "@@ -54,7 +54,7 @@ jobs:\n           ssh -o StrictHostKeyChecking=no -p ${{ secrets.DEPLOY_PORT }} \\\n             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'\n           set -e\n-          cd /home/liwy/mamage-server\n+          cd /home/liwy/mamage_server\n \n           # 在服务器上安装生产依赖\n           npm ci --omit=dev || npm install --omit=dev"
+      }
+    ]
+  }
+}

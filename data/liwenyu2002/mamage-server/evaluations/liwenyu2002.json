@@ -1,0 +1,28 @@
+{
+  "cached_at": "2025-12-20T14:31:21.576689",
+  "owner": "liwenyu2002",
+  "repo": "mamage-server",
+  "username": "liwenyu2002",
+  "evaluation": {
+    "username": "liwenyu2002",
+    "total_commits_analyzed": 4,
+    "total_commits": 4,
+    "scores": {
+      "ai_fullstack": 5,
+      "ai_architecture": 15,
+      "cloud_native": 35,
+      "open_source": 20,
+      "intelligent_dev": 25,
+      "leadership": 15,
+      "reasoning": "The commits show basic CI/CD workflow setup and minor path corrections in deployment scripts, indicating entry-level DevOps familiarity. However, there is no evidence of AI/ML work, sophisticated architecture decisions, comprehensive testing, or strong engineering practices. The commits are minimal fixes with unclear messaging and no apparent code review rigor."
+    },
+    "commits_summary": {
+      "total_additions": 84,
+      "total_deletions": 17,
+      "files_changed": 1,
+      "languages": [
+        "yml"
+      ]
+    }
+  }
+}
