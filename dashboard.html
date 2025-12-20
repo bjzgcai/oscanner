@@ -64,7 +64,7 @@
         }
 
         .input-group input {
-            flex: 1;
+            width: 100%;
             padding: 15px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
@@ -75,6 +75,63 @@
         .input-group input:focus {
             outline: none;
             border-color: #667eea;
+        }
+
+        .autocomplete-container {
+            position: relative;
+            flex: 1;
+        }
+
+        .autocomplete-container input.dropdown-active {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-color: #667eea;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: calc(100% - 2px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .autocomplete-dropdown.active {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background-color: #f8f9fa;
+        }
+
+        .autocomplete-item.selected {
+            background-color: #e8eaf6;
+        }
+
+        .autocomplete-no-results {
+            padding: 12px 15px;
+            color: #999;
+            text-align: center;
         }
 
         .input-group button {
@@ -255,6 +312,16 @@
             font-weight: 600;
         }
 
+        .eval-cache-badge {
+            margin-left: auto;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
         .chart-container {
             position: relative;
             height: 400px;
@@ -391,11 +458,15 @@
 
         <div class="input-section">
             <div class="input-group">
-                <input
-                    type="text"
-                    id="repoUrl"
-                    placeholder="Enter GitHub repository URL (e.g., https://github.com/octocat/Hello-World)"
-                    value="">
+                <div class="autocomplete-container">
+                    <input
+                        type="text"
+                        id="repoUrl"
+                        placeholder="Enter GitHub repository URL (e.g., https://github.com/octocat/Hello-World)"
+                        value=""
+                        autocomplete="on">
+                    <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+                </div>
                 <button id="analyzeBtn" onclick="analyzeRepository()">Analyze Repository</button>
             </div>
             <div class="note">
@@ -436,6 +507,13 @@
         let contributorsData = [];
         let currentEvaluation = null;
         let chart = null;
+
+        // Autocomplete state
+        let autocompleteSelectedIndex = -1;
+        let autocompleteItems = [];
+
+        const STORAGE_KEY = 'github_repo_history';
+        const MAX_HISTORY = 20;
 
         const dimensions = [
             {
@@ -493,6 +571,164 @@
         }
 
         detectApiServer();
+
+        // Autocomplete functions
+        function getRepoHistory() {
+            try {
+                const history = localStorage.getItem(STORAGE_KEY);
+                return history ? JSON.parse(history) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveRepoToHistory(repoUrl) {
+            try {
+                let history = getRepoHistory();
+                // Remove if already exists
+                history = history.filter(url => url !== repoUrl);
+                // Add to beginning
+                history.unshift(repoUrl);
+                // Keep only MAX_HISTORY items
+                history = history.slice(0, MAX_HISTORY);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+            } catch (e) {
+                console.error('Failed to save to history:', e);
+            }
+        }
+
+        function showAutocomplete(suggestions) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const input = document.getElementById('repoUrl');
+            autocompleteSelectedIndex = -1;
+            autocompleteItems = suggestions;
+
+            if (suggestions.length === 0) {
+                dropdown.classList.remove('active');
+                input.classList.remove('dropdown-active');
+                return;
+            }
+
+            dropdown.innerHTML = suggestions.map((url, index) => `
+                <div class="autocomplete-item" data-index="${index}" onclick="selectAutocomplete(${index})">
+                    ${url}
+                </div>
+            `).join('');
+
+            dropdown.classList.add('active');
+            input.classList.add('dropdown-active');
+        }
+
+        function hideAutocomplete() {
+            document.getElementById('autocompleteDropdown').classList.remove('active');
+            document.getElementById('repoUrl').classList.remove('dropdown-active');
+            autocompleteSelectedIndex = -1;
+        }
+
+        function selectAutocomplete(index) {
+            if (index >= 0 && index < autocompleteItems.length) {
+                document.getElementById('repoUrl').value = autocompleteItems[index];
+                hideAutocomplete();
+            }
+        }
+
+        function updateAutocompleteSelection() {
+            const items = document.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => {
+                item.classList.toggle('selected', index === autocompleteSelectedIndex);
+            });
+
+            // Scroll selected item into view
+            if (autocompleteSelectedIndex >= 0 && items[autocompleteSelectedIndex]) {
+                items[autocompleteSelectedIndex].scrollIntoView({
+                    block: 'nearest',
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        // Input event listener
+        document.getElementById('repoUrl').addEventListener('input', function(e) {
+            const value = e.target.value.trim();
+
+            if (value.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+
+            const history = getRepoHistory();
+            const filtered = history.filter(url =>
+                url.toLowerCase().includes(value.toLowerCase())
+            );
+
+            showAutocomplete(filtered);
+        });
+
+        // Focus event listener - show all history when focused with empty input
+        document.getElementById('repoUrl').addEventListener('focus', function(e) {
+            const value = e.target.value.trim();
+
+            if (value.length === 0) {
+                const history = getRepoHistory();
+                if (history.length > 0) {
+                    showAutocomplete(history);
+                }
+            }
+        });
+
+        // Keyboard navigation
+        document.getElementById('repoUrl').addEventListener('keydown', function(e) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            if (!dropdown.classList.contains('active')) {
+                if (e.key === 'Enter') {
+                    analyzeRepository();
+                }
+                return;
+            }
+
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    autocompleteSelectedIndex = Math.min(
+                        autocompleteSelectedIndex + 1,
+                        autocompleteItems.length - 1
+                    );
+                    updateAutocompleteSelection();
+                    break;
+
+                case 'ArrowUp':
+                    e.preventDefault();
+                    autocompleteSelectedIndex = Math.max(
+                        autocompleteSelectedIndex - 1,
+                        -1
+                    );
+                    updateAutocompleteSelection();
+                    break;
+
+                case 'Enter':
+                    e.preventDefault();
+                    if (autocompleteSelectedIndex >= 0) {
+                        selectAutocomplete(autocompleteSelectedIndex);
+                    } else {
+                        analyzeRepository();
+                    }
+                    break;
+
+                case 'Escape':
+                    e.preventDefault();
+                    hideAutocomplete();
+                    break;
+            }
+        });
+
+        // Click outside to close
+        document.addEventListener('click', function(e) {
+            const container = document.querySelector('.autocomplete-container');
+            if (!container.contains(e.target)) {
+                hideAutocomplete();
+            }
+        });
 
         async function analyzeRepository() {
             const repoUrl = document.getElementById('repoUrl').value.trim();
@@ -559,6 +795,9 @@
                     url: repoUrl
                 };
 
+                // Save to history
+                saveRepoToHistory(repoUrl);
+
                 displayRepoInfo();
                 showResults();
 
@@ -616,7 +855,7 @@
                 }
 
                 currentEvaluation = result.evaluation;
-                displayEvaluation(contributor, currentEvaluation);
+                displayEvaluation(contributor, currentEvaluation, result.metadata);
 
             } catch (error) {
                 showError(error.message);
@@ -625,9 +864,14 @@
             }
         }
 
-        function displayEvaluation(contributor, evaluation) {
+        function displayEvaluation(contributor, evaluation, metadata = {}) {
             const section = document.getElementById('evaluationSection');
             section.style.display = 'block';
+
+            // Determine badge text based on cache status
+            const isCached = metadata.cached || false;
+            const badgeText = isCached ? '⚡ Cached Result' : 'AI-Powered Analysis';
+            const badgeClass = isCached ? 'eval-cache-badge' : 'eval-llm-badge';
 
             // Header
             const header = document.getElementById('evalHeader');
@@ -641,7 +885,7 @@
                         ${evaluation.commits_summary.total_deletions} deletions
                     </div>
                 </div>
-                <div class="eval-llm-badge">AI-Powered Analysis</div>
+                <div class="${badgeClass}">${badgeText}</div>
             `;
 
             // Chart
@@ -791,13 +1035,6 @@
         function hideResults() {
             document.getElementById('results').classList.remove('active');
         }
-
-        // Allow Enter key to trigger analysis
-        document.getElementById('repoUrl').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                analyzeRepository();
-            }
-        });
     </script>
 </body>
 </html>

@@ -77,6 +77,7 @@ async def root():
             "cache_stats": "/api/cache/stats",
             "clear_repo_cache": "/api/cache/repo/{owner}/{repo}",
             "clear_user_cache": "/api/cache/user/{username}",
+            "clear_evaluation_cache": "/api/cache/evaluation/{owner}/{repo}/{username}",
             "clear_all_cache": "/api/cache/clear"
         }
     }
@@ -291,6 +292,38 @@ async def clear_user_cache(username: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.delete("/api/cache/evaluation/{owner}/{repo}/{username}")
+async def clear_evaluation_cache(owner: str, repo: str, username: str):
+    """
+    Clear cached evaluation for a specific user in a repository
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        username: GitHub username
+
+    Returns:
+        Success status
+    """
+    try:
+        cache_path = _get_evaluation_cache_path(owner, repo, username)
+
+        if cache_path.exists():
+            cache_path.unlink()
+            return {
+                "success": True,
+                "message": f"Evaluation cache cleared for {username} in {owner}/{repo}",
+                "cache_path": str(cache_path)
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"No evaluation cache found for {username} in {owner}/{repo}"
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/api/cache/clear")
 async def clear_all_cache():
     """
@@ -475,21 +508,96 @@ async def fetch_all_commits(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _get_evaluation_cache_path(owner: str, repo: str, username: str) -> Path:
+    """
+    Get the cache path for an evaluation result
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        username: GitHub username
+
+    Returns:
+        Path to the evaluation cache file
+    """
+    cache_dir = Path("data") / owner / repo / "evaluations"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / f"{username}.json"
+
+
+def _load_evaluation_from_cache(owner: str, repo: str, username: str) -> Optional[Dict[str, Any]]:
+    """
+    Load evaluation result from cache
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        username: GitHub username
+
+    Returns:
+        Cached evaluation data or None if not cached
+    """
+    cache_path = _get_evaluation_cache_path(owner, repo, username)
+
+    if not cache_path.exists():
+        return None
+
+    try:
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            cached_data = json.load(f)
+            print(f"[Cache Hit] Loaded evaluation for {username} from cache")
+            return cached_data
+    except Exception as e:
+        print(f"[Cache Error] Failed to load evaluation cache: {e}")
+        return None
+
+
+def _save_evaluation_to_cache(owner: str, repo: str, username: str, evaluation: Dict[str, Any]) -> None:
+    """
+    Save evaluation result to cache
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        username: GitHub username
+        evaluation: Evaluation result to cache
+    """
+    cache_path = _get_evaluation_cache_path(owner, repo, username)
+
+    try:
+        cache_data = {
+            "cached_at": datetime.now().isoformat(),
+            "owner": owner,
+            "repo": repo,
+            "username": username,
+            "evaluation": evaluation
+        }
+
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, indent=2, ensure_ascii=False)
+
+        print(f"[Cache Save] Saved evaluation for {username} to cache")
+    except Exception as e:
+        print(f"[Cache Error] Failed to save evaluation cache: {e}")
+
+
 @app.post("/api/evaluate/{owner}/{repo}/{username}")
 async def evaluate_engineer(
     owner: str,
     repo: str,
     username: str,
     limit: int = Query(30, description="Maximum number of commits to analyze"),
-    use_cache: bool = Query(True, description="Whether to use cached commit data")
+    use_cache: bool = Query(True, description="Whether to use cached evaluation and commit data")
 ):
     """
     Evaluate an engineer's skill based on their commits in a repository
 
     This endpoint:
-    1. Fetches commits by the specified author
-    2. Analyzes commits using LLM
-    3. Returns evaluation scores across six dimensions
+    1. Checks cache for previous evaluation (if use_cache=True)
+    2. Fetches commits by the specified author
+    3. Analyzes commits using LLM (if not cached)
+    4. Caches evaluation results for future use
+    5. Returns evaluation scores across six dimensions
 
     Args:
         owner: Repository owner
@@ -502,6 +610,22 @@ async def evaluate_engineer(
         Evaluation results with scores for each dimension
     """
     try:
+        # Check evaluation cache first
+        if use_cache:
+            cached_evaluation = _load_evaluation_from_cache(owner, repo, username)
+            if cached_evaluation:
+                return {
+                    "success": True,
+                    "evaluation": cached_evaluation.get("evaluation"),
+                    "metadata": {
+                        "owner": owner,
+                        "repo": repo,
+                        "username": username,
+                        "cached": True,
+                        "cached_at": cached_evaluation.get("cached_at")
+                    }
+                }
+
         # First, get commits by this author
         commits_list = collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache)
 
@@ -511,9 +635,13 @@ async def evaluate_engineer(
             commit_sha = commit_summary.get("sha")
             commit_author = commit_summary.get("commit", {}).get("author", {}).get("name", "")
 
+            # Get GitHub author login (handle null author field)
+            author_obj = commit_summary.get("author")
+            author_login = author_obj.get("login", "") if author_obj else ""
+
             # Check if commit is by this user (case-insensitive match)
             if commit_author.lower() == username.lower() or \
-               commit_summary.get("author", {}).get("login", "").lower() == username.lower():
+               author_login.lower() == username.lower():
 
                 try:
                     # Fetch detailed commit with files and diffs
@@ -537,6 +665,9 @@ async def evaluate_engineer(
         # Evaluate using LLM
         evaluation = commit_evaluator.evaluate_engineer(detailed_commits, username)
 
+        # Save evaluation to cache for future use
+        _save_evaluation_to_cache(owner, repo, username, evaluation)
+
         return {
             "success": True,
             "evaluation": evaluation,
@@ -544,7 +675,8 @@ async def evaluate_engineer(
                 "owner": owner,
                 "repo": repo,
                 "username": username,
-                "commits_analyzed": len(detailed_commits)
+                "commits_analyzed": len(detailed_commits),
+                "cached": False
             }
         }
 
@@ -620,11 +752,13 @@ if __name__ == "__main__":
     print(f"Health Check: http://localhost:{available_port}/health")
     print(f"Cache directory: data/")
     print(f"GitHub token configured: {github_token is not None}")
+    print(f"Hot reload: enabled")
     print("=" * 60)
 
     uvicorn.run(
-        app,
+        "server:app",
         host="0.0.0.0",
         port=available_port,
-        log_level="info"
+        log_level="info",
+        reload=True
     )
