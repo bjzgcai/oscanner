@@ -96,6 +96,8 @@ async def root():
                 "commits_list": "/api/gitee/commits/{owner}/{repo}",
                 "commit_detail": "/api/gitee/commits/{owner}/{repo}/{commit_sha}",
                 "fetch_all_commits": "/api/gitee/commits/{owner}/{repo}/fetch-all",
+                "collaborators": "/api/gitee/collaborators/{owner}/{repo}",
+                "contributors": "/api/gitee/contributors/{owner}/{repo}",
                 "evaluate_engineer": "/api/gitee/evaluate/{owner}/{repo}/{username}",
             },
             "cache": {
@@ -1054,6 +1056,149 @@ async def evaluate_gitee_engineer(
             }
         }
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/gitee/collaborators/{owner}/{repo}")
+async def get_gitee_collaborators(
+    owner: str,
+    repo: str,
+    use_cache: bool = Query(True, description="Whether to use cached data"),
+    is_enterprise: bool = Query(False, description="Whether this is an enterprise (z.gitee.cn) repository")
+):
+    """
+    Get list of collaborators/members from a Gitee repository
+
+    This endpoint fetches the list of repository collaborators (members) using
+    the Gitee API /repos/{owner}/{repo}/collaborators endpoint. This is useful
+    for repositories where contributor information is not available in the
+    commit data.
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        use_cache: Whether to use cache (default: True)
+        is_enterprise: Whether this is an enterprise repository (default: False)
+
+    Returns:
+        List of collaborators with their information
+    """
+    try:
+        collaborators = gitee_collector.fetch_collaborators(owner, repo, use_cache=use_cache, is_enterprise=is_enterprise)
+
+        cache_path = gitee_collector._get_collaborators_cache_path(owner, repo)
+        is_cached = cache_path.exists()
+
+        return {
+            "success": True,
+            "data": collaborators,
+            "metadata": {
+                "owner": owner,
+                "repo": repo,
+                "count": len(collaborators),
+                "cached": is_cached,
+                "cache_path": str(cache_path) if is_cached else None
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/gitee/contributors/{owner}/{repo}")
+async def get_gitee_contributors_from_commits(
+    owner: str,
+    repo: str,
+    limit: int = Query(100, description="Maximum number of commits to analyze"),
+    use_cache: bool = Query(True, description="Whether to use cached commit data"),
+    is_enterprise: bool = Query(False, description="Whether this is an enterprise (z.gitee.cn) repository")
+):
+    """
+    Extract contributors from commit data (commit.author.name and commit.committer.name)
+
+    This endpoint analyzes commits to extract contributors based on the
+    commit.author.name and commit.committer.name fields. This is useful for
+    Gitee repositories where the top-level author/committer fields are null,
+    but the commit metadata still contains author information.
+
+    Unlike /collaborators which gets official repository members, this endpoint
+    shows who actually made commits to the repository.
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        limit: Maximum number of commits to analyze (default: 100)
+        use_cache: Whether to use cached commit data (default: True)
+        is_enterprise: Whether this is an enterprise repository (default: False)
+
+    Returns:
+        List of contributors extracted from commits with their commit counts
+    """
+    try:
+        # Fetch commits list
+        commits_list = gitee_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache, is_enterprise=is_enterprise)
+
+        # Extract contributors from commit.author.name and commit.committer.name
+        from collections import Counter
+
+        authors = []
+        committers = []
+        author_emails = {}
+        committer_emails = {}
+
+        for commit in commits_list:
+            commit_obj = commit.get("commit", {})
+
+            # Extract author info
+            author_info = commit_obj.get("author", {})
+            author_name = author_info.get("name")
+            author_email = author_info.get("email")
+
+            # Extract committer info
+            committer_info = commit_obj.get("committer", {})
+            committer_name = committer_info.get("name")
+            committer_email = committer_info.get("email")
+
+            if author_name:
+                authors.append(author_name)
+                author_emails[author_name] = author_email
+            if committer_name:
+                committers.append(committer_name)
+                committer_emails[committer_name] = committer_email
+
+        # Count contributions
+        author_counts = Counter(authors)
+        committer_counts = Counter(committers)
+
+        # Create contributor list
+        contributors = []
+
+        # Combine authors and committers
+        all_names = set(authors + committers)
+        for name in all_names:
+            contributors.append({
+                "name": name,
+                "author_commits": author_counts.get(name, 0),
+                "committer_commits": committer_counts.get(name, 0),
+                "total_commits": author_counts.get(name, 0) + committer_counts.get(name, 0),
+                "email": author_emails.get(name) or committer_emails.get(name)
+            })
+
+        # Sort by total commits
+        contributors.sort(key=lambda x: x["total_commits"], reverse=True)
+
+        return {
+            "success": True,
+            "data": contributors,
+            "metadata": {
+                "owner": owner,
+                "repo": repo,
+                "commits_analyzed": len(commits_list),
+                "unique_contributors": len(contributors),
+                "unique_authors": len(author_counts),
+                "unique_committers": len(committer_counts)
+            }
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
