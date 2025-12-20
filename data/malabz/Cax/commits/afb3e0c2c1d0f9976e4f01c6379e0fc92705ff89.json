@@ -1,0 +1,106 @@
+{
+  "cached_at": "2025-12-20T14:34:16.331833",
+  "commit_sha": "afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+  "repo": "malabz/Cax",
+  "data": {
+    "sha": "afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+    "node_id": "C_kwDOPt61otoAKGFmYjNlMGMyYzFkMGY5OTc2ZTRmMDFjNjM3OWUwZmM5MjcwNWZmODk",
+    "commit": {
+      "author": {
+        "name": "ripple-jmx",
+        "email": "mingxuanjiang@hust.edu.cn",
+        "date": "2025-11-07T08:37:05Z"
+      },
+      "committer": {
+        "name": "ripple-jmx",
+        "email": "mingxuanjiang@hust.edu.cn",
+        "date": "2025-11-07T08:37:05Z"
+      },
+      "message": "docs: refresh README for 0.2.1 workflow",
+      "tree": {
+        "sha": "0ad9242796d1c845b0dd2a18fab45d5adb062feb",
+        "url": "https://api.github.com/repos/malabz/Cax/git/trees/0ad9242796d1c845b0dd2a18fab45d5adb062feb"
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/git/commits/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/malabz/Cax/commits/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+    "html_url": "https://github.com/malabz/Cax/commit/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+    "comments_url": "https://api.github.com/repos/malabz/Cax/commits/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89/comments",
+    "author": {
+      "login": "ripple-jmx",
+      "id": 55392975,
+      "node_id": "MDQ6VXNlcjU1MzkyOTc1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55392975?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ripple-jmx",
+      "html_url": "https://github.com/ripple-jmx",
+      "followers_url": "https://api.github.com/users/ripple-jmx/followers",
+      "following_url": "https://api.github.com/users/ripple-jmx/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ripple-jmx/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ripple-jmx/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ripple-jmx/subscriptions",
+      "organizations_url": "https://api.github.com/users/ripple-jmx/orgs",
+      "repos_url": "https://api.github.com/users/ripple-jmx/repos",
+      "events_url": "https://api.github.com/users/ripple-jmx/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ripple-jmx/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "ripple-jmx",
+      "id": 55392975,
+      "node_id": "MDQ6VXNlcjU1MzkyOTc1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55392975?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/ripple-jmx",
+      "html_url": "https://github.com/ripple-jmx",
+      "followers_url": "https://api.github.com/users/ripple-jmx/followers",
+      "following_url": "https://api.github.com/users/ripple-jmx/following{/other_user}",
+      "gists_url": "https://api.github.com/users/ripple-jmx/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/ripple-jmx/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/ripple-jmx/subscriptions",
+      "organizations_url": "https://api.github.com/users/ripple-jmx/orgs",
+      "repos_url": "https://api.github.com/users/ripple-jmx/repos",
+      "events_url": "https://api.github.com/users/ripple-jmx/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/ripple-jmx/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "04ba16813105c0252beb02959a44bbba0857fc93",
+        "url": "https://api.github.com/repos/malabz/Cax/commits/04ba16813105c0252beb02959a44bbba0857fc93",
+        "html_url": "https://github.com/malabz/Cax/commit/04ba16813105c0252beb02959a44bbba0857fc93"
+      }
+    ],
+    "stats": {
+      "total": 21,
+      "additions": 15,
+      "deletions": 6
+    },
+    "files": [
+      {
+        "sha": "77842542553a6bd99713713807b83471c3672b89",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 15,
+        "deletions": 6,
+        "changes": 21,
+        "blob_url": "https://github.com/malabz/Cax/blob/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89/README.md",
+        "raw_url": "https://github.com/malabz/Cax/raw/afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89/README.md",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/README.md?ref=afb3e0c2c1d0f9976e4f01c6379e0fc92705ff89",
+        "patch": "@@ -1,6 +1,6 @@\n # Cactus-RaMAx\n \n-Cactus-RaMAx helps you remix alignment plans emitted by `cactus-prepare`. You can inspect every round, toggle RaMAx for any subtree, and then run or export the resulting command list. Version `0.1.0` introduces a tree-based editor so that RaMAx can replace entire cactus subtrees instead of only individual rounds.\n+Cactus-RaMAx helps you remix alignment plans emitted by `cactus-prepare`. You can inspect every round, toggle RaMAx for any subtree, and then run or export the resulting command list. Version `0.2.1` adds a Textual command prompt with an argument wizard, template chooser, and command history so first-time runs need fewer flags before you drop into the UI.\n \n ## Environment setup\n \n@@ -30,8 +30,11 @@ Run the entry point directly:\n cax\n ```\n \n-- If you do not pass `--prepare-args` or `--from-file`, the program first prompts you for the full `cactus-prepare` command (for example `cactus-prepare examples/... --outDir ...`).\n-- Before running the command, CAX checks whether the requested `--outDir` or `--jobStore` already exist and offers to delete them so the run can start from a clean slate.\n+- If you do not pass `--prepare-args` or `--from-file`, a Textual prompt opens so you can type or assemble a full `cactus-prepare` command.\n+  - Press **F2** (or type `:wizard`) to open the argument wizard and fill `--outDir`, `--outSeqFile`, `--outHal`, and `--jobStore` one field at a time.\n+  - Press **F3** (or type `:template`) to choose from Evolver examples bundled with the package or from your own `~/.cax/templates.json`.\n+  - Press **F4** or type `!N` (for example `!1`) to recall the Nth entry from `~/.cax/history.json`. The prompt keeps the 20 most recent commands and lets you delete entries from the history window.\n+- Before running `cactus-prepare`, CAX infers the effective output directory (from `--outDir` or the parent directory of `--outSeqFile`) and offers to delete existing `--outDir`/`--jobStore` paths so the run starts cleanly.\n - After execution completes, the UI displays the parsed plan and lets you toggle RaMAx replacements before running or exporting.\n - Scripted usage is still supported:\n   ```bash\n@@ -45,8 +48,8 @@ cax\n ### 2. Work inside the UI\n \n - The left pane renders the cactus progressive tree; press **Space** to toggle the selected subtree between cactus and RaMAx (use **Ctrl+Space** to expand or collapse nodes).\n-- The details pane shows the current node, generated commands, and a subtree summary that counts how many rounds are using RaMAx.\n-- `E`: edit commands for the selected round or RaMAx replacement.\n+- The details pane now includes an environment summary card (RaMAx/cactus paths, versions, GPU, CPU, memory, disk) plus a compact plan overview table that adapts to narrow terminals.\n+- `E`: edit commands for the selected round or RaMAx replacement in a multi-line editor (press **Ctrl+S** to save).\n - `R`: run the entire plan immediately.\n - `S`: export all commands to `ramax_commands.txt` inside the chosen output directory.\n - `P`: refresh the overview table.\n@@ -55,10 +58,16 @@ cax\n \n When RaMAx is enabled for a round or subtree, execution stops on the first failure—it does not fall back to cactus `blast`/`align` automatically.\n \n+### 3. Templates and history (optional)\n+\n+- Built-in templates are sourced from the packaged Evolver mammals/primates examples and any `.txt` files you add under `examples/`; user-defined templates live in `~/.cax/templates.json`.\n+- Command history is stored at `~/.cax/history.json`. It deduplicates consecutive runs, keeps up to 20 entries, and syncs with the Textual prompt so you can reuse or delete past commands.\n+\n ## Logging and troubleshooting\n \n-- The raw output from `cactus-prepare` is stored at `steps-output/cax_prepare_debug.txt` (the path follows your `--outDir` if you change it).\n+- The raw output from `cactus-prepare` is stored at `<out_dir>/cax_prepare_debug.txt`. If you only passed `--outSeqFile`, the parent directory of that file becomes the inferred output directory.\n - Runtime logs reuse the directories referenced by the original plan, for example `steps-output/logs/`.\n+- Command history and templates live under `~/.cax/` so you can reuse them across projects or machines.\n \n ## Feedback\n "
+      }
+    ]
+  }
+}

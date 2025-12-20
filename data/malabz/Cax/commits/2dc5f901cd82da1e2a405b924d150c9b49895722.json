@@ -1,0 +1,106 @@
+{
+  "cached_at": "2025-12-20T14:33:34.234768",
+  "commit_sha": "2dc5f901cd82da1e2a405b924d150c9b49895722",
+  "repo": "malabz/Cax",
+  "data": {
+    "sha": "2dc5f901cd82da1e2a405b924d150c9b49895722",
+    "node_id": "C_kwDOPt61otoAKDJkYzVmOTAxY2Q4MmRhMWUyYTQwNWI5MjRkMTUwYzliNDk4OTU3MjI",
+    "commit": {
+      "author": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-09-19T09:46:13Z"
+      },
+      "committer": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-09-19T09:46:13Z"
+      },
+      "message": "fix: 更新命令行启动方式，简化用户输入",
+      "tree": {
+        "sha": "b5e173d4549e49538eb957baac3fd8e26fe5c44e",
+        "url": "https://api.github.com/repos/malabz/Cax/git/trees/b5e173d4549e49538eb957baac3fd8e26fe5c44e"
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/git/commits/2dc5f901cd82da1e2a405b924d150c9b49895722",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/malabz/Cax/commits/2dc5f901cd82da1e2a405b924d150c9b49895722",
+    "html_url": "https://github.com/malabz/Cax/commit/2dc5f901cd82da1e2a405b924d150c9b49895722",
+    "comments_url": "https://api.github.com/repos/malabz/Cax/commits/2dc5f901cd82da1e2a405b924d150c9b49895722/comments",
+    "author": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "d80cf7fbadac934e0aaa08b32b91f35b2b833f97",
+        "url": "https://api.github.com/repos/malabz/Cax/commits/d80cf7fbadac934e0aaa08b32b91f35b2b833f97",
+        "html_url": "https://github.com/malabz/Cax/commit/d80cf7fbadac934e0aaa08b32b91f35b2b833f97"
+      }
+    ],
+    "stats": {
+      "total": 6,
+      "additions": 3,
+      "deletions": 3
+    },
+    "files": [
+      {
+        "sha": "e4cf03789470d633179285a2342b7380ff33bbcc",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 3,
+        "changes": 6,
+        "blob_url": "https://github.com/malabz/Cax/blob/2dc5f901cd82da1e2a405b924d150c9b49895722/README.md",
+        "raw_url": "https://github.com/malabz/Cax/raw/2dc5f901cd82da1e2a405b924d150c9b49895722/README.md",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/README.md?ref=2dc5f901cd82da1e2a405b924d150c9b49895722",
+        "patch": "@@ -28,18 +28,18 @@ pip install dist/cactus_ramax-*.whl\n 直接运行：\n \n ```bash\n-cax ui\n+cax\n ```\n \n - 若未提供 `--prepare-args` 或 `--from-file`，程序会先弹出一个 Textual 输入框，提示你填写完整的 `cactus-prepare` 指令（例如 `cactus-prepare examples/... --outDir ...`）。\n - 按 Enter 后，工具会执行该指令、解析输出，并进入计划编辑界面。\n - 仍支持脚本化使用：\n   ```bash\n-  cax ui --prepare-args \"examples/evolverMammals.txt --outDir steps-output --outSeqFile ... --outHal ... --jobStore jobstore\"\n+  cax --prepare-args \"examples/evolverMammals.txt --outDir steps-output --outSeqFile ... --outHal ... --jobStore jobstore\"\n   ```\n   或提供现有输出：\n   ```bash\n-  cax ui --from-file steps-output/prepare_output.txt\n+  cax --from-file steps-output/prepare_output.txt\n   ```\n \n ### 2. 在 UI 中操作"
+      }
+    ]
+  }
+}

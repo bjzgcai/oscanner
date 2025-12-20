@@ -1,0 +1,142 @@
+{
+  "cached_at": "2025-12-20T14:33:33.182609",
+  "commit_sha": "dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+  "repo": "malabz/Cax",
+  "data": {
+    "sha": "dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+    "node_id": "C_kwDOPt61otoAKGRhYzVlMGFmMGRjMGZkNTY2YWFlMmE0ZDYzYTFlNmRmZDBhZmVkNDU",
+    "commit": {
+      "author": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-10-25T06:26:27Z"
+      },
+      "committer": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-10-25T06:26:27Z"
+      },
+      "message": "feat: add tree-based subtree switching and filtered execution for 0.1 release",
+      "tree": {
+        "sha": "9f4c68beb05bddcba604347124de9061917fb0c3",
+        "url": "https://api.github.com/repos/malabz/Cax/git/trees/9f4c68beb05bddcba604347124de9061917fb0c3"
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/git/commits/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/malabz/Cax/commits/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+    "html_url": "https://github.com/malabz/Cax/commit/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+    "comments_url": "https://api.github.com/repos/malabz/Cax/commits/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/comments",
+    "author": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "7fc8f1878bdb556818f0ca47d2dec0d4c831183e",
+        "url": "https://api.github.com/repos/malabz/Cax/commits/7fc8f1878bdb556818f0ca47d2dec0d4c831183e",
+        "html_url": "https://github.com/malabz/Cax/commit/7fc8f1878bdb556818f0ca47d2dec0d4c831183e"
+      }
+    ],
+    "stats": {
+      "total": 135,
+      "additions": 66,
+      "deletions": 69
+    },
+    "files": [
+      {
+        "sha": "f29ab0c2c2a54a49e77be70a099154d65c2583ac",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 25,
+        "deletions": 28,
+        "changes": 53,
+        "blob_url": "https://github.com/malabz/Cax/blob/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/README.md",
+        "raw_url": "https://github.com/malabz/Cax/raw/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/README.md",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/README.md?ref=dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+        "patch": "@@ -1,66 +1,63 @@\n # Cactus-RaMAx\n \n-Cactus-RaMAx 帮助你在 `cactus-prepare` 生成的多轮对齐计划中，挑选部分轮次改用 RaMAx，再一键执行完整流程。项目提供一个 Textual 驱动的交互式终端界面：输入 `cactus-prepare` 指令即可解析输出、浏览每个步骤、切换 RaMAx 替换，并最终执行或导出命令列表。\n+Cactus-RaMAx helps you remix alignment plans emitted by `cactus-prepare`. You can inspect every round, toggle RaMAx for any subtree, and then run or export the resulting command list. Version `0.1.0` introduces a tree-based editor so that RaMAx can replace entire cactus subtrees instead of only individual rounds.\n \n-## 环境准备\n+## Environment setup\n \n-推荐使用 Conda 新建独立环境，并从源代码安装：\n+We recommend creating a fresh Conda environment and installing the project in editable mode:\n \n ```bash\n conda create -n cax python=3.10 -y\n conda activate cax\n \n-# 安装依赖并以开发模式挂载\n pip install -e .\n ```\n \n-如需在隔离环境之外使用，可将仓库打包后安装：\n+Alternatively, you can build a wheel and install it in a different environment:\n \n ```bash\n python -m build\n pip install dist/cactus_ramax-*.whl\n ```\n \n-## 快速上手\n+## Quick start\n \n-### 1. 启动交互式 UI\n+### 1. Launch the interactive UI\n \n-直接运行：\n+Run the entry point directly:\n \n ```bash\n cax\n ```\n \n-- 若未提供 `--prepare-args` 或 `--from-file`，程序会先弹出一个 Textual 输入框，提示你填写完整的 `cactus-prepare` 指令（例如 `cactus-prepare examples/... --outDir ...`）。\n-- 按 Enter 后，工具会执行该指令、解析输出，并进入计划编辑界面。\n-- 仍支持脚本化使用：\n+- If you do not pass `--prepare-args` or `--from-file`, the program first prompts you for the full `cactus-prepare` command (for example `cactus-prepare examples/... --outDir ...`).\n+- After execution completes, the UI displays the parsed plan and lets you toggle RaMAx replacements before running or exporting.\n+- Scripted usage is still supported:\n   ```bash\n   cax --prepare-args \"examples/evolverMammals.txt --outDir steps-output --outSeqFile ... --outHal ... --jobStore jobstore\"\n   ```\n-  或提供现有输出：\n+  or load an existing output:\n   ```bash\n   cax --from-file steps-output/prepare_output.txt\n   ```\n \n-### 2. 在 UI 中操作\n+### 2. Work inside the UI\n \n-- 左侧以树形结构展示 cactus 的渐进式比对树，空格键可将选中节点的整棵子树切换为 RaMAx 或恢复 cactus（`Ctrl+Space` 可折叠/展开节点）；\n-- 面板实时展示当前节点的命令详情与子树统计信息；\n-- `E`：在当前节点中选择并手动编辑具体指令（支持 cactus 及 RaMAx 命令）；\n-- `R`：立即执行完整计划；\n-- `S`：导出所有需要运行的命令到 `ramax_commands.txt`；\n-- `P`：刷新总览；\n-- `Q`：退出。\n+- The left pane renders the cactus progressive tree; press **Space** to toggle the selected subtree between cactus and RaMAx (use **Ctrl+Space** to expand or collapse nodes).\n+- The details pane shows the current node, generated commands, and a subtree summary that counts how many rounds are using RaMAx.\n+- `E`: edit commands for the selected round or RaMAx replacement.\n+- `R`: run the entire plan immediately.\n+- `S`: export all commands to `ramax_commands.txt` inside the chosen output directory.\n+- `P`: refresh the overview table.\n+- `Q`: quit the UI.\n \n-当某轮次切换为 RaMAx 时，执行阶段若发生错误会立即终止，不会再自动回退到 cactus 的 `blast/align`。\n+When RaMAx is enabled for a round or subtree, execution stops on the first failure—it does not fall back to cactus `blast`/`align` automatically.\n \n-保存时会在 `--outDir` 或当前目录下创建 `ramax_commands.txt`，内容为逐行排列的 shell 命令，可直接用于批量执行或进一步修改。\n+## Logging and troubleshooting\n \n-## 日志与调试\n+- The raw output from `cactus-prepare` is stored at `steps-output/cax_prepare_debug.txt` (the path follows your `--outDir` if you change it).\n+- Runtime logs reuse the directories referenced by the original plan, for example `steps-output/logs/`.\n \n-- `cactus-prepare` 的原始输出会保存为 `steps-output/cax_prepare_debug.txt`（若 `--outDir` 变化则跟随调整），便于复现与排错。\n-- 执行阶段会沿用原始计划中的日志目录（如 `steps-output/logs/`），每个步骤输出各自的 log 文件。\n+## Feedback\n \n-## 反馈\n-\n-欢迎提交 issue 或 PR，帮助我们继续完善 Cactus 与 RaMAx 的联合流程体验。\n+Open an issue or pull request to help us iterate on the combined Cactus/RaMAx workflow."
+      },
+      {
+        "sha": "46bdb15f0e7918134ee4d915177d5bfa0ea8f8cd",
+        "filename": "cax/cli.py",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "blob_url": "https://github.com/malabz/Cax/blob/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/cax%2Fcli.py",
+        "raw_url": "https://github.com/malabz/Cax/raw/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/cax%2Fcli.py",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/cax%2Fcli.py?ref=dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+        "patch": "@@ -50,7 +50,7 @@ def ui(\n     if prepare_args is None and from_file is None:\n         prompt_result = command_prompt.prompt_prepare_command()\n         if prompt_result.action == \"quit\":\n-            typer.echo(\"[cax] 已取消。\")\n+            typer.echo(\"[cax] Cancelled.\")\n             return\n         prepare_args = prompt_result.args\n         executable = prompt_result.executable or executable"
+      },
+      {
+        "sha": "fe32885156a99fbaf150fc3f468d801ad72b1f5e",
+        "filename": "cax/command_prompt.py",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 8,
+        "changes": 16,
+        "blob_url": "https://github.com/malabz/Cax/blob/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/cax%2Fcommand_prompt.py",
+        "raw_url": "https://github.com/malabz/Cax/raw/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/cax%2Fcommand_prompt.py",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/cax%2Fcommand_prompt.py?ref=dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+        "patch": "@@ -39,8 +39,8 @@ class PrepareCommandPrompt(App[PromptResult]):\n     \"\"\"\n \n     BINDINGS = [\n-        Binding(\"escape\", \"quit\", \"退出\"),\n-        Binding(\"ctrl+c\", \"quit\", \"退出\"),\n+        Binding(\"escape\", \"quit\", \"Quit\"),\n+        Binding(\"ctrl+c\", \"quit\", \"Quit\"),\n     ]\n \n     def __init__(self) -> None:\n@@ -50,8 +50,8 @@ def __init__(self) -> None:\n \n     def compose(self) -> ComposeResult:\n         yield Header(show_clock=True)\n-        yield Static(\"请输入完整的 cactus-prepare 指令，按 Enter 提交。\", id=\"instructions\")\n-        command_input = Input(placeholder=\"cactus-prepare ...\", id=\"command\")\n+        yield Static(\"Enter the full cactus-prepare command and press Enter to submit.\", id=\"instructions\")\n+        command_input = Input(placeholder=\"cactus-prepare …\", id=\"command\")\n         self._command_input = command_input\n         yield command_input\n         status = Static(\"\", id=\"status\")\n@@ -66,19 +66,19 @@ def on_mount(self) -> None:  # type: ignore[override]\n     def on_input_submitted(self, event: Input.Submitted) -> None:  # type: ignore[override]\n         command = event.value.strip()\n         if not command:\n-            self._update_status(\"[red]命令不能为空[/red]\")\n+            self._update_status(\"[red]Command cannot be empty[/red]\")\n             return\n         try:\n             tokens = shlex.split(command)\n         except ValueError as exc:\n-            self._update_status(f\"[red]命令解析失败：{exc}[/red]\")\n+            self._update_status(f\"[red]Failed to parse command: {exc}[/red]\")\n             return\n         if not tokens:\n-            self._update_status(\"[red]命令不能为空[/red]\")\n+            self._update_status(\"[red]Command cannot be empty[/red]\")\n             return\n         executable = Path(tokens[0]).name\n         if executable != \"cactus-prepare\":\n-            self._update_status(\"[red]请以 'cactus-prepare' 开头[/red]\")\n+            self._update_status(\"[red]Command must start with 'cactus-prepare'[/red]\")\n             return\n         args = shlex.join(tokens[1:])\n         self.exit(PromptResult(executable=tokens[0], args=args, action=\"submit\"))"
+      },
+      {
+        "sha": "91fe77d884ed9ee8dca6fbfbf5490a9d8e6d5518",
+        "filename": "cax/ui.py",
+        "status": "modified",
+        "additions": 32,
+        "deletions": 32,
+        "changes": 64,
+        "blob_url": "https://github.com/malabz/Cax/blob/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/cax%2Fui.py",
+        "raw_url": "https://github.com/malabz/Cax/raw/dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45/cax%2Fui.py",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/cax%2Fui.py?ref=dac5e0af0dc0fd566aae2a4d63a1e6dfd0afed45",
+        "patch": "@@ -39,7 +39,7 @@ class CommandTarget:\n class CommandSelectionModal(ModalScreen[CommandTarget | None]):\n     \"\"\"Modal dialog listing all editable commands for a round.\"\"\"\n \n-    BINDINGS = [Binding(\"escape\", \"cancel\", \"取消\")]\n+    BINDINGS = [Binding(\"escape\", \"cancel\", \"Cancel\")]\n \n     CSS = \"\"\"\n     CommandSelectionModal {\n@@ -72,7 +72,7 @@ def __init__(self, targets: list[CommandTarget]):\n \n     def compose(self) -> ComposeResult:\n         with Container(id=\"picker-dialog\"):\n-            yield Static(\"选择要编辑的指令\", id=\"picker-title\")\n+            yield Static(\"Choose a command to edit\", id=\"picker-title\")\n             items = []\n             for target in self.targets:\n                 text = Text(target.label, style=\"bold\")\n@@ -82,7 +82,7 @@ def compose(self) -> ComposeResult:\n             list_view = ListView(*items, id=\"picker-list\")\n             self._list_view = list_view\n             yield list_view\n-            yield Static(\"Enter 确认，Esc 取消\", id=\"picker-hint\")\n+            yield Static(\"Enter to confirm, Esc to cancel\", id=\"picker-hint\")\n \n     def on_mount(self) -> None:\n         if self._list_view:\n@@ -101,9 +101,9 @@ class CommandEditModal(ModalScreen[str | None]):\n     \"\"\"Modal dialog allowing the user to edit a command string.\"\"\"\n \n     BINDINGS = [\n-        Binding(\"escape\", \"cancel\", \"取消\"),\n-        Binding(\"ctrl+s\", \"save\", \"保存\"),\n-        Binding(\"enter\", \"save\", \"保存\"),\n+        Binding(\"escape\", \"cancel\", \"Cancel\"),\n+        Binding(\"ctrl+s\", \"save\", \"Save\"),\n+        Binding(\"enter\", \"save\", \"Save\"),\n     ]\n \n     CSS = \"\"\"\n@@ -153,8 +153,8 @@ def compose(self) -> ComposeResult:\n             self._status = status\n             yield status\n             with Container(id=\"editor-buttons\"):\n-                yield Button(\"保存\", id=\"save\", variant=\"success\")\n-                yield Button(\"取消\", id=\"cancel\")\n+                yield Button(\"Save\", id=\"save\", variant=\"success\")\n+                yield Button(\"Cancel\", id=\"cancel\")\n \n     def on_mount(self) -> None:\n         if self._input:\n@@ -171,7 +171,7 @@ def action_save(self) -> None:\n         value = self._input.value.strip()\n         if not value:\n             if self._status:\n-                self._status.update(\"指令不能为空\")\n+                self._status.update(\"Command cannot be empty\")\n             return\n         self.dismiss(value)\n \n@@ -209,8 +209,8 @@ class AlignmentTreeWidget(Tree[tree_utils.AlignmentNode]):\n         for binding in Tree.BINDINGS\n         if binding.key != \"space\"\n     ] + [\n-        Binding(\"space\", \"toggle_subtree\", \"切换子树\", show=False),\n-        Binding(\"ctrl+space\", \"toggle_node\", \"展开/折叠\", show=False),\n+        Binding(\"space\", \"toggle_subtree\", \"Toggle subtree\", show=False),\n+        Binding(\"ctrl+space\", \"toggle_node\", \"Expand/Collapse\", show=False),\n     ]\n \n     def action_toggle_subtree(self) -> None:\n@@ -239,12 +239,12 @@ class PlanUIApp(App[UIResult]):\n     \"\"\"\n \n     BINDINGS = [\n-        Binding(\"space\", \"toggle_round\", \"切换子树\"),\n-        Binding(\"e\", \"edit_round\", \"编辑指令\"),\n-        Binding(\"p\", \"preview_plan\", \"预览\"),\n-        Binding(\"s\", \"save_commands\", \"保存命令\"),\n-        Binding(\"r\", \"run_plan\", \"执行\"),\n-        Binding(\"q\", \"quit\", \"退出\"),\n+        Binding(\"space\", \"toggle_round\", \"Toggle subtree\"),\n+        Binding(\"e\", \"edit_round\", \"Edit command\"),\n+        Binding(\"p\", \"preview_plan\", \"Preview\"),\n+        Binding(\"s\", \"save_commands\", \"Save commands\"),\n+        Binding(\"r\", \"run_plan\", \"Run\"),\n+        Binding(\"q\", \"quit\", \"Quit\"),\n     ]\n \n     def __init__(self, plan: Plan, base_dir: Optional[Path] = None):\n@@ -302,16 +302,16 @@ def action_toggle_round(self) -> None:\n             rounds = list(node.iter_rounds())\n             if not rounds:\n                 if self.detail_panel:\n-                    self.detail_panel.update(\"该节点不包含可替换的 cactus 步骤。\")\n+                    self.detail_panel.update(\"This node has no cactus steps that can be replaced.\")\n                 return\n             target_state = not all(round_entry.replace_with_ramax for round_entry in rounds)\n             for round_entry in rounds:\n                 round_entry.replace_with_ramax = target_state\n             self._refresh_tree_labels(self.tree_widget.root)\n             status = (\n-                f\"子树内 {len(rounds)} 个轮次已切换至 RaMAx\"\n+                f\"Switched {len(rounds)} rounds in this subtree to RaMAx\"\n                 if target_state\n-                else f\"子树内 {len(rounds)} 个轮次已恢复为 cactus\"\n+                else f\"Restored {len(rounds)} rounds in this subtree to cactus\"\n             )\n             self._show_alignment_node(node, status=status)\n             return\n@@ -324,7 +324,7 @@ def action_toggle_round(self) -> None:\n         round_entry = self.plan.rounds[index]\n         round_entry.replace_with_ramax = not round_entry.replace_with_ramax\n         self.round_items[index].update_content()\n-        status = \"已切换至 RaMAx\" if round_entry.replace_with_ramax else \"已恢复为 cactus\"\n+        status = \"Switched to RaMAx\" if round_entry.replace_with_ramax else \"Restored to cactus\"\n         self._show_round(index, status=status)\n \n     def action_preview_plan(self) -> None:\n@@ -343,7 +343,7 @@ def action_save_commands(self) -> None:\n         lines = [cmd.shell_preview() for cmd in commands]\n         output_path.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")\n         if self.detail_panel:\n-            self.detail_panel.update(f\"命令已保存到 {output_path}\")\n+            self.detail_panel.update(f\"Commands saved to {output_path}\")\n \n     def action_quit(self) -> None:\n         self.exit(UIResult(plan=self.plan, action=\"quit\"))\n@@ -353,7 +353,7 @@ def action_edit_round(self) -> None:\n             node = self._selected_alignment_node()\n             if node is None or node.round is None:\n                 if self.detail_panel:\n-                    self.detail_panel.update(\"请选择包含 cactus 轮次的节点后再按 E。\")\n+                    self.detail_panel.update(\"Select a node with cactus rounds before pressing E.\")\n                 return\n             try:\n                 round_index = self.plan.rounds.index(node.round)\n@@ -362,7 +362,7 @@ def action_edit_round(self) -> None:\n             targets = self._gather_command_targets(node.round)\n             if not targets:\n                 if self.detail_panel:\n-                    self.detail_panel.update(\"当前节点没有可编辑的指令。\")\n+                    self.detail_panel.update(\"No editable commands in this node.\")\n                 return\n             if len(targets) == 1:\n                 self._open_command_editor(round_index, targets[0])\n@@ -382,7 +382,7 @@ def action_edit_round(self) -> None:\n         targets = self._gather_command_targets(round_entry)\n         if not targets:\n             if self.detail_panel:\n-                self.detail_panel.update(\"当前轮次没有可编辑的指令。\")\n+                self.detail_panel.update(\"No editable commands for this round.\")\n             return\n         if len(targets) == 1:\n             self._open_command_editor(index, targets[0])\n@@ -414,7 +414,7 @@ def _round_details(self, round_entry: Round) -> list[str]:\n         if round_entry.replace_with_ramax:\n             ramax_preview = self._ramax_command_preview(round_entry)\n             if ramax_preview:\n-                details.extend([\"\", \"[green]RaMAx 命令[/green]\", ramax_preview])\n+                details.extend([\"\", \"[green]RaMAx command[/green]\", ramax_preview])\n         else:\n             if round_entry.blast_step:\n                 details.extend([\"\", \"[cyan]cactus-blast[/cyan]\", round_entry.blast_step.raw])\n@@ -493,19 +493,19 @@ def _show_alignment_node(\n         if node.round:\n             details.extend(self._round_details(node.round))\n         else:\n-            title = node.name or \"(未命名节点)\"\n+            title = node.name or \"(unnamed node)\"\n             details.append(f\"[bold]{title}[/bold]\")\n         subtree_rounds = list(node.iter_rounds())\n         if subtree_rounds:\n             replaced = sum(1 for round_entry in subtree_rounds if round_entry.replace_with_ramax)\n             details.extend(\n                 [\n                     \"\",\n-                    f\"子树统计：RaMAx {replaced}/{len(subtree_rounds)} 个\",\n+                    f\"Subtree summary: RaMAx {replaced}/{len(subtree_rounds)} rounds\",\n                 ]\n             )\n         else:\n-            details.extend([\"\", \"子树内不存在 cactus 轮次（叶子节点）。\"])\n+            details.extend([\"\", \"No cactus rounds in this subtree (leaf node).\"])\n         if status:\n             details.extend([\"\", f\"[green]{status}[/green]\"])\n         self.detail_panel.update(\"\\n\".join(details))\n@@ -541,7 +541,7 @@ def _refresh_tree_labels(self, tree_node) -> None:\n \n     def _format_node_label(self, node: tree_utils.AlignmentNode) -> str:\n         state = self._node_state(node)\n-        name = node.name or \"(未命名)\"\n+        name = node.name or \"(unnamed)\"\n         if state == \"leaf\":\n             return f\"    {name}\"\n         marker = {\"checked\": \"[x]\", \"unchecked\": \"[ ]\", \"mixed\": \"[-]\"}[state]\n@@ -582,7 +582,7 @@ def _handle_command_selection(self, round_index: int, target: CommandTarget | No\n         self._open_command_editor(round_index, target)\n \n     def _open_command_editor(self, round_index: int, target: CommandTarget) -> None:\n-        editor = CommandEditModal(f\"编辑 {target.label} 指令\", target.command)\n+        editor = CommandEditModal(f\"Edit {target.label} command\", target.command)\n         self.push_screen(\n             editor,\n             lambda new_command: self._apply_command_edit(round_index, target, new_command),\n@@ -598,7 +598,7 @@ def _apply_command_edit(\n             round_entry.manual_ramax_command = new_command\n         elif target.step is not None:\n             target.step.raw = new_command\n-        status = f\"已更新 {target.label} 指令\"\n+        status = f\"Updated {target.label} command\"\n         if self.alignment_tree and self.tree_widget:\n             node = self._find_node_for_round(round_entry)\n             if node:"
+      }
+    ]
+  }
+}

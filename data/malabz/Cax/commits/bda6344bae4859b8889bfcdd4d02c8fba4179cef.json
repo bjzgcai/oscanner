@@ -1,0 +1,106 @@
+{
+  "cached_at": "2025-12-20T14:33:29.407092",
+  "commit_sha": "bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+  "repo": "malabz/Cax",
+  "data": {
+    "sha": "bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+    "node_id": "C_kwDOPt61otoAKGJkYTYzNDRiYWU0ODU5Yjg4ODliZmNkZDRkMDJjOGZiYTQxNzljZWY",
+    "commit": {
+      "author": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-11-25T09:33:51Z"
+      },
+      "committer": {
+        "name": "LoadStar822",
+        "email": "992247533@qq.com",
+        "date": "2025-11-25T09:33:51Z"
+      },
+      "message": "Refine 0.3.0 changelog",
+      "tree": {
+        "sha": "ebee30a25a0bbe8c373d16f0187c8e299ca92a5d",
+        "url": "https://api.github.com/repos/malabz/Cax/git/trees/ebee30a25a0bbe8c373d16f0187c8e299ca92a5d"
+      },
+      "url": "https://api.github.com/repos/malabz/Cax/git/commits/bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/malabz/Cax/commits/bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+    "html_url": "https://github.com/malabz/Cax/commit/bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+    "comments_url": "https://api.github.com/repos/malabz/Cax/commits/bda6344bae4859b8889bfcdd4d02c8fba4179cef/comments",
+    "author": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "LoadStar822",
+      "id": 56856603,
+      "node_id": "MDQ6VXNlcjU2ODU2NjAz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56856603?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/LoadStar822",
+      "html_url": "https://github.com/LoadStar822",
+      "followers_url": "https://api.github.com/users/LoadStar822/followers",
+      "following_url": "https://api.github.com/users/LoadStar822/following{/other_user}",
+      "gists_url": "https://api.github.com/users/LoadStar822/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/LoadStar822/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/LoadStar822/subscriptions",
+      "organizations_url": "https://api.github.com/users/LoadStar822/orgs",
+      "repos_url": "https://api.github.com/users/LoadStar822/repos",
+      "events_url": "https://api.github.com/users/LoadStar822/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/LoadStar822/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "0b4473799c13cc2679e5305f14268d2c2c523a92",
+        "url": "https://api.github.com/repos/malabz/Cax/commits/0b4473799c13cc2679e5305f14268d2c2c523a92",
+        "html_url": "https://github.com/malabz/Cax/commit/0b4473799c13cc2679e5305f14268d2c2c523a92"
+      }
+    ],
+    "stats": {
+      "total": 7,
+      "additions": 5,
+      "deletions": 2
+    },
+    "files": [
+      {
+        "sha": "4cdb769f1acdfc9d24b4764809bc67dcf714b7c5",
+        "filename": "CHANGELOG.md",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 2,
+        "changes": 7,
+        "blob_url": "https://github.com/malabz/Cax/blob/bda6344bae4859b8889bfcdd4d02c8fba4179cef/CHANGELOG.md",
+        "raw_url": "https://github.com/malabz/Cax/raw/bda6344bae4859b8889bfcdd4d02c8fba4179cef/CHANGELOG.md",
+        "contents_url": "https://api.github.com/repos/malabz/Cax/contents/CHANGELOG.md?ref=bda6344bae4859b8889bfcdd4d02c8fba4179cef",
+        "patch": "@@ -5,8 +5,11 @@ All notable changes to this project will be documented in this file.\n ## [0.3.0] - 2025-11-25\n \n ### UI\n-- Rebuilt the alignment browser as an ASCII phylogenetic canvas with clado/phylo modes, proportional branch spacing, subtree focus/return, and RaMAx toggles that repaint the tree in place without the old Textual tree widget.\n-- Added search (`/`, `n` / `Shift+N`), zoom, ASCII glyph fallback, and a detail buffer/info modal so large trees stay navigable and summaries remain visible even on narrow terminals.\n+- Rebuilt the alignment browser as an ASCII phylogenetic canvas with proportional branch spacing, inline RaMAx/cactus colouring, and in-place repainting without the old Textual tree widget.\n+- Added scope switching between subtree and single-node toggles (key `b`), plus bulk-revert safeguards with modal hints so mixed cactus/RaMAx edits stay consistent.\n+- Added search (`/`, `n` / `Shift+N`), dotted branch-length annotations, ASCII glyph fallback, and a detail buffer/info modal so large trees stay navigable and summaries remain visible even on narrow terminals.\n+- Introduced a bottom Dashboard HUD that mirrors the current node, subtree/total RaMAx coverage, and live CPU/GPU/memory/disk metrics; keeps summaries readable on narrow terminals.\n+- Display a short welcome/quick-start overlay after mount to highlight navigation, toggles, and run flow for new users.\n \n ### Planner\n - Skip RaMAx rounds whose ancestors already run with RaMAx, while still honoring cactus overrides inside those subtrees so users can mix modes intentionally."
+      }
+    ]
+  }
+}
