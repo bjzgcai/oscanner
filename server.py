@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FastAPI server for GitHub data collection with caching
+FastAPI server for GitHub and Gitee data collection with caching
 """
 
 from fastapi import FastAPI, HTTPException, Query
@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env.local
 load_dotenv('.env.local')
 
-# Import GitHubCollector directly
+# Import collectors directly
 import importlib.util
 
 github_module_path = Path(__file__).parent / "evaluator" / "collectors" / "github.py"
@@ -25,6 +25,13 @@ github_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(github_module)
 
 GitHubCollector = github_module.GitHubCollector
+
+gitee_module_path = Path(__file__).parent / "evaluator" / "collectors" / "gitee.py"
+spec = importlib.util.spec_from_file_location("gitee_collector", gitee_module_path)
+gitee_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(gitee_module)
+
+GiteeCollector = gitee_module.GiteeCollector
 
 # Import CommitEvaluator
 evaluator_module_path = Path(__file__).parent / "evaluator" / "commit_evaluator.py"
@@ -36,8 +43,8 @@ CommitEvaluator = evaluator_module.CommitEvaluator
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="GitHub Data Collector API",
-    description="API for collecting GitHub data with caching support",
+    title="GitHub & Gitee Data Collector API",
+    description="API for collecting GitHub and Gitee data with caching support",
     version="1.0.0"
 )
 
@@ -53,7 +60,14 @@ app.add_middleware(
 # Initialize GitHub collector
 # Token can be set via environment variable: GITHUB_TOKEN
 github_token = os.getenv("GITHUB_TOKEN")
-collector = GitHubCollector(token=github_token, cache_dir="data")
+github_collector = GitHubCollector(token=github_token, cache_dir="data")
+
+# Initialize Gitee collector
+# GITEE_TOKEN for enterprise (z.gitee.cn)
+# PUBLIC_GITEE_TOKEN for public (gitee.com)
+gitee_token = os.getenv("GITEE_TOKEN")
+public_gitee_token = os.getenv("PUBLIC_GITEE_TOKEN")
+gitee_collector = GiteeCollector(token=gitee_token, public_token=public_gitee_token, cache_dir="data")
 
 # Initialize Commit Evaluator
 # API key can be set via environment variable: OPEN_ROUTER_KEY
@@ -65,20 +79,44 @@ commit_evaluator = CommitEvaluator(api_key=openrouter_key)
 async def root():
     """Root endpoint with API information"""
     return {
-        "message": "GitHub Data Collector API",
+        "message": "GitHub & Gitee Data Collector API",
         "version": "1.0.0",
         "endpoints": {
-            "repo_data": "/api/repo/{owner}/{repo}",
-            "user_data": "/api/user/{username}",
-            "commits_list": "/api/commits/{owner}/{repo}",
-            "commit_detail": "/api/commits/{owner}/{repo}/{commit_sha}",
-            "fetch_all_commits": "/api/commits/{owner}/{repo}/fetch-all",
-            "evaluate_engineer": "/api/evaluate/{owner}/{repo}/{username}",
-            "cache_stats": "/api/cache/stats",
-            "clear_repo_cache": "/api/cache/repo/{owner}/{repo}",
-            "clear_user_cache": "/api/cache/user/{username}",
-            "clear_evaluation_cache": "/api/cache/evaluation/{owner}/{repo}/{username}",
-            "clear_all_cache": "/api/cache/clear"
+            "github": {
+                "repo_data": "/api/github/repo/{owner}/{repo}",
+                "user_data": "/api/github/user/{username}",
+                "commits_list": "/api/github/commits/{owner}/{repo}",
+                "commit_detail": "/api/github/commits/{owner}/{repo}/{commit_sha}",
+                "fetch_all_commits": "/api/github/commits/{owner}/{repo}/fetch-all",
+                "evaluate_engineer": "/api/github/evaluate/{owner}/{repo}/{username}",
+            },
+            "gitee": {
+                "repo_data": "/api/gitee/repo/{owner}/{repo}",
+                "user_data": "/api/gitee/user/{username}",
+                "commits_list": "/api/gitee/commits/{owner}/{repo}",
+                "commit_detail": "/api/gitee/commits/{owner}/{repo}/{commit_sha}",
+                "fetch_all_commits": "/api/gitee/commits/{owner}/{repo}/fetch-all",
+                "evaluate_engineer": "/api/gitee/evaluate/{owner}/{repo}/{username}",
+            },
+            "cache": {
+                "stats": "/api/cache/stats",
+                "clear_github_repo": "/api/cache/github/repo/{owner}/{repo}",
+                "clear_github_user": "/api/cache/github/user/{username}",
+                "clear_github_evaluation": "/api/cache/github/evaluation/{owner}/{repo}/{username}",
+                "clear_gitee_repo": "/api/cache/gitee/repo/{owner}/{repo}",
+                "clear_gitee_user": "/api/cache/gitee/user/{username}",
+                "clear_gitee_evaluation": "/api/cache/gitee/evaluation/{owner}/{repo}/{username}",
+                "clear_all": "/api/cache/clear"
+            },
+            "legacy_github": {
+                "note": "Legacy GitHub endpoints (without /github/ prefix) are still supported for backward compatibility",
+                "repo_data": "/api/repo/{owner}/{repo}",
+                "user_data": "/api/user/{username}",
+                "commits_list": "/api/commits/{owner}/{repo}",
+                "commit_detail": "/api/commits/{owner}/{repo}/{commit_sha}",
+                "fetch_all_commits": "/api/commits/{owner}/{repo}/fetch-all",
+                "evaluate_engineer": "/api/evaluate/{owner}/{repo}/{username}",
+            }
         }
     }
 
@@ -102,9 +140,9 @@ async def get_repo_data(
     """
     try:
         repo_url = f"https://github.com/{owner}/{repo}"
-        data = collector.collect_repo_data(repo_url, use_cache=use_cache)
+        data = github_collector.collect_repo_data(repo_url, use_cache=use_cache)
 
-        cache_path = collector._get_cache_path(repo_url)
+        cache_path = github_collector._get_cache_path(repo_url)
         is_cached = cache_path.exists()
 
         return {
@@ -136,10 +174,10 @@ async def get_user_data(
         User data
     """
     try:
-        data = collector.collect_user_data(username, use_cache=use_cache)
+        data = github_collector.collect_user_data(username, use_cache=use_cache)
 
         user_url = f"https://github.com/{username}"
-        cache_path = collector._get_cache_path(user_url)
+        cache_path = github_collector._get_cache_path(user_url)
         is_cached = cache_path.exists()
 
         return {
@@ -243,7 +281,7 @@ async def clear_repo_cache(owner: str, repo: str):
     """
     try:
         repo_url = f"https://github.com/{owner}/{repo}"
-        cache_path = collector._get_cache_path(repo_url)
+        cache_path = github_collector._get_cache_path(repo_url)
 
         if cache_path.exists():
             cache_path.unlink()
@@ -274,7 +312,7 @@ async def clear_user_cache(username: str):
     """
     try:
         user_url = f"https://github.com/{username}"
-        cache_path = collector._get_cache_path(user_url)
+        cache_path = github_collector._get_cache_path(user_url)
 
         if cache_path.exists():
             cache_path.unlink()
@@ -379,9 +417,9 @@ async def get_commits_list(
         List of commits
     """
     try:
-        commits = collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache)
+        commits = github_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache)
 
-        cache_path = collector._get_commits_list_cache_path(owner, repo)
+        cache_path = github_collector._get_commits_list_cache_path(owner, repo)
         is_cached = cache_path.exists()
 
         return {
@@ -419,9 +457,9 @@ async def get_commit_detail(
         Detailed commit data including files changed and diffs
     """
     try:
-        commit_data = collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache)
+        commit_data = github_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache)
 
-        cache_path = collector._get_commit_cache_path(owner, repo, commit_sha)
+        cache_path = github_collector._get_commit_cache_path(owner, repo, commit_sha)
         is_cached = cache_path.exists()
 
         return {
@@ -465,7 +503,7 @@ async def fetch_all_commits(
     """
     try:
         # First, get the list of commits
-        commits_list = collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache)
+        commits_list = github_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache)
 
         # Then, fetch detailed data for each commit
         fetched_commits = []
@@ -478,7 +516,7 @@ async def fetch_all_commits(
 
             try:
                 # Fetch detailed commit data (will be cached automatically)
-                commit_data = collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache)
+                commit_data = github_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache)
                 fetched_commits.append({
                     "sha": commit_sha,
                     "message": commit_summary.get("commit", {}).get("message", ""),
@@ -627,7 +665,7 @@ async def evaluate_engineer(
                 }
 
         # First, get commits by this author
-        commits_list = collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache)
+        commits_list = github_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache)
 
         # Fetch detailed commit data for each commit
         detailed_commits = []
@@ -645,7 +683,7 @@ async def evaluate_engineer(
 
                 try:
                     # Fetch detailed commit with files and diffs
-                    commit_data = collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache)
+                    commit_data = github_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache)
                     detailed_commits.append(commit_data)
 
                     # Stop if we have enough commits
@@ -684,6 +722,459 @@ async def evaluate_engineer(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================================================
+# GITEE ENDPOINTS
+# ============================================================================
+
+@app.get("/api/gitee/repo/{owner}/{repo}")
+async def get_gitee_repo_data(
+    owner: str,
+    repo: str,
+    use_cache: bool = Query(True, description="Whether to use cached data")
+):
+    """
+    Get Gitee repository data with optional caching
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        use_cache: Whether to use cache (default: True)
+
+    Returns:
+        Repository data
+    """
+    try:
+        repo_url = f"https://gitee.com/{owner}/{repo}"
+        data = gitee_collector.collect_repo_data(repo_url, use_cache=use_cache)
+
+        cache_path = gitee_collector._get_cache_path(repo_url)
+        is_cached = cache_path.exists()
+
+        return {
+            "success": True,
+            "data": data,
+            "metadata": {
+                "repo_url": repo_url,
+                "cached": is_cached,
+                "cache_path": str(cache_path) if is_cached else None
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/gitee/user/{username}")
+async def get_gitee_user_data(
+    username: str,
+    use_cache: bool = Query(True, description="Whether to use cached data")
+):
+    """
+    Get Gitee user data with optional caching
+
+    Args:
+        username: Gitee username
+        use_cache: Whether to use cache (default: True)
+
+    Returns:
+        User data
+    """
+    try:
+        data = gitee_collector.collect_user_data(username, use_cache=use_cache)
+
+        user_url = f"https://gitee.com/{username}"
+        cache_path = gitee_collector._get_cache_path(user_url)
+        is_cached = cache_path.exists()
+
+        return {
+            "success": True,
+            "data": data,
+            "metadata": {
+                "username": username,
+                "cached": is_cached,
+                "cache_path": str(cache_path) if is_cached else None
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/gitee/commits/{owner}/{repo}")
+async def get_gitee_commits_list(
+    owner: str,
+    repo: str,
+    limit: int = Query(100, description="Maximum number of commits to fetch"),
+    use_cache: bool = Query(True, description="Whether to use cached data"),
+    is_enterprise: bool = Query(False, description="Whether this is an enterprise (z.gitee.cn) repository")
+):
+    """
+    Get list of commits from a Gitee repository
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        limit: Maximum number of commits to fetch (default: 100)
+        use_cache: Whether to use cache (default: True)
+        is_enterprise: Whether this is an enterprise repository (default: False)
+
+    Returns:
+        List of commits
+    """
+    try:
+        commits = gitee_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache, is_enterprise=is_enterprise)
+
+        cache_path = gitee_collector._get_commits_list_cache_path(owner, repo)
+        is_cached = cache_path.exists()
+
+        return {
+            "success": True,
+            "data": commits,
+            "metadata": {
+                "owner": owner,
+                "repo": repo,
+                "count": len(commits),
+                "cached": is_cached,
+                "cache_path": str(cache_path) if is_cached else None
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/gitee/commits/{owner}/{repo}/{commit_sha}")
+async def get_gitee_commit_detail(
+    owner: str,
+    repo: str,
+    commit_sha: str,
+    use_cache: bool = Query(True, description="Whether to use cached data"),
+    is_enterprise: bool = Query(False, description="Whether this is an enterprise (z.gitee.cn) repository")
+):
+    """
+    Get detailed information about a specific Gitee commit
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        commit_sha: Commit SHA hash
+        use_cache: Whether to use cache (default: True)
+        is_enterprise: Whether this is an enterprise repository (default: False)
+
+    Returns:
+        Detailed commit data including files changed and diffs
+    """
+    try:
+        commit_data = gitee_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache, is_enterprise=is_enterprise)
+
+        cache_path = gitee_collector._get_commit_cache_path(owner, repo, commit_sha)
+        is_cached = cache_path.exists()
+
+        return {
+            "success": True,
+            "data": commit_data,
+            "metadata": {
+                "owner": owner,
+                "repo": repo,
+                "commit_sha": commit_sha,
+                "cached": is_cached,
+                "cache_path": str(cache_path) if is_cached else None
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/gitee/commits/{owner}/{repo}/fetch-all")
+async def fetch_all_gitee_commits(
+    owner: str,
+    repo: str,
+    limit: int = Query(100, description="Maximum number of commits to fetch"),
+    use_cache: bool = Query(True, description="Whether to use cached data for commit list"),
+    is_enterprise: bool = Query(False, description="Whether this is an enterprise (z.gitee.cn) repository")
+):
+    """
+    Fetch all commits and their detailed data for a Gitee repository
+
+    This endpoint will:
+    1. Fetch the list of commits
+    2. Fetch detailed data for each commit
+    3. Store all data in the cache
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        limit: Maximum number of commits to fetch (default: 100)
+        use_cache: Whether to use cache for commit list (default: True)
+        is_enterprise: Whether this is an enterprise repository (default: False)
+
+    Returns:
+        Summary of fetched commits
+    """
+    try:
+        # First, get the list of commits
+        commits_list = gitee_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache, is_enterprise=is_enterprise)
+
+        # Then, fetch detailed data for each commit
+        fetched_commits = []
+        errors = []
+
+        for commit_summary in commits_list:
+            commit_sha = commit_summary.get("sha")
+            if not commit_sha:
+                continue
+
+            try:
+                # Fetch detailed commit data (will be cached automatically)
+                commit_data = gitee_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache, is_enterprise=is_enterprise)
+                fetched_commits.append({
+                    "sha": commit_sha,
+                    "message": commit_summary.get("commit", {}).get("message", ""),
+                    "author": commit_summary.get("commit", {}).get("author", {}).get("name", ""),
+                    "date": commit_summary.get("commit", {}).get("author", {}).get("date", ""),
+                    "files_changed": len(commit_data.get("files", []))
+                })
+            except Exception as e:
+                errors.append({
+                    "sha": commit_sha,
+                    "error": str(e)
+                })
+
+        return {
+            "success": True,
+            "summary": {
+                "owner": owner,
+                "repo": repo,
+                "total_commits": len(commits_list),
+                "fetched_commits": len(fetched_commits),
+                "errors": len(errors)
+            },
+            "commits": fetched_commits,
+            "errors": errors if errors else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/gitee/evaluate/{owner}/{repo}/{username}")
+async def evaluate_gitee_engineer(
+    owner: str,
+    repo: str,
+    username: str,
+    limit: int = Query(30, description="Maximum number of commits to analyze"),
+    use_cache: bool = Query(True, description="Whether to use cached evaluation and commit data"),
+    is_enterprise: bool = Query(False, description="Whether this is an enterprise (z.gitee.cn) repository")
+):
+    """
+    Evaluate an engineer's skill based on their Gitee commits in a repository
+
+    This endpoint:
+    1. Checks cache for previous evaluation (if use_cache=True)
+    2. Fetches commits by the specified author
+    3. Analyzes commits using LLM (if not cached)
+    4. Caches evaluation results for future use
+    5. Returns evaluation scores across six dimensions
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        username: Gitee username to evaluate
+        limit: Maximum number of commits to analyze (default: 30)
+        use_cache: Whether to use cached data (default: True)
+        is_enterprise: Whether this is an enterprise repository (default: False)
+
+    Returns:
+        Evaluation results with scores for each dimension
+    """
+    try:
+        # Check evaluation cache first
+        if use_cache:
+            cached_evaluation = _load_gitee_evaluation_from_cache(owner, repo, username)
+            if cached_evaluation:
+                return {
+                    "success": True,
+                    "evaluation": cached_evaluation.get("evaluation"),
+                    "metadata": {
+                        "owner": owner,
+                        "repo": repo,
+                        "username": username,
+                        "cached": True,
+                        "cached_at": cached_evaluation.get("cached_at")
+                    }
+                }
+
+        # First, get commits by this author
+        commits_list = gitee_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache, is_enterprise=is_enterprise)
+
+        # Fetch detailed commit data for each commit
+        detailed_commits = []
+        for commit_summary in commits_list:
+            commit_sha = commit_summary.get("sha")
+            commit_author = commit_summary.get("commit", {}).get("author", {}).get("name", "")
+
+            # Get Gitee author login (handle null author field)
+            author_obj = commit_summary.get("author")
+            author_login = author_obj.get("login", "") if author_obj else ""
+
+            # Check if commit is by this user (case-insensitive match)
+            if commit_author.lower() == username.lower() or \
+               author_login.lower() == username.lower():
+
+                try:
+                    # Fetch detailed commit with files and diffs
+                    commit_data = gitee_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache, is_enterprise=is_enterprise)
+                    detailed_commits.append(commit_data)
+
+                    # Stop if we have enough commits
+                    if len(detailed_commits) >= limit:
+                        break
+                except Exception as e:
+                    print(f"[Warning] Failed to fetch commit {commit_sha}: {e}")
+                    continue
+
+        if not detailed_commits:
+            return {
+                "success": False,
+                "error": f"No commits found for user {username} in {owner}/{repo}",
+                "evaluation": commit_evaluator._get_empty_evaluation(username)
+            }
+
+        # Evaluate using LLM
+        evaluation = commit_evaluator.evaluate_engineer(detailed_commits, username)
+
+        # Save evaluation to cache for future use
+        _save_gitee_evaluation_to_cache(owner, repo, username, evaluation)
+
+        return {
+            "success": True,
+            "evaluation": evaluation,
+            "metadata": {
+                "owner": owner,
+                "repo": repo,
+                "username": username,
+                "commits_analyzed": len(detailed_commits),
+                "cached": False
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# GITEE CACHE MANAGEMENT
+# ============================================================================
+
+def _get_gitee_evaluation_cache_path(owner: str, repo: str, username: str) -> Path:
+    """Get the cache path for a Gitee evaluation result"""
+    cache_dir = Path("data") / "gitee" / owner / repo / "evaluations"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / f"{username}.json"
+
+
+def _load_gitee_evaluation_from_cache(owner: str, repo: str, username: str) -> Optional[Dict[str, Any]]:
+    """Load Gitee evaluation result from cache"""
+    cache_path = _get_gitee_evaluation_cache_path(owner, repo, username)
+
+    if not cache_path.exists():
+        return None
+
+    try:
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            cached_data = json.load(f)
+            print(f"[Cache Hit] Loaded Gitee evaluation for {username} from cache")
+            return cached_data
+    except Exception as e:
+        print(f"[Cache Error] Failed to load Gitee evaluation cache: {e}")
+        return None
+
+
+def _save_gitee_evaluation_to_cache(owner: str, repo: str, username: str, evaluation: Dict[str, Any]) -> None:
+    """Save Gitee evaluation result to cache"""
+    cache_path = _get_gitee_evaluation_cache_path(owner, repo, username)
+
+    try:
+        cache_data = {
+            "cached_at": datetime.now().isoformat(),
+            "owner": owner,
+            "repo": repo,
+            "username": username,
+            "evaluation": evaluation
+        }
+
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, indent=2, ensure_ascii=False)
+
+        print(f"[Cache Save] Saved Gitee evaluation for {username} to cache")
+    except Exception as e:
+        print(f"[Cache Error] Failed to save Gitee evaluation cache: {e}")
+
+
+@app.delete("/api/cache/gitee/repo/{owner}/{repo}")
+async def clear_gitee_repo_cache(owner: str, repo: str):
+    """Clear cache for a specific Gitee repository"""
+    try:
+        repo_url = f"https://gitee.com/{owner}/{repo}"
+        cache_path = gitee_collector._get_cache_path(repo_url)
+
+        if cache_path.exists():
+            cache_path.unlink()
+            return {
+                "success": True,
+                "message": f"Cache cleared for Gitee {owner}/{repo}",
+                "cache_path": str(cache_path)
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"No cache found for Gitee {owner}/{repo}"
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/cache/gitee/user/{username}")
+async def clear_gitee_user_cache(username: str):
+    """Clear cache for a specific Gitee user"""
+    try:
+        user_url = f"https://gitee.com/{username}"
+        cache_path = gitee_collector._get_cache_path(user_url)
+
+        if cache_path.exists():
+            cache_path.unlink()
+            return {
+                "success": True,
+                "message": f"Cache cleared for Gitee user {username}",
+                "cache_path": str(cache_path)
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"No cache found for Gitee user {username}"
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/cache/gitee/evaluation/{owner}/{repo}/{username}")
+async def clear_gitee_evaluation_cache(owner: str, repo: str, username: str):
+    """Clear cached Gitee evaluation for a specific user in a repository"""
+    try:
+        cache_path = _get_gitee_evaluation_cache_path(owner, repo, username)
+
+        if cache_path.exists():
+            cache_path.unlink()
+            return {
+                "success": True,
+                "message": f"Gitee evaluation cache cleared for {username} in {owner}/{repo}",
+                "cache_path": str(cache_path)
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"No Gitee evaluation cache found for {username} in {owner}/{repo}"
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -692,6 +1183,8 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "cache_enabled": True,
         "github_token_configured": github_token is not None,
+        "gitee_token_configured": gitee_token is not None,
+        "public_gitee_token_configured": public_gitee_token is not None,
         "llm_configured": openrouter_key is not None
     }
 
