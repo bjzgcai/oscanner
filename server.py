@@ -633,24 +633,27 @@ async def evaluate_engineer(
     Evaluate an engineer's skill based on their commits in a repository
 
     This endpoint:
-    1. Checks cache for previous evaluation (if use_cache=True)
-    2. Fetches commits by the specified author
-    3. Analyzes commits using LLM (if not cached)
-    4. Caches evaluation results for future use
-    5. Returns evaluation scores across six dimensions
+    1. If use_cache=True: Returns cached evaluation if exists, otherwise returns error
+    2. If use_cache=False: Fetches fresh commits, analyzes with LLM, and caches results
+
+    When use_cache=True (default):
+    - No remote API calls are made
+    - No LLM analysis is performed
+    - Only cached evaluation is returned
+    - If no cache exists, returns error asking to set use_cache=false
 
     Args:
         owner: Repository owner
         repo: Repository name
         username: GitHub username to evaluate
         limit: Maximum number of commits to analyze (default: 30)
-        use_cache: Whether to use cached data (default: True)
+        use_cache: Whether to use cached data only (default: True)
 
     Returns:
         Evaluation results with scores for each dimension
     """
     try:
-        # Check evaluation cache first
+        # Only check cache if use_cache is True
         if use_cache:
             cached_evaluation = _load_evaluation_from_cache(owner, repo, username)
             if cached_evaluation:
@@ -666,8 +669,22 @@ async def evaluate_engineer(
                     }
                 }
 
+            # If use_cache is True but no cached evaluation exists, return error
+            return {
+                "success": False,
+                "error": f"No cached evaluation found for {username} in {owner}/{repo}. Set use_cache=false to generate new evaluation.",
+                "metadata": {
+                    "owner": owner,
+                    "repo": repo,
+                    "username": username,
+                    "cached": False
+                }
+            }
+
         # First, get commits by this author
-        commits_list = github_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache)
+        # Fetch more commits than needed to ensure we find enough by this specific user
+        fetch_limit = max(100, limit * 5)
+        commits_list = github_collector.fetch_commits_list(owner, repo, limit=fetch_limit, use_cache=False)
 
         # Fetch detailed commit data for each commit
         detailed_commits = []
@@ -685,7 +702,7 @@ async def evaluate_engineer(
 
                 try:
                     # Fetch detailed commit with files and diffs
-                    commit_data = github_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache)
+                    commit_data = github_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=False)
                     detailed_commits.append(commit_data)
 
                     # Stop if we have enough commits
@@ -968,25 +985,28 @@ async def evaluate_gitee_engineer(
     Evaluate an engineer's skill based on their Gitee commits in a repository
 
     This endpoint:
-    1. Checks cache for previous evaluation (if use_cache=True)
-    2. Fetches commits by the specified author
-    3. Analyzes commits using LLM (if not cached)
-    4. Caches evaluation results for future use
-    5. Returns evaluation scores across six dimensions
+    1. If use_cache=True: Returns cached evaluation if exists, otherwise returns error
+    2. If use_cache=False: Fetches fresh commits, analyzes with LLM, and caches results
+
+    When use_cache=True (default):
+    - No remote API calls are made
+    - No LLM analysis is performed
+    - Only cached evaluation is returned
+    - If no cache exists, returns error asking to set use_cache=false
 
     Args:
         owner: Repository owner
         repo: Repository name
         username: Gitee username to evaluate
         limit: Maximum number of commits to analyze (default: 30)
-        use_cache: Whether to use cached data (default: True)
+        use_cache: Whether to use cached data only (default: True)
         is_enterprise: Whether this is an enterprise repository (default: False)
 
     Returns:
         Evaluation results with scores for each dimension
     """
     try:
-        # Check evaluation cache first
+        # Only check cache if use_cache is True
         if use_cache:
             cached_evaluation = _load_gitee_evaluation_from_cache(owner, repo, username)
             if cached_evaluation:
@@ -1002,8 +1022,22 @@ async def evaluate_gitee_engineer(
                     }
                 }
 
+            # If use_cache is True but no cached evaluation exists, return error
+            return {
+                "success": False,
+                "error": f"No cached evaluation found for {username} in {owner}/{repo}. Set use_cache=false to generate new evaluation.",
+                "metadata": {
+                    "owner": owner,
+                    "repo": repo,
+                    "username": username,
+                    "cached": False
+                }
+            }
+
         # First, get commits by this author
-        commits_list = gitee_collector.fetch_commits_list(owner, repo, limit=limit, use_cache=use_cache, is_enterprise=is_enterprise)
+        # Fetch more commits than needed to ensure we find enough by this specific user
+        fetch_limit = max(100, limit * 5)
+        commits_list = gitee_collector.fetch_commits_list(owner, repo, limit=fetch_limit, use_cache=False, is_enterprise=is_enterprise)
 
         # Fetch detailed commit data for each commit
         detailed_commits = []
@@ -1021,7 +1055,7 @@ async def evaluate_gitee_engineer(
 
                 try:
                     # Fetch detailed commit with files and diffs
-                    commit_data = gitee_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=use_cache, is_enterprise=is_enterprise)
+                    commit_data = gitee_collector.fetch_commit_data(owner, repo, commit_sha, use_cache=False, is_enterprise=is_enterprise)
                     detailed_commits.append(commit_data)
 
                     # Stop if we have enough commits

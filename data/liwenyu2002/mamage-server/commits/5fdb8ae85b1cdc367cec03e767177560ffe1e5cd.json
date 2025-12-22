@@ -1,0 +1,75 @@
+{
+  "cached_at": "2025-12-22T15:15:34.678012",
+  "commit_sha": "5fdb8ae85b1cdc367cec03e767177560ffe1e5cd",
+  "repo": "liwenyu2002/mamage-server",
+  "data": {
+    "sha": "5fdb8ae85b1cdc367cec03e767177560ffe1e5cd",
+    "commit": {
+      "author": {
+        "name": "HIT_LWY",
+        "email": "s-lwy24@bjzgca.edu.cn",
+        "date": "2025-12-09T01:31:33Z"
+      },
+      "committer": {
+        "name": "HIT_LWY",
+        "email": "s-lwy24@bjzgca.edu.cn",
+        "date": "2025-12-09T01:31:33Z"
+      },
+      "message": "Merge branch 'main' of https://github.com/liwenyu2002/mamage-server",
+      "tree": {
+        "sha": "91341582c93f211b9df115451305b15174fa0659",
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/trees/91341582c93f211b9df115451305b15174fa0659"
+      },
+      "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/commits/5fdb8ae85b1cdc367cec03e767177560ffe1e5cd",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/5fdb8ae85b1cdc367cec03e767177560ffe1e5cd",
+    "html_url": "https://github.com/liwenyu2002/mamage-server/commit/5fdb8ae85b1cdc367cec03e767177560ffe1e5cd",
+    "author": {
+      "login": "liwenyu2002",
+      "id": 75512499,
+      "avatar_url": "https://avatars.githubusercontent.com/u/75512499?v=4",
+      "type": "User"
+    },
+    "committer": {
+      "login": "liwenyu2002",
+      "id": 75512499,
+      "avatar_url": "https://avatars.githubusercontent.com/u/75512499?v=4",
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "aea94f65052f996145b7a7e1ace71f4e28c1297e",
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/aea94f65052f996145b7a7e1ace71f4e28c1297e",
+        "html_url": "https://github.com/liwenyu2002/mamage-server/commit/aea94f65052f996145b7a7e1ace71f4e28c1297e"
+      },
+      {
+        "sha": "a4e7be426caf642714458741cf1d0077c6ee72ad",
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/a4e7be426caf642714458741cf1d0077c6ee72ad",
+        "html_url": "https://github.com/liwenyu2002/mamage-server/commit/a4e7be426caf642714458741cf1d0077c6ee72ad"
+      }
+    ],
+    "stats": {
+      "total": 10,
+      "additions": 5,
+      "deletions": 5
+    },
+    "files": [
+      {
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 5,
+        "changes": 10,
+        "patch": "@@ placeholder patch @@"
+      }
+    ]
+  }
+}

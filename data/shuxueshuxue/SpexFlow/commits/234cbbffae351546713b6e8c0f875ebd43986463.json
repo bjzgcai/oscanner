@@ -1,0 +1,186 @@
+{
+  "cached_at": "2025-12-22T15:32:01.474763",
+  "commit_sha": "234cbbffae351546713b6e8c0f875ebd43986463",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "234cbbffae351546713b6e8c0f875ebd43986463",
+    "node_id": "C_kwDOQnjG49oAKDIzNGNiYmZmYWUzNTE1NDY3MTNiNmU4YzBmODc1ZWJkNDM5ODY0NjM",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T04:18:23Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T04:18:23Z"
+      },
+      "message": "archive as functional nodes",
+      "tree": {
+        "sha": "159f8a52e32a56538ee93367ad0c5d80a3512083",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/159f8a52e32a56538ee93367ad0c5d80a3512083"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/234cbbffae351546713b6e8c0f875ebd43986463",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/234cbbffae351546713b6e8c0f875ebd43986463",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/234cbbffae351546713b6e8c0f875ebd43986463",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/234cbbffae351546713b6e8c0f875ebd43986463/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/a20292d352edbd05aa37e1bc25007198fa86ae2b"
+      }
+    ],
+    "stats": {
+      "total": 299,
+      "additions": 250,
+      "deletions": 49
+    },
+    "files": [
+      {
+        "sha": "c07e49b3a65edb83fbd2f6da835f6060c9a06c75",
+        "filename": "server/appData.ts",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 9,
+        "changes": 14,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/server%2FappData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/server%2FappData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/server%2FappData.ts?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -43,16 +43,16 @@ type ArchivedMember = {\n \n type ArchiveData = {\n   title: string\n-  status: 'idle'\n-  error: null\n+  status: NodeStatus\n+  error: string | null\n   locked: boolean\n   muted: boolean\n   customName?: string\n   customColor?: string\n   width?: number\n   height?: number\n   members: ArchivedMember[]\n-  output: null\n+  output: string | null\n }\n \n export type AppNode =\n@@ -233,10 +233,8 @@ function normalizeNode(raw: unknown): AppNode | null {\n       data: {\n         ...base,\n         title: normalizeString(data.title, 'Archive'),\n-        status: 'idle',\n-        error: null,\n         members,\n-        output: null,\n+        output: typeof data.output === 'string' ? data.output : null,\n       },\n     }\n   }\n@@ -477,15 +475,13 @@ function normalizeAppData(raw: unknown): AppData {\n         })\n         .filter((e) => e.id && e.source && e.target)\n \n-      const archiveNodeIds = new Set(nodes.filter((n) => n.type === 'archive').map((n) => n.id))\n-      const edgesWithoutArchive = edges.filter((e) => !archiveNodeIds.has(e.source) && !archiveNodeIds.has(e.target))\n       const viewport = normalizeViewport(canvas.viewport)\n \n       return {\n         id,\n         name: normalizeString(tab.name, 'Canvas'),\n         createdAt: normalizeString(tab.createdAt, now),\n-        canvas: { nodes, edges: edgesWithoutArchive, viewport },\n+        canvas: { nodes, edges, viewport },\n       }\n     })\n     .filter(isNonNull)"
+      },
+      {
+        "sha": "d320104ed7dd53155650be73263cfd88019847ee",
+        "filename": "src/specflow/SpecFlowApp.tsx",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2FSpecFlowApp.tsx?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -61,6 +61,7 @@ function SpecFlowAppLoaded(props: ReturnType<typeof useAppData> & { appData: App\n     closeTab,\n     deleteSelectedNodes,\n     archiveSelectedNodes,\n+    unarchiveNode,\n     updateActiveCanvas,\n     updateActiveViewport,\n     onNodesChange,\n@@ -446,6 +447,7 @@ function SpecFlowAppLoaded(props: ReturnType<typeof useAppData> & { appData: App\n             deleteSelectedNodes={deleteSelectedNodes}\n             runNode={(nodeId) => runNode(nodeId).catch(() => {})}\n             runFrom={(nodeId) => runFrom(nodeId).catch(() => {})}\n+            unarchiveNode={unarchiveNode}\n             apiSettings={appData.apiSettings}\n             language={language}\n             canRunFromPreds={canRunFromPreds}"
+      },
+      {
+        "sha": "b6cc53fafe14f89f234edd3b9ca5cd6401d65556",
+        "filename": "src/specflow/components/ArchivedMemberModal.tsx",
+        "status": "added",
+        "additions": 86,
+        "deletions": 0,
+        "changes": 86,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fcomponents%2FArchivedMemberModal.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fcomponents%2FArchivedMemberModal.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FArchivedMemberModal.tsx?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -0,0 +1,86 @@\n+import { useEffect, useMemo } from 'react'\n+import type { ArchivedMember } from '../types'\n+\n+type Props = {\n+  isOpen: boolean\n+  member: ArchivedMember | null\n+  onClose: () => void\n+  onUnarchive: (memberId: string) => void\n+}\n+\n+export function ArchivedMemberModal({ isOpen, member, onClose, onUnarchive }: Props) {\n+  useEffect(() => {\n+    if (!isOpen) return\n+\n+    function handleKeyDown(e: KeyboardEvent) {\n+      if (e.key === 'Escape') onClose()\n+    }\n+\n+    document.addEventListener('keydown', handleKeyDown)\n+    return () => document.removeEventListener('keydown', handleKeyDown)\n+  }, [isOpen, onClose])\n+\n+  const snapshotText = useMemo(() => {\n+    if (!member) return ''\n+    return JSON.stringify(member.snapshot ?? {}, null, 2)\n+  }, [member])\n+\n+  if (!isOpen) return null\n+\n+  function handleBackdropClick(e: React.MouseEvent) {\n+    if (e.target === e.currentTarget) onClose()\n+  }\n+\n+  const title = member ? `${member.customName || member.title} (${member.type})` : 'Archived Member'\n+\n+  return (\n+    <div className=\"sfModalBackdrop\" onClick={handleBackdropClick}>\n+      <div className=\"sfModalContent\">\n+        <div className=\"sfModalHeader\">\n+          <span className=\"sfModalTitle\">{title}</span>\n+          <button className=\"sfModalCloseBtn\" onClick={onClose} title=\"Close (Esc)\">\n+            ×\n+          </button>\n+        </div>\n+\n+        {member ? (\n+          <div style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.5 }}>\n+            <div>\n+              <b>Original ID:</b> {member.id}\n+            </div>\n+            <div>\n+              <b>Status:</b> {member.status}\n+            </div>\n+            <div>\n+              <b>Archived At:</b> {new Date(member.archivedAt).toLocaleString()}\n+            </div>\n+          </div>\n+        ) : (\n+          <div style={{ fontSize: 12, marginBottom: 10, opacity: 0.7 }}>No member selected</div>\n+        )}\n+\n+        <pre className=\"sfOutputViewerContent\">{snapshotText}</pre>\n+\n+        <div className=\"sfModalFooter\">\n+          <span className=\"sfModalHint\">Press Escape or click outside to close</span>\n+          <div style={{ display: 'flex', gap: 8 }}>\n+            <button\n+              className=\"sfModalSaveBtn\"\n+              onClick={() => {\n+                if (!member) return\n+                onUnarchive(member.id)\n+              }}\n+              disabled={!member}\n+            >\n+              Unarchive\n+            </button>\n+            <button className=\"sfModalSaveBtn\" onClick={onClose}>\n+              Close\n+            </button>\n+          </div>\n+        </div>\n+      </div>\n+    </div>\n+  )\n+}\n+"
+      },
+      {
+        "sha": "ffde2bde293ccb356f8f9a8c2873fa0be417cb9d",
+        "filename": "src/specflow/components/NodeSidebar.tsx",
+        "status": "modified",
+        "additions": 49,
+        "deletions": 26,
+        "changes": 75,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -1,11 +1,12 @@\n import { useCallback, useEffect, useState } from 'react'\n-import type { AppNode, APISettings } from '../types'\n+import type { AppNode, APISettings, ArchivedMember } from '../types'\n import { resetNodeRuntime } from '../utils'\n import { ExpandableTextarea } from './ExpandableTextarea'\n import { InlineCheckbox } from './InlineCheckbox'\n import { CopyButton } from './CopyButton'\n import { ModelSelect } from './ModelSelect'\n import { OutputViewerModal } from './OutputViewerModal'\n+import { ArchivedMemberModal } from './ArchivedMemberModal'\n import { RepoPickerModal } from './RepoPickerModal'\n import { t } from '../i18n'\n import type { ManualImportItem, Language } from '../../../shared/appDataTypes'\n@@ -30,6 +31,7 @@ type Props = {\n   deleteSelectedNodes: () => void\n   runNode: (nodeId: string) => void\n   runFrom: (nodeId: string) => void\n+  unarchiveNode: (archiveNodeId: string, memberId: string) => void\n   apiSettings: APISettings\n   language: Language\n   canRunFromPreds: boolean\n@@ -42,6 +44,7 @@ export function NodeSidebar({\n   deleteSelectedNodes,\n   runNode,\n   runFrom,\n+  unarchiveNode,\n   apiSettings,\n   language,\n   canRunFromPreds,\n@@ -51,6 +54,7 @@ export function NodeSidebar({\n   const [showManualRepoRequired, setShowManualRepoRequired] = useState(false)\n   const [isEditingName, setIsEditingName] = useState(false)\n   const [nameDraft, setNameDraft] = useState('')\n+  const [selectedMember, setSelectedMember] = useState<ArchivedMember | null>(null)\n \n   const getOutputText = useCallback(() => {\n     if (!selectedNode) return ''\n@@ -64,6 +68,7 @@ export function NodeSidebar({\n     if (!selectedNode) return\n     setIsEditingName(false)\n     setNameDraft((selectedNode.data.customName ?? '').trim())\n+    setSelectedMember(null)\n   }, [selectedNode?.id])\n \n   // Multi-select: don't show sidebar (use MultiSelectInfo instead)\n@@ -208,7 +213,12 @@ export function NodeSidebar({\n             ) : (\n               <div className=\"sfArchiveMembers\">\n                 {archiveData.members.map((member, idx) => (\n-                  <div key={`${member.id}-${idx}`} className=\"sfArchiveMember\">\n+                  <div\n+                    key={`${member.id}-${idx}`}\n+                    className=\"sfArchiveMember\"\n+                    style={{ cursor: 'pointer' }}\n+                    onClick={() => setSelectedMember(member)}\n+                  >\n                     <span className=\"sfArchiveMemberType\" title={member.type}>\n                       {member.type}\n                     </span>\n@@ -497,36 +507,34 @@ export function NodeSidebar({\n         {/* Actions Section */}\n         <div className=\"sfSectionTitle\">{t(language, 'sidebar_actions')}</div>\n         <div className=\"sfButtonGroup\">\n-          {selectedNode.type !== 'archive' && (\n-            <>\n-              {/* @@@ Disabled button tooltip - disabled <button> won't reliably show title, so wrap it */}\n-              <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n-                <button\n-                  onClick={() => runNode(selectedNode.id)}\n-                  disabled={isLocked || predsBlocked}\n-                  style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n-                >\n-                  {t(language, 'sidebar_run')}\n-                </button>\n-              </span>\n-              <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n-                <button\n-                  onClick={() => runFrom(selectedNode.id)}\n-                  disabled={isLocked || predsBlocked}\n-                  style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n-                >\n-                  {t(language, 'sidebar_chain')}\n-                </button>\n-              </span>\n-            </>\n-          )}\n+          <>\n+            {/* @@@ Disabled button tooltip - disabled <button> won't reliably show title, so wrap it */}\n+            <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n+              <button\n+                onClick={() => runNode(selectedNode.id)}\n+                disabled={isLocked || predsBlocked}\n+                style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n+              >\n+                {t(language, 'sidebar_run')}\n+              </button>\n+            </span>\n+            <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n+              <button\n+                onClick={() => runFrom(selectedNode.id)}\n+                disabled={isLocked || predsBlocked}\n+                style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n+              >\n+                {t(language, 'sidebar_chain')}\n+              </button>\n+            </span>\n+          </>\n           <button\n             onClick={() =>\n               patchSelectedNode((n) => {\n                 if (n.type !== 'archive') return resetNodeRuntime(n)\n                 return {\n                   ...n,\n-                  data: { ...n.data, members: [], status: 'idle', error: null, output: null },\n+                  data: { ...n.data, status: 'idle', error: null, output: null },\n                 }\n               })\n             }\n@@ -597,6 +605,21 @@ export function NodeSidebar({\n           closeTitle={t(language, 'modal_close_esc')}\n         />\n \n+        <ArchivedMemberModal\n+          isOpen={!!selectedMember}\n+          member={selectedMember}\n+          onClose={() => setSelectedMember(null)}\n+          onUnarchive={(memberId) => {\n+            if (selectedNode.type !== 'archive') return\n+            if (isLocked) {\n+              window.alert('Node is locked')\n+              return\n+            }\n+            unarchiveNode(selectedNode.id, memberId)\n+            setSelectedMember(null)\n+          }}\n+        />\n+\n         {/* Error Display */}\n         {selectedNode.data.error && (\n           <div className=\"sfErrorSection\">"
+      },
+      {
+        "sha": "eeba97cf4cda2db746af27377e7ac60e6beb070b",
+        "filename": "src/specflow/components/index.ts",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fcomponents%2Findex.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fcomponents%2Findex.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2Findex.ts?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -10,4 +10,5 @@ export { APISettingsModal } from './APISettingsModal'\n export { ModelSelect } from './ModelSelect'\n export { SettingsIcon } from './SettingsIcon'\n export { OutputViewerModal } from './OutputViewerModal'\n+export { ArchivedMemberModal } from './ArchivedMemberModal'\n export { RepoPickerModal } from './RepoPickerModal'"
+      },
+      {
+        "sha": "1344c27c2d5d3836f75fdb1bf1486c81d8842c93",
+        "filename": "src/specflow/hooks/useAppData.ts",
+        "status": "modified",
+        "additions": 59,
+        "deletions": 0,
+        "changes": 59,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseAppData.ts?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -241,6 +241,64 @@ export function useAppData() {\n     setSelected(null)\n   }, [updateActiveCanvas])\n \n+  const unarchiveNode = useCallback(\n+    (archiveNodeId: string, memberIdToUnarchive: string) => {\n+      updateActiveCanvas((t) => {\n+        const archiveNode = t.canvas.nodes.find((n) => n.id === archiveNodeId)\n+        if (!archiveNode || archiveNode.type !== 'archive') return t\n+\n+        const memberToRestore = archiveNode.data.members.find((m) => m.id === memberIdToUnarchive)\n+        if (!memberToRestore) return t\n+\n+        const snapshot = { ...(memberToRestore.snapshot ?? {}) }\n+        const restoredData: Record<string, unknown> = {\n+          ...snapshot,\n+          status: 'idle',\n+          error: null,\n+          output: null,\n+        }\n+        if (memberToRestore.type === 'context-converter') {\n+          restoredData.mergedFiles = undefined\n+        }\n+\n+        const restoredNode: AppNode = {\n+          id: uid('n'),\n+          type: memberToRestore.type,\n+          position: { x: archiveNode.position.x + 50, y: archiveNode.position.y + 50 },\n+          data: restoredData as any,\n+        }\n+\n+        const remainingMembers = archiveNode.data.members.filter((m) => m.id !== memberIdToUnarchive)\n+\n+        const updatedNodes =\n+          remainingMembers.length === 0\n+            ? t.canvas.nodes.filter((n) => n.id !== archiveNodeId)\n+            : t.canvas.nodes.map((n) => {\n+                if (n.id !== archiveNodeId) return n\n+                if (n.type !== 'archive') return n\n+                const nextArchiveData: ArchiveData = {\n+                  // @@@archive-stale-output - unarchiving changes members; reset runtime/output to avoid stale summaries\n+                  ...n.data,\n+                  members: remainingMembers,\n+                  status: 'idle',\n+                  error: null,\n+                  output: null,\n+                }\n+                return { ...n, data: nextArchiveData }\n+              })\n+\n+        return {\n+          ...t,\n+          canvas: {\n+            ...t.canvas,\n+            nodes: [...updatedNodes, restoredNode],\n+          },\n+        }\n+      })\n+    },\n+    [updateActiveCanvas],\n+  )\n+\n   const onNodesChange = useCallback(\n     (changes: NodeChange<AppNode>[]) => {\n       updateActiveCanvas((t) => {\n@@ -467,5 +525,6 @@ export function useAppData() {\n     patchSelectedNode,\n     patchNodeById,\n     archiveSelectedNodes,\n+    unarchiveNode,\n   }\n }"
+      },
+      {
+        "sha": "d766311365734f260751551b61d89db84878213b",
+        "filename": "src/specflow/hooks/useChainRunner.ts",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 1,
+        "changes": 1,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fhooks%2FuseChainRunner.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fhooks%2FuseChainRunner.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseChainRunner.ts?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -57,7 +57,6 @@ export function useChainRunner(\n       const tabNow = getActiveTab(appDataRef.current)\n       const start = tabNow.canvas.nodes.find((n) => n.id === nodeId)\n       if (start?.data.locked) return\n-      if (start?.type === 'archive') throw new Error('Archive nodes cannot be executed')\n \n       const localOutputs = new Map<string, LocalOutput>()\n       const tabSnapshot = getActiveTab(appDataRef.current)"
+      },
+      {
+        "sha": "84d6af06ab9652ed54ff845c2876dc348c75661a",
+        "filename": "src/specflow/hooks/useNodeRunner.ts",
+        "status": "modified",
+        "additions": 38,
+        "deletions": 4,
+        "changes": 42,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -1,5 +1,5 @@\n import { useCallback, useRef } from 'react'\n-import type { AppData, AppNode, CodeSearchOutput } from '../types'\n+import type { AppData, AppNode, ArchiveData, CodeSearchOutput } from '../types'\n import { buildRepoContext, runCodeSearch, runConductor, runLLM, resolveManualImport } from '../api'\n import { mergeCodeSearchOutputs } from '../../../shared/rangeUtils'\n import {\n@@ -30,6 +30,7 @@ function getEmptyOutput(nodeType: AppNode['type']): LocalOutput | null {\n     case 'instruction':\n     case 'context-converter':\n     case 'llm':\n+    case 'archive':\n       return EMPTY_STRING_OUTPUT\n     case 'code-search':\n       return EMPTY_CODE_SEARCH_LOCAL_OUTPUT\n@@ -45,6 +46,7 @@ function getEmptyNodeOutput(nodeType: AppNode['type']): unknown {\n     case 'instruction':\n     case 'context-converter':\n     case 'llm':\n+    case 'archive':\n       return ''\n     case 'code-search':\n       return EMPTY_CODE_SEARCH_OUTPUT\n@@ -78,6 +80,11 @@ export function useNodeRunner(\n     if (node.type === 'context-converter' || node.type === 'instruction' || node.type === 'llm') {\n       return node.data.output ? { kind: 'string', value: node.data.output } : null\n     }\n+    if (node.type === 'archive') {\n+      return node.data.output !== null && node.data.output !== undefined\n+        ? { kind: 'string', value: node.data.output }\n+        : null\n+    }\n     return null\n   }, [])\n \n@@ -93,7 +100,7 @@ export function useNodeRunner(\n       if (local?.kind === 'string') return local.value\n \n       if (!n) return ''\n-      if (n.type === 'context-converter' || n.type === 'instruction' || n.type === 'llm')\n+      if (n.type === 'context-converter' || n.type === 'instruction' || n.type === 'llm' || n.type === 'archive')\n         return n.data.output ?? ''\n       return ''\n     },\n@@ -164,7 +171,7 @@ export function useNodeRunner(\n         }\n       }\n       for (const p of preds) {\n-        if (p.type === 'instruction' || p.type === 'llm') {\n+        if (p.type === 'instruction' || p.type === 'llm' || p.type === 'archive') {\n           const s = getStringOutput(p.id, localOutputs).trim()\n           if (s) parts.push(s)\n         }\n@@ -189,7 +196,6 @@ export function useNodeRunner(\n         const node = snapshot.canvas.nodes.find((n) => n.id === nodeId)\n         if (!node) throw new Error(`Node not found: ${nodeId}`)\n         if (mode === 'single' && node.data.locked) throw new Error('Node is locked')\n-        if (node.type === 'archive') throw new Error('Archive nodes cannot be executed')\n         throwIfAborted(signal)\n \n         const preds = predecessors(snapshot.canvas.nodes, snapshot.canvas.edges, nodeId)\n@@ -222,6 +228,34 @@ export function useNodeRunner(\n             return out\n           }\n \n+          if (node.type === 'archive') {\n+            throwIfAborted(signal)\n+            const archiveData = node.data as ArchiveData\n+            const lines: string[] = ['## Archived Nodes', '']\n+\n+            for (const member of archiveData.members) {\n+              const name = (member.customName || member.title || '').trim() || '(untitled)'\n+              lines.push(`### ${name} (${member.type})`)\n+              const archivedAtIso = member.archivedAt\n+              const archivedAtLocal = archivedAtIso ? new Date(archivedAtIso).toLocaleString() : ''\n+              lines.push(`- Archived At: ${archivedAtIso}${archivedAtLocal ? ` (${archivedAtLocal})` : ''}`)\n+              lines.push('')\n+              lines.push('```json')\n+              lines.push(JSON.stringify(member.snapshot ?? {}, null, 2))\n+              lines.push('```')\n+              lines.push('')\n+            }\n+\n+            const output = lines.join('\\n').trimEnd()\n+            patchNodeById(nodeId, (n) => {\n+              if (n.type !== 'archive') return n\n+              return { ...n, data: { ...n.data, status: 'success', error: null, output } }\n+            })\n+            const out: LocalOutput = { kind: 'string', value: output }\n+            localOutputs?.set(nodeId, out)\n+            return out\n+          }\n+\n           if (node.type === 'instruction') {\n             throwIfAborted(signal)\n "
+      },
+      {
+        "sha": "6b0e9a548ec11374da2615ca6d350e86a8e1ca8b",
+        "filename": "src/specflow/nodes.tsx",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 2,
+        "changes": 5,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fnodes.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Fnodes.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fnodes.tsx?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -354,14 +354,15 @@ export function ManualImportNodeView({\n \n export function ArchiveNodeView({ data, selected }: NodeProps<ArchiveNode>) {\n   const memberCount = data.members.length\n-  const subtitle = `${memberCount} archived node${memberCount !== 1 ? 's' : ''}`\n+  const hint = `${memberCount} archived node${memberCount !== 1 ? 's' : ''}`\n+  const subtitle = previewOrHint(data.output ?? '', hint)\n \n   return (\n     <NodeShell\n       title={data.title}\n       customName={data.customName}\n       customColor={data.customColor}\n-      status=\"idle\"\n+      status={data.status}\n       subtitle={subtitle}\n       selected={selected}\n       locked={!!data.locked}"
+      },
+      {
+        "sha": "22e532c8f416acae41e51c3ee2a885071ace5ae4",
+        "filename": "src/specflow/types.ts",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 3,
+        "changes": 6,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Ftypes.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Ftypes.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Ftypes.ts?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -69,8 +69,8 @@ export type ArchivedMember = {\n \n export type ArchiveData = {\n   title: string\n-  status: 'idle' // Always idle, cannot run\n-  error: null\n+  status: NodeStatus\n+  error: string | null\n   locked: boolean\n   muted: boolean\n   customName?: string\n@@ -79,7 +79,7 @@ export type ArchiveData = {\n   height?: number\n   // Store archived nodes flattened - this ensures associativity\n   members: ArchivedMember[]\n-  output: null // Never produces output\n+  output: string | null\n }\n \n export type ArchiveNode = Node<ArchiveData, 'archive'>"
+      },
+      {
+        "sha": "f680b138fd85162a047911297d3bf740a1b917e6",
+        "filename": "src/specflow/utils.ts",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 4,
+        "changes": 8,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Futils.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/234cbbffae351546713b6e8c0f875ebd43986463/src%2Fspecflow%2Futils.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Futils.ts?ref=234cbbffae351546713b6e8c0f875ebd43986463",
+        "patch": "@@ -149,12 +149,12 @@ const CONNECTION_MATRIX: Record<AppNode['type'], Record<AppNode['type'], boolean\n     archive: false,\n   },\n   archive: {\n-    instruction: false,\n-    'code-search-conductor': false,\n+    instruction: true,\n+    'code-search-conductor': true,\n     'manual-import': false,\n-    'code-search': false,\n+    'code-search': true,\n     'context-converter': false,\n-    llm: false,\n+    llm: true,\n     archive: false,\n   },\n }"
+      }
+    ]
+  }
+}

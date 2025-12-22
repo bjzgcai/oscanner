@@ -1,0 +1,90 @@
+{
+  "cached_at": "2025-12-22T15:32:08.969153",
+  "commit_sha": "22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+    "node_id": "C_kwDOQnjG49oAKDIyYWVlN2ZjNGY4YTZmYTQ1ZTYyY2UyOGMzNGQwYmQ1NzU2MGJhMGY",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T03:24:46Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T03:24:46Z"
+      },
+      "message": "default to disable full file mode for context converter",
+      "tree": {
+        "sha": "58a8ce8bcb508c1303f63a514cf3acc471395dd9",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/58a8ce8bcb508c1303f63a514cf3acc471395dd9"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "3dc22f50515ae431dc6631f141d6aa63b3797738",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/3dc22f50515ae431dc6631f141d6aa63b3797738",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/3dc22f50515ae431dc6631f141d6aa63b3797738"
+      }
+    ],
+    "stats": {
+      "total": 6,
+      "additions": 3,
+      "deletions": 3
+    },
+    "files": [
+      {
+        "sha": "55632ebf90181d7c0fd190d377f2c7ab9af0c91e",
+        "filename": "server/appData.ts",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f/server%2FappData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f/server%2FappData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/server%2FappData.ts?ref=22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+        "patch": "@@ -205,7 +205,7 @@ function normalizeNode(raw: unknown): AppNode | null {\n       position: { x, y },\n       data: {\n         ...base,\n-        fullFile: normalizeBool(data.fullFile, true),\n+        fullFile: normalizeBool(data.fullFile, false),\n         output: typeof data.output === 'string' ? data.output : null,\n       },\n     }"
+      },
+      {
+        "sha": "c5dc8c2aa9e64a288055e5c917bbca6c25a178e1",
+        "filename": "src/specflow/defaultData.ts",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f/src%2Fspecflow%2FdefaultData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f/src%2Fspecflow%2FdefaultData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2FdefaultData.ts?ref=22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+        "patch": "@@ -88,7 +88,7 @@ export function defaultCanvas(): Canvas {\n         error: null,\n         locked: false,\n         muted: false,\n-        fullFile: true,\n+        fullFile: false,\n         output: null,\n       },\n     },"
+      },
+      {
+        "sha": "ba8451530c52ff6191f0a66c1f7357189715efd7",
+        "filename": "src/specflow/hooks/useAppData.ts",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseAppData.ts?ref=22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+        "patch": "@@ -254,7 +254,7 @@ export function useAppData() {\n             error: null,\n             locked: false,\n             muted: false,\n-            fullFile: true,\n+            fullFile: false,\n             output: null,\n           },\n         }"
+      }
+    ]
+  }
+}

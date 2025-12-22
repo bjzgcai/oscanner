@@ -1,0 +1,78 @@
+{
+  "cached_at": "2025-12-22T15:32:08.441899",
+  "commit_sha": "4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+    "node_id": "C_kwDOQnjG49oAKDRhOGMwMjM3Y2VmYzJmYmJjNDRlMDgxZDczYjkxZWI3NDRmMTdiYzg",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T13:43:15Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T13:43:15Z"
+      },
+      "message": "add spec interface to roadmap",
+      "tree": {
+        "sha": "a9de45e9f98003d2000e536f26b3101e0d5f0e36",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/a9de45e9f98003d2000e536f26b3101e0d5f0e36"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f"
+      }
+    ],
+    "stats": {
+      "total": 2,
+      "additions": 2,
+      "deletions": 0
+    },
+    "files": [
+      {
+        "sha": "2b75403ca34be3678ff0102413756b84fd7d0955",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8/README.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8/README.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.md?ref=4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+        "patch": "@@ -222,6 +222,7 @@ Open **Settings** (top-right):\n - [ ] Support local LLMs\n - [ ] Token statistics\n - [ ] Backup running history\n+- [ ] Explicit spec document management interface\n \n ## Troubleshooting\n "
+      },
+      {
+        "sha": "12e1718cfc7fd695b484495ad0a3d60ecce4bb8b",
+        "filename": "README.zh.md",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8/README.zh.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8/README.zh.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.zh.md?ref=4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+        "patch": "@@ -236,6 +236,7 @@ manual-import → context-converter → llm\n - [ ] 支持本地 LLM\n - [ ] Token 用量统计\n - [ ] 运行历史备份\n+- [ ] 专门的 Spec 管理节点或界面\n \n ## 排错\n "
+      }
+    ]
+  }
+}

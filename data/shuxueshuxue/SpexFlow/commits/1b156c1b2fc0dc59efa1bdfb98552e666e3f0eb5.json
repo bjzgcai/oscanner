@@ -1,0 +1,78 @@
+{
+  "cached_at": "2025-12-22T15:32:04.116911",
+  "commit_sha": "1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+    "node_id": "C_kwDOQnjG49oAKDFiMTU2YzFiMmZjMGRjNTllZmExYmRmYjk4NTUyZTY2NmUzZjBlYjU",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T01:47:15Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T01:47:15Z"
+      },
+      "message": "better manual import node output display and string concatenation order (instructions now are always after the code context)",
+      "tree": {
+        "sha": "ec81a2cd5ecf4643edd314c7ae7e305376db5c6a",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/ec81a2cd5ecf4643edd314c7ae7e305376db5c6a"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "d8f092362daef2e371dbe110d1659756b2ac8c0a",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/d8f092362daef2e371dbe110d1659756b2ac8c0a",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/d8f092362daef2e371dbe110d1659756b2ac8c0a"
+      }
+    ],
+    "stats": {
+      "total": 29,
+      "additions": 20,
+      "deletions": 9
+    },
+    "files": [
+      {
+        "sha": "eed82ba637fe16ee3e2aa7776d9fe018e5ffc145",
+        "filename": "src/specflow/components/NodeSidebar.tsx",
+        "status": "modified",
+        "additions": 12,
+        "deletions": 7,
+        "changes": 19,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx?ref=1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+        "patch": "@@ -516,16 +516,21 @@ export function NodeSidebar({\n                 />\n               </div>\n             </div>\n-            {selectedNode.type !== 'code-search' && (\n-              <div className=\"sfOutputPreview\">\n-                {typeof selectedNode.data.output === 'string'\n-                  ? selectedNode.data.output.slice(0, 500) + (selectedNode.data.output.length > 500 ? '...' : '')\n-                  : JSON.stringify(selectedNode.data.output, null, 2).slice(0, 500)}\n-              </div>\n-            )}\n+            {selectedNode.type !== 'code-search' &&\n+              !(selectedNode.type === 'manual-import' && isCodeSearchOutput(selectedNode.data.output)) && (\n+                <div className=\"sfOutputPreview\">\n+                  {typeof selectedNode.data.output === 'string'\n+                    ? selectedNode.data.output.slice(0, 500) +\n+                      (selectedNode.data.output.length > 500 ? '...' : '')\n+                    : JSON.stringify(selectedNode.data.output, null, 2).slice(0, 500)}\n+                </div>\n+              )}\n             {selectedNode.type === 'code-search' && isCodeSearchOutput(selectedNode.data.output) && (\n               <CodeSearchOutputPreview output={selectedNode.data.output} />\n             )}\n+            {selectedNode.type === 'manual-import' && isCodeSearchOutput(selectedNode.data.output) && (\n+              <CodeSearchOutputPreview output={selectedNode.data.output} />\n+            )}\n           </div>\n         )}\n "
+      },
+      {
+        "sha": "defd04a1e496abcbf0caab0a8579bb4dbc2abce1",
+        "filename": "src/specflow/hooks/useNodeRunner.ts",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 2,
+        "changes": 10,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts?ref=1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+        "patch": "@@ -158,7 +158,13 @@ export function useNodeRunner(\n     (preds: AppNode[], localOutputs?: Map<string, LocalOutput>) => {\n       const parts: string[] = []\n       for (const p of preds) {\n-        if (p.type === 'context-converter' || p.type === 'instruction' || p.type === 'llm') {\n+        if (p.type === 'context-converter') {\n+          const s = getStringOutput(p.id, localOutputs).trim()\n+          if (s) parts.push(s)\n+        }\n+      }\n+      for (const p of preds) {\n+        if (p.type === 'instruction' || p.type === 'llm') {\n           const s = getStringOutput(p.id, localOutputs).trim()\n           if (s) parts.push(s)\n         }\n@@ -517,7 +523,7 @@ export function useNodeRunner(\n               contexts.push(text)\n             }\n \n-            const text = contexts.join('\\n\\n---\\n\\n')\n+            const text = contexts.join('\\n\\n---\\n\\n').trimEnd() + '\\n\\n---end of code context---\\n\\n'\n             patchNodeById(nodeId, (n) => {\n               if (n.type !== 'context-converter') return n\n               return {"
+      }
+    ]
+  }
+}

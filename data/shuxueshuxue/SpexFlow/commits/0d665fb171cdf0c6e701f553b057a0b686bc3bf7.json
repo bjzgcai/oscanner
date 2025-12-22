@@ -1,0 +1,66 @@
+{
+  "cached_at": "2025-12-22T15:32:07.333399",
+  "commit_sha": "0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+    "node_id": "C_kwDOQnjG49oAKDBkNjY1ZmIxNzFjZGYwYzZlNzAxZjU1M2IwNTdhMGI2ODZiYzNiZjc",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T15:19:13Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T15:19:13Z"
+      },
+      "message": "edge style for muted nodes",
+      "tree": {
+        "sha": "5311da57c2d265565e6bc66443561705edad9e61",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/5311da57c2d265565e6bc66443561705edad9e61"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0d665fb171cdf0c6e701f553b057a0b686bc3bf7/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "85baee16c04a06b589f6600dc8f917a63a6b96ac",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/85baee16c04a06b589f6600dc8f917a63a6b96ac",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/85baee16c04a06b589f6600dc8f917a63a6b96ac"
+      }
+    ],
+    "stats": {
+      "total": 20,
+      "additions": 19,
+      "deletions": 1
+    },
+    "files": [
+      {
+        "sha": "edfe331106081235fb828ab56a6b125e826ba2a5",
+        "filename": "src/specflow/SpecFlowApp.tsx",
+        "status": "modified",
+        "additions": 19,
+        "deletions": 1,
+        "changes": 20,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/0d665fb171cdf0c6e701f553b057a0b686bc3bf7/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/0d665fb171cdf0c6e701f553b057a0b686bc3bf7/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2FSpecFlowApp.tsx?ref=0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+        "patch": "@@ -78,6 +78,24 @@ export function SpecFlowApp() {\n \n   const language = appData.ui.language\n \n+  const mutedNodeIds = useMemo(() => {\n+    return new Set(activeTab.canvas.nodes.filter((n) => n.data.muted).map((n) => n.id))\n+  }, [activeTab.canvas.nodes])\n+\n+  const rfEdges = useMemo(() => {\n+    return activeTab.canvas.edges.map((edge) => {\n+      const isConnectedToMuted = mutedNodeIds.has(edge.source) || mutedNodeIds.has(edge.target)\n+      if (!isConnectedToMuted) return edge\n+      return {\n+        ...edge,\n+        style: {\n+          ...edge.style,\n+          opacity: 0.4,\n+        },\n+      }\n+    })\n+  }, [activeTab.canvas.edges, mutedNodeIds])\n+\n   // Live viewport ref for immediate access (not debounced)\n   const liveViewportRef = useRef<Viewport>(activeTab.canvas.viewport ?? { x: 0, y: 0, zoom: 1 })\n \n@@ -282,7 +300,7 @@ export function SpecFlowApp() {\n           <ReactFlow\n             key={activeTab.id}\n             nodes={rfNodes}\n-            edges={activeTab.canvas.edges}\n+            edges={rfEdges}\n             onNodesChange={onNodesChange}\n             onEdgesChange={onEdgesChange}\n             onConnect={onConnect}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "cached_at": "2025-12-22T15:31:58.208477",
+  "commit_sha": "1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+    "node_id": "C_kwDOQnjG49oAKDFiMTRmZjhjMGU5YTMyMzEzZGEwMDMzY2YzYzUzOGYzMzk0ZmJhNGE",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-17T09:37:21Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-17T09:37:21Z"
+      },
+      "message": "connection table change",
+      "tree": {
+        "sha": "c2aa297bda4af82270daeac51cfe0002548a5df2",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/c2aa297bda4af82270daeac51cfe0002548a5df2"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b14ff8c0e9a32313da0033cf3c538f3394fba4a/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "664ffbd2d4350b93efec80bc73fe3423fc706af6",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/664ffbd2d4350b93efec80bc73fe3423fc706af6",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/664ffbd2d4350b93efec80bc73fe3423fc706af6"
+      }
+    ],
+    "stats": {
+      "total": 8,
+      "additions": 4,
+      "deletions": 4
+    },
+    "files": [
+      {
+        "sha": "bb5c7d08414caa4333e7773c6809b7e351f0aefd",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 2,
+        "changes": 4,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/1b14ff8c0e9a32313da0033cf3c538f3394fba4a/README.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/1b14ff8c0e9a32313da0033cf3c538f3394fba4a/README.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.md?ref=1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+        "patch": "@@ -130,7 +130,7 @@ Then copy the LLM output and paste it into your coding agent.\n ### `context-converter`\n \n - Purpose: turn `{ explanation, files }` into a single line-numbered context string.\n-- Input: one or more `code-search` / `manual-import` predecessors.\n+- Input: one or more `code-search` / `manual-import` / `context-converter` predecessors.\n - Config: `fullFile` (full files) vs ranges.\n - Behavior: merges and deduplicates overlapping/adjacent line ranges across all predecessors (per repo) before building context.\n - UI: shows the merged file ranges in the sidebar (\"Merged File Ranges\").\n@@ -156,7 +156,7 @@ The app enforces a connection matrix (invalid edges are rejected). The current r\n | **code-search-conductor**            | ❌          | ❌                    | ❌           | ✅          | ❌                | ❌  |\n | **manual-import**                    | ❌          | ❌                    | ❌           | ❌          | ✅                | ❌  |\n | **code-search**                      | ❌          | ❌                    | ❌           | ❌          | ✅                | ❌  |\n-| **context-converter**                | ✅          | ✅                    | ❌           | ✅          | ❌                | ✅  |\n+| **context-converter**                | ✅          | ✅                    | ❌           | ✅          | ✅                | ✅  |\n | **llm**                              | ✅          | ✅                    | ❌           | ✅          | ❌                | ✅  |\n \n ## UI Guide"
+      },
+      {
+        "sha": "2e1eca4dc65f6ecfeba833f6b8505f2fec6820fe",
+        "filename": "README.zh.md",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 2,
+        "changes": 4,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/1b14ff8c0e9a32313da0033cf3c538f3394fba4a/README.zh.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/1b14ff8c0e9a32313da0033cf3c538f3394fba4a/README.zh.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.zh.md?ref=1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+        "patch": "@@ -130,7 +130,7 @@ instruction → code-search → context-converter → llm\n ### `context-converter`\n \n - 作用：把 `{ explanation, files }` 变成一段带行号的上下文文本。\n-- 输入：一个或多个 `code-search` / `manual-import` 上游节点。\n+- 输入：一个或多个 `code-search` / `manual-import` / `context-converter` 上游节点。\n - 配置：`fullFile`（整文件）或 ranges。\n - 行为：会在构建上下文前，对所有上游结果（按 repo）做文件行范围的合并与去重（重叠/相邻 range 会合并）。\n - UI：侧边栏会展示合并后的文件范围（\"合并后的文件范围\"）。\n@@ -156,7 +156,7 @@ instruction → code-search → context-converter → llm\n | **code-search-conductor**         | ❌          | ❌                    | ❌           | ✅          | ❌                | ❌  |\n | **manual-import**                 | ❌          | ❌                    | ❌           | ❌          | ✅                | ❌  |\n | **code-search**                   | ❌          | ❌                    | ❌           | ❌          | ✅                | ❌  |\n-| **context-converter**             | ✅          | ✅                    | ❌           | ✅          | ❌                | ✅  |\n+| **context-converter**             | ✅          | ✅                    | ❌           | ✅          | ✅                | ✅  |\n | **llm**                           | ✅          | ✅                    | ❌           | ✅          | ❌                | ✅  |\n \n 典型工作流："
+      }
+    ]
+  }
+}

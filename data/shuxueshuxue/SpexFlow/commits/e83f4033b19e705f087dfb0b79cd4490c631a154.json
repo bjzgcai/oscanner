@@ -1,0 +1,78 @@
+{
+  "cached_at": "2025-12-22T15:32:05.721873",
+  "commit_sha": "e83f4033b19e705f087dfb0b79cd4490c631a154",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "e83f4033b19e705f087dfb0b79cd4490c631a154",
+    "node_id": "C_kwDOQnjG49oAKGU4M2Y0MDMzYjE5ZTcwNWYwODdkZmIwYjc5Y2Q0NDkwYzYzMWExNTQ",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-15T10:19:39Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-15T10:19:39Z"
+      },
+      "message": "make line merging output persistent",
+      "tree": {
+        "sha": "490688fdef613217e28940f8dc5d257a70a18771",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/490688fdef613217e28940f8dc5d257a70a18771"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/e83f4033b19e705f087dfb0b79cd4490c631a154",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e83f4033b19e705f087dfb0b79cd4490c631a154",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e83f4033b19e705f087dfb0b79cd4490c631a154",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e83f4033b19e705f087dfb0b79cd4490c631a154/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/9ab968a1329ed1436e6b4611e548f6da02db9127"
+      }
+    ],
+    "stats": {
+      "total": 40,
+      "additions": 40,
+      "deletions": 0
+    },
+    "files": [
+      {
+        "sha": "7267a57dfe8308117a080b734d7b907c1d285990",
+        "filename": "server/appData.ts",
+        "status": "modified",
+        "additions": 26,
+        "deletions": 0,
+        "changes": 26,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/e83f4033b19e705f087dfb0b79cd4490c631a154/server%2FappData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/e83f4033b19e705f087dfb0b79cd4490c631a154/server%2FappData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/server%2FappData.ts?ref=e83f4033b19e705f087dfb0b79cd4490c631a154",
+        "patch": "@@ -88,6 +88,30 @@ function isNonNull<T>(value: T | null): value is T {\n   return value !== null\n }\n \n+function normalizeLineRangesRecord(raw: unknown): Record<string, [number, number][]> | undefined {\n+  const obj = asRecord(raw)\n+  if (!obj) return undefined\n+\n+  const out: Record<string, [number, number][]> = {}\n+  for (const [filePath, value] of Object.entries(obj)) {\n+    if (!filePath) continue\n+    if (!Array.isArray(value)) continue\n+\n+    const ranges: [number, number][] = []\n+    for (const item of value) {\n+      if (!Array.isArray(item) || item.length !== 2) continue\n+      const start = item[0]\n+      const end = item[1]\n+      if (typeof start !== 'number' || typeof end !== 'number') continue\n+      ranges.push([start, end])\n+    }\n+\n+    if (ranges.length > 0) out[filePath] = ranges\n+  }\n+\n+  return Object.keys(out).length > 0 ? out : undefined\n+}\n+\n function normalizeNode(raw: unknown): AppNode | null {\n   const obj = asRecord(raw)\n   if (!obj) return null\n@@ -200,6 +224,7 @@ function normalizeNode(raw: unknown): AppNode | null {\n   }\n \n   if (type === 'context-converter') {\n+    const mergedFiles = normalizeLineRangesRecord(data.mergedFiles)\n     return {\n       id,\n       type,\n@@ -208,6 +233,7 @@ function normalizeNode(raw: unknown): AppNode | null {\n         ...base,\n         fullFile: normalizeBool(data.fullFile, false),\n         output: typeof data.output === 'string' ? data.output : null,\n+        mergedFiles,\n       },\n     }\n   }"
+      },
+      {
+        "sha": "2f4677948eee268b48641cc81ad8a01c0da432ec",
+        "filename": "src/specflow/utils.ts",
+        "status": "modified",
+        "additions": 14,
+        "deletions": 0,
+        "changes": 14,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/e83f4033b19e705f087dfb0b79cd4490c631a154/src%2Fspecflow%2Futils.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/e83f4033b19e705f087dfb0b79cd4490c631a154/src%2Fspecflow%2Futils.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Futils.ts?ref=e83f4033b19e705f087dfb0b79cd4490c631a154",
+        "patch": "@@ -49,6 +49,20 @@ export function resetNodeRuntime(node: AppNode): AppNode {\n }\n \n export function resetNodeRuntimeForPaste(node: AppNode): AppNode {\n+  if (node.type === 'context-converter') {\n+    return {\n+      ...node,\n+      data: {\n+        ...node.data,\n+        status: 'idle' as const,\n+        error: null,\n+        locked: false,\n+        muted: false,\n+        output: null,\n+        mergedFiles: undefined,\n+      },\n+    } as AppNode\n+  }\n   return {\n     ...node,\n     data: { ...node.data, status: 'idle' as const, error: null, locked: false, muted: false, output: null },"
+      }
+    ]
+  }
+}

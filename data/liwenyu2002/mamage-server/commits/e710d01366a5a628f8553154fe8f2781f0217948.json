@@ -1,0 +1,64 @@
+{
+  "cached_at": "2025-12-22T15:15:34.678219",
+  "commit_sha": "e710d01366a5a628f8553154fe8f2781f0217948",
+  "repo": "liwenyu2002/mamage-server",
+  "data": {
+    "sha": "e710d01366a5a628f8553154fe8f2781f0217948",
+    "commit": {
+      "author": {
+        "name": "HIT_LWY",
+        "email": "s-lwy24@bjzgca.edu.cn",
+        "date": "2025-12-08T11:10:32Z"
+      },
+      "committer": {
+        "name": "HIT_LWY",
+        "email": "s-lwy24@bjzgca.edu.cn",
+        "date": "2025-12-08T11:19:07Z"
+      },
+      "message": "Initial clean commit without secrets",
+      "tree": {
+        "sha": "9a4c3b6fd5eebcd30786d6410e3321909413f58a",
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/trees/9a4c3b6fd5eebcd30786d6410e3321909413f58a"
+      },
+      "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/commits/e710d01366a5a628f8553154fe8f2781f0217948",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/e710d01366a5a628f8553154fe8f2781f0217948",
+    "html_url": "https://github.com/liwenyu2002/mamage-server/commit/e710d01366a5a628f8553154fe8f2781f0217948",
+    "author": {
+      "login": "liwenyu2002",
+      "id": 75512499,
+      "avatar_url": "https://avatars.githubusercontent.com/u/75512499?v=4",
+      "type": "User"
+    },
+    "committer": {
+      "login": "liwenyu2002",
+      "id": 75512499,
+      "avatar_url": "https://avatars.githubusercontent.com/u/75512499?v=4",
+      "type": "User"
+    },
+    "parents": [],
+    "stats": {
+      "total": 10,
+      "additions": 5,
+      "deletions": 5
+    },
+    "files": [
+      {
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 5,
+        "changes": 10,
+        "patch": "@@ placeholder patch @@"
+      }
+    ]
+  }
+}

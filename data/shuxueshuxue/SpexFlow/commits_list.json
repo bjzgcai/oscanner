@@ -1,0 +1,1471 @@
+{
+  "cached_at": "2025-12-22T15:31:54.763684",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": [
+    {
+      "sha": "8e4cb1101cac88636863f8842b3eb5effe942abc",
+      "node_id": "C_kwDOQnjG49oAKDhlNGNiMTEwMWNhYzg4NjM2ODYzZjg4NDJiM2ViNWVmZmU5NDJhYmM",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-20T10:19:42Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-20T10:19:42Z"
+        },
+        "message": "add canvas settings and default repo path",
+        "tree": {
+          "sha": "5d5b4e26008e6e64e073d8783efebf4dd741fc8e",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/5d5b4e26008e6e64e073d8783efebf4dd741fc8e"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/8e4cb1101cac88636863f8842b3eb5effe942abc",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/8e4cb1101cac88636863f8842b3eb5effe942abc",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/8e4cb1101cac88636863f8842b3eb5effe942abc",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/8e4cb1101cac88636863f8842b3eb5effe942abc/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "00ce1a8adbed7473f5c0bc71faf89704d007e619",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/00ce1a8adbed7473f5c0bc71faf89704d007e619",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/00ce1a8adbed7473f5c0bc71faf89704d007e619"
+        }
+      ]
+    },
+    {
+      "sha": "00ce1a8adbed7473f5c0bc71faf89704d007e619",
+      "node_id": "C_kwDOQnjG49oAKDAwY2UxYThhZGJlZDc0NzNmNWMwYmM3MWZhZjg5NzA0ZDAwN2U2MTk",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-19T05:12:19Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-19T05:17:08Z"
+        },
+        "message": "add canvas save/load",
+        "tree": {
+          "sha": "e91b69c216ba6a2bea17e660e4bbd002c5f5757a",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/e91b69c216ba6a2bea17e660e4bbd002c5f5757a"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/00ce1a8adbed7473f5c0bc71faf89704d007e619",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/00ce1a8adbed7473f5c0bc71faf89704d007e619",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/00ce1a8adbed7473f5c0bc71faf89704d007e619",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/00ce1a8adbed7473f5c0bc71faf89704d007e619/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1a62a0ef16158b06731c77bdd55162f06ee3d48f"
+        }
+      ]
+    },
+    {
+      "sha": "1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+      "node_id": "C_kwDOQnjG49oAKDFhNjJhMGVmMTYxNThiMDY3MzFjNzdiZGQ1NTE2MmYwNmVlM2Q0OGY",
+      "commit": {
+        "author": {
+          "name": "F2J",
+          "email": "98064968+shuxueshuxue@users.noreply.github.com",
+          "date": "2025-12-19T01:13:13Z"
+        },
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "date": "2025-12-19T01:13:13Z"
+        },
+        "message": "Update README.zh.md with new images and content\n\nAdded images and content about code search and planning iterations.",
+        "tree": {
+          "sha": "6ca732bd72fb86e83b015861721660cd189b3bea",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6ca732bd72fb86e83b015861721660cd189b3bea"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+        "comment_count": 0,
+        "verification": {
+          "verified": true,
+          "reason": "valid",
+          "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpRKapCRC1aQ7uu5UhlAAAQdwQACxV/ysbThpgvILUq5w4WJZI\nFA6kWz/lR32/8364+AviQVa16UvEgYD4XEIOVD3uP4XFDiMeblMjKw43onqQzX9j\n3e97pUVeQm/B1ZiI0zUC6p/aqxX2TqbMtd77mudqvCqWseq32QLcqtzQbouARxXh\n1y5OFOXVzrer1MhmawVpkuH3sPucwsge4sSuaR80ibBzKkOCMaylrQCHAGMMi8Kb\nG/tfx1TDpzmaCf0y2XQqe2tgdv1dg8Df7SAKINdwJF9m7dV1P3+XPynromaJ0UTB\nzAFVnTinwsS6wsmAHFUNw03VjeUEPDYUyOnRtj145/tj2aigXrv+eYyh2ZIx9Gvb\nJpoJGhqLHUfR4xfUTS2j5ZA/I4EDhFVVx3319y/f2l3++Ts/G8lhOfQ58pDWcVQ3\nxfb+rG/bIyR9JWaP8FkxnEbmzvWqFXCMy2bkfzjhaL3x8DOgASqM8Lj1wg1xhqi6\nk9u8sRvMJiMLMUlJuRdsStGkcY6ZMI0hT+Bj19vZk+LUuUh/31hlHuOcv/id9snP\n45f0OGep/pP96X0AIkrPR6rk9QwqsmnaDa9lEoIAQqN4Wx4S1Qu62llwXYH2Ufkm\nRjGpDrFbgPX9dXj7DpawO8cF0l+R21MZxMaKwt0y1YCddRtkjW5kRvGkMm0rXgj3\nHZPFhqGkQsx6rn70JkPT\n=3c0b\n-----END PGP SIGNATURE-----\n",
+          "payload": "tree 6ca732bd72fb86e83b015861721660cd189b3bea\nparent 38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1766106793 +0800\ncommitter GitHub <noreply@github.com> 1766106793 +0800\n\nUpdate README.zh.md with new images and content\n\nAdded images and content about code search and planning iterations.",
+          "verified_at": "2025-12-19T01:13:13Z"
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1a62a0ef16158b06731c77bdd55162f06ee3d48f/comments",
+      "author": {
+        "login": "shuxueshuxue",
+        "id": 98064968,
+        "node_id": "U_kgDOBdhaSA",
+        "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/shuxueshuxue",
+        "html_url": "https://github.com/shuxueshuxue",
+        "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+        "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+        "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+        "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+        "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+        "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "web-flow",
+        "id": 19864447,
+        "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+        "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/web-flow",
+        "html_url": "https://github.com/web-flow",
+        "followers_url": "https://api.github.com/users/web-flow/followers",
+        "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+        "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+        "organizations_url": "https://api.github.com/users/web-flow/orgs",
+        "repos_url": "https://api.github.com/users/web-flow/repos",
+        "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/web-flow/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c"
+        }
+      ]
+    },
+    {
+      "sha": "38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c",
+      "node_id": "C_kwDOQnjG49oAKDM4YWRmOGJlYmZkYzczOTlkYjk2YzRlOGI1N2Q5OTE1ZThjZGJmN2M",
+      "commit": {
+        "author": {
+          "name": "F2J",
+          "email": "98064968+shuxueshuxue@users.noreply.github.com",
+          "date": "2025-12-19T01:11:38Z"
+        },
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "date": "2025-12-19T01:11:38Z"
+        },
+        "message": "Change image source in README\n\nUpdated image source in README.md to a new URL.",
+        "tree": {
+          "sha": "0faa4ce8c8841c77095e12a7f56473ef45d10a5a",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/0faa4ce8c8841c77095e12a7f56473ef45d10a5a"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c",
+        "comment_count": 0,
+        "verification": {
+          "verified": true,
+          "reason": "valid",
+          "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpRKZKCRC1aQ7uu5UhlAAAbvIQAFuSTTBJu1S4MiBgUgfudsW5\nqSvglYJohUmdS8nK7Mak3xiidMI2T3oXC4Da+DI+VSo8Vp15OKauJqwMmB54nmw6\nWD3y7RPzNZIoiyerUyBpoDkoZyAVbWiHYg+jzkCHs/J0dpe3fVausRp/p+T6Lx7b\ndWp0k7Rdayf/VCeqNvsThhJt1XRfeTMEKN4893Kk8NSALG2DVoJdlVb2KCHOV/Lw\njM4p2p9n3VHZw3co+8rZPZY5cXj5hEArsWVlajDG0m113L1aHhTcS/KskjQ1mbxo\n/jefKkLEkr6sefyQTJYSWfNMctFm6xe4JFfSpYBQ7AEFtb9VLVCV9p3jW2yKJmHG\nYL2CJusU16D5xlnYoYkeqiqB0aiz+U57ORIs7WLIlfsUxkoSmflhUy6tvf0Kz80h\nmxrMydBIq5jH6Kuq9wCvyB1wCwFaYadd2RrFCg5wgm1RPSXyRb3ekCSKzY5nlhZf\nrdUCMwklo/mj6QrnQ2MOFGX2y98syME4qNVt+QP9XVvCxvz2xQgh0mTYHaXs3GWT\nfmpC08AeXor1jeJQzcbm8GMUUw0F/9oQ3BEiyUKzT6rfXt+GOfHIA3PTfCCDyKHO\nUzx5QUu8IQxEVt31LwamIyxLw62PvBCiJsn6vLyPpkdga+t/3JqluEM09y0OMIxe\nBsTEYE4PXmTr+cXs0U8P\n=uiWV\n-----END PGP SIGNATURE-----\n",
+          "payload": "tree 0faa4ce8c8841c77095e12a7f56473ef45d10a5a\nparent 09fd6f0c9472827fa1403155937cc34d5f2038a6\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1766106698 +0800\ncommitter GitHub <noreply@github.com> 1766106698 +0800\n\nChange image source in README\n\nUpdated image source in README.md to a new URL.",
+          "verified_at": "2025-12-19T01:11:39Z"
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c/comments",
+      "author": {
+        "login": "shuxueshuxue",
+        "id": 98064968,
+        "node_id": "U_kgDOBdhaSA",
+        "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/shuxueshuxue",
+        "html_url": "https://github.com/shuxueshuxue",
+        "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+        "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+        "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+        "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+        "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+        "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "web-flow",
+        "id": 19864447,
+        "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+        "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/web-flow",
+        "html_url": "https://github.com/web-flow",
+        "followers_url": "https://api.github.com/users/web-flow/followers",
+        "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+        "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+        "organizations_url": "https://api.github.com/users/web-flow/orgs",
+        "repos_url": "https://api.github.com/users/web-flow/repos",
+        "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/web-flow/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "09fd6f0c9472827fa1403155937cc34d5f2038a6",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/09fd6f0c9472827fa1403155937cc34d5f2038a6",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/09fd6f0c9472827fa1403155937cc34d5f2038a6"
+        }
+      ]
+    },
+    {
+      "sha": "09fd6f0c9472827fa1403155937cc34d5f2038a6",
+      "node_id": "C_kwDOQnjG49oAKDA5ZmQ2ZjBjOTQ3MjgyN2ZhMTQwMzE1NTkzN2NjMzRkNWYyMDM4YTY",
+      "commit": {
+        "author": {
+          "name": "F2J",
+          "email": "98064968+shuxueshuxue@users.noreply.github.com",
+          "date": "2025-12-19T01:10:07Z"
+        },
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "date": "2025-12-19T01:10:07Z"
+        },
+        "message": "Update README to include new planning section\n\nAdded section on 'Two hops searching and planning' with image.",
+        "tree": {
+          "sha": "1304719887e442b32b5962872d6b91d7ea3cda95",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/1304719887e442b32b5962872d6b91d7ea3cda95"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/09fd6f0c9472827fa1403155937cc34d5f2038a6",
+        "comment_count": 0,
+        "verification": {
+          "verified": true,
+          "reason": "valid",
+          "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpRKXvCRC1aQ7uu5UhlAAArPcQAHfkwHyo4mEeBCuLptRgGjbO\nofa7hWXkzVTL8l7r9QB1Wpog+QM2aFxFnLvEJqTIEXVxe1CPwBdVgvYVf9ixqTmW\nmMN7KTuyyrRQscbz0zkQuPYujqMiVdQHtztKnkN7we0G7wnncer6burTAh/u8alQ\n5+NMDcTMVsnvZ+X7rhyBClI9+DSRFTVXEGgwgtD1tkz4e5mmGuOLs5JSXDd1USqS\nUJ2JTBVNJcSserw2vSII5KlPiF8zIZAhkXyzUaM1OY8TnSpFq1SkI6qcVW5UuvX9\n9cIn2ItWuDJdExJe2N+yhUKI1fbl1a6Pa3trJddGh6Ly5PuDPFXkqXudnSw20uTe\nsrgg3CxlqasAYdVo/xkLLlm3XR8dHqhyh/mUoaEIq87usaEYiZpks5jXQ8WrPIey\n7H0bsntZoo3/pUkFxW0nA6D1XE0/aKwe4hqhev6+XfneZK0afXdtG8xUS6QJ3kif\nWHpvYot8NsQ0DyU9VRmO/6XQpPElOgmG7aVn9RbbEmFY3C0hewxZhcFQz1TSvlqG\nBnPWFhPlYASf8zw+YZAP4MT4+PgPV3kQ/nAWovNqLGhuhnKVhGuSWrUbqGqx5K0M\n5H9HOCx1Uk7VlfWz5SH8vtfsiyiI7CrtELyJdTp/VKHwoMeuCplIRHOZGvQHJNTA\nz3175d8rZJGDcFLB0toA\n=NLIG\n-----END PGP SIGNATURE-----\n",
+          "payload": "tree 1304719887e442b32b5962872d6b91d7ea3cda95\nparent 1b14ff8c0e9a32313da0033cf3c538f3394fba4a\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1766106607 +0800\ncommitter GitHub <noreply@github.com> 1766106607 +0800\n\nUpdate README to include new planning section\n\nAdded section on 'Two hops searching and planning' with image.",
+          "verified_at": "2025-12-19T01:10:07Z"
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/09fd6f0c9472827fa1403155937cc34d5f2038a6",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/09fd6f0c9472827fa1403155937cc34d5f2038a6",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/09fd6f0c9472827fa1403155937cc34d5f2038a6/comments",
+      "author": {
+        "login": "shuxueshuxue",
+        "id": 98064968,
+        "node_id": "U_kgDOBdhaSA",
+        "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/shuxueshuxue",
+        "html_url": "https://github.com/shuxueshuxue",
+        "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+        "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+        "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+        "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+        "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+        "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "web-flow",
+        "id": 19864447,
+        "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+        "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/web-flow",
+        "html_url": "https://github.com/web-flow",
+        "followers_url": "https://api.github.com/users/web-flow/followers",
+        "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+        "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+        "organizations_url": "https://api.github.com/users/web-flow/orgs",
+        "repos_url": "https://api.github.com/users/web-flow/repos",
+        "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/web-flow/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1b14ff8c0e9a32313da0033cf3c538f3394fba4a"
+        }
+      ]
+    },
+    {
+      "sha": "1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+      "node_id": "C_kwDOQnjG49oAKDFiMTRmZjhjMGU5YTMyMzEzZGEwMDMzY2YzYzUzOGYzMzk0ZmJhNGE",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-17T09:37:21Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-17T09:37:21Z"
+        },
+        "message": "connection table change",
+        "tree": {
+          "sha": "c2aa297bda4af82270daeac51cfe0002548a5df2",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/c2aa297bda4af82270daeac51cfe0002548a5df2"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b14ff8c0e9a32313da0033cf3c538f3394fba4a/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "664ffbd2d4350b93efec80bc73fe3423fc706af6",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/664ffbd2d4350b93efec80bc73fe3423fc706af6",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/664ffbd2d4350b93efec80bc73fe3423fc706af6"
+        }
+      ]
+    },
+    {
+      "sha": "664ffbd2d4350b93efec80bc73fe3423fc706af6",
+      "node_id": "C_kwDOQnjG49oAKDY2NGZmYmQyZDQzNTBiOTNlZmVjODBiYzczZmUzNDIzZmM3MDZhZjY",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-17T09:27:01Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-17T09:27:01Z"
+        },
+        "message": "Merge branch 'main' of https://github.com/shuxueshuxue/SpexFlow",
+        "tree": {
+          "sha": "6a18d8cdbe09a01cb57d3b7b2c3ee9ae921b1db4",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6a18d8cdbe09a01cb57d3b7b2c3ee9ae921b1db4"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/664ffbd2d4350b93efec80bc73fe3423fc706af6",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/664ffbd2d4350b93efec80bc73fe3423fc706af6",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/664ffbd2d4350b93efec80bc73fe3423fc706af6",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/664ffbd2d4350b93efec80bc73fe3423fc706af6/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "f7241528d5a73699856fc213cf0ac4cd9969a502",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/f7241528d5a73699856fc213cf0ac4cd9969a502",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/f7241528d5a73699856fc213cf0ac4cd9969a502"
+        },
+        {
+          "sha": "8683fabd585e736316e65d66d56298261cd7196d",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/8683fabd585e736316e65d66d56298261cd7196d",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/8683fabd585e736316e65d66d56298261cd7196d"
+        }
+      ]
+    },
+    {
+      "sha": "f7241528d5a73699856fc213cf0ac4cd9969a502",
+      "node_id": "C_kwDOQnjG49oAKGY3MjQxNTI4ZDVhNzM2OTk4NTZmYzIxM2NmMGFjNGNkOTk2OWE1MDI",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-17T09:25:02Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-17T09:25:02Z"
+        },
+        "message": "context converter can now connect to context converter",
+        "tree": {
+          "sha": "34199b128f1231cf22fe101734f70582538a5de8",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/34199b128f1231cf22fe101734f70582538a5de8"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/f7241528d5a73699856fc213cf0ac4cd9969a502",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/f7241528d5a73699856fc213cf0ac4cd9969a502",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/f7241528d5a73699856fc213cf0ac4cd9969a502/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e0c4760c2ba3802c5c8af9773aacafd741c8c88f"
+        }
+      ]
+    },
+    {
+      "sha": "8683fabd585e736316e65d66d56298261cd7196d",
+      "node_id": "C_kwDOQnjG49oAKDg2ODNmYWJkNTg1ZTczNjMxNmU2NWQ2NmQ1NjI5ODI2MWNkNzE5NmQ",
+      "commit": {
+        "author": {
+          "name": "F2J",
+          "email": "98064968+shuxueshuxue@users.noreply.github.com",
+          "date": "2025-12-16T09:54:32Z"
+        },
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "date": "2025-12-16T09:54:32Z"
+        },
+        "message": "Replace workflow image with a new one\n\nUpdated image reference in README.zh.md",
+        "tree": {
+          "sha": "e4058acecaf6d7a9209ce6a33bf6e9274bc4ffc7",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/e4058acecaf6d7a9209ce6a33bf6e9274bc4ffc7"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/8683fabd585e736316e65d66d56298261cd7196d",
+        "comment_count": 0,
+        "verification": {
+          "verified": true,
+          "reason": "valid",
+          "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpQSxYCRC1aQ7uu5UhlAAAv68QAClj1Keu2Ugj4a1ohWbhIecR\nQc5fNFzY7e5dLNPMINQCD8qQY3md4rQlc03y2R1IByQYBVDiwOL4txQKVCRQh26v\n3HD4DFFukn5b6zaIxkN8DiNbsQQYBFjQGB0uNR/odfoXyapLHDHEQp9ROXlYZAiK\nX0jornM+sc3fyZkA2l/y0TXhv59ErLeZn2O9M8qWPrBqAVf8DnY6dOp0qXWKup2I\n6N2fj3E3hHzc+UodJ0i1auC/TkvnO5CVDGOuOWP6aO77Vp9BlEr+Cbe7auMBNG9A\nnEqgOX9sSA9Tp+Gc/YX9fWjVJUxx4Yq+W/Iit5mNiMyGAyEQhHEbM3772ybRciHI\nONOgqw6rxSALf39NrSWYE+LXpCwoL/1YmW1lRj3qhFspZG+rUDKze/gK1egmo9C9\nePXdyQTG09ZktvV2gCskdz+XOM0We6RdsM27wR1ILQquHnl4OPWNkpvc2tXaW0hF\n5G0ywtJXSOnNFrkTtER0wHZxsj8Edi+gcgWYorp8plgy+IB80VL1QKrDOohXzjSj\nCDXPEZh896ZgPEpp2Lf78zBOe6xbpUQF1MnkhW59w3l+Vqt4EpNIxrt+KLhMFdRm\naDvpAHmqbTydefVJ9/gn3kdTbyn5pS0nNHJmhHtGG93IQbktxOxYpxpmRUXGlCQ+\nz3AM+Ntg8EaoLlRrrRuP\n=XTxG\n-----END PGP SIGNATURE-----\n",
+          "payload": "tree e4058acecaf6d7a9209ce6a33bf6e9274bc4ffc7\nparent e0c4760c2ba3802c5c8af9773aacafd741c8c88f\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1765878872 +0800\ncommitter GitHub <noreply@github.com> 1765878872 +0800\n\nReplace workflow image with a new one\n\nUpdated image reference in README.zh.md",
+          "verified_at": "2025-12-16T09:54:32Z"
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/8683fabd585e736316e65d66d56298261cd7196d",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/8683fabd585e736316e65d66d56298261cd7196d",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/8683fabd585e736316e65d66d56298261cd7196d/comments",
+      "author": {
+        "login": "shuxueshuxue",
+        "id": 98064968,
+        "node_id": "U_kgDOBdhaSA",
+        "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/shuxueshuxue",
+        "html_url": "https://github.com/shuxueshuxue",
+        "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+        "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+        "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+        "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+        "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+        "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "web-flow",
+        "id": 19864447,
+        "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+        "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/web-flow",
+        "html_url": "https://github.com/web-flow",
+        "followers_url": "https://api.github.com/users/web-flow/followers",
+        "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+        "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+        "organizations_url": "https://api.github.com/users/web-flow/orgs",
+        "repos_url": "https://api.github.com/users/web-flow/repos",
+        "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/web-flow/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e0c4760c2ba3802c5c8af9773aacafd741c8c88f"
+        }
+      ]
+    },
+    {
+      "sha": "e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+      "node_id": "C_kwDOQnjG49oAKGUwYzQ3NjBjMmJhMzgwMmM1YzhhZjk3NzNhYWNhZmQ3NDFjOGM4OGY",
+      "commit": {
+        "author": {
+          "name": "F2J",
+          "email": "98064968+shuxueshuxue@users.noreply.github.com",
+          "date": "2025-12-16T04:27:34Z"
+        },
+        "committer": {
+          "name": "GitHub",
+          "email": "noreply@github.com",
+          "date": "2025-12-16T04:27:34Z"
+        },
+        "message": "Replace workflow image with a new source\n\nUpdated image in README with a new source link.",
+        "tree": {
+          "sha": "2c278ea6f0d58536e83c33063545fd6a6e225033",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/2c278ea6f0d58536e83c33063545fd6a6e225033"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+        "comment_count": 0,
+        "verification": {
+          "verified": true,
+          "reason": "valid",
+          "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpQN+2CRC1aQ7uu5UhlAAAB74QAKDeNCrKk8Ekd1WLF1u9X4XZ\nyTBJiCdsVgSZGJGFRgrZ5cY8p3aRydBxo5EZUramFRSki/FibO900dXnL5+VzpTv\nhZfDhUyJpGttmuMlzALLMAk8pV818HLpYoOCvIjNKe4L6Q6gH1FfNbAqDeO/LIYW\n00VAVVONqOtrXvU4HWtARfYzOOJIhgHUOiqYoRqf4QxG3HSg+yGxR6eECTFG1A8W\ne+v+kt9LDJiBwHtS7uNNubJZN2FMkxv5JJIvH59bw5VkthLwnxx0l55ZNcqQMn86\n4XWEaMJ4m73sCbK/6u/4mGnCy6kHrZkcOp3VlndlBT4PzIr2/PHOuqA66lkk1DGJ\nNOwPirwRA0a+tn1JNr5KEW6cR2yhS6OsbOeghsR1nFhCHpcQ29gH048sLmvh8CwA\nf0AbsaoYOGz32e62zYJi8k5S8tVnPI5TMY53wHej5c4e9zviEu4l14WD8Rf4kHi3\nf6oTj93qIJ/WjN8yvvn9d3bh8Dl801icfnhawVm8nsBrywsaQD+yQ7RwytOOFIpG\nRbQJ0eiNtv+5ht2eGRZdnrYfHoc/+zWLDNfqAVuwWJ1yG3rp5tD4wabcmE2vwcBP\nkMDRT57iNuQ/CrajnF4KbgnF3+5xQr4TQfHgHQKQIIwpq+fx5MOhE0JmbpomJHMF\nwM4SATDNITdJoHKnuF5y\n=ZLtT\n-----END PGP SIGNATURE-----\n",
+          "payload": "tree 2c278ea6f0d58536e83c33063545fd6a6e225033\nparent c5fe8d690b9bd763a2d112625ae28618e0677c20\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1765859254 +0800\ncommitter GitHub <noreply@github.com> 1765859254 +0800\n\nReplace workflow image with a new source\n\nUpdated image in README with a new source link.",
+          "verified_at": "2025-12-16T04:27:35Z"
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e0c4760c2ba3802c5c8af9773aacafd741c8c88f/comments",
+      "author": {
+        "login": "shuxueshuxue",
+        "id": 98064968,
+        "node_id": "U_kgDOBdhaSA",
+        "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/shuxueshuxue",
+        "html_url": "https://github.com/shuxueshuxue",
+        "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+        "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+        "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+        "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+        "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+        "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "web-flow",
+        "id": 19864447,
+        "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+        "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/web-flow",
+        "html_url": "https://github.com/web-flow",
+        "followers_url": "https://api.github.com/users/web-flow/followers",
+        "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+        "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+        "organizations_url": "https://api.github.com/users/web-flow/orgs",
+        "repos_url": "https://api.github.com/users/web-flow/repos",
+        "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/web-flow/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "c5fe8d690b9bd763a2d112625ae28618e0677c20",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/c5fe8d690b9bd763a2d112625ae28618e0677c20",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/c5fe8d690b9bd763a2d112625ae28618e0677c20"
+        }
+      ]
+    },
+    {
+      "sha": "c5fe8d690b9bd763a2d112625ae28618e0677c20",
+      "node_id": "C_kwDOQnjG49oAKGM1ZmU4ZDY5MGI5YmQ3NjNhMmQxMTI2MjVhZTI4NjE4ZTA2NzdjMjA",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T04:24:44Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T04:24:44Z"
+        },
+        "message": "fix archive node display",
+        "tree": {
+          "sha": "6dab3c926bf6baf5e49871c4ce6f4de7ae6fc862",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6dab3c926bf6baf5e49871c4ce6f4de7ae6fc862"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/c5fe8d690b9bd763a2d112625ae28618e0677c20",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/c5fe8d690b9bd763a2d112625ae28618e0677c20",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/c5fe8d690b9bd763a2d112625ae28618e0677c20",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/c5fe8d690b9bd763a2d112625ae28618e0677c20/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "234cbbffae351546713b6e8c0f875ebd43986463",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/234cbbffae351546713b6e8c0f875ebd43986463",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/234cbbffae351546713b6e8c0f875ebd43986463"
+        }
+      ]
+    },
+    {
+      "sha": "234cbbffae351546713b6e8c0f875ebd43986463",
+      "node_id": "C_kwDOQnjG49oAKDIzNGNiYmZmYWUzNTE1NDY3MTNiNmU4YzBmODc1ZWJkNDM5ODY0NjM",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T04:18:23Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T04:18:23Z"
+        },
+        "message": "archive as functional nodes",
+        "tree": {
+          "sha": "159f8a52e32a56538ee93367ad0c5d80a3512083",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/159f8a52e32a56538ee93367ad0c5d80a3512083"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/234cbbffae351546713b6e8c0f875ebd43986463",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/234cbbffae351546713b6e8c0f875ebd43986463",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/234cbbffae351546713b6e8c0f875ebd43986463",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/234cbbffae351546713b6e8c0f875ebd43986463/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "a20292d352edbd05aa37e1bc25007198fa86ae2b",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/a20292d352edbd05aa37e1bc25007198fa86ae2b",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/a20292d352edbd05aa37e1bc25007198fa86ae2b"
+        }
+      ]
+    },
+    {
+      "sha": "a20292d352edbd05aa37e1bc25007198fa86ae2b",
+      "node_id": "C_kwDOQnjG49oAKGEyMDI5MmQzNTJlZGJkMDVhYTM3ZTFiYzI1MDA3MTk4ZmE4NmFlMmI",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T03:46:36Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T03:46:36Z"
+        },
+        "message": "archive",
+        "tree": {
+          "sha": "b9a2e640281222371445802051b981ba1873a5c0",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/b9a2e640281222371445802051b981ba1873a5c0"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/a20292d352edbd05aa37e1bc25007198fa86ae2b",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/a20292d352edbd05aa37e1bc25007198fa86ae2b",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/a20292d352edbd05aa37e1bc25007198fa86ae2b/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "7f32930f1ef5ef66a4f3fee96e87288e42774417",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/7f32930f1ef5ef66a4f3fee96e87288e42774417",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/7f32930f1ef5ef66a4f3fee96e87288e42774417"
+        }
+      ]
+    },
+    {
+      "sha": "7f32930f1ef5ef66a4f3fee96e87288e42774417",
+      "node_id": "C_kwDOQnjG49oAKDdmMzI5MzBmMWVmNWVmNjZhNGYzZmVlOTZlODcyODhlNDI3NzQ0MTc",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T03:14:26Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T03:14:26Z"
+        },
+        "message": "add quick layout",
+        "tree": {
+          "sha": "6e88f4f5dd17d3290303a99f0bd4b48f089c3d24",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6e88f4f5dd17d3290303a99f0bd4b48f089c3d24"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/7f32930f1ef5ef66a4f3fee96e87288e42774417",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/7f32930f1ef5ef66a4f3fee96e87288e42774417",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/7f32930f1ef5ef66a4f3fee96e87288e42774417/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/0e5c0e5b50c8c57c774a9994137eb9b4037703e7"
+        }
+      ]
+    },
+    {
+      "sha": "0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+      "node_id": "C_kwDOQnjG49oAKDBlNWMwZTViNTBjOGM1N2M3NzRhOTk5NDEzN2ViOWI0MDM3NzAzZTc",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T02:15:59Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T02:15:59Z"
+        },
+        "message": "dynamic edge boldness",
+        "tree": {
+          "sha": "132cd45d74789f45fcdddaeb3f3e73a2cbbd52c3",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/132cd45d74789f45fcdddaeb3f3e73a2cbbd52c3"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0e5c0e5b50c8c57c774a9994137eb9b4037703e7/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "30affa373e3b75117a4c944597f9a683637caad8",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/30affa373e3b75117a4c944597f9a683637caad8",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/30affa373e3b75117a4c944597f9a683637caad8"
+        }
+      ]
+    },
+    {
+      "sha": "30affa373e3b75117a4c944597f9a683637caad8",
+      "node_id": "C_kwDOQnjG49oAKDMwYWZmYTM3M2UzYjc1MTE3YTRjOTQ0NTk3ZjlhNjgzNjM3Y2FhZDg",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T02:04:13Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T02:04:13Z"
+        },
+        "message": "new lock/mute style",
+        "tree": {
+          "sha": "6e54b2e71c50821d695163bbda1921b0403f6676",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6e54b2e71c50821d695163bbda1921b0403f6676"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/30affa373e3b75117a4c944597f9a683637caad8",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/30affa373e3b75117a4c944597f9a683637caad8",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/30affa373e3b75117a4c944597f9a683637caad8",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/30affa373e3b75117a4c944597f9a683637caad8/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5"
+        }
+      ]
+    },
+    {
+      "sha": "1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+      "node_id": "C_kwDOQnjG49oAKDFiMTU2YzFiMmZjMGRjNTllZmExYmRmYjk4NTUyZTY2NmUzZjBlYjU",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T01:47:15Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-16T01:47:15Z"
+        },
+        "message": "better manual import node output display and string concatenation order (instructions now are always after the code context)",
+        "tree": {
+          "sha": "ec81a2cd5ecf4643edd314c7ae7e305376db5c6a",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/ec81a2cd5ecf4643edd314c7ae7e305376db5c6a"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "d8f092362daef2e371dbe110d1659756b2ac8c0a",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/d8f092362daef2e371dbe110d1659756b2ac8c0a",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/d8f092362daef2e371dbe110d1659756b2ac8c0a"
+        }
+      ]
+    },
+    {
+      "sha": "d8f092362daef2e371dbe110d1659756b2ac8c0a",
+      "node_id": "C_kwDOQnjG49oAKGQ4ZjA5MjM2MmRhZWYyZTM3MWRiZTExMGQxNjU5NzU2YjJhYzhjMGE",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T10:28:15Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T10:28:15Z"
+        },
+        "message": "update readme",
+        "tree": {
+          "sha": "0b731e7969803dbbc2603a7f3b144a61f2869a4c",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/0b731e7969803dbbc2603a7f3b144a61f2869a4c"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/d8f092362daef2e371dbe110d1659756b2ac8c0a",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/d8f092362daef2e371dbe110d1659756b2ac8c0a",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/d8f092362daef2e371dbe110d1659756b2ac8c0a",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/d8f092362daef2e371dbe110d1659756b2ac8c0a/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/998e3eeb93dc5e5da58c1bfd94630754e660dfbe"
+        }
+      ]
+    },
+    {
+      "sha": "998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+      "node_id": "C_kwDOQnjG49oAKDk5OGUzZWViOTNkYzVlNWRhNThjMWJmZDk0NjMwNzU0ZTY2MGRmYmU",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T10:26:09Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T10:26:09Z"
+        },
+        "message": "full file mode aware display of merged code files",
+        "tree": {
+          "sha": "3ea7b0da5fe2bd05fd970a971f30728dbb6b10cc",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/3ea7b0da5fe2bd05fd970a971f30728dbb6b10cc"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/998e3eeb93dc5e5da58c1bfd94630754e660dfbe/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "e83f4033b19e705f087dfb0b79cd4490c631a154",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e83f4033b19e705f087dfb0b79cd4490c631a154",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e83f4033b19e705f087dfb0b79cd4490c631a154"
+        }
+      ]
+    },
+    {
+      "sha": "e83f4033b19e705f087dfb0b79cd4490c631a154",
+      "node_id": "C_kwDOQnjG49oAKGU4M2Y0MDMzYjE5ZTcwNWYwODdkZmIwYjc5Y2Q0NDkwYzYzMWExNTQ",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T10:19:39Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T10:19:39Z"
+        },
+        "message": "make line merging output persistent",
+        "tree": {
+          "sha": "490688fdef613217e28940f8dc5d257a70a18771",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/490688fdef613217e28940f8dc5d257a70a18771"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/e83f4033b19e705f087dfb0b79cd4490c631a154",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e83f4033b19e705f087dfb0b79cd4490c631a154",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e83f4033b19e705f087dfb0b79cd4490c631a154",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e83f4033b19e705f087dfb0b79cd4490c631a154/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "9ab968a1329ed1436e6b4611e548f6da02db9127",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/9ab968a1329ed1436e6b4611e548f6da02db9127",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/9ab968a1329ed1436e6b4611e548f6da02db9127"
+        }
+      ]
+    },
+    {
+      "sha": "9ab968a1329ed1436e6b4611e548f6da02db9127",
+      "node_id": "C_kwDOQnjG49oAKDlhYjk2OGExMzI5ZWQxNDM2ZTZiNDYxMWU1NDhmNmRhMDJkYjkxMjc",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T10:11:08Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T10:11:08Z"
+        },
+        "message": "add code merge and deduplication logic to context converter node",
+        "tree": {
+          "sha": "254d352eae660e8c575cabd7b25914ed3bc4aa37",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/254d352eae660e8c575cabd7b25914ed3bc4aa37"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/9ab968a1329ed1436e6b4611e548f6da02db9127",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/9ab968a1329ed1436e6b4611e548f6da02db9127",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/9ab968a1329ed1436e6b4611e548f6da02db9127/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "73bc0f527e4e95a337fe1cd17636c1bc7f81d30e",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/73bc0f527e4e95a337fe1cd17636c1bc7f81d30e",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/73bc0f527e4e95a337fe1cd17636c1bc7f81d30e"
+        }
+      ]
+    },
+    {
+      "sha": "73bc0f527e4e95a337fe1cd17636c1bc7f81d30e",
+      "node_id": "C_kwDOQnjG49oAKDczYmMwZjUyN2U0ZTk1YTMzN2ZlMWNkMTc2MzZjMWJjN2Y4MWQzMGU",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T08:01:15Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-15T08:01:15Z"
+        },
+        "message": "change default settings",
+        "tree": {
+          "sha": "660fa6751b44c90059d883608c584ea3344779ac",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/660fa6751b44c90059d883608c584ea3344779ac"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/73bc0f527e4e95a337fe1cd17636c1bc7f81d30e",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/73bc0f527e4e95a337fe1cd17636c1bc7f81d30e",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/73bc0f527e4e95a337fe1cd17636c1bc7f81d30e",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/73bc0f527e4e95a337fe1cd17636c1bc7f81d30e/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/0d665fb171cdf0c6e701f553b057a0b686bc3bf7"
+        }
+      ]
+    },
+    {
+      "sha": "0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+      "node_id": "C_kwDOQnjG49oAKDBkNjY1ZmIxNzFjZGYwYzZlNzAxZjU1M2IwNTdhMGI2ODZiYzNiZjc",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T15:19:13Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T15:19:13Z"
+        },
+        "message": "edge style for muted nodes",
+        "tree": {
+          "sha": "5311da57c2d265565e6bc66443561705edad9e61",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/5311da57c2d265565e6bc66443561705edad9e61"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/0d665fb171cdf0c6e701f553b057a0b686bc3bf7",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0d665fb171cdf0c6e701f553b057a0b686bc3bf7/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "85baee16c04a06b589f6600dc8f917a63a6b96ac",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/85baee16c04a06b589f6600dc8f917a63a6b96ac",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/85baee16c04a06b589f6600dc8f917a63a6b96ac"
+        }
+      ]
+    },
+    {
+      "sha": "85baee16c04a06b589f6600dc8f917a63a6b96ac",
+      "node_id": "C_kwDOQnjG49oAKDg1YmFlZTE2YzA0YTA2YjU4OWY2NjAwZGM4ZjkxN2E2M2E2Yjk2YWM",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T14:53:01Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T14:53:01Z"
+        },
+        "message": "disable node when when predecessors not succeeded",
+        "tree": {
+          "sha": "7e3007a21790394c2b2c21cec8c5d445b32703c3",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/7e3007a21790394c2b2c21cec8c5d445b32703c3"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/85baee16c04a06b589f6600dc8f917a63a6b96ac",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/85baee16c04a06b589f6600dc8f917a63a6b96ac",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/85baee16c04a06b589f6600dc8f917a63a6b96ac",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/85baee16c04a06b589f6600dc8f917a63a6b96ac/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8"
+        }
+      ]
+    },
+    {
+      "sha": "4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+      "node_id": "C_kwDOQnjG49oAKDRhOGMwMjM3Y2VmYzJmYmJjNDRlMDgxZDczYjkxZWI3NDRmMTdiYzg",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T13:43:15Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T13:43:15Z"
+        },
+        "message": "add spec interface to roadmap",
+        "tree": {
+          "sha": "a9de45e9f98003d2000e536f26b3101e0d5f0e36",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/a9de45e9f98003d2000e536f26b3101e0d5f0e36"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f"
+        }
+      ]
+    },
+    {
+      "sha": "22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+      "node_id": "C_kwDOQnjG49oAKDIyYWVlN2ZjNGY4YTZmYTQ1ZTYyY2UyOGMzNGQwYmQ1NzU2MGJhMGY",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T03:24:46Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T03:24:46Z"
+        },
+        "message": "default to disable full file mode for context converter",
+        "tree": {
+          "sha": "58a8ce8bcb508c1303f63a514cf3acc471395dd9",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/58a8ce8bcb508c1303f63a514cf3acc471395dd9"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/22aee7fc4f8a6fa45e62ce28c34d0bd57560ba0f/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "3dc22f50515ae431dc6631f141d6aa63b3797738",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/3dc22f50515ae431dc6631f141d6aa63b3797738",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/3dc22f50515ae431dc6631f141d6aa63b3797738"
+        }
+      ]
+    },
+    {
+      "sha": "3dc22f50515ae431dc6631f141d6aa63b3797738",
+      "node_id": "C_kwDOQnjG49oAKDNkYzIyZjUwNTE1YWU0MzFkYzY2MzFmMTQxZDZhYTYzYjM3OTc3Mzg",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T03:14:30Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T03:14:30Z"
+        },
+        "message": "readme improvement",
+        "tree": {
+          "sha": "8c9173575f774dbaa77ccc261e049963da3c3896",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/8c9173575f774dbaa77ccc261e049963da3c3896"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/3dc22f50515ae431dc6631f141d6aa63b3797738",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/3dc22f50515ae431dc6631f141d6aa63b3797738",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/3dc22f50515ae431dc6631f141d6aa63b3797738",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/3dc22f50515ae431dc6631f141d6aa63b3797738/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "5945efa83af3705177c038965358d7bc0dc35285",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/5945efa83af3705177c038965358d7bc0dc35285",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/5945efa83af3705177c038965358d7bc0dc35285"
+        }
+      ]
+    },
+    {
+      "sha": "5945efa83af3705177c038965358d7bc0dc35285",
+      "node_id": "C_kwDOQnjG49oAKDU5NDVlZmE4M2FmMzcwNTE3N2MwMzg5NjUzNThkN2JjMGRjMzUyODU",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T03:04:11Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-14T03:04:11Z"
+        },
+        "message": "add roadmap",
+        "tree": {
+          "sha": "e41f474eff64a9daa6e986a20894545a6c2444c2",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/e41f474eff64a9daa6e986a20894545a6c2444c2"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/5945efa83af3705177c038965358d7bc0dc35285",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/5945efa83af3705177c038965358d7bc0dc35285",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/5945efa83af3705177c038965358d7bc0dc35285",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/5945efa83af3705177c038965358d7bc0dc35285/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4"
+        }
+      ]
+    },
+    {
+      "sha": "894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+      "node_id": "C_kwDOQnjG49oAKDg5NDkyNmJiNzhkMDZkNTE0MzBmYmJjMzdhMmM0ZmIxY2FhMmZmYjQ",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-13T16:49:05Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-13T16:49:05Z"
+        },
+        "message": "feat: add visual output preview for code-search nodes\n\nDisplay code-search output with file icons and line range badges instead of raw JSON. Only show file list in sidebar, hide explanation and raw JSON preview.",
+        "tree": {
+          "sha": "cf5b22195bf0a92ae6f7097a9b918dbe40a3ecfa",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/cf5b22195bf0a92ae6f7097a9b918dbe40a3ecfa"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e81aec87a13809eb7fec47202fa5cdaa91d75cc7"
+        }
+      ]
+    },
+    {
+      "sha": "e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+      "node_id": "C_kwDOQnjG49oAKGU4MWFlYzg3YTEzODA5ZWI3ZmVjNDcyMDJmYTVjZGFhOTFkNzVjYzc",
+      "commit": {
+        "author": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-13T16:11:39Z"
+        },
+        "committer": {
+          "name": "shuxueshuxue",
+          "email": "lexicalmathical@gmail.com",
+          "date": "2025-12-13T16:11:39Z"
+        },
+        "message": "fix readme",
+        "tree": {
+          "sha": "cc43cdf2af867704a207024118afe13d1b6670e0",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/cc43cdf2af867704a207024118afe13d1b6670e0"
+        },
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+      "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+      "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e81aec87a13809eb7fec47202fa5cdaa91d75cc7/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "6040fb9349772f41c101cf5bff2832c5ce2e6ca3",
+          "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/6040fb9349772f41c101cf5bff2832c5ce2e6ca3",
+          "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/6040fb9349772f41c101cf5bff2832c5ce2e6ca3"
+        }
+      ]
+    }
+  ]
+}

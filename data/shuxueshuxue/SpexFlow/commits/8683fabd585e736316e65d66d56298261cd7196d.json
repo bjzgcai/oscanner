@@ -1,0 +1,106 @@
+{
+  "cached_at": "2025-12-22T15:31:59.814978",
+  "commit_sha": "8683fabd585e736316e65d66d56298261cd7196d",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "8683fabd585e736316e65d66d56298261cd7196d",
+    "node_id": "C_kwDOQnjG49oAKDg2ODNmYWJkNTg1ZTczNjMxNmU2NWQ2NmQ1NjI5ODI2MWNkNzE5NmQ",
+    "commit": {
+      "author": {
+        "name": "F2J",
+        "email": "98064968+shuxueshuxue@users.noreply.github.com",
+        "date": "2025-12-16T09:54:32Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "date": "2025-12-16T09:54:32Z"
+      },
+      "message": "Replace workflow image with a new one\n\nUpdated image reference in README.zh.md",
+      "tree": {
+        "sha": "e4058acecaf6d7a9209ce6a33bf6e9274bc4ffc7",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/e4058acecaf6d7a9209ce6a33bf6e9274bc4ffc7"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/8683fabd585e736316e65d66d56298261cd7196d",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpQSxYCRC1aQ7uu5UhlAAAv68QAClj1Keu2Ugj4a1ohWbhIecR\nQc5fNFzY7e5dLNPMINQCD8qQY3md4rQlc03y2R1IByQYBVDiwOL4txQKVCRQh26v\n3HD4DFFukn5b6zaIxkN8DiNbsQQYBFjQGB0uNR/odfoXyapLHDHEQp9ROXlYZAiK\nX0jornM+sc3fyZkA2l/y0TXhv59ErLeZn2O9M8qWPrBqAVf8DnY6dOp0qXWKup2I\n6N2fj3E3hHzc+UodJ0i1auC/TkvnO5CVDGOuOWP6aO77Vp9BlEr+Cbe7auMBNG9A\nnEqgOX9sSA9Tp+Gc/YX9fWjVJUxx4Yq+W/Iit5mNiMyGAyEQhHEbM3772ybRciHI\nONOgqw6rxSALf39NrSWYE+LXpCwoL/1YmW1lRj3qhFspZG+rUDKze/gK1egmo9C9\nePXdyQTG09ZktvV2gCskdz+XOM0We6RdsM27wR1ILQquHnl4OPWNkpvc2tXaW0hF\n5G0ywtJXSOnNFrkTtER0wHZxsj8Edi+gcgWYorp8plgy+IB80VL1QKrDOohXzjSj\nCDXPEZh896ZgPEpp2Lf78zBOe6xbpUQF1MnkhW59w3l+Vqt4EpNIxrt+KLhMFdRm\naDvpAHmqbTydefVJ9/gn3kdTbyn5pS0nNHJmhHtGG93IQbktxOxYpxpmRUXGlCQ+\nz3AM+Ntg8EaoLlRrrRuP\n=XTxG\n-----END PGP SIGNATURE-----\n",
+        "payload": "tree e4058acecaf6d7a9209ce6a33bf6e9274bc4ffc7\nparent e0c4760c2ba3802c5c8af9773aacafd741c8c88f\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1765878872 +0800\ncommitter GitHub <noreply@github.com> 1765878872 +0800\n\nReplace workflow image with a new one\n\nUpdated image reference in README.zh.md",
+        "verified_at": "2025-12-16T09:54:32Z"
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/8683fabd585e736316e65d66d56298261cd7196d",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/8683fabd585e736316e65d66d56298261cd7196d",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/8683fabd585e736316e65d66d56298261cd7196d/comments",
+    "author": {
+      "login": "shuxueshuxue",
+      "id": 98064968,
+      "node_id": "U_kgDOBdhaSA",
+      "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/shuxueshuxue",
+      "html_url": "https://github.com/shuxueshuxue",
+      "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+      "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+      "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+      "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+      "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+      "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "web-flow",
+      "id": 19864447,
+      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+      "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/web-flow",
+      "html_url": "https://github.com/web-flow",
+      "followers_url": "https://api.github.com/users/web-flow/followers",
+      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+      "organizations_url": "https://api.github.com/users/web-flow/orgs",
+      "repos_url": "https://api.github.com/users/web-flow/repos",
+      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/web-flow/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e0c4760c2ba3802c5c8af9773aacafd741c8c88f"
+      }
+    ],
+    "stats": {
+      "total": 2,
+      "additions": 1,
+      "deletions": 1
+    },
+    "files": [
+      {
+        "sha": "3d19b5b960324e715e276280b01f1383953331ad",
+        "filename": "README.zh.md",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/8683fabd585e736316e65d66d56298261cd7196d/README.zh.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/8683fabd585e736316e65d66d56298261cd7196d/README.zh.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.zh.md?ref=8683fabd585e736316e65d66d56298261cd7196d",
+        "patch": "@@ -18,7 +18,7 @@ SpexFlow 是一个基于 React Flow 的可视化 context/spec 工作流工具。\n \n **更大的画布**：把一些可复用的 context/指令块当作\"积木\"保存起来，需要更新时只 rerun 那个节点：\n \n-![SpexFlow workflow](docs/images/specflow-workflow.png)\n+<img width=\"2770\" height=\"1686\" alt=\"image\" src=\"https://github.com/user-attachments/assets/b0d105d5-f203-405a-b18f-44071302ce3f\" />\n \n ## 你能用它做什么\n "
+      }
+    ]
+  }
+}

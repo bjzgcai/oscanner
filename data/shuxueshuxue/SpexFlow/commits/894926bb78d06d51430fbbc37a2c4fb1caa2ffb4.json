@@ -1,0 +1,102 @@
+{
+  "cached_at": "2025-12-22T15:32:10.620169",
+  "commit_sha": "894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+    "node_id": "C_kwDOQnjG49oAKDg5NDkyNmJiNzhkMDZkNTE0MzBmYmJjMzdhMmM0ZmIxY2FhMmZmYjQ",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-13T16:49:05Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-13T16:49:05Z"
+      },
+      "message": "feat: add visual output preview for code-search nodes\n\nDisplay code-search output with file icons and line range badges instead of raw JSON. Only show file list in sidebar, hide explanation and raw JSON preview.",
+      "tree": {
+        "sha": "cf5b22195bf0a92ae6f7097a9b918dbe40a3ecfa",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/cf5b22195bf0a92ae6f7097a9b918dbe40a3ecfa"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e81aec87a13809eb7fec47202fa5cdaa91d75cc7"
+      }
+    ],
+    "stats": {
+      "total": 149,
+      "additions": 144,
+      "deletions": 5
+    },
+    "files": [
+      {
+        "sha": "3e77953c40e413242949d7ce0444e8e705de730f",
+        "filename": "src/App.css",
+        "status": "modified",
+        "additions": 76,
+        "deletions": 0,
+        "changes": 76,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/src%2FApp.css",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/src%2FApp.css",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2FApp.css?ref=894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+        "patch": "@@ -1352,3 +1352,79 @@\n .sfMiniMap .react-flow__minimap-mask {\n   fill: rgba(26, 115, 232, 0.1);\n }\n+\n+/* ===== Code Search Output Styles ===== */\n+.sfCodeSearchOutput {\n+  font-size: 12px;\n+}\n+\n+.sfCodeSearchExplanation {\n+  margin-bottom: 12px;\n+  padding: 8px;\n+  background: #f5f5f5;\n+  border-radius: 4px;\n+  line-height: 1.4;\n+  white-space: pre-wrap;\n+  max-height: 100px;\n+  overflow-y: auto;\n+}\n+\n+.sfCodeSearchFiles {\n+  display: flex;\n+  flex-direction: column;\n+  gap: 6px;\n+}\n+\n+.sfCodeSearchFile {\n+  display: flex;\n+  align-items: center;\n+  gap: 6px;\n+  padding: 4px 6px;\n+  background: #fafafa;\n+  border: 1px solid #eee;\n+  border-radius: 4px;\n+  min-width: 0;\n+}\n+\n+.sfCodeSearchFileIcon {\n+  flex-shrink: 0;\n+  opacity: 0.7;\n+  display: flex;\n+  align-items: center;\n+  color: #666;\n+}\n+\n+.sfCodeSearchFilePath {\n+  flex: 1;\n+  min-width: 0;\n+  overflow: hidden;\n+  text-overflow: ellipsis;\n+  white-space: nowrap;\n+  font-family: 'SF Mono', 'Consolas', monospace;\n+  font-size: 11px;\n+  color: #333;\n+}\n+\n+.sfCodeSearchRanges {\n+  display: flex;\n+  gap: 4px;\n+  flex-shrink: 0;\n+  flex-wrap: wrap;\n+  max-width: 120px;\n+  justify-content: flex-end;\n+}\n+\n+.sfCodeSearchRange {\n+  padding: 1px 5px;\n+  background: #e8f0fe;\n+  border-radius: 3px;\n+  font-family: 'SF Mono', 'Consolas', monospace;\n+  font-size: 10px;\n+  color: #1a73e8;\n+  white-space: nowrap;\n+}\n+\n+.sfCodeSearchEmpty {\n+  color: #999;\n+  font-style: italic;\n+}"
+      },
+      {
+        "sha": "27b8f805da23358e8af89017d8023239b4ca26eb",
+        "filename": "src/specflow/components/CodeSearchOutputPreview.tsx",
+        "status": "added",
+        "additions": 44,
+        "deletions": 0,
+        "changes": 44,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/src%2Fspecflow%2Fcomponents%2FCodeSearchOutputPreview.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/src%2Fspecflow%2Fcomponents%2FCodeSearchOutputPreview.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FCodeSearchOutputPreview.tsx?ref=894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+        "patch": "@@ -0,0 +1,44 @@\n+import { DocumentIcon } from './Icons'\n+\n+type CodeSearchOutput = {\n+  explanation?: string\n+  files: Record<string, Array<[number, number]>>\n+}\n+\n+type Props = {\n+  output: CodeSearchOutput\n+}\n+\n+export function CodeSearchOutputPreview({ output }: Props) {\n+  const fileEntries = Object.entries(output.files || {})\n+\n+  return (\n+    <div className=\"sfCodeSearchOutput\">\n+      {fileEntries.length > 0 && (\n+        <div className=\"sfCodeSearchFiles\">\n+          {fileEntries.map(([filePath, ranges]) => (\n+            <div key={filePath} className=\"sfCodeSearchFile\">\n+              <span className=\"sfCodeSearchFileIcon\">\n+                <DocumentIcon size={14} />\n+              </span>\n+              <span className=\"sfCodeSearchFilePath\" title={filePath}>\n+                {filePath}\n+              </span>\n+              <span className=\"sfCodeSearchRanges\">\n+                {ranges.map(([start, end], idx) => (\n+                  <span key={idx} className=\"sfCodeSearchRange\">\n+                    L{start}-{end}\n+                  </span>\n+                ))}\n+              </span>\n+            </div>\n+          ))}\n+        </div>\n+      )}\n+\n+      {fileEntries.length === 0 && !output.explanation && (\n+        <div className=\"sfCodeSearchEmpty\">No results</div>\n+      )}\n+    </div>\n+  )\n+}"
+      },
+      {
+        "sha": "7309ff1da1c0383b1437899929f4805c4337d1fc",
+        "filename": "src/specflow/components/NodeSidebar.tsx",
+        "status": "modified",
+        "additions": 23,
+        "deletions": 5,
+        "changes": 28,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx?ref=894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+        "patch": "@@ -9,6 +9,19 @@ import { OutputViewerModal } from './OutputViewerModal'\n import { RepoPickerModal } from './RepoPickerModal'\n import { t } from '../i18n'\n import type { ManualImportItem, Language } from '../../../shared/appDataTypes'\n+import { CodeSearchOutputPreview } from './CodeSearchOutputPreview'\n+\n+// @@@ isCodeSearchOutput - 类型守卫，判断 output 是否为 code-search 输出格式\n+const isCodeSearchOutput = (\n+  output: unknown,\n+): output is { explanation?: string; files: Record<string, Array<[number, number]>> } => {\n+  return (\n+    output !== null &&\n+    typeof output === 'object' &&\n+    'files' in output &&\n+    typeof (output as { files: unknown }).files === 'object'\n+  )\n+}\n \n type Props = {\n   selectedNode: AppNode | null\n@@ -484,11 +497,16 @@ export function NodeSidebar({\n                 />\n               </div>\n             </div>\n-            <div className=\"sfOutputPreview\">\n-              {typeof selectedNode.data.output === 'string'\n-                ? selectedNode.data.output.slice(0, 500) + (selectedNode.data.output.length > 500 ? '...' : '')\n-                : JSON.stringify(selectedNode.data.output, null, 2).slice(0, 500)}\n-            </div>\n+            {selectedNode.type !== 'code-search' && (\n+              <div className=\"sfOutputPreview\">\n+                {typeof selectedNode.data.output === 'string'\n+                  ? selectedNode.data.output.slice(0, 500) + (selectedNode.data.output.length > 500 ? '...' : '')\n+                  : JSON.stringify(selectedNode.data.output, null, 2).slice(0, 500)}\n+              </div>\n+            )}\n+            {selectedNode.type === 'code-search' && isCodeSearchOutput(selectedNode.data.output) && (\n+              <CodeSearchOutputPreview output={selectedNode.data.output} />\n+            )}\n           </div>\n         )}\n "
+      },
+      {
+        "sha": "33b8a966cea89876736bb301cc5f7934b697b99d",
+        "filename": "src/specflow/components/index.ts",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/src%2Fspecflow%2Fcomponents%2Findex.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4/src%2Fspecflow%2Fcomponents%2Findex.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2Findex.ts?ref=894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+        "patch": "@@ -1,4 +1,5 @@\n export { NodeSidebar } from './NodeSidebar'\n+export { CodeSearchOutputPreview } from './CodeSearchOutputPreview'\n export { ToolbarButton } from './ToolbarButton'\n export { MultiSelectInfo } from './MultiSelectInfo'\n export { TextEditorModal } from './TextEditorModal'"
+      }
+    ]
+  }
+}

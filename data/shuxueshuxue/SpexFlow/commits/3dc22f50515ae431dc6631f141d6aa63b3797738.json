@@ -1,0 +1,78 @@
+{
+  "cached_at": "2025-12-22T15:32:09.563160",
+  "commit_sha": "3dc22f50515ae431dc6631f141d6aa63b3797738",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "3dc22f50515ae431dc6631f141d6aa63b3797738",
+    "node_id": "C_kwDOQnjG49oAKDNkYzIyZjUwNTE1YWU0MzFkYzY2MzFmMTQxZDZhYTYzYjM3OTc3Mzg",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T03:14:30Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T03:14:30Z"
+      },
+      "message": "readme improvement",
+      "tree": {
+        "sha": "8c9173575f774dbaa77ccc261e049963da3c3896",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/8c9173575f774dbaa77ccc261e049963da3c3896"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/3dc22f50515ae431dc6631f141d6aa63b3797738",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/3dc22f50515ae431dc6631f141d6aa63b3797738",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/3dc22f50515ae431dc6631f141d6aa63b3797738",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/3dc22f50515ae431dc6631f141d6aa63b3797738/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "5945efa83af3705177c038965358d7bc0dc35285",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/5945efa83af3705177c038965358d7bc0dc35285",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/5945efa83af3705177c038965358d7bc0dc35285"
+      }
+    ],
+    "stats": {
+      "total": 56,
+      "additions": 26,
+      "deletions": 30
+    },
+    "files": [
+      {
+        "sha": "5fe17258daf60c13fd54097698e420ba701f6124",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 13,
+        "deletions": 15,
+        "changes": 28,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/3dc22f50515ae431dc6631f141d6aa63b3797738/README.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/3dc22f50515ae431dc6631f141d6aa63b3797738/README.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.md?ref=3dc22f50515ae431dc6631f141d6aa63b3797738",
+        "patch": "@@ -1,14 +1,14 @@\n ![SpexFlow](docs/images/banner.png)\n \n-English | [简体中文](README.zh.md)\n+[English](README.md) | [简体中文](README.zh.md)\n \n SpexFlow is a visual context/spec workflow tool built on React Flow. It helps you turn a concrete feature request into:\n \n 1) curated repo context (via code search or manual selection), then  \n 2) a high-quality implementation plan/spec from an LLM, then  \n-3) a clean prompt you can paste into a “fresh-context” code agent (Codex / Claude Code / etc.).\n+3) a clean prompt you can paste into a \"fresh-context\" code agent (Codex / Claude Code / etc.).\n \n-It’s optimized for **“finish one well-defined feature in one shot”** rather than “keep everything in your head”.\n+It's optimized for **\"finish one well-defined feature in one shot\"** rather than \"keep everything in your head\".\n \n ## Screenshots\n \n@@ -31,6 +31,11 @@ SpexFlow loads a local code repo and lets you run a small node-based workflow:\n - **Context Converter** → turns file ranges into line-numbered text context\n - **LLM** → takes context + prompt and generates an output (spec/plan/etc.)\n \n+## Prerequisites\n+\n+- Node.js 18+\n+- pnpm 9+\n+\n ## Quick Start\n \n ### 1) Install\n@@ -52,7 +57,7 @@ pnpm dev\n \n Open **Settings** (top-right) and set:\n \n-- **Code Search**: Relace API key\n+- **Code Search**: Relace API key ([get one here](https://docs.relace.ai/docs/introduction))\n - **LLM providers/models**: add at least one model under a provider with an OpenAI-compatible endpoint\n \n ### 4) Run a minimal workflow\n@@ -80,7 +85,7 @@ Then copy the LLM output and paste it into your coding agent.\n \n ### Locked / Muted\n \n-- **Locked**: node cannot be dragged and won’t be reset by Chain; useful for “stable cached context”.\n+- **Locked**: node cannot be dragged and won't be reset by Chain; useful for \"stable cached context\".\n - **Muted**: node returns empty output immediately (no API calls); useful for temporarily disabling branches.\n \n ## Node Types\n@@ -117,7 +122,7 @@ Then copy the LLM output and paste it into your coding agent.\n   - `items`: selected files and folders (stored as relative paths; **contents are never persisted**)\n - Folder behavior:\n   - **Non-recursive**: includes only direct child files (one level).\n-  - Filters by a hardcoded “trusted extensions” allowlist (includes `.md`) in `server/repoBrowser.ts`.\n+  - Filters by a hardcoded \"trusted extensions\" allowlist (includes `.md`) in `server/repoBrowser.ts`.\n - Run behavior:\n   - Validates every selected path at run time; if a file/folder no longer exists, the node fails loudly.\n - Output: identical shape to `code-search` so downstream Context Converter can reuse the same path/range format.\n@@ -167,9 +172,9 @@ The app enforces a connection matrix (invalid edges are rejected). The current r\n - Actions:\n   - **Run**: run this node\n   - **Chain**: run everything downstream\n-  - **Reset**: clear this node’s output (unless locked)\n+  - **Reset**: clear this node's output (unless locked)\n - Output:\n-  - Preview + “View All”\n+  - Preview + \"View All\"\n   - Copy output to clipboard\n \n ### Multi-select\n@@ -202,13 +207,6 @@ Open **Settings** (top-right):\n - `logs/relace-search.jsonl`: appended run logs (gitignored)\n - `logs/relace-search-runs/<runId>.json`: optional full message dumps when `debugMessages` is enabled\n \n-## Manual Import\n-\n-- Folders are non-recursive (only direct child files are included).\n-- Only “trusted” file extensions are included (currently hardcoded in `server/repoBrowser.ts`).\n-- No file contents are persisted; every run validates paths on disk and Context Converter reads files on demand.\n-- Node type id: `manual-import` (outputs the same `{ explanation, files }` shape as Code Search).\n-\n ## Dev / Architecture\n \n - Frontend: Vite + React (`src/`)"
+      },
+      {
+        "sha": "fbd8a4ca69c781fcbd18e09bb41a2430a92496b6",
+        "filename": "README.zh.md",
+        "status": "modified",
+        "additions": 13,
+        "deletions": 15,
+        "changes": 28,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/3dc22f50515ae431dc6631f141d6aa63b3797738/README.zh.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/3dc22f50515ae431dc6631f141d6aa63b3797738/README.zh.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.zh.md?ref=3dc22f50515ae431dc6631f141d6aa63b3797738",
+        "patch": "@@ -6,17 +6,17 @@ SpexFlow 是一个基于 React Flow 的可视化 context/spec 工作流工具。\n \n 1) 可复用、可缓存的仓库上下文（代码搜索 / 手动选择），再  \n 2) 由 LLM 生成的高质量实现方案（spec/plan），再  \n-3) 一段可以直接丢给“上下文清空”的 code agent（Codex / Claude Code / 等）的 prompt。\n+3) 一段可以直接丢给\"上下文清空\"的 code agent（Codex / Claude Code / 等）的 prompt。\n \n-目标不是“把整套系统一次写完”，而是 **一次性把一个定义清楚的功能点做对**。\n+目标不是\"把整套系统一次写完\"，而是 **一次性把一个定义清楚的功能点做对**。\n \n ## 截图\n \n **最小工作流**（instruction → code-search → context → LLM）：\n \n ![SpexFlow minimal workflow](docs/images/specflow-minimal-workflow.png)\n \n-**更大的画布**：把一些可复用的 context/指令块当作“积木”保存起来，需要更新时只 rerun 那个节点：\n+**更大的画布**：把一些可复用的 context/指令块当作\"积木\"保存起来，需要更新时只 rerun 那个节点：\n \n ![SpexFlow workflow](docs/images/specflow-workflow.png)\n \n@@ -31,6 +31,11 @@ SpexFlow 用来加载本地代码仓库，并用一个小型「节点工作流\n - **Context Converter** → 把文件片段转成带行号的文本上下文\n - **LLM** → 输入上下文 + prompt，生成输出（spec/plan 等）\n \n+## 前置要求\n+\n+- Node.js 18+\n+- pnpm 9+\n+\n ## 快速开始\n \n ### 1) 安装\n@@ -52,7 +57,7 @@ pnpm dev\n \n 点右上角 **Settings**：\n \n-- **Code Search**：填 Relace API key\n+- **Code Search**：填 Relace API key（[获取方式](https://docs.relace.ai/docs/introduction)）\n - **LLM**：配置 provider / model（需要 OpenAI 兼容的 chat-completions 接口）\n \n ### 4) 跑一条最小工作流\n@@ -80,7 +85,7 @@ instruction → code-search → context-converter → llm\n \n ### Locked / Muted\n \n-- **Locked**：不可拖拽；Chain 不会 reset 它；适合“稳定的缓存 context”。\n+- **Locked**：不可拖拽；Chain 不会 reset 它；适合\"稳定的缓存 context\"。\n - **Muted**：直接产出空输出（不发 API）；适合临时禁用一个分支。\n \n ## 节点类型\n@@ -117,7 +122,7 @@ instruction → code-search → context-converter → llm\n   - `items`：选择的文件/文件夹（只保存相对路径；**永远不持久化文件内容**）\n - 文件夹规则：\n   - **不递归**：只包含该目录的直接子文件（一级）。\n-  - 只包含硬编码的“信任后缀名”（包含 `.md`），见 `server/repoBrowser.ts`。\n+  - 只包含硬编码的\"信任后缀名\"（包含 `.md`），见 `server/repoBrowser.ts`。\n - 运行规则：\n   - 每次运行时都会在磁盘上校验路径；如果文件/目录不存在，节点直接报错（fail loudly）。\n - 输出：与 `code-search` 相同的 `{ explanation, files }` 结构，便于 Context Converter 复用。\n@@ -183,7 +188,7 @@ manual-import → context-converter → llm\n   - **Chain**：跑整个下游\n   - **Reset**：清空该节点输出（locked 的节点不会被 reset）\n - 输出：\n-  - 预览 + “View All”\n+  - 预览 + \"View All\"\n   - 一键复制\n \n ### 多选\n@@ -198,7 +203,7 @@ manual-import → context-converter → llm\n - 多个 canvas 用 tab 管理。\n - 全部持久化在 `data.json`。\n \n-## Settings（设置）\n+## 设置\n \n 点右上角 **Settings**：\n \n@@ -216,13 +221,6 @@ manual-import → context-converter → llm\n - `logs/relace-search.jsonl`：搜索运行日志（已被 gitignore）\n - `logs/relace-search-runs/<runId>.json`：当启用 `debugMessages` 时保存完整 message dump\n \n-## Manual Import（手动导入）\n-\n-- 文件夹不递归（只包含该目录的直接子文件）。\n-- 只包含“信任后缀名”的文件（目前硬编码在 `server/repoBrowser.ts`）。\n-- 不会持久化文件内容；每次运行都会在磁盘上校验路径，Context Converter 按需读取文件内容。\n-- 节点类型 id：`manual-import`（输出结构与 Code Search 相同：`{ explanation, files }`）。\n-\n ## 开发 / 架构\n \n - 前端：Vite + React（`src/`）"
+      }
+    ]
+  }
+}

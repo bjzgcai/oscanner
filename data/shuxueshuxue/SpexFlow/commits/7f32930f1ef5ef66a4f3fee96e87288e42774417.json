@@ -1,0 +1,138 @@
+{
+  "cached_at": "2025-12-22T15:32:02.551730",
+  "commit_sha": "7f32930f1ef5ef66a4f3fee96e87288e42774417",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "7f32930f1ef5ef66a4f3fee96e87288e42774417",
+    "node_id": "C_kwDOQnjG49oAKDdmMzI5MzBmMWVmNWVmNjZhNGYzZmVlOTZlODcyODhlNDI3NzQ0MTc",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T03:14:26Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T03:14:26Z"
+      },
+      "message": "add quick layout",
+      "tree": {
+        "sha": "6e88f4f5dd17d3290303a99f0bd4b48f089c3d24",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6e88f4f5dd17d3290303a99f0bd4b48f089c3d24"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/7f32930f1ef5ef66a4f3fee96e87288e42774417",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/7f32930f1ef5ef66a4f3fee96e87288e42774417",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/7f32930f1ef5ef66a4f3fee96e87288e42774417",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/7f32930f1ef5ef66a4f3fee96e87288e42774417/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/0e5c0e5b50c8c57c774a9994137eb9b4037703e7"
+      }
+    ],
+    "stats": {
+      "total": 253,
+      "additions": 235,
+      "deletions": 18
+    },
+    "files": [
+      {
+        "sha": "07fad91614a4dc80c6789f6993dd8f456ac24916",
+        "filename": "server/appData.ts",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 0,
+        "changes": 8,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/7f32930f1ef5ef66a4f3fee96e87288e42774417/server%2FappData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/7f32930f1ef5ef66a4f3fee96e87288e42774417/server%2FappData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/server%2FappData.ts?ref=7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "patch": "@@ -80,6 +80,12 @@ function normalizeBool(value: unknown, fallback = false): boolean {\n   return typeof value === 'boolean' ? value : fallback\n }\n \n+function normalizeOptionalNumber(value: unknown): number | undefined {\n+  if (typeof value !== 'number') return undefined\n+  if (!Number.isFinite(value)) return undefined\n+  return value\n+}\n+\n function asRecord(value: unknown): Record<string, unknown> | null {\n   return value && typeof value === 'object' ? (value as Record<string, unknown>) : null\n }\n@@ -142,6 +148,8 @@ function normalizeNode(raw: unknown): AppNode | null {\n     error: typeof data.error === 'string' ? data.error : null,\n     locked: normalizeBool(data.locked, false),\n     muted: normalizeBool(data.muted, false),\n+    width: normalizeOptionalNumber(data.width),\n+    height: normalizeOptionalNumber(data.height),\n     customName: customNameRaw ? customNameRaw : undefined,\n     customColor: customColorRaw ? customColorRaw : undefined,\n   }"
+      },
+      {
+        "sha": "4b1b6de719b96ad512dca55309c1b858f85c2d65",
+        "filename": "shared/appDataTypes.ts",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/7f32930f1ef5ef66a4f3fee96e87288e42774417/shared%2FappDataTypes.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/7f32930f1ef5ef66a4f3fee96e87288e42774417/shared%2FappDataTypes.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/shared%2FappDataTypes.ts?ref=7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "patch": "@@ -12,6 +12,8 @@ export type BaseNodeData = {\n   error: string | null\n   locked: boolean\n   muted: boolean\n+  width?: number\n+  height?: number\n   customName?: string\n   customColor?: string\n }"
+      },
+      {
+        "sha": "e5cc14b18fe46172f0ebf3fd63525324fcdbfe19",
+        "filename": "src/App.css",
+        "status": "modified",
+        "additions": 51,
+        "deletions": 0,
+        "changes": 51,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2FApp.css",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2FApp.css",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2FApp.css?ref=7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "patch": "@@ -682,6 +682,43 @@\n   background: #f5f5f5;\n }\n \n+.sfLayoutButtonWrapper {\n+  position: relative;\n+  display: inline-block;\n+}\n+\n+.sfLayoutMenu {\n+  position: absolute;\n+  top: calc(100% + 6px);\n+  left: 50%;\n+  transform: translateX(-50%);\n+  background: #fff;\n+  border: 1px solid #e0e0e0;\n+  border-radius: 10px;\n+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);\n+  padding: 4px;\n+  min-width: 150px;\n+  z-index: 100;\n+}\n+\n+.sfLayoutMenuItem {\n+  display: block;\n+  width: 100%;\n+  padding: 8px 10px;\n+  border: none;\n+  background: transparent;\n+  text-align: left;\n+  cursor: pointer;\n+  border-radius: 8px;\n+  font-size: 12px;\n+  color: #333;\n+  white-space: nowrap;\n+}\n+\n+.sfLayoutMenuItem:hover {\n+  background: #f5f5f5;\n+}\n+\n /* ===== Field Group Layout ===== */\n .sfFieldGroup {\n   margin-bottom: 12px;\n@@ -1446,3 +1483,17 @@\n   color: #999;\n   font-style: italic;\n }\n+\n+.node-resize-handle {\n+  width: 8px !important;\n+  height: 8px !important;\n+  background: rgba(26, 115, 232, 0.45) !important;\n+  border: 1px solid rgba(255, 255, 255, 0.9) !important;\n+  border-radius: 3px !important;\n+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;\n+}\n+\n+.node-resize-line {\n+  border-color: rgba(26, 115, 232, 0.35) !important;\n+  border-width: 1px !important;\n+}"
+      },
+      {
+        "sha": "3378f5846888b519473d83f3a866d446173a9224",
+        "filename": "src/specflow/SpecFlowApp.tsx",
+        "status": "modified",
+        "additions": 35,
+        "deletions": 0,
+        "changes": 35,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2FSpecFlowApp.tsx?ref=7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "patch": "@@ -222,6 +222,40 @@ function SpecFlowAppLoaded(props: ReturnType<typeof useAppData> & { appData: App\n     return canRunFromPredecessors(preds)\n   }, [activeTab.canvas.edges, activeTab.canvas.nodes, selectedNode?.id])\n \n+  const handleQuickLayout = useCallback(\n+    (layoutType: 'vertical-stack' | 'compact-stack' | 'horizontal-stack') => {\n+      if (!selected || selected.nodeIds.length < 2) return\n+      if (layoutType !== 'vertical-stack' && layoutType !== 'compact-stack') {\n+        throw new Error(`Unsupported layoutType: ${layoutType}`)\n+      }\n+\n+      const selectedSet = new Set(selected.nodeIds)\n+      const selectedNodes = activeTab.canvas.nodes.filter((n) => selectedSet.has(n.id))\n+      if (selectedNodes.some((n) => n.data.locked)) {\n+        alert('Quick Layout: selection contains locked node(s)')\n+        return\n+      }\n+\n+      const sorted = [...selectedNodes].sort((a, b) => (a.position.y ?? 0) - (b.position.y ?? 0))\n+      const startX = Math.min(...sorted.map((n) => n.position.x ?? 0))\n+      const startY = Math.min(...sorted.map((n) => n.position.y ?? 0))\n+\n+      const GAP = layoutType === 'compact-stack' ? -32 : 0\n+      const DEFAULT_HEIGHT = 80\n+\n+      let y = startY\n+      const changes = sorted.map((n) => {\n+        const h = n.data.height ?? n.height ?? n.measured?.height ?? DEFAULT_HEIGHT\n+        const next = { type: 'position' as const, id: n.id, position: { x: startX, y }, dragging: false }\n+        y += h + GAP\n+        return next\n+      })\n+\n+      onNodesChange(changes)\n+    },\n+    [activeTab.canvas.nodes, onNodesChange, selected],\n+  )\n+\n   return (\n     <div className=\"sfRoot\">\n       <ChainManager runs={chainRuns} onCancel={cancelChain} />\n@@ -395,6 +429,7 @@ function SpecFlowAppLoaded(props: ReturnType<typeof useAppData> & { appData: App\n             primaryTitle={primarySelectedNode?.data.title}\n             onCopy={copySelectedNodes}\n             onDelete={deleteSelectedNodes}\n+            onLayout={handleQuickLayout}\n           />\n         )}\n "
+      },
+      {
+        "sha": "263ce3da098f37567f1a252a4efe159c8bee7d39",
+        "filename": "src/specflow/components/MultiSelectInfo.tsx",
+        "status": "modified",
+        "additions": 43,
+        "deletions": 1,
+        "changes": 44,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2Fspecflow%2Fcomponents%2FMultiSelectInfo.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2Fspecflow%2Fcomponents%2FMultiSelectInfo.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FMultiSelectInfo.tsx?ref=7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "patch": "@@ -1,11 +1,28 @@\n+import { useEffect, useRef, useState } from 'react'\n+\n type Props = {\n   count: number\n   primaryTitle?: string\n   onCopy: () => void\n   onDelete: () => void\n+  onLayout: (layoutType: 'vertical-stack' | 'compact-stack' | 'horizontal-stack') => void\n }\n \n-export function MultiSelectInfo({ count, primaryTitle, onCopy, onDelete }: Props) {\n+export function MultiSelectInfo({ count, primaryTitle, onCopy, onDelete, onLayout }: Props) {\n+  const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false)\n+  const menuRef = useRef<HTMLDivElement>(null)\n+\n+  useEffect(() => {\n+    if (!isLayoutMenuOpen) return\n+    const onMouseDown = (e: MouseEvent) => {\n+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {\n+        setIsLayoutMenuOpen(false)\n+      }\n+    }\n+    document.addEventListener('mousedown', onMouseDown)\n+    return () => document.removeEventListener('mousedown', onMouseDown)\n+  }, [isLayoutMenuOpen])\n+\n   return (\n     <div className=\"sfMultiSelectInfo\">\n       <div className=\"sfMultiSelectHeader\">\n@@ -15,6 +32,31 @@ export function MultiSelectInfo({ count, primaryTitle, onCopy, onDelete }: Props\n       {primaryTitle && <div className=\"sfMultiSelectPrimary\">Primary: {primaryTitle}</div>}\n       <div className=\"sfMultiSelectActions\">\n         <button onClick={onCopy}>Copy</button>\n+        <div className=\"sfLayoutButtonWrapper\" ref={menuRef}>\n+          <button onClick={() => setIsLayoutMenuOpen((v) => !v)}>Quick Layout ▾</button>\n+          {isLayoutMenuOpen && (\n+            <div className=\"sfLayoutMenu\">\n+              <button\n+                className=\"sfLayoutMenuItem\"\n+                onClick={() => {\n+                  onLayout('vertical-stack')\n+                  setIsLayoutMenuOpen(false)\n+                }}\n+              >\n+                Vertical Stack\n+              </button>\n+              <button\n+                className=\"sfLayoutMenuItem\"\n+                onClick={() => {\n+                  onLayout('compact-stack')\n+                  setIsLayoutMenuOpen(false)\n+                }}\n+              >\n+                Compact Stack\n+              </button>\n+            </div>\n+          )}\n+        </div>\n         <button onClick={onDelete}>Delete</button>\n       </div>\n     </div>"
+      },
+      {
+        "sha": "49536ef096162a3204310114e0cf2f0af91a5770",
+        "filename": "src/specflow/hooks/useAppData.ts",
+        "status": "modified",
+        "additions": 17,
+        "deletions": 4,
+        "changes": 21,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseAppData.ts?ref=7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "patch": "@@ -8,6 +8,10 @@ import { getActiveTab, isValidConnection, uid, updateNode } from '../utils'\n \n export type Selected = { nodeIds: string[]; primaryId: string } | null\n \n+function isDimensionChange<N extends AppNode>(c: NodeChange<N>): c is Extract<NodeChange<N>, { type: 'dimensions' }> {\n+  return c.type === 'dimensions' && !!c.dimensions\n+}\n+\n function emptyCanvas(): Canvas {\n   return { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }\n }\n@@ -174,10 +178,19 @@ export function useAppData() {\n \n   const onNodesChange = useCallback(\n     (changes: NodeChange<AppNode>[]) => {\n-      updateActiveCanvas((t) => ({\n-        ...t,\n-        canvas: { ...t.canvas, nodes: applyNodeChanges(changes, t.canvas.nodes) },\n-      }))\n+      updateActiveCanvas((t) => {\n+        let nodes = applyNodeChanges(changes, t.canvas.nodes)\n+        const dim = changes.filter(isDimensionChange)\n+        if (dim.length > 0) {\n+          const byId = new Map(dim.map((c) => [c.id, c.dimensions]))\n+          nodes = nodes.map((n) => {\n+            const d = byId.get(n.id)\n+            if (!d) return n\n+            return { ...n, data: { ...n.data, width: d.width, height: d.height } } as AppNode\n+          })\n+        }\n+        return { ...t, canvas: { ...t.canvas, nodes } }\n+      })\n     },\n     [updateActiveCanvas],\n   )"
+      },
+      {
+        "sha": "029d151ae84a2e7594de4f4a88b3b8bebbbdc6d0",
+        "filename": "src/specflow/nodes.tsx",
+        "status": "modified",
+        "additions": 79,
+        "deletions": 13,
+        "changes": 92,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2Fspecflow%2Fnodes.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/7f32930f1ef5ef66a4f3fee96e87288e42774417/src%2Fspecflow%2Fnodes.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fnodes.tsx?ref=7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "patch": "@@ -1,5 +1,5 @@\n import type { NodeProps } from '@xyflow/react'\n-import { Handle, Position } from '@xyflow/react'\n+import { Handle, NodeResizer, Position } from '@xyflow/react'\n import type {\n   CodeSearchConductorNode,\n   CodeSearchNode,\n@@ -11,6 +11,15 @@ import type {\n } from './types'\n import { LockIcon, MuteIcon } from './components/Icons'\n \n+function normalizeMultilinePreview(text: string) {\n+  return (text || '').replaceAll('\\r\\n', '\\n').replaceAll('\\r', '\\n').trimEnd()\n+}\n+\n+function previewOrHint(text: string, hint: string) {\n+  const normalized = normalizeMultilinePreview(text)\n+  return normalized.trim() ? normalized : hint\n+}\n+\n function repoLabel(repoPath: string) {\n   const raw = (repoPath || '').trim()\n   if (!raw) return '(unset)'\n@@ -58,6 +67,30 @@ const STATUS_PILL: Record<\n \n const HANDLE_STYLE = { width: 10, height: 10, background: '#666', zIndex: 5 } as const\n \n+function NodePreview(props: { text: string; fillHeight: boolean }) {\n+  return (\n+    <div\n+      style={{\n+        opacity: 0.8,\n+        marginTop: 3,\n+        whiteSpace: 'pre-wrap',\n+        overflowWrap: 'anywhere',\n+        wordBreak: 'break-word',\n+        overflow: 'hidden',\n+        ...(props.fillHeight\n+          ? { flex: 1, minHeight: 0 }\n+          : {\n+              display: '-webkit-box',\n+              WebkitLineClamp: 2,\n+              WebkitBoxOrient: 'vertical',\n+            }),\n+      }}\n+    >\n+      {props.text}\n+    </div>\n+  )\n+}\n+\n function NodeShell(props: {\n   title: string\n   customName?: string\n@@ -67,6 +100,8 @@ function NodeShell(props: {\n   selected: boolean\n   locked: boolean\n   muted: boolean\n+  width?: number\n+  height?: number\n }) {\n   const pill = STATUS_PILL[props.status]\n   const displayTitle = (props.customName ?? '').trim() || props.title\n@@ -75,17 +110,35 @@ function NodeShell(props: {\n   return (\n     <div\n       style={{\n-        width: 220,\n+        width: props.width ?? 220,\n+        minWidth: 150,\n+        maxWidth: 600,\n+        height: props.height ?? undefined,\n+        minHeight: 54,\n         border: `2px solid ${surface.borderColor}`,\n         background: surface.background,\n         borderRadius: 10,\n-        padding: 10,\n+        padding: 8,\n+        paddingBottom: 6,\n         fontSize: 12,\n         boxShadow: props.selected ? '0 0 0 3px rgba(0, 110, 255, 0.25)' : 'none',\n         position: 'relative',\n         opacity: props.muted ? 0.7 : 1,\n+        display: 'flex',\n+        flexDirection: 'column',\n       }}\n     >\n+      <NodeResizer\n+        minWidth={150}\n+        minHeight={54}\n+        maxWidth={600}\n+        isVisible={props.selected && !props.locked}\n+        handleClassName=\"node-resize-handle nodrag\"\n+        lineClassName=\"node-resize-line nodrag\"\n+        color=\"rgba(26, 115, 232, 0.35)\"\n+        shouldResize={() => !props.locked}\n+      />\n+\n       <Handle type=\"target\" position={Position.Left} style={HANDLE_STYLE} />\n       <Handle type=\"source\" position={Position.Right} style={HANDLE_STYLE} />\n \n@@ -114,13 +167,13 @@ function NodeShell(props: {\n         style={{\n           fontWeight: 700,\n           display: 'flex',\n-          alignItems: 'center',\n+          alignItems: 'flex-start',\n           justifyContent: 'space-between',\n           gap: 8,\n         }}\n       >\n         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>\n-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>\n+          <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.25 }}>\n             {displayTitle}\n           </span>\n         </div>\n@@ -160,7 +213,7 @@ function NodeShell(props: {\n         </span>\n       </div>\n \n-      <div style={{ opacity: 0.8, marginTop: 4 }}>{props.subtitle}</div>\n+      <NodePreview text={props.subtitle} fillHeight={!!props.height} />\n     </div>\n   )\n }\n@@ -180,6 +233,8 @@ export function CodeSearchNodeView({ data, selected }: NodeProps<CodeSearchNode>\n       selected={selected}\n       locked={!!data.locked}\n       muted={!!data.muted}\n+      width={data.width}\n+      height={data.height}\n     />\n   )\n }\n@@ -198,14 +253,17 @@ export function ContextConverterNodeView({\n       selected={selected}\n       locked={!!data.locked}\n       muted={!!data.muted}\n+      width={data.width}\n+      height={data.height}\n     />\n   )\n }\n \n export function LLMNodeView({ data, selected }: NodeProps<LLMNode>) {\n-  const hasQuery = !!data.query?.trim()\n+  const query = normalizeMultilinePreview(data.query)\n+  const hasQuery = !!query.trim()\n   const subtitle = hasQuery\n-    ? `model: ${data.model || '(unset)'}`\n+    ? `model: ${data.model || '(unset)'}\\n${query}`\n     : `model: ${data.model || '(unset)'} • (accepts input)`\n \n   return (\n@@ -218,15 +276,14 @@ export function LLMNodeView({ data, selected }: NodeProps<LLMNode>) {\n       selected={selected}\n       locked={!!data.locked}\n       muted={!!data.muted}\n+      width={data.width}\n+      height={data.height}\n     />\n   )\n }\n \n export function InstructionNodeView({ data, selected }: NodeProps<InstructionNode>) {\n-  const firstLine = (data.text || '').split('\\n')[0]?.trim()\n-  const subtitle = firstLine\n-    ? `\"${firstLine.slice(0, 24)}${firstLine.length > 24 ? '…' : ''}\"`\n-    : '(accepts predecessor input)'\n+  const subtitle = previewOrHint(data.text, '(accepts predecessor input)')\n   return (\n     <NodeShell\n       title={data.title}\n@@ -237,6 +294,8 @@ export function InstructionNodeView({ data, selected }: NodeProps<InstructionNod\n       selected={selected}\n       locked={!!data.locked}\n       muted={!!data.muted}\n+      width={data.width}\n+      height={data.height}\n     />\n   )\n }\n@@ -262,11 +321,16 @@ export function CodeSearchConductorNodeView({\n       selected={selected}\n       locked={!!data.locked}\n       muted={!!data.muted}\n+      width={data.width}\n+      height={data.height}\n     />\n   )\n }\n \n-export function ManualImportNodeView({ data, selected }: NodeProps<ManualImportNode>) {\n+export function ManualImportNodeView({\n+  data,\n+  selected,\n+}: NodeProps<ManualImportNode>) {\n   const itemsCount = Array.isArray(data.items) ? data.items.length : 0\n   const subtitle = itemsCount\n     ? `repo: ${repoLabel(data.repoPath)} • ${itemsCount} items`\n@@ -281,6 +345,8 @@ export function ManualImportNodeView({ data, selected }: NodeProps<ManualImportN\n       selected={selected}\n       locked={!!data.locked}\n       muted={!!data.muted}\n+      width={data.width}\n+      height={data.height}\n     />\n   )\n }"
+      }
+    ]
+  }
+}

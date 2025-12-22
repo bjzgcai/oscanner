@@ -1,0 +1,78 @@
+{
+  "cached_at": "2025-12-22T15:32:10.094290",
+  "commit_sha": "5945efa83af3705177c038965358d7bc0dc35285",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "5945efa83af3705177c038965358d7bc0dc35285",
+    "node_id": "C_kwDOQnjG49oAKDU5NDVlZmE4M2FmMzcwNTE3N2MwMzg5NjUzNThkN2JjMGRjMzUyODU",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T03:04:11Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T03:04:11Z"
+      },
+      "message": "add roadmap",
+      "tree": {
+        "sha": "e41f474eff64a9daa6e986a20894545a6c2444c2",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/e41f474eff64a9daa6e986a20894545a6c2444c2"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/5945efa83af3705177c038965358d7bc0dc35285",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/5945efa83af3705177c038965358d7bc0dc35285",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/5945efa83af3705177c038965358d7bc0dc35285",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/5945efa83af3705177c038965358d7bc0dc35285/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/894926bb78d06d51430fbbc37a2c4fb1caa2ffb4"
+      }
+    ],
+    "stats": {
+      "total": 18,
+      "additions": 18,
+      "deletions": 0
+    },
+    "files": [
+      {
+        "sha": "f9178a457d086404b944c8681b321956ef16f4e1",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 9,
+        "deletions": 0,
+        "changes": 9,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/5945efa83af3705177c038965358d7bc0dc35285/README.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/5945efa83af3705177c038965358d7bc0dc35285/README.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.md?ref=5945efa83af3705177c038965358d7bc0dc35285",
+        "patch": "@@ -216,6 +216,15 @@ Open **Settings** (top-right):\n - Backend: Express + TypeScript (`server/`), runs via `tsx watch`\n - Proxy: Vite proxies `/api` to `http://localhost:3001` (`vite.config.ts`)\n \n+## Roadmap\n+\n+- [ ] Code file auto merge/deduplication + visualization for context converter node output\n+- [ ] Export canvas to local file\n+- [ ] Custom LLM parameters (e.g. reasoning, temperature)\n+- [ ] Support local LLMs\n+- [ ] Token statistics\n+- [ ] Backup running history\n+\n ## Troubleshooting\n \n ### pnpm / corepack errors"
+      },
+      {
+        "sha": "926bf4212b25cb2a78760a98c2a6d501672f7760",
+        "filename": "README.zh.md",
+        "status": "modified",
+        "additions": 9,
+        "deletions": 0,
+        "changes": 9,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/5945efa83af3705177c038965358d7bc0dc35285/README.zh.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/5945efa83af3705177c038965358d7bc0dc35285/README.zh.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.zh.md?ref=5945efa83af3705177c038965358d7bc0dc35285",
+        "patch": "@@ -230,6 +230,15 @@ manual-import → context-converter → llm\n - 后端：Express + TypeScript（`server/`），`tsx watch` 运行\n - 代理：Vite 将 `/api` 代理到 `http://localhost:3001`（`vite.config.ts`）\n \n+## Roadmap\n+\n+- [ ] 代码文件自动合并/去重 + Context Converter 节点输出可视化\n+- [ ] 导出画布到本地文件\n+- [ ] 自定义 LLM 参数（如 reasoning、temperature）\n+- [ ] 支持本地 LLM\n+- [ ] Token 用量统计\n+- [ ] 运行历史备份\n+\n ## 排错\n \n ### pnpm / corepack 报错"
+      }
+    ]
+  }
+}

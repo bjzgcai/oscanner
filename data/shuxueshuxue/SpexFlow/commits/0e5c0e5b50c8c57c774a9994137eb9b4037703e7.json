@@ -1,0 +1,66 @@
+{
+  "cached_at": "2025-12-22T15:32:03.072735",
+  "commit_sha": "0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+    "node_id": "C_kwDOQnjG49oAKDBlNWMwZTViNTBjOGM1N2M3NzRhOTk5NDEzN2ViOWI0MDM3NzAzZTc",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T02:15:59Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T02:15:59Z"
+      },
+      "message": "dynamic edge boldness",
+      "tree": {
+        "sha": "132cd45d74789f45fcdddaeb3f3e73a2cbbd52c3",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/132cd45d74789f45fcdddaeb3f3e73a2cbbd52c3"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/0e5c0e5b50c8c57c774a9994137eb9b4037703e7/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "30affa373e3b75117a4c944597f9a683637caad8",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/30affa373e3b75117a4c944597f9a683637caad8",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/30affa373e3b75117a4c944597f9a683637caad8"
+      }
+    ],
+    "stats": {
+      "total": 32,
+      "additions": 29,
+      "deletions": 3
+    },
+    "files": [
+      {
+        "sha": "016cec6f854ac02be45de827301cf322a42c7f6b",
+        "filename": "src/specflow/SpecFlowApp.tsx",
+        "status": "modified",
+        "additions": 29,
+        "deletions": 3,
+        "changes": 32,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/0e5c0e5b50c8c57c774a9994137eb9b4037703e7/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/0e5c0e5b50c8c57c774a9994137eb9b4037703e7/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2FSpecFlowApp.tsx?ref=0e5c0e5b50c8c57c774a9994137eb9b4037703e7",
+        "patch": "@@ -109,18 +109,44 @@ function SpecFlowAppLoaded(props: ReturnType<typeof useAppData> & { appData: App\n   }, [activeTab.canvas.nodes])\n \n   const rfEdges = useMemo(() => {\n+    const selectedNodeIds = selected?.nodeIds?.length ? new Set(selected.nodeIds) : null\n+    const hasSelectionFocus = !!selectedNodeIds\n     return activeTab.canvas.edges.map((edge) => {\n+      const isEdgeSelected = !!edge.selected\n       const isConnectedToMuted = mutedNodeIds.has(edge.source) || mutedNodeIds.has(edge.target)\n-      if (!isConnectedToMuted) return edge\n+      const isConnectedToSelected = selectedNodeIds\n+        ? selectedNodeIds.has(edge.source) || selectedNodeIds.has(edge.target)\n+        : false\n+      const isInFocus = isEdgeSelected || isConnectedToSelected\n+\n+      const baseOpacity = typeof edge.style?.opacity === 'number' ? edge.style.opacity : 1\n+      // @@@edge focus - selection dims others; muted still stacks via multiplication\n+      const selectionFactor = hasSelectionFocus ? (isInFocus ? 1 : 0.25) : 1\n+      const muteFactor = isConnectedToMuted ? 0.4 : 1\n+      const nextOpacity = baseOpacity * selectionFactor * muteFactor\n+\n+      const shouldBold = isEdgeSelected || (hasSelectionFocus && isConnectedToSelected)\n+      const baseStrokeWidth =\n+        typeof edge.style?.strokeWidth === 'number' ? edge.style.strokeWidth : undefined\n+      const nextStrokeWidth = shouldBold\n+        ? Math.max(baseStrokeWidth ?? 0, 3.5)\n+        : baseStrokeWidth\n+\n+      const needsOpacityChange = Math.abs(nextOpacity - baseOpacity) > 0.0001\n+      const needsBoldChange = shouldBold && nextStrokeWidth !== edge.style?.strokeWidth\n+      if (!needsOpacityChange && !needsBoldChange) return edge\n+\n       return {\n         ...edge,\n+        ...(shouldBold ? { zIndex: Math.max(edge.zIndex ?? 0, 2) } : {}),\n         style: {\n           ...edge.style,\n-          opacity: 0.4,\n+          opacity: nextOpacity,\n+          ...(shouldBold ? { strokeWidth: nextStrokeWidth } : {}),\n         },\n       }\n     })\n-  }, [activeTab.canvas.edges, mutedNodeIds])\n+  }, [activeTab.canvas.edges, mutedNodeIds, selected])\n \n   // Live viewport ref for immediate access (not debounced)\n   const liveViewportRef = useRef<Viewport>(activeTab.canvas.viewport ?? { x: 0, y: 0, zoom: 1 })"
+      }
+    ]
+  }
+}

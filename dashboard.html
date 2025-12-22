@@ -156,6 +156,62 @@
             cursor: not-allowed;
         }
 
+        .cache-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .cache-control label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #ccc;
+            border-radius: 13px;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+
+        .toggle-switch.active {
+            background: #667eea;
+        }
+
+        .toggle-switch .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(24px);
+        }
+
+        .cache-control .description {
+            color: #666;
+            font-size: 0.85rem;
+            margin-left: 60px;
+        }
+
         .note {
             color: #666;
             font-size: 0.9rem;
@@ -469,6 +525,15 @@
                 </div>
                 <button id="analyzeBtn" onclick="analyzeRepository()">Analyze Repository</button>
             </div>
+            <div class="cache-control">
+                <label onclick="toggleCache()">
+                    <div class="toggle-switch active" id="cacheToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                    <span id="cacheLabel">Use Cache</span>
+                </label>
+                <div class="description">When enabled, uses cached data for faster results. Disable to pull fresh commits from the repository.</div>
+            </div>
             <div class="note">
                 Enter a GitHub or Gitee repository URL to analyze contributors' engineering capabilities using AI-powered commit analysis. Supports both public Gitee (gitee.com) and enterprise Gitee (z.gitee.cn).
             </div>
@@ -511,6 +576,9 @@
         // Autocomplete state
         let autocompleteSelectedIndex = -1;
         let autocompleteItems = [];
+
+        // Cache control state
+        let useCache = true;
 
         const STORAGE_KEY = 'github_repo_history';
         const MAX_HISTORY = 20;
@@ -730,6 +798,21 @@
             }
         });
 
+        // Cache toggle function
+        function toggleCache() {
+            useCache = !useCache;
+            const toggle = document.getElementById('cacheToggle');
+            const label = document.getElementById('cacheLabel');
+
+            if (useCache) {
+                toggle.classList.add('active');
+                label.textContent = 'Use Cache';
+            } else {
+                toggle.classList.remove('active');
+                label.textContent = 'No Cache';
+            }
+        }
+
         function detectPlatform(repoUrl) {
             // Detect if URL is GitHub or Gitee
             if (repoUrl.includes('github.com')) {
@@ -803,7 +886,7 @@
                 // Fetch commits list
                 setLoadingText('Fetching commits...');
                 const commitsResponse = await fetch(
-                    `${API_SERVER_URL}${apiPrefix}/commits/${owner}/${repo}?limit=100${enterpriseParam}`
+                    `${API_SERVER_URL}${apiPrefix}/commits/${owner}/${repo}?limit=100${enterpriseParam}&use_cache=${useCache}`
                 );
 
                 if (!commitsResponse.ok) {
@@ -894,7 +977,7 @@
 
                 // Call evaluation API
                 const response = await fetch(
-                    `${API_SERVER_URL}${apiPrefix}/evaluate/${repoData.owner}/${repoData.repo}/${contributor.login}?limit=30${enterpriseParam}`,
+                    `${API_SERVER_URL}${apiPrefix}/evaluate/${repoData.owner}/${repoData.repo}/${contributor.login}?limit=30${enterpriseParam}&use_cache=${useCache}`,
                     { method: 'POST' }
                 );
 

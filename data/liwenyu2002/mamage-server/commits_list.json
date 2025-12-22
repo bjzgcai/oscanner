@@ -1,7 +1,91 @@
 {
-  "cached_at": "2025-12-20T14:31:16.032269",
+  "cached_at": "2025-12-22T15:31:37.304197",
   "repo": "liwenyu2002/mamage-server",
   "data": [
+    {
+      "sha": "51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+      "node_id": "C_kwDOQYJTNNoAKDUxZmZmNmMxNDJhYjVkMjcwNmJmOTljYjM4YTRmYjUxMjU2MWZjYjk",
+      "commit": {
+        "author": {
+          "name": "李文宇",
+          "email": "s-lwy24@bjzgca.edu.cn",
+          "date": "2025-12-21T06:52:42Z"
+        },
+        "committer": {
+          "name": "李文宇",
+          "email": "s-lwy24@bjzgca.edu.cn",
+          "date": "2025-12-21T06:52:42Z"
+        },
+        "message": "优化了readme，提高新开发者配置效率",
+        "tree": {
+          "sha": "509e331a1717b48c2b6c7e6e1ba42a33547175d1",
+          "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/trees/509e331a1717b48c2b6c7e6e1ba42a33547175d1"
+        },
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/commits/51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+      "html_url": "https://github.com/liwenyu2002/mamage-server/commit/51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+      "comments_url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/51fff6c142ab5d2706bf99cb38a4fb512561fcb9/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "c110964063bb3bbf8b0476e74d40fb3488914ae2",
+          "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/c110964063bb3bbf8b0476e74d40fb3488914ae2",
+          "html_url": "https://github.com/liwenyu2002/mamage-server/commit/c110964063bb3bbf8b0476e74d40fb3488914ae2"
+        }
+      ]
+    },
+    {
+      "sha": "c110964063bb3bbf8b0476e74d40fb3488914ae2",
+      "node_id": "C_kwDOQYJTNNoAKGMxMTA5NjQwNjNiYjNiYmY4YjA0NzZlNzRkNDBmYjM0ODg5MTRhZTI",
+      "commit": {
+        "author": {
+          "name": "李文宇",
+          "email": "s-lwy24@bjzgca.edu.cn",
+          "date": "2025-12-21T05:27:08Z"
+        },
+        "committer": {
+          "name": "李文宇",
+          "email": "s-lwy24@bjzgca.edu.cn",
+          "date": "2025-12-21T05:27:08Z"
+        },
+        "message": "进行了一些文件的清理",
+        "tree": {
+          "sha": "c43d4c61f2df5da6507fc52b6730b0bbbeebee3e",
+          "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/trees/c43d4c61f2df5da6507fc52b6730b0bbbeebee3e"
+        },
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/commits/c110964063bb3bbf8b0476e74d40fb3488914ae2",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/c110964063bb3bbf8b0476e74d40fb3488914ae2",
+      "html_url": "https://github.com/liwenyu2002/mamage-server/commit/c110964063bb3bbf8b0476e74d40fb3488914ae2",
+      "comments_url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/c110964063bb3bbf8b0476e74d40fb3488914ae2/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "89fffa5b4c43bd176af472e97b627c6aadc7897f",
+          "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/89fffa5b4c43bd176af472e97b627c6aadc7897f",
+          "html_url": "https://github.com/liwenyu2002/mamage-server/commit/89fffa5b4c43bd176af472e97b627c6aadc7897f"
+        }
+      ]
+    },
     {
       "sha": "89fffa5b4c43bd176af472e97b627c6aadc7897f",
       "node_id": "C_kwDOQYJTNNoAKDg5ZmZmYTViNGM0M2JkMTc2YWY0NzJlOTdiNjI3YzZhYWRjNzg5N2Y",

@@ -1,0 +1,66 @@
+{
+  "cached_at": "2025-12-22T15:32:03.599150",
+  "commit_sha": "30affa373e3b75117a4c944597f9a683637caad8",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "30affa373e3b75117a4c944597f9a683637caad8",
+    "node_id": "C_kwDOQnjG49oAKDMwYWZmYTM3M2UzYjc1MTE3YTRjOTQ0NTk3ZjlhNjgzNjM3Y2FhZDg",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T02:04:13Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T02:04:13Z"
+      },
+      "message": "new lock/mute style",
+      "tree": {
+        "sha": "6e54b2e71c50821d695163bbda1921b0403f6676",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6e54b2e71c50821d695163bbda1921b0403f6676"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/30affa373e3b75117a4c944597f9a683637caad8",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/30affa373e3b75117a4c944597f9a683637caad8",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/30affa373e3b75117a4c944597f9a683637caad8",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/30affa373e3b75117a4c944597f9a683637caad8/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1b156c1b2fc0dc59efa1bdfb98552e666e3f0eb5"
+      }
+    ],
+    "stats": {
+      "total": 45,
+      "additions": 25,
+      "deletions": 20
+    },
+    "files": [
+      {
+        "sha": "35dc2b54da67ade88367cf148a0f0b95b65a117a",
+        "filename": "src/specflow/nodes.tsx",
+        "status": "modified",
+        "additions": 25,
+        "deletions": 20,
+        "changes": 45,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/30affa373e3b75117a4c944597f9a683637caad8/src%2Fspecflow%2Fnodes.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/30affa373e3b75117a4c944597f9a683637caad8/src%2Fspecflow%2Fnodes.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fnodes.tsx?ref=30affa373e3b75117a4c944597f9a683637caad8",
+        "patch": "@@ -56,7 +56,7 @@ const STATUS_PILL: Record<\n   error: { bg: '#ffecec', border: '#eb5757', text: '#b13b3b', dot: '#eb5757', glyph: '×' },\n }\n \n-const HANDLE_STYLE = { width: 10, height: 10, background: '#666' } as const\n+const HANDLE_STYLE = { width: 10, height: 10, background: '#666', zIndex: 5 } as const\n \n function NodeShell(props: {\n   title: string\n@@ -71,6 +71,7 @@ function NodeShell(props: {\n   const pill = STATUS_PILL[props.status]\n   const displayTitle = (props.customName ?? '').trim() || props.title\n   const surface = nodeSurfaceFromCustomColor(props.customColor)\n+  const overlayColorAlpha = props.muted ? 0.5 : 0.35\n   return (\n     <div\n       style={{\n@@ -81,12 +82,34 @@ function NodeShell(props: {\n         padding: 10,\n         fontSize: 12,\n         boxShadow: props.selected ? '0 0 0 3px rgba(0, 110, 255, 0.25)' : 'none',\n-        opacity: props.locked ? 0.92 : props.muted ? 0.6 : 1,\n+        position: 'relative',\n+        opacity: props.muted ? 0.7 : 1,\n       }}\n     >\n       <Handle type=\"target\" position={Position.Left} style={HANDLE_STYLE} />\n       <Handle type=\"source\" position={Position.Right} style={HANDLE_STYLE} />\n \n+      {/* @@@state overlay - absolute + pointerEvents none keeps drag/connect behavior intact */}\n+      {(props.locked || props.muted) && (\n+        <div\n+          aria-hidden=\"true\"\n+          style={{\n+            position: 'absolute',\n+            inset: 0,\n+            display: 'flex',\n+            alignItems: 'center',\n+            justifyContent: 'center',\n+            gap: 10,\n+            pointerEvents: 'none',\n+            zIndex: 1,\n+            color: `rgba(0, 0, 0, ${overlayColorAlpha})`,\n+          }}\n+        >\n+          {props.locked && <LockIcon size={38} />}\n+          {props.muted && <MuteIcon size={38} />}\n+        </div>\n+      )}\n+\n       <div\n         style={{\n           fontWeight: 700,\n@@ -100,24 +123,6 @@ function NodeShell(props: {\n           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>\n             {displayTitle}\n           </span>\n-          {props.locked && (\n-            <span\n-              style={{ display: 'inline-flex', alignItems: 'center', opacity: 0.75 }}\n-              title=\"locked\"\n-              aria-label=\"locked\"\n-            >\n-              <LockIcon size={14} />\n-            </span>\n-          )}\n-          {props.muted && (\n-            <span\n-              style={{ display: 'inline-flex', alignItems: 'center', opacity: 0.75 }}\n-              title=\"muted\"\n-              aria-label=\"muted\"\n-            >\n-              <MuteIcon size={14} />\n-            </span>\n-          )}\n         </div>\n \n         <span"
+      }
+    ]
+  }
+}

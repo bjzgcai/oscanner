@@ -1,0 +1,186 @@
+{
+  "cached_at": "2025-12-22T15:32:02.006788",
+  "commit_sha": "a20292d352edbd05aa37e1bc25007198fa86ae2b",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "a20292d352edbd05aa37e1bc25007198fa86ae2b",
+    "node_id": "C_kwDOQnjG49oAKGEyMDI5MmQzNTJlZGJkMDVhYTM3ZTFiYzI1MDA3MTk4ZmE4NmFlMmI",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T03:46:36Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T03:46:36Z"
+      },
+      "message": "archive",
+      "tree": {
+        "sha": "b9a2e640281222371445802051b981ba1873a5c0",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/b9a2e640281222371445802051b981ba1873a5c0"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/a20292d352edbd05aa37e1bc25007198fa86ae2b",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/a20292d352edbd05aa37e1bc25007198fa86ae2b",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/a20292d352edbd05aa37e1bc25007198fa86ae2b",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/a20292d352edbd05aa37e1bc25007198fa86ae2b/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/7f32930f1ef5ef66a4f3fee96e87288e42774417",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/7f32930f1ef5ef66a4f3fee96e87288e42774417"
+      }
+    ],
+    "stats": {
+      "total": 361,
+      "additions": 335,
+      "deletions": 26
+    },
+    "files": [
+      {
+        "sha": "1179ae17d102e968f3176347b1fee63c84fe9339",
+        "filename": "server/appData.ts",
+        "status": "modified",
+        "additions": 92,
+        "deletions": 2,
+        "changes": 94,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/server%2FappData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/server%2FappData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/server%2FappData.ts?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -23,6 +23,38 @@ import type {\n \n type Position = { x: number; y: number }\n \n+type NonArchiveNodeType =\n+  | 'code-search'\n+  | 'code-search-conductor'\n+  | 'manual-import'\n+  | 'context-converter'\n+  | 'instruction'\n+  | 'llm'\n+\n+type ArchivedMember = {\n+  id: string\n+  type: NonArchiveNodeType\n+  title: string\n+  customName?: string\n+  status: NodeStatus\n+  archivedAt: string\n+  snapshot: Record<string, unknown>\n+}\n+\n+type ArchiveData = {\n+  title: string\n+  status: 'idle'\n+  error: null\n+  locked: boolean\n+  muted: boolean\n+  customName?: string\n+  customColor?: string\n+  width?: number\n+  height?: number\n+  members: ArchivedMember[]\n+  output: null\n+}\n+\n export type AppNode =\n   | {\n     id: string\n@@ -60,6 +92,12 @@ export type AppNode =\n     position: Position\n     data: LLMData\n   }\n+  | {\n+    id: string\n+    type: 'archive'\n+    position: Position\n+    data: ArchiveData\n+  }\n \n export type AppEdge = { id: string; source: string; target: string }\n \n@@ -134,7 +172,8 @@ function normalizeNode(raw: unknown): AppNode | null {\n     type !== 'manual-import' &&\n     type !== 'context-converter' &&\n     type !== 'instruction' &&\n-    type !== 'llm'\n+    type !== 'llm' &&\n+    type !== 'archive'\n   ) return null\n   const x = typeof position.x === 'number' ? position.x : 0\n   const y = typeof position.y === 'number' ? position.y : 0\n@@ -154,6 +193,54 @@ function normalizeNode(raw: unknown): AppNode | null {\n     customColor: customColorRaw ? customColorRaw : undefined,\n   }\n \n+  if (type === 'archive') {\n+    const membersRaw = Array.isArray(data.members) ? data.members : []\n+    const members: ArchivedMember[] = membersRaw\n+      .map((m: unknown) => {\n+        const mObj = asRecord(m)\n+        if (!mObj) return null\n+        const memberId = normalizeString(mObj.id)\n+        if (!memberId) return null\n+        const memberType = mObj.type\n+        if (\n+          memberType !== 'code-search' &&\n+          memberType !== 'code-search-conductor' &&\n+          memberType !== 'manual-import' &&\n+          memberType !== 'context-converter' &&\n+          memberType !== 'instruction' &&\n+          memberType !== 'llm'\n+        ) return null\n+\n+        const memberCustomNameRaw = normalizeString(mObj.customName, '').trim()\n+        const snapshot = asRecord(mObj.snapshot) ?? {}\n+\n+        return {\n+          id: memberId,\n+          type: memberType,\n+          title: normalizeString(mObj.title, memberType),\n+          customName: memberCustomNameRaw ? memberCustomNameRaw : undefined,\n+          status: normalizeStatus(mObj.status),\n+          archivedAt: normalizeString(mObj.archivedAt, ''),\n+          snapshot,\n+        }\n+      })\n+      .filter(isNonNull)\n+\n+    return {\n+      id,\n+      type,\n+      position: { x, y },\n+      data: {\n+        ...base,\n+        title: normalizeString(data.title, 'Archive'),\n+        status: 'idle',\n+        error: null,\n+        members,\n+        output: null,\n+      },\n+    }\n+  }\n+\n   if (type === 'code-search') {\n     const output = asRecord(data.output)\n     const normalizedOutput =\n@@ -389,13 +476,16 @@ function normalizeAppData(raw: unknown): AppData {\n           }\n         })\n         .filter((e) => e.id && e.source && e.target)\n+\n+      const archiveNodeIds = new Set(nodes.filter((n) => n.type === 'archive').map((n) => n.id))\n+      const edgesWithoutArchive = edges.filter((e) => !archiveNodeIds.has(e.source) && !archiveNodeIds.has(e.target))\n       const viewport = normalizeViewport(canvas.viewport)\n \n       return {\n         id,\n         name: normalizeString(tab.name, 'Canvas'),\n         createdAt: normalizeString(tab.createdAt, now),\n-        canvas: { nodes, edges, viewport },\n+        canvas: { nodes, edges: edgesWithoutArchive, viewport },\n       }\n     })\n     .filter(isNonNull)"
+      },
+      {
+        "sha": "171928d7a33ccea67c9f3d625b0e7f69eb54e588",
+        "filename": "src/App.css",
+        "status": "modified",
+        "additions": 35,
+        "deletions": 0,
+        "changes": 35,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2FApp.css",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2FApp.css",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2FApp.css?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -563,6 +563,41 @@\n   opacity: 0.75;\n }\n \n+.sfArchiveMembers {\n+  display: flex;\n+  flex-direction: column;\n+  gap: 6px;\n+  margin-bottom: 10px;\n+}\n+\n+.sfArchiveMember {\n+  display: grid;\n+  grid-template-columns: 120px 1fr 70px 110px;\n+  gap: 8px;\n+  padding: 8px 10px;\n+  border: 1px solid #eee;\n+  border-radius: 10px;\n+  background: #fafafa;\n+  font-size: 12px;\n+  line-height: 1.3;\n+}\n+\n+.sfArchiveMemberType,\n+.sfArchiveMemberStatus,\n+.sfArchiveMemberDate {\n+  white-space: nowrap;\n+  overflow: hidden;\n+  text-overflow: ellipsis;\n+  opacity: 0.8;\n+}\n+\n+.sfArchiveMemberTitle {\n+  min-width: 0;\n+  overflow: hidden;\n+  text-overflow: ellipsis;\n+  white-space: nowrap;\n+}\n+\n .sfLabel {\n   display: flex;\n   flex-direction: column;"
+      },
+      {
+        "sha": "30c9cf814938bd7d443bc4d71340895e0eb37ead",
+        "filename": "src/specflow/SpecFlowApp.tsx",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 0,
+        "changes": 4,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2FSpecFlowApp.tsx?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -27,6 +27,7 @@ import {\n   InstructionNodeView,\n   LLMNodeView,\n   ManualImportNodeView,\n+  ArchiveNodeView,\n } from './nodes'\n \n export function SpecFlowApp() {\n@@ -59,6 +60,7 @@ function SpecFlowAppLoaded(props: ReturnType<typeof useAppData> & { appData: App\n     renameTab,\n     closeTab,\n     deleteSelectedNodes,\n+    archiveSelectedNodes,\n     updateActiveCanvas,\n     updateActiveViewport,\n     onNodesChange,\n@@ -205,6 +207,7 @@ function SpecFlowAppLoaded(props: ReturnType<typeof useAppData> & { appData: App\n       instruction: InstructionNodeView,\n       llm: LLMNodeView,\n       'manual-import': ManualImportNodeView,\n+      archive: ArchiveNodeView,\n     }),\n     [],\n   )\n@@ -428,6 +431,7 @@ function SpecFlowAppLoaded(props: ReturnType<typeof useAppData> & { appData: App\n             count={selected.nodeIds.length}\n             primaryTitle={primarySelectedNode?.data.title}\n             onCopy={copySelectedNodes}\n+            onArchive={archiveSelectedNodes}\n             onDelete={deleteSelectedNodes}\n             onLayout={handleQuickLayout}\n           />"
+      },
+      {
+        "sha": "76b61b9a4c522720b6077932453d73e737658e50",
+        "filename": "src/specflow/components/MultiSelectInfo.tsx",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 1,
+        "changes": 4,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fcomponents%2FMultiSelectInfo.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fcomponents%2FMultiSelectInfo.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FMultiSelectInfo.tsx?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -4,11 +4,12 @@ type Props = {\n   count: number\n   primaryTitle?: string\n   onCopy: () => void\n+  onArchive: () => void\n   onDelete: () => void\n   onLayout: (layoutType: 'vertical-stack' | 'compact-stack' | 'horizontal-stack') => void\n }\n \n-export function MultiSelectInfo({ count, primaryTitle, onCopy, onDelete, onLayout }: Props) {\n+export function MultiSelectInfo({ count, primaryTitle, onCopy, onArchive, onDelete, onLayout }: Props) {\n   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false)\n   const menuRef = useRef<HTMLDivElement>(null)\n \n@@ -32,6 +33,7 @@ export function MultiSelectInfo({ count, primaryTitle, onCopy, onDelete, onLayou\n       {primaryTitle && <div className=\"sfMultiSelectPrimary\">Primary: {primaryTitle}</div>}\n       <div className=\"sfMultiSelectActions\">\n         <button onClick={onCopy}>Copy</button>\n+        <button onClick={onArchive}>Archive</button>\n         <div className=\"sfLayoutButtonWrapper\" ref={menuRef}>\n           <button onClick={() => setIsLayoutMenuOpen((v) => !v)}>Quick Layout ▾</button>\n           {isLayoutMenuOpen && ("
+      },
+      {
+        "sha": "9e45c98270f627c1173d6a789df00f1fe43f61ef",
+        "filename": "src/specflow/components/NodeSidebar.tsx",
+        "status": "modified",
+        "additions": 63,
+        "deletions": 20,
+        "changes": 83,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -81,6 +81,7 @@ export function NodeSidebar({\n     selectedNode.type === 'manual-import' ? (selectedNode.data.repoPath ?? '').trim() : ''\n \n   const outputTitle = t(language, 'sidebar_output')\n+  const archiveData = selectedNode.type === 'archive' ? selectedNode.data : null\n \n   return (\n     <div className=\"sfSidebar\">\n@@ -197,6 +198,36 @@ export function NodeSidebar({\n \n         <div className=\"sfSectionDivider\" />\n \n+        {archiveData && (\n+          <>\n+            <div className=\"sfSectionTitle\">\n+              Archived Members ({archiveData.members.length})\n+            </div>\n+            {archiveData.members.length === 0 ? (\n+              <div className=\"sfEmpty\">Empty archive</div>\n+            ) : (\n+              <div className=\"sfArchiveMembers\">\n+                {archiveData.members.map((member, idx) => (\n+                  <div key={`${member.id}-${idx}`} className=\"sfArchiveMember\">\n+                    <span className=\"sfArchiveMemberType\" title={member.type}>\n+                      {member.type}\n+                    </span>\n+                    <span className=\"sfArchiveMemberTitle\" title={member.customName || member.title}>\n+                      {member.customName || member.title}\n+                    </span>\n+                    <span className=\"sfArchiveMemberStatus\" title={member.status}>\n+                      {member.status}\n+                    </span>\n+                    <span className=\"sfArchiveMemberDate\" title={member.archivedAt}>\n+                      {new Date(member.archivedAt).toLocaleDateString()}\n+                    </span>\n+                  </div>\n+                ))}\n+              </div>\n+            )}\n+          </>\n+        )}\n+\n         {/* Code Search Node */}\n         {selectedNode.type === 'code-search' && (\n           <>\n@@ -466,27 +497,39 @@ export function NodeSidebar({\n         {/* Actions Section */}\n         <div className=\"sfSectionTitle\">{t(language, 'sidebar_actions')}</div>\n         <div className=\"sfButtonGroup\">\n-          {/* @@@ Disabled button tooltip - disabled <button> won't reliably show title, so wrap it */}\n-          <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n-            <button\n-              onClick={() => runNode(selectedNode.id)}\n-              disabled={isLocked || predsBlocked}\n-              style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n-            >\n-              {t(language, 'sidebar_run')}\n-            </button>\n-          </span>\n-          <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n-            <button\n-              onClick={() => runFrom(selectedNode.id)}\n-              disabled={isLocked || predsBlocked}\n-              style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n-            >\n-              {t(language, 'sidebar_chain')}\n-            </button>\n-          </span>\n+          {selectedNode.type !== 'archive' && (\n+            <>\n+              {/* @@@ Disabled button tooltip - disabled <button> won't reliably show title, so wrap it */}\n+              <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n+                <button\n+                  onClick={() => runNode(selectedNode.id)}\n+                  disabled={isLocked || predsBlocked}\n+                  style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n+                >\n+                  {t(language, 'sidebar_run')}\n+                </button>\n+              </span>\n+              <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n+                <button\n+                  onClick={() => runFrom(selectedNode.id)}\n+                  disabled={isLocked || predsBlocked}\n+                  style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n+                >\n+                  {t(language, 'sidebar_chain')}\n+                </button>\n+              </span>\n+            </>\n+          )}\n           <button\n-            onClick={() => patchSelectedNode(resetNodeRuntime)}\n+            onClick={() =>\n+              patchSelectedNode((n) => {\n+                if (n.type !== 'archive') return resetNodeRuntime(n)\n+                return {\n+                  ...n,\n+                  data: { ...n.data, members: [], status: 'idle', error: null, output: null },\n+                }\n+              })\n+            }\n             disabled={isLocked || selectedNode.data.status === 'running'}\n           >\n             {t(language, 'sidebar_reset')}"
+      },
+      {
+        "sha": "8d2f68b00fb30248ca38fe3400bb40bf7f6e8cfe",
+        "filename": "src/specflow/hooks/useAppData.ts",
+        "status": "modified",
+        "additions": 69,
+        "deletions": 2,
+        "changes": 71,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseAppData.ts?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'\n import type { Edge } from '@xyflow/react'\n import { addEdge, applyEdgeChanges, applyNodeChanges } from '@xyflow/react'\n import type { Connection, EdgeChange, NodeChange } from '@xyflow/react'\n-import type { AppData, AppNode, Canvas, Tab, Viewport } from '../types'\n+import type { AppData, AppNode, ArchiveData, ArchiveNode, ArchivedMember, Canvas, NonArchiveNode, Tab, Viewport } from '../types'\n import { fetchAppData, saveAppData } from '../api'\n import { getActiveTab, isValidConnection, uid, updateNode } from '../utils'\n \n@@ -176,6 +176,71 @@ export function useAppData() {\n     setSelected(null)\n   }, [updateActiveCanvas])\n \n+  const archiveSelectedNodes = useCallback(() => {\n+    const sel = selectedRef.current\n+    if (!sel || sel.nodeIds.length < 1) return\n+\n+    updateActiveCanvas((t) => {\n+      const selectedSet = new Set(sel.nodeIds)\n+      const nodesToArchive = t.canvas.nodes.filter((n) => selectedSet.has(n.id))\n+      if (nodesToArchive.length === 0) return t\n+\n+      // Flatten all members - this ensures associativity\n+      // archive(archive(A,B), C) = archive(A, B, C) because we flatten\n+      const allMembers: ArchivedMember[] = []\n+      const now = new Date().toISOString()\n+\n+      for (const node of nodesToArchive) {\n+        if (node.type === 'archive') {\n+          allMembers.push(...(node.data as ArchiveData).members)\n+          continue\n+        }\n+        const snapshot = { ...(node.data as Record<string, unknown>) }\n+        allMembers.push({\n+          id: node.id,\n+          type: node.type as NonArchiveNode['type'],\n+          title: node.data.title,\n+          customName: node.data.customName,\n+          status: node.data.status,\n+          archivedAt: now,\n+          snapshot,\n+        })\n+      }\n+\n+      const avgX = nodesToArchive.reduce((sum, n) => sum + n.position.x, 0) / nodesToArchive.length\n+      const avgY = nodesToArchive.reduce((sum, n) => sum + n.position.y, 0) / nodesToArchive.length\n+\n+      const archiveNode: ArchiveNode = {\n+        id: uid('n'),\n+        type: 'archive',\n+        position: { x: avgX, y: avgY },\n+        data: {\n+          title: 'Archive',\n+          status: 'idle',\n+          error: null,\n+          locked: false,\n+          muted: false,\n+          members: allMembers,\n+          output: null,\n+        },\n+      }\n+\n+      const remainingNodes = t.canvas.nodes.filter((n) => !selectedSet.has(n.id))\n+      const remainingEdges = t.canvas.edges.filter((e) => !selectedSet.has(e.source) && !selectedSet.has(e.target))\n+\n+      return {\n+        ...t,\n+        canvas: {\n+          ...t.canvas,\n+          nodes: [...remainingNodes, archiveNode],\n+          edges: remainingEdges,\n+        },\n+      }\n+    })\n+\n+    setSelected(null)\n+  }, [updateActiveCanvas])\n+\n   const onNodesChange = useCallback(\n     (changes: NodeChange<AppNode>[]) => {\n       updateActiveCanvas((t) => {\n@@ -229,7 +294,7 @@ export function useAppData() {\n   )\n \n   const addNode = useCallback(\n-    (type: AppNode['type'], liveViewport?: Viewport) => {\n+    (type: NonArchiveNode['type'], liveViewport?: Viewport) => {\n       const snap = appDataRef.current\n       if (!snap) throw new Error('App data not loaded')\n       const tabSnap = getActiveTab(snap)\n@@ -322,6 +387,7 @@ export function useAppData() {\n           },\n         }\n       } else {\n+        if (type !== 'llm') throw new Error(`Unsupported node type: ${type}`)\n         node = {\n           ...base,\n           type,\n@@ -400,5 +466,6 @@ export function useAppData() {\n     addNode,\n     patchSelectedNode,\n     patchNodeById,\n+    archiveSelectedNodes,\n   }\n }"
+      },
+      {
+        "sha": "bda943e3d8d4801e92804caa6857d18af69dd30d",
+        "filename": "src/specflow/hooks/useChainRunner.ts",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fhooks%2FuseChainRunner.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fhooks%2FuseChainRunner.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseChainRunner.ts?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -57,6 +57,7 @@ export function useChainRunner(\n       const tabNow = getActiveTab(appDataRef.current)\n       const start = tabNow.canvas.nodes.find((n) => n.id === nodeId)\n       if (start?.data.locked) return\n+      if (start?.type === 'archive') throw new Error('Archive nodes cannot be executed')\n \n       const localOutputs = new Map<string, LocalOutput>()\n       const tabSnapshot = getActiveTab(appDataRef.current)"
+      },
+      {
+        "sha": "02022fafb6108cb0068424e35394e1e267e598d7",
+        "filename": "src/specflow/hooks/useNodeRunner.ts",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -189,6 +189,7 @@ export function useNodeRunner(\n         const node = snapshot.canvas.nodes.find((n) => n.id === nodeId)\n         if (!node) throw new Error(`Node not found: ${nodeId}`)\n         if (mode === 'single' && node.data.locked) throw new Error('Node is locked')\n+        if (node.type === 'archive') throw new Error('Archive nodes cannot be executed')\n         throwIfAborted(signal)\n \n         const preds = predecessors(snapshot.canvas.nodes, snapshot.canvas.edges, nodeId)"
+      },
+      {
+        "sha": "b1ff2b7631806ad7d945a018b306b9f74822e69a",
+        "filename": "src/specflow/nodes.tsx",
+        "status": "modified",
+        "additions": 21,
+        "deletions": 0,
+        "changes": 21,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fnodes.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Fnodes.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fnodes.tsx?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -1,6 +1,7 @@\n import type { NodeProps } from '@xyflow/react'\n import { Handle, NodeResizer, Position } from '@xyflow/react'\n import type {\n+  ArchiveNode,\n   CodeSearchConductorNode,\n   CodeSearchNode,\n   ContextConverterNode,\n@@ -350,3 +351,23 @@ export function ManualImportNodeView({\n     />\n   )\n }\n+\n+export function ArchiveNodeView({ data, selected }: NodeProps<ArchiveNode>) {\n+  const memberCount = data.members.length\n+  const subtitle = `${memberCount} archived node${memberCount !== 1 ? 's' : ''}`\n+\n+  return (\n+    <NodeShell\n+      title={data.title}\n+      customName={data.customName}\n+      customColor={data.customColor}\n+      status=\"idle\"\n+      subtitle={subtitle}\n+      selected={selected}\n+      locked={!!data.locked}\n+      muted={!!data.muted}\n+      width={data.width}\n+      height={data.height}\n+    />\n+  )\n+}"
+      },
+      {
+        "sha": "2f8d99921f570b9bc3a40b7c35021d0ed2355a63",
+        "filename": "src/specflow/types.ts",
+        "status": "modified",
+        "additions": 31,
+        "deletions": 1,
+        "changes": 32,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Ftypes.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Ftypes.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Ftypes.ts?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -48,14 +48,44 @@ export type CodeSearchConductorNode = Node<CodeSearchConductorData, 'code-search\n export type LLMNode = Node<LLMData, 'llm'>\n export type ManualImportNode = Node<ManualImportData, 'manual-import'>\n \n-export type AppNode =\n+export type NonArchiveNode =\n   | CodeSearchNode\n   | ContextConverterNode\n   | InstructionNode\n   | CodeSearchConductorNode\n   | LLMNode\n   | ManualImportNode\n \n+export type ArchivedMember = {\n+  id: string // Original node id\n+  type: NonArchiveNode['type'] // Original node type (excluding 'archive')\n+  title: string\n+  customName?: string\n+  status: NodeStatus\n+  archivedAt: string // ISO timestamp\n+  // Store a snapshot of key data for inspection\n+  snapshot: Record<string, unknown>\n+}\n+\n+export type ArchiveData = {\n+  title: string\n+  status: 'idle' // Always idle, cannot run\n+  error: null\n+  locked: boolean\n+  muted: boolean\n+  customName?: string\n+  customColor?: string\n+  width?: number\n+  height?: number\n+  // Store archived nodes flattened - this ensures associativity\n+  members: ArchivedMember[]\n+  output: null // Never produces output\n+}\n+\n+export type ArchiveNode = Node<ArchiveData, 'archive'>\n+\n+export type AppNode = NonArchiveNode | ArchiveNode\n+\n export type Canvas = CanvasBase<AppNode, Edge>\n export type Tab = TabBase<AppNode, Edge>\n export type AppData = AppDataBase<AppNode, Edge>"
+      },
+      {
+        "sha": "a4ead57875965809d9cfda91c1e8c37b652cff07",
+        "filename": "src/specflow/utils.ts",
+        "status": "modified",
+        "additions": 15,
+        "deletions": 0,
+        "changes": 15,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Futils.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/a20292d352edbd05aa37e1bc25007198fa86ae2b/src%2Fspecflow%2Futils.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Futils.ts?ref=a20292d352edbd05aa37e1bc25007198fa86ae2b",
+        "patch": "@@ -101,6 +101,7 @@ const CONNECTION_MATRIX: Record<AppNode['type'], Record<AppNode['type'], boolean\n     'code-search': true,\n     'context-converter': false,\n     llm: true,\n+    archive: false,\n   },\n   'code-search-conductor': {\n     instruction: false,\n@@ -109,6 +110,7 @@ const CONNECTION_MATRIX: Record<AppNode['type'], Record<AppNode['type'], boolean\n     'code-search': true,\n     'context-converter': false,\n     llm: false,\n+    archive: false,\n   },\n   'manual-import': {\n     instruction: false,\n@@ -117,6 +119,7 @@ const CONNECTION_MATRIX: Record<AppNode['type'], Record<AppNode['type'], boolean\n     'code-search': false,\n     'context-converter': true,\n     llm: false,\n+    archive: false,\n   },\n   'code-search': {\n     instruction: false,\n@@ -125,6 +128,7 @@ const CONNECTION_MATRIX: Record<AppNode['type'], Record<AppNode['type'], boolean\n     'code-search': false,\n     'context-converter': true,\n     llm: false,\n+    archive: false,\n   },\n   'context-converter': {\n     instruction: true,\n@@ -133,6 +137,7 @@ const CONNECTION_MATRIX: Record<AppNode['type'], Record<AppNode['type'], boolean\n     'code-search': true,\n     'context-converter': false,\n     llm: true,\n+    archive: false,\n   },\n   llm: {\n     instruction: true,\n@@ -141,6 +146,16 @@ const CONNECTION_MATRIX: Record<AppNode['type'], Record<AppNode['type'], boolean\n     'code-search': true,\n     'context-converter': false,\n     llm: true,\n+    archive: false,\n+  },\n+  archive: {\n+    instruction: false,\n+    'code-search-conductor': false,\n+    'manual-import': false,\n+    'code-search': false,\n+    'context-converter': false,\n+    llm: false,\n+    archive: false,\n   },\n }\n "
+      }
+    ]
+  }
+}

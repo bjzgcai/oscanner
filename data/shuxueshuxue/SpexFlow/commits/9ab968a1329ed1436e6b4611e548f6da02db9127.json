@@ -1,0 +1,138 @@
+{
+  "cached_at": "2025-12-22T15:32:06.271721",
+  "commit_sha": "9ab968a1329ed1436e6b4611e548f6da02db9127",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "9ab968a1329ed1436e6b4611e548f6da02db9127",
+    "node_id": "C_kwDOQnjG49oAKDlhYjk2OGExMzI5ZWQxNDM2ZTZiNDYxMWU1NDhmNmRhMDJkYjkxMjc",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-15T10:11:08Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-15T10:11:08Z"
+      },
+      "message": "add code merge and deduplication logic to context converter node",
+      "tree": {
+        "sha": "254d352eae660e8c575cabd7b25914ed3bc4aa37",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/254d352eae660e8c575cabd7b25914ed3bc4aa37"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/9ab968a1329ed1436e6b4611e548f6da02db9127",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/9ab968a1329ed1436e6b4611e548f6da02db9127",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/9ab968a1329ed1436e6b4611e548f6da02db9127",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/9ab968a1329ed1436e6b4611e548f6da02db9127/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "73bc0f527e4e95a337fe1cd17636c1bc7f81d30e",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/73bc0f527e4e95a337fe1cd17636c1bc7f81d30e",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/73bc0f527e4e95a337fe1cd17636c1bc7f81d30e"
+      }
+    ],
+    "stats": {
+      "total": 144,
+      "additions": 131,
+      "deletions": 13
+    },
+    "files": [
+      {
+        "sha": "3ffda5ae0ea589fd5ca70950838285580f209aa1",
+        "filename": "server/rangeUtils.ts",
+        "status": "added",
+        "additions": 3,
+        "deletions": 0,
+        "changes": 3,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/9ab968a1329ed1436e6b4611e548f6da02db9127/server%2FrangeUtils.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/9ab968a1329ed1436e6b4611e548f6da02db9127/server%2FrangeUtils.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/server%2FrangeUtils.ts?ref=9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "patch": "@@ -0,0 +1,3 @@\n+export { mergeRanges, mergeCodeSearchOutputs } from '../shared/rangeUtils.js'\n+export type { LineRange } from '../shared/rangeUtils.js'\n+"
+      },
+      {
+        "sha": "544b33f2d35b7a23fd6fdf8d82a196506745710c",
+        "filename": "shared/appDataTypes.ts",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/9ab968a1329ed1436e6b4611e548f6da02db9127/shared%2FappDataTypes.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/9ab968a1329ed1436e6b4611e548f6da02db9127/shared%2FappDataTypes.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/shared%2FappDataTypes.ts?ref=9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "patch": "@@ -42,6 +42,7 @@ export type CodeSearchData = BaseNodeData & {\n export type ContextConverterData = BaseNodeData & {\n   fullFile: boolean\n   output: string | null\n+  mergedFiles?: Record<string, [number, number][]>\n }\n \n export type InstructionData = BaseNodeData & {"
+      },
+      {
+        "sha": "613cf125261c8fea6105752837d18e21350121c0",
+        "filename": "shared/rangeUtils.ts",
+        "status": "added",
+        "additions": 73,
+        "deletions": 0,
+        "changes": 73,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/9ab968a1329ed1436e6b4611e548f6da02db9127/shared%2FrangeUtils.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/9ab968a1329ed1436e6b4611e548f6da02db9127/shared%2FrangeUtils.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/shared%2FrangeUtils.ts?ref=9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "patch": "@@ -0,0 +1,73 @@\n+export type LineRange = [number, number]\n+\n+function isRangeEndInfinite(end: number) {\n+  return end === -1\n+}\n+\n+/**\n+ * Merge overlapping or adjacent line ranges for a single file.\n+ * Input: [[1,10], [5,15], [20,25], [24,30]]\n+ * Output: [[1,15], [20,30]]\n+ */\n+export function mergeRanges(ranges: LineRange[]): LineRange[] {\n+  if (ranges.length === 0) return []\n+\n+  const sorted = [...ranges].sort((a, b) => {\n+    if (a[0] !== b[0]) return a[0] - b[0]\n+    const aEnd = isRangeEndInfinite(a[1]) ? Number.POSITIVE_INFINITY : a[1]\n+    const bEnd = isRangeEndInfinite(b[1]) ? Number.POSITIVE_INFINITY : b[1]\n+    return bEnd - aEnd\n+  })\n+\n+  const merged: LineRange[] = []\n+\n+  for (const [start, end] of sorted) {\n+    if (!Number.isFinite(start) || !Number.isFinite(end)) throw new Error(`Invalid range: [${start}, ${end}]`)\n+    if (!isRangeEndInfinite(end) && end < start) throw new Error(`Invalid range (end < start): [${start}, ${end}]`)\n+\n+    const last = merged[merged.length - 1]\n+    if (!last) {\n+      merged.push([start, end])\n+      continue\n+    }\n+\n+    if (isRangeEndInfinite(last[1])) continue\n+\n+    if (start <= last[1] + 1) {\n+      if (isRangeEndInfinite(end)) {\n+        last[1] = -1\n+      } else {\n+        last[1] = Math.max(last[1], end)\n+      }\n+      continue\n+    }\n+\n+    merged.push([start, end])\n+  }\n+\n+  return merged\n+}\n+\n+/**\n+ * Merge multiple CodeSearchOutput `files` records into one deduplicated record.\n+ */\n+export function mergeCodeSearchOutputs(\n+  outputs: Array<{ files: Record<string, LineRange[]> }>,\n+): Record<string, LineRange[]> {\n+  const combined: Record<string, LineRange[]> = {}\n+\n+  for (const output of outputs) {\n+    for (const [filePath, ranges] of Object.entries(output.files)) {\n+      if (!combined[filePath]) combined[filePath] = []\n+      combined[filePath].push(...ranges)\n+    }\n+  }\n+\n+  const result: Record<string, LineRange[]> = {}\n+  for (const [filePath, ranges] of Object.entries(combined)) {\n+    result[filePath] = mergeRanges(ranges)\n+  }\n+\n+  return result\n+}\n+"
+      },
+      {
+        "sha": "fdd29b654c8aafb02863d66307a610c06a3c6d2a",
+        "filename": "src/specflow/components/NodeSidebar.tsx",
+        "status": "modified",
+        "additions": 9,
+        "deletions": 0,
+        "changes": 9,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/9ab968a1329ed1436e6b4611e548f6da02db9127/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/9ab968a1329ed1436e6b4611e548f6da02db9127/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx?ref=9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "patch": "@@ -529,6 +529,15 @@ export function NodeSidebar({\n           </div>\n         )}\n \n+        {selectedNode.type === 'context-converter' && selectedNode.data.mergedFiles && (\n+          <div className=\"sfOutputSection\">\n+            <div className=\"sfOutputHeader\">\n+              <span className=\"sfOutputTitle\">{t(language, 'sidebar_merged_files')}</span>\n+            </div>\n+            <CodeSearchOutputPreview output={{ files: selectedNode.data.mergedFiles }} />\n+          </div>\n+        )}\n+\n         {/* Output Viewer Modal */}\n         <OutputViewerModal\n           isOpen={isOutputModalOpen}"
+      },
+      {
+        "sha": "acc685b61d7fbc767a501dc7f0517bfc95aae39f",
+        "filename": "src/specflow/hooks/useNodeRunner.ts",
+        "status": "modified",
+        "additions": 37,
+        "deletions": 13,
+        "changes": 50,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/9ab968a1329ed1436e6b4611e548f6da02db9127/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/9ab968a1329ed1436e6b4611e548f6da02db9127/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts?ref=9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "patch": "@@ -1,6 +1,7 @@\n import { useCallback, useRef } from 'react'\n import type { AppData, AppNode, CodeSearchOutput } from '../types'\n import { buildRepoContext, runCodeSearch, runConductor, runLLM, resolveManualImport } from '../api'\n+import { mergeCodeSearchOutputs } from '../../../shared/rangeUtils'\n import {\n   ChainCancelledError,\n   getActiveTab,\n@@ -203,6 +204,7 @@ export function useNodeRunner(\n               data: {\n                 ...n.data,\n                 output: emptyOutput,\n+                ...(n.type === 'context-converter' ? { mergedFiles: undefined } : {}),\n                 status: 'success',\n                 error: null,\n               },\n@@ -477,19 +479,40 @@ export function useNodeRunner(\n             if (searchPreds.length === 0)\n               throw new Error('Context converter requires a code-search/manual-import predecessor.')\n \n-            const contexts = await Promise.all(\n-              searchPreds.map(async (p) => {\n-                const out = getCodeSearchOutput(p.id, localOutputs)\n-                if (!out) throw new Error('Code-search predecessor has no output.')\n-                return buildRepoContext({\n-                  repoPath: getCodeSearchRepoPath(p.id, localOutputs),\n-                  explanation: out.explanation,\n-                  files: out.files,\n-                  fullFile: node.data.fullFile,\n-                  signal,\n-                })\n-              }),\n-            )\n+            const byRepo = new Map<\n+              string,\n+              { outputs: Array<{ explanation: string; files: CodeSearchOutput['files'] }>; explanations: string[] }\n+            >()\n+\n+            for (const p of searchPreds) {\n+              const out = getCodeSearchOutput(p.id, localOutputs)\n+              if (!out) throw new Error('Code-search predecessor has no output.')\n+              const repoPath = getCodeSearchRepoPath(p.id, localOutputs)\n+              const entry = byRepo.get(repoPath) ?? { outputs: [], explanations: [] }\n+              entry.outputs.push({ explanation: out.explanation, files: out.files })\n+              if (out.explanation) entry.explanations.push(out.explanation)\n+              byRepo.set(repoPath, entry)\n+            }\n+\n+            const contexts: string[] = []\n+            const allMergedFiles: Record<string, Array<[number, number]>> = {}\n+\n+            for (const [repoPath, { outputs, explanations }] of byRepo.entries()) {\n+              const mergedFiles = mergeCodeSearchOutputs(outputs)\n+              Object.assign(allMergedFiles, mergedFiles)\n+\n+              const text = await buildRepoContext({\n+                repoPath,\n+                explanation: explanations\n+                  .map((x) => x.trim())\n+                  .filter(Boolean)\n+                  .join('\\n\\n---\\n\\n'),\n+                files: mergedFiles,\n+                fullFile: node.data.fullFile,\n+                signal,\n+              })\n+              contexts.push(text)\n+            }\n \n             const text = contexts.join('\\n\\n---\\n\\n')\n             patchNodeById(nodeId, (n) => {\n@@ -499,6 +522,7 @@ export function useNodeRunner(\n                 data: {\n                   ...n.data,\n                   output: text,\n+                  mergedFiles: allMergedFiles,\n                   status: 'success',\n                   error: null,\n                 },"
+      },
+      {
+        "sha": "fa59d49d1f17faa2335cca58d39c649ba803df85",
+        "filename": "src/specflow/i18n.ts",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/9ab968a1329ed1436e6b4611e548f6da02db9127/src%2Fspecflow%2Fi18n.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/9ab968a1329ed1436e6b4611e548f6da02db9127/src%2Fspecflow%2Fi18n.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fi18n.ts?ref=9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "patch": "@@ -47,6 +47,7 @@ const EN: Dict = {\n   sidebar_copied: 'Copied',\n   sidebar_copy_title: 'Copy to clipboard',\n   sidebar_copied_title: 'Copied!',\n+  sidebar_merged_files: 'Merged File Ranges',\n \n   field_repo_path: 'Repository Path',\n   field_query: 'Query',\n@@ -173,6 +174,7 @@ const ZH: Dict = {\n   sidebar_copied: '已复制',\n   sidebar_copy_title: '复制到剪贴板',\n   sidebar_copied_title: '已复制！',\n+  sidebar_merged_files: '合并后的文件范围',\n \n   field_repo_path: '仓库路径',\n   field_query: '查询',"
+      },
+      {
+        "sha": "5dd0ce3ecb75136fbeb3eac8751c35f02753bc1e",
+        "filename": "src/specflow/utils.ts",
+        "status": "modified",
+        "additions": 6,
+        "deletions": 0,
+        "changes": 6,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/9ab968a1329ed1436e6b4611e548f6da02db9127/src%2Fspecflow%2Futils.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/9ab968a1329ed1436e6b4611e548f6da02db9127/src%2Fspecflow%2Futils.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Futils.ts?ref=9ab968a1329ed1436e6b4611e548f6da02db9127",
+        "patch": "@@ -39,6 +39,12 @@ export function canRunFromPredecessors(preds: AppNode[]) {\n \n export function resetNodeRuntime(node: AppNode): AppNode {\n   if (node.data.locked) return node\n+  if (node.type === 'context-converter') {\n+    return {\n+      ...node,\n+      data: { ...node.data, status: 'idle', error: null, output: null, mergedFiles: undefined },\n+    } as AppNode\n+  }\n   return { ...node, data: { ...node.data, status: 'idle', error: null, output: null } } as AppNode\n }\n "
+      }
+    ]
+  }
+}

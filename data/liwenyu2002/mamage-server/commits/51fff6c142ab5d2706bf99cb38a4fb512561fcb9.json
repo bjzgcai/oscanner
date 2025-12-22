@@ -1,0 +1,70 @@
+{
+  "cached_at": "2025-12-22T15:15:34.676004",
+  "commit_sha": "51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+  "repo": "liwenyu2002/mamage-server",
+  "data": {
+    "sha": "51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+    "commit": {
+      "author": {
+        "name": "HIT_LWY",
+        "email": "s-lwy24@bjzgca.edu.cn",
+        "date": "2025-12-21T06:52:42Z"
+      },
+      "committer": {
+        "name": "HIT_LWY",
+        "email": "s-lwy24@bjzgca.edu.cn",
+        "date": "2025-12-21T06:52:42Z"
+      },
+      "message": "优化了readme，提高新开发者配置效率",
+      "tree": {
+        "sha": "509e331a1717b48c2b6c7e6e1ba42a33547175d1",
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/trees/509e331a1717b48c2b6c7e6e1ba42a33547175d1"
+      },
+      "url": "https://api.github.com/repos/liwenyu2002/mamage-server/git/commits/51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+    "html_url": "https://github.com/liwenyu2002/mamage-server/commit/51fff6c142ab5d2706bf99cb38a4fb512561fcb9",
+    "author": {
+      "login": "liwenyu2002",
+      "id": 75512499,
+      "avatar_url": "https://avatars.githubusercontent.com/u/75512499?v=4",
+      "type": "User"
+    },
+    "committer": {
+      "login": "liwenyu2002",
+      "id": 75512499,
+      "avatar_url": "https://avatars.githubusercontent.com/u/75512499?v=4",
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "c110964063bb3bbf8b0476e74d40fb3488914ae2",
+        "url": "https://api.github.com/repos/liwenyu2002/mamage-server/commits/c110964063bb3bbf8b0476e74d40fb3488914ae2",
+        "html_url": "https://github.com/liwenyu2002/mamage-server/commit/c110964063bb3bbf8b0476e74d40fb3488914ae2"
+      }
+    ],
+    "stats": {
+      "total": 10,
+      "additions": 5,
+      "deletions": 5
+    },
+    "files": [
+      {
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 5,
+        "changes": 10,
+        "patch": "@@ placeholder patch @@"
+      }
+    ]
+  }
+}

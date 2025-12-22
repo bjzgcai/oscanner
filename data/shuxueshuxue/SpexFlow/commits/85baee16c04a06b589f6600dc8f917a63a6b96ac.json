@@ -1,0 +1,102 @@
+{
+  "cached_at": "2025-12-22T15:32:07.884696",
+  "commit_sha": "85baee16c04a06b589f6600dc8f917a63a6b96ac",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "85baee16c04a06b589f6600dc8f917a63a6b96ac",
+    "node_id": "C_kwDOQnjG49oAKDg1YmFlZTE2YzA0YTA2YjU4OWY2NjAwZGM4ZjkxN2E2M2E2Yjk2YWM",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T14:53:01Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-14T14:53:01Z"
+      },
+      "message": "disable node when when predecessors not succeeded",
+      "tree": {
+        "sha": "7e3007a21790394c2b2c21cec8c5d445b32703c3",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/7e3007a21790394c2b2c21cec8c5d445b32703c3"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/85baee16c04a06b589f6600dc8f917a63a6b96ac",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/85baee16c04a06b589f6600dc8f917a63a6b96ac",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/85baee16c04a06b589f6600dc8f917a63a6b96ac",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/85baee16c04a06b589f6600dc8f917a63a6b96ac/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/4a8c0237cefc2fbbc44e081d73b91eb744f17bc8"
+      }
+    ],
+    "stats": {
+      "total": 50,
+      "additions": 43,
+      "deletions": 7
+    },
+    "files": [
+      {
+        "sha": "b01ea56b6349b750c1dc77c832b130db3bb5cdf6",
+        "filename": "src/App.css",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 0,
+        "changes": 8,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/85baee16c04a06b589f6600dc8f917a63a6b96ac/src%2FApp.css",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/85baee16c04a06b589f6600dc8f917a63a6b96ac/src%2FApp.css",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2FApp.css?ref=85baee16c04a06b589f6600dc8f917a63a6b96ac",
+        "patch": "@@ -937,6 +937,14 @@\n   flex-wrap: wrap;\n }\n \n+.sfButtonGroup .sfButtonWrap {\n+  flex: 1;\n+}\n+\n+.sfButtonGroup .sfButtonWrap button {\n+  width: 100%;\n+}\n+\n .sfButtonGroup button {\n   flex: 1;\n   min-width: 80px;"
+      },
+      {
+        "sha": "ab1202624ae762bde3d8e6420a557bbde1b6b546",
+        "filename": "src/specflow/SpecFlowApp.tsx",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 1,
+        "changes": 9,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/85baee16c04a06b589f6600dc8f917a63a6b96ac/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/85baee16c04a06b589f6600dc8f917a63a6b96ac/src%2Fspecflow%2FSpecFlowApp.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2FSpecFlowApp.tsx?ref=85baee16c04a06b589f6600dc8f917a63a6b96ac",
+        "patch": "@@ -17,7 +17,7 @@ import {\n   ResetIcon,\n } from './components/Icons'\n import { ChainManager } from './ChainManager'\n-import { sameIdSet } from './utils'\n+import { canRunFromPredecessors, predecessors, sameIdSet } from './utils'\n import { t } from './i18n'\n import {\n   CodeSearchConductorNodeView,\n@@ -146,6 +146,12 @@ export function SpecFlowApp() {\n \n   const selectedNode = selected && selected.nodeIds.length === 1 ? primarySelectedNode : null\n \n+  const canRunFromPreds = useMemo(() => {\n+    if (!selectedNode) return true\n+    const preds = predecessors(activeTab.canvas.nodes, activeTab.canvas.edges, selectedNode.id)\n+    return canRunFromPredecessors(preds)\n+  }, [activeTab.canvas.edges, activeTab.canvas.nodes, selectedNode?.id])\n+\n   return (\n     <div className=\"sfRoot\">\n       <ChainManager runs={chainRuns} onCancel={cancelChain} />\n@@ -333,6 +339,7 @@ export function SpecFlowApp() {\n             runFrom={(nodeId) => runFrom(nodeId).catch(() => {})}\n             apiSettings={appData.apiSettings}\n             language={language}\n+            canRunFromPreds={canRunFromPreds}\n           />\n         )}\n       </div>"
+      },
+      {
+        "sha": "cf10711464a7e1ddf056a3dc9fe2b11049a30af3",
+        "filename": "src/specflow/components/NodeSidebar.tsx",
+        "status": "modified",
+        "additions": 25,
+        "deletions": 6,
+        "changes": 31,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/85baee16c04a06b589f6600dc8f917a63a6b96ac/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/85baee16c04a06b589f6600dc8f917a63a6b96ac/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FNodeSidebar.tsx?ref=85baee16c04a06b589f6600dc8f917a63a6b96ac",
+        "patch": "@@ -32,6 +32,7 @@ type Props = {\n   runFrom: (nodeId: string) => void\n   apiSettings: APISettings\n   language: Language\n+  canRunFromPreds: boolean\n }\n \n export function NodeSidebar({\n@@ -43,6 +44,7 @@ export function NodeSidebar({\n   runFrom,\n   apiSettings,\n   language,\n+  canRunFromPreds,\n }: Props) {\n   const [isOutputModalOpen, setIsOutputModalOpen] = useState(false)\n   const [isPickerOpen, setIsPickerOpen] = useState(false)\n@@ -69,6 +71,10 @@ export function NodeSidebar({\n   if (!selectedNode) return null\n \n   const isLocked = !!selectedNode.data.locked\n+  const predsBlocked = !canRunFromPreds\n+  const predsBlockedTitle = predsBlocked\n+    ? t(language, 'sidebar_predecessors_not_succeeded')\n+    : undefined\n   const customName = (selectedNode.data.customName ?? '').trim()\n   const customColor = (selectedNode.data.customColor ?? '').trim()\n   const manualRepoPathTrimmed =\n@@ -460,12 +466,25 @@ export function NodeSidebar({\n         {/* Actions Section */}\n         <div className=\"sfSectionTitle\">{t(language, 'sidebar_actions')}</div>\n         <div className=\"sfButtonGroup\">\n-          <button onClick={() => runNode(selectedNode.id)} disabled={isLocked}>\n-            {t(language, 'sidebar_run')}\n-          </button>\n-          <button onClick={() => runFrom(selectedNode.id)} disabled={isLocked}>\n-            {t(language, 'sidebar_chain')}\n-          </button>\n+          {/* @@@ Disabled button tooltip - disabled <button> won't reliably show title, so wrap it */}\n+          <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n+            <button\n+              onClick={() => runNode(selectedNode.id)}\n+              disabled={isLocked || predsBlocked}\n+              style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n+            >\n+              {t(language, 'sidebar_run')}\n+            </button>\n+          </span>\n+          <span className=\"sfButtonWrap\" title={predsBlockedTitle}>\n+            <button\n+              onClick={() => runFrom(selectedNode.id)}\n+              disabled={isLocked || predsBlocked}\n+              style={predsBlocked ? { pointerEvents: 'none' } : undefined}\n+            >\n+              {t(language, 'sidebar_chain')}\n+            </button>\n+          </span>\n           <button\n             onClick={() => patchSelectedNode(resetNodeRuntime)}\n             disabled={isLocked || selectedNode.data.status === 'running'}"
+      },
+      {
+        "sha": "d21bec109c0869a226accab7e7ff0bf6c88b0a20",
+        "filename": "src/specflow/i18n.ts",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/85baee16c04a06b589f6600dc8f917a63a6b96ac/src%2Fspecflow%2Fi18n.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/85baee16c04a06b589f6600dc8f917a63a6b96ac/src%2Fspecflow%2Fi18n.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fi18n.ts?ref=85baee16c04a06b589f6600dc8f917a63a6b96ac",
+        "patch": "@@ -38,6 +38,7 @@ const EN: Dict = {\n   sidebar_clear_color: 'Clear',\n   sidebar_run: 'Run',\n   sidebar_chain: 'Chain',\n+  sidebar_predecessors_not_succeeded: \"Can't run: predecessors haven't all succeeded\",\n   sidebar_reset: 'Reset',\n   sidebar_delete: 'Delete',\n   sidebar_view_all: 'View All',\n@@ -163,6 +164,7 @@ const ZH: Dict = {\n   sidebar_clear_color: '清除',\n   sidebar_run: '运行',\n   sidebar_chain: '链式运行',\n+  sidebar_predecessors_not_succeeded: '无法运行：前置节点尚未全部成功',\n   sidebar_reset: '重置',\n   sidebar_delete: '删除',\n   sidebar_view_all: '查看全部',"
+      }
+    ]
+  }
+}

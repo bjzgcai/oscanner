@@ -1,0 +1,89 @@
+{
+  "cached_at": "2025-12-22T15:32:11.148838",
+  "commit_sha": "e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+    "node_id": "C_kwDOQnjG49oAKGU4MWFlYzg3YTEzODA5ZWI3ZmVjNDcyMDJmYTVjZGFhOTFkNzVjYzc",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-13T16:11:39Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-13T16:11:39Z"
+      },
+      "message": "fix readme",
+      "tree": {
+        "sha": "cc43cdf2af867704a207024118afe13d1b6670e0",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/cc43cdf2af867704a207024118afe13d1b6670e0"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e81aec87a13809eb7fec47202fa5cdaa91d75cc7/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "6040fb9349772f41c101cf5bff2832c5ce2e6ca3",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/6040fb9349772f41c101cf5bff2832c5ce2e6ca3",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/6040fb9349772f41c101cf5bff2832c5ce2e6ca3"
+      }
+    ],
+    "stats": {
+      "total": 16,
+      "additions": 8,
+      "deletions": 8
+    },
+    "files": [
+      {
+        "sha": "df2f73b10fc348b4037be8a91000c0932ed0f81b",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 4,
+        "changes": 8,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/e81aec87a13809eb7fec47202fa5cdaa91d75cc7/README.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/e81aec87a13809eb7fec47202fa5cdaa91d75cc7/README.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.md?ref=e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+        "patch": "@@ -2,7 +2,7 @@\n \n English | [简体中文](README.zh.md)\n \n-SpecFlow is a visual context/spec workflow tool built on React Flow. It helps you turn a concrete feature request into:\n+SpexFlow is a visual context/spec workflow tool built on React Flow. It helps you turn a concrete feature request into:\n \n 1) curated repo context (via code search or manual selection), then  \n 2) a high-quality implementation plan/spec from an LLM, then  \n@@ -14,15 +14,15 @@ It’s optimized for **“finish one well-defined feature in one shot”** rathe\n \n **A minimal workflow** (instruction → code-search → context → LLM):\n \n-![SpecFlow minimal workflow](docs/images/specflow-minimal-workflow.png)\n+![SpexFlow minimal workflow](docs/images/specflow-minimal-workflow.png)\n \n **A larger canvas** where you keep reusable context blocks and rerun only the parts that changed:\n \n-![SpecFlow workflow](docs/images/specflow-workflow.png)\n+![SpexFlow workflow](docs/images/specflow-workflow.png)\n \n ## What You Build With It\n \n-SpecFlow loads a local code repo and lets you run a small node-based workflow:\n+SpexFlow loads a local code repo and lets you run a small node-based workflow:\n \n - **Instruction** → produce/compose plain text input\n - **Code Search Conductor** → generate multiple complementary search queries (one per downstream Code Search node)"
+      },
+      {
+        "sha": "394678f0a54af651d8228d9bd0e3374c56af21b3",
+        "filename": "README.zh.md",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 4,
+        "changes": 8,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/e81aec87a13809eb7fec47202fa5cdaa91d75cc7/README.zh.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/e81aec87a13809eb7fec47202fa5cdaa91d75cc7/README.zh.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.zh.md?ref=e81aec87a13809eb7fec47202fa5cdaa91d75cc7",
+        "patch": "@@ -2,7 +2,7 @@\n \n [English](README.md) | 简体中文\n \n-SpecFlow 是一个基于 React Flow 的可视化 context/spec 工作流工具。它帮助你把一个明确的功能需求变成：\n+SpexFlow 是一个基于 React Flow 的可视化 context/spec 工作流工具。它帮助你把一个明确的功能需求变成：\n \n 1) 可复用、可缓存的仓库上下文（代码搜索 / 手动选择），再  \n 2) 由 LLM 生成的高质量实现方案（spec/plan），再  \n@@ -14,15 +14,15 @@ SpecFlow 是一个基于 React Flow 的可视化 context/spec 工作流工具。\n \n **最小工作流**（instruction → code-search → context → LLM）：\n \n-![SpecFlow minimal workflow](docs/images/specflow-minimal-workflow.png)\n+![SpexFlow minimal workflow](docs/images/specflow-minimal-workflow.png)\n \n **更大的画布**：把一些可复用的 context/指令块当作“积木”保存起来，需要更新时只 rerun 那个节点：\n \n-![SpecFlow workflow](docs/images/specflow-workflow.png)\n+![SpexFlow workflow](docs/images/specflow-workflow.png)\n \n ## 你能用它做什么\n \n-SpecFlow 用来加载本地代码仓库，并用一个小型「节点工作流」跑通：\n+SpexFlow 用来加载本地代码仓库，并用一个小型「节点工作流」跑通：\n \n - **Instruction** → 生成/组合纯文本输入\n - **Code Search Conductor** → 为多个下游 Code Search 节点分别生成互补的搜索查询"
+      },
+      {
+        "sha": "aff99b188fab8d7a80bde61ce099f3e865932579",
+        "filename": "docs/images/specflow-overview.png",
+        "status": "removed",
+        "additions": 0,
+        "deletions": 0,
+        "changes": 0,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/6040fb9349772f41c101cf5bff2832c5ce2e6ca3/docs%2Fimages%2Fspecflow-overview.png",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/6040fb9349772f41c101cf5bff2832c5ce2e6ca3/docs%2Fimages%2Fspecflow-overview.png",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/docs%2Fimages%2Fspecflow-overview.png?ref=6040fb9349772f41c101cf5bff2832c5ce2e6ca3"
+      }
+    ]
+  }
+}

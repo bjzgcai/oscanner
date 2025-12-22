@@ -1,28 +1,27 @@
 {
-  "cached_at": "2025-12-20T11:50:16.479650",
+  "cached_at": "2025-12-22T15:51:40.251756",
   "owner": "shuxueshuxue",
   "repo": "ink-and-memory",
   "username": "Shaobin-Jiang",
   "evaluation": {
     "username": "Shaobin-Jiang",
-    "total_commits_analyzed": 3,
-    "total_commits": 3,
+    "total_commits_analyzed": 2,
+    "total_commits": 2,
     "scores": {
-      "ai_fullstack": 35,
-      "ai_architecture": 42,
-      "cloud_native": 25,
-      "open_source": 48,
-      "intelligent_dev": 38,
-      "leadership": 40,
-      "reasoning": "The commits show basic feature implementation for voice input with WebSocket integration, but lack depth in ML model development, infrastructure automation, and testing practices. The refactoring between commits suggests iterative development, though CSS positioning changes indicate UI/UX adjustments rather than architectural improvements. No evidence of CI/CD, containerization, comprehensive testing, or advanced optimization strategies."
+      "ai_fullstack": 5,
+      "ai_architecture": 15,
+      "cloud_native": 10,
+      "open_source": 25,
+      "intelligent_dev": 20,
+      "leadership": 15,
+      "reasoning": "These commits show frontend UI modifications for voice input feature with minimal technical depth. The changes are primarily CSS layout adjustments and React component refactoring without evidence of ML integration, infrastructure work, testing, or architectural consideration. Commit messages lack detail and there's no evidence of systematic development practices, code review engagement, or optimization strategies."
     },
     "commits_summary": {
-      "total_additions": 534,
-      "total_deletions": 207,
-      "files_changed": 4,
+      "total_additions": 453,
+      "total_deletions": 206,
+      "files_changed": 2,
       "languages": [
         "tsx",
-        "py",
         "css"
       ]
     }

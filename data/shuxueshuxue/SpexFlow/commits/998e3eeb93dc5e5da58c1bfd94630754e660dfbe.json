@@ -1,0 +1,78 @@
+{
+  "cached_at": "2025-12-22T15:32:05.204045",
+  "commit_sha": "998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+    "node_id": "C_kwDOQnjG49oAKDk5OGUzZWViOTNkYzVlNWRhNThjMWJmZDk0NjMwNzU0ZTY2MGRmYmU",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-15T10:26:09Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-15T10:26:09Z"
+      },
+      "message": "full file mode aware display of merged code files",
+      "tree": {
+        "sha": "3ea7b0da5fe2bd05fd970a971f30728dbb6b10cc",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/3ea7b0da5fe2bd05fd970a971f30728dbb6b10cc"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/998e3eeb93dc5e5da58c1bfd94630754e660dfbe/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "e83f4033b19e705f087dfb0b79cd4490c631a154",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e83f4033b19e705f087dfb0b79cd4490c631a154",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e83f4033b19e705f087dfb0b79cd4490c631a154"
+      }
+    ],
+    "stats": {
+      "total": 8,
+      "additions": 6,
+      "deletions": 2
+    },
+    "files": [
+      {
+        "sha": "a27a74b52d25d3017004d2406332d03642341d90",
+        "filename": "src/specflow/components/CodeSearchOutputPreview.tsx",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 1,
+        "changes": 3,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/998e3eeb93dc5e5da58c1bfd94630754e660dfbe/src%2Fspecflow%2Fcomponents%2FCodeSearchOutputPreview.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/998e3eeb93dc5e5da58c1bfd94630754e660dfbe/src%2Fspecflow%2Fcomponents%2FCodeSearchOutputPreview.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fcomponents%2FCodeSearchOutputPreview.tsx?ref=998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+        "patch": "@@ -11,6 +11,7 @@ type Props = {\n \n export function CodeSearchOutputPreview({ output }: Props) {\n   const fileEntries = Object.entries(output.files || {})\n+  const formatRange = (start: number, end: number) => (end === -1 ? `L${start}-EOF` : `L${start}-${end}`)\n \n   return (\n     <div className=\"sfCodeSearchOutput\">\n@@ -27,7 +28,7 @@ export function CodeSearchOutputPreview({ output }: Props) {\n               <span className=\"sfCodeSearchRanges\">\n                 {ranges.map(([start, end], idx) => (\n                   <span key={idx} className=\"sfCodeSearchRange\">\n-                    L{start}-{end}\n+                    {formatRange(start, end)}\n                   </span>\n                 ))}\n               </span>"
+      },
+      {
+        "sha": "f3dc6e869ed05bce0466a861a0955e2930767181",
+        "filename": "src/specflow/hooks/useNodeRunner.ts",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 1,
+        "changes": 5,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/998e3eeb93dc5e5da58c1bfd94630754e660dfbe/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/998e3eeb93dc5e5da58c1bfd94630754e660dfbe/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts?ref=998e3eeb93dc5e5da58c1bfd94630754e660dfbe",
+        "patch": "@@ -499,7 +499,10 @@ export function useNodeRunner(\n \n             for (const [repoPath, { outputs, explanations }] of byRepo.entries()) {\n               const mergedFiles = mergeCodeSearchOutputs(outputs)\n-              Object.assign(allMergedFiles, mergedFiles)\n+              const mergedFilesForDisplay = node.data.fullFile\n+                ? Object.fromEntries(Object.keys(mergedFiles).map((p) => [p, [[1, -1]] as [number, number][]]))\n+                : mergedFiles\n+              Object.assign(allMergedFiles, mergedFilesForDisplay)\n \n               const text = await buildRepoContext({\n                 repoPath,"
+      }
+    ]
+  }
+}

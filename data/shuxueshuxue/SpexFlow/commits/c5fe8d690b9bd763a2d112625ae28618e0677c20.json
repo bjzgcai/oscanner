@@ -1,0 +1,66 @@
+{
+  "cached_at": "2025-12-22T15:32:00.943816",
+  "commit_sha": "c5fe8d690b9bd763a2d112625ae28618e0677c20",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "c5fe8d690b9bd763a2d112625ae28618e0677c20",
+    "node_id": "C_kwDOQnjG49oAKGM1ZmU4ZDY5MGI5YmQ3NjNhMmQxMTI2MjVhZTI4NjE4ZTA2NzdjMjA",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T04:24:44Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-16T04:24:44Z"
+      },
+      "message": "fix archive node display",
+      "tree": {
+        "sha": "6dab3c926bf6baf5e49871c4ce6f4de7ae6fc862",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6dab3c926bf6baf5e49871c4ce6f4de7ae6fc862"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/c5fe8d690b9bd763a2d112625ae28618e0677c20",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/c5fe8d690b9bd763a2d112625ae28618e0677c20",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/c5fe8d690b9bd763a2d112625ae28618e0677c20",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/c5fe8d690b9bd763a2d112625ae28618e0677c20/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "234cbbffae351546713b6e8c0f875ebd43986463",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/234cbbffae351546713b6e8c0f875ebd43986463",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/234cbbffae351546713b6e8c0f875ebd43986463"
+      }
+    ],
+    "stats": {
+      "total": 3,
+      "additions": 1,
+      "deletions": 2
+    },
+    "files": [
+      {
+        "sha": "01b77972cdaeef26578f4d90bb661cd2ea8816d8",
+        "filename": "src/specflow/nodes.tsx",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 2,
+        "changes": 3,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/c5fe8d690b9bd763a2d112625ae28618e0677c20/src%2Fspecflow%2Fnodes.tsx",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/c5fe8d690b9bd763a2d112625ae28618e0677c20/src%2Fspecflow%2Fnodes.tsx",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fnodes.tsx?ref=c5fe8d690b9bd763a2d112625ae28618e0677c20",
+        "patch": "@@ -354,8 +354,7 @@ export function ManualImportNodeView({\n \n export function ArchiveNodeView({ data, selected }: NodeProps<ArchiveNode>) {\n   const memberCount = data.members.length\n-  const hint = `${memberCount} archived node${memberCount !== 1 ? 's' : ''}`\n-  const subtitle = previewOrHint(data.output ?? '', hint)\n+  const subtitle = `${memberCount} archived node${memberCount !== 1 ? 's' : ''}`\n \n   return (\n     <NodeShell"
+      }
+    ]
+  }
+}

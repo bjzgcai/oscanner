@@ -1,0 +1,106 @@
+{
+  "cached_at": "2025-12-22T15:31:57.678512",
+  "commit_sha": "09fd6f0c9472827fa1403155937cc34d5f2038a6",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "09fd6f0c9472827fa1403155937cc34d5f2038a6",
+    "node_id": "C_kwDOQnjG49oAKDA5ZmQ2ZjBjOTQ3MjgyN2ZhMTQwMzE1NTkzN2NjMzRkNWYyMDM4YTY",
+    "commit": {
+      "author": {
+        "name": "F2J",
+        "email": "98064968+shuxueshuxue@users.noreply.github.com",
+        "date": "2025-12-19T01:10:07Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "date": "2025-12-19T01:10:07Z"
+      },
+      "message": "Update README to include new planning section\n\nAdded section on 'Two hops searching and planning' with image.",
+      "tree": {
+        "sha": "1304719887e442b32b5962872d6b91d7ea3cda95",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/1304719887e442b32b5962872d6b91d7ea3cda95"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/09fd6f0c9472827fa1403155937cc34d5f2038a6",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpRKXvCRC1aQ7uu5UhlAAArPcQAHfkwHyo4mEeBCuLptRgGjbO\nofa7hWXkzVTL8l7r9QB1Wpog+QM2aFxFnLvEJqTIEXVxe1CPwBdVgvYVf9ixqTmW\nmMN7KTuyyrRQscbz0zkQuPYujqMiVdQHtztKnkN7we0G7wnncer6burTAh/u8alQ\n5+NMDcTMVsnvZ+X7rhyBClI9+DSRFTVXEGgwgtD1tkz4e5mmGuOLs5JSXDd1USqS\nUJ2JTBVNJcSserw2vSII5KlPiF8zIZAhkXyzUaM1OY8TnSpFq1SkI6qcVW5UuvX9\n9cIn2ItWuDJdExJe2N+yhUKI1fbl1a6Pa3trJddGh6Ly5PuDPFXkqXudnSw20uTe\nsrgg3CxlqasAYdVo/xkLLlm3XR8dHqhyh/mUoaEIq87usaEYiZpks5jXQ8WrPIey\n7H0bsntZoo3/pUkFxW0nA6D1XE0/aKwe4hqhev6+XfneZK0afXdtG8xUS6QJ3kif\nWHpvYot8NsQ0DyU9VRmO/6XQpPElOgmG7aVn9RbbEmFY3C0hewxZhcFQz1TSvlqG\nBnPWFhPlYASf8zw+YZAP4MT4+PgPV3kQ/nAWovNqLGhuhnKVhGuSWrUbqGqx5K0M\n5H9HOCx1Uk7VlfWz5SH8vtfsiyiI7CrtELyJdTp/VKHwoMeuCplIRHOZGvQHJNTA\nz3175d8rZJGDcFLB0toA\n=NLIG\n-----END PGP SIGNATURE-----\n",
+        "payload": "tree 1304719887e442b32b5962872d6b91d7ea3cda95\nparent 1b14ff8c0e9a32313da0033cf3c538f3394fba4a\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1766106607 +0800\ncommitter GitHub <noreply@github.com> 1766106607 +0800\n\nUpdate README to include new planning section\n\nAdded section on 'Two hops searching and planning' with image.",
+        "verified_at": "2025-12-19T01:10:07Z"
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/09fd6f0c9472827fa1403155937cc34d5f2038a6",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/09fd6f0c9472827fa1403155937cc34d5f2038a6",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/09fd6f0c9472827fa1403155937cc34d5f2038a6/comments",
+    "author": {
+      "login": "shuxueshuxue",
+      "id": 98064968,
+      "node_id": "U_kgDOBdhaSA",
+      "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/shuxueshuxue",
+      "html_url": "https://github.com/shuxueshuxue",
+      "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+      "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+      "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+      "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+      "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+      "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "web-flow",
+      "id": 19864447,
+      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+      "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/web-flow",
+      "html_url": "https://github.com/web-flow",
+      "followers_url": "https://api.github.com/users/web-flow/followers",
+      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+      "organizations_url": "https://api.github.com/users/web-flow/orgs",
+      "repos_url": "https://api.github.com/users/web-flow/repos",
+      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/web-flow/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1b14ff8c0e9a32313da0033cf3c538f3394fba4a",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1b14ff8c0e9a32313da0033cf3c538f3394fba4a"
+      }
+    ],
+    "stats": {
+      "total": 4,
+      "additions": 4,
+      "deletions": 0
+    },
+    "files": [
+      {
+        "sha": "12d1acf332a1b4f13ba9d3af4d8230bb26775d4f",
+        "filename": "README.md",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 0,
+        "changes": 4,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/09fd6f0c9472827fa1403155937cc34d5f2038a6/README.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/09fd6f0c9472827fa1403155937cc34d5f2038a6/README.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.md?ref=09fd6f0c9472827fa1403155937cc34d5f2038a6",
+        "patch": "@@ -20,6 +20,10 @@ It's optimized for **\"finish one well-defined feature in one shot\"** rather than\n \n <img width=\"2770\" height=\"1686\" alt=\"image\" src=\"https://github.com/user-attachments/assets/b0d105d5-f203-405a-b18f-44071302ce3f\" />\n \n+**Two hops searching and planning**\n+\n+<img width=\"2758\" height=\"1690\" alt=\"image\" src=\"https://github.com/user-attachments/assets/eebb0f6f-9c56-4258-ba2c-f3ab18058e0d\" />\n+\n ## What You Build With It\n \n SpexFlow loads a local code repo and lets you run a small node-based workflow:"
+      }
+    ]
+  }
+}

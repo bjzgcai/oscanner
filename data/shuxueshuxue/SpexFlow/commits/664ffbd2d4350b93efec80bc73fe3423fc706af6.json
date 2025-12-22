@@ -1,0 +1,71 @@
+{
+  "cached_at": "2025-12-22T15:31:58.729802",
+  "commit_sha": "664ffbd2d4350b93efec80bc73fe3423fc706af6",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "664ffbd2d4350b93efec80bc73fe3423fc706af6",
+    "node_id": "C_kwDOQnjG49oAKDY2NGZmYmQyZDQzNTBiOTNlZmVjODBiYzczZmUzNDIzZmM3MDZhZjY",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-17T09:27:01Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-17T09:27:01Z"
+      },
+      "message": "Merge branch 'main' of https://github.com/shuxueshuxue/SpexFlow",
+      "tree": {
+        "sha": "6a18d8cdbe09a01cb57d3b7b2c3ee9ae921b1db4",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6a18d8cdbe09a01cb57d3b7b2c3ee9ae921b1db4"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/664ffbd2d4350b93efec80bc73fe3423fc706af6",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/664ffbd2d4350b93efec80bc73fe3423fc706af6",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/664ffbd2d4350b93efec80bc73fe3423fc706af6",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/664ffbd2d4350b93efec80bc73fe3423fc706af6/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/f7241528d5a73699856fc213cf0ac4cd9969a502"
+      },
+      {
+        "sha": "8683fabd585e736316e65d66d56298261cd7196d",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/8683fabd585e736316e65d66d56298261cd7196d",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/8683fabd585e736316e65d66d56298261cd7196d"
+      }
+    ],
+    "stats": {
+      "total": 2,
+      "additions": 1,
+      "deletions": 1
+    },
+    "files": [
+      {
+        "sha": "3d19b5b960324e715e276280b01f1383953331ad",
+        "filename": "README.zh.md",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/664ffbd2d4350b93efec80bc73fe3423fc706af6/README.zh.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/664ffbd2d4350b93efec80bc73fe3423fc706af6/README.zh.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.zh.md?ref=664ffbd2d4350b93efec80bc73fe3423fc706af6",
+        "patch": "@@ -18,7 +18,7 @@ SpexFlow 是一个基于 React Flow 的可视化 context/spec 工作流工具。\n \n **更大的画布**：把一些可复用的 context/指令块当作\"积木\"保存起来，需要更新时只 rerun 那个节点：\n \n-![SpexFlow workflow](docs/images/specflow-workflow.png)\n+<img width=\"2770\" height=\"1686\" alt=\"image\" src=\"https://github.com/user-attachments/assets/b0d105d5-f203-405a-b18f-44071302ce3f\" />\n \n ## 你能用它做什么\n "
+      }
+    ]
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "cached_at": "2025-12-22T15:31:59.278482",
+  "commit_sha": "f7241528d5a73699856fc213cf0ac4cd9969a502",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "f7241528d5a73699856fc213cf0ac4cd9969a502",
+    "node_id": "C_kwDOQnjG49oAKGY3MjQxNTI4ZDVhNzM2OTk4NTZmYzIxM2NmMGFjNGNkOTk2OWE1MDI",
+    "commit": {
+      "author": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-17T09:25:02Z"
+      },
+      "committer": {
+        "name": "shuxueshuxue",
+        "email": "lexicalmathical@gmail.com",
+        "date": "2025-12-17T09:25:02Z"
+      },
+      "message": "context converter can now connect to context converter",
+      "tree": {
+        "sha": "34199b128f1231cf22fe101734f70582538a5de8",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/34199b128f1231cf22fe101734f70582538a5de8"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/f7241528d5a73699856fc213cf0ac4cd9969a502",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/f7241528d5a73699856fc213cf0ac4cd9969a502",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/f7241528d5a73699856fc213cf0ac4cd9969a502",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/f7241528d5a73699856fc213cf0ac4cd9969a502/comments",
+    "author": null,
+    "committer": null,
+    "parents": [
+      {
+        "sha": "e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/e0c4760c2ba3802c5c8af9773aacafd741c8c88f",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/e0c4760c2ba3802c5c8af9773aacafd741c8c88f"
+      }
+    ],
+    "stats": {
+      "total": 175,
+      "additions": 151,
+      "deletions": 24
+    },
+    "files": [
+      {
+        "sha": "f699c4310cb3123a53a4cc89ab810ac750043799",
+        "filename": "server/appData.ts",
+        "status": "modified",
+        "additions": 40,
+        "deletions": 0,
+        "changes": 40,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/f7241528d5a73699856fc213cf0ac4cd9969a502/server%2FappData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/f7241528d5a73699856fc213cf0ac4cd9969a502/server%2FappData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/server%2FappData.ts?ref=f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "patch": "@@ -8,6 +8,7 @@ import type {\n   CodeSearchConductorData,\n   CodeSearchData,\n   ConductorOutput,\n+  ContextSource,\n   ContextConverterData,\n   InstructionData,\n   LLMData,\n@@ -156,6 +157,39 @@ function normalizeLineRangesRecord(raw: unknown): Record<string, [number, number\n   return Object.keys(out).length > 0 ? out : undefined\n }\n \n+function normalizeStringArray(raw: unknown): string[] | undefined {\n+  if (!Array.isArray(raw)) return undefined\n+  const out: string[] = []\n+  for (const item of raw) {\n+    if (typeof item !== 'string') continue\n+    const v = item.trim()\n+    if (!v) continue\n+    out.push(v)\n+  }\n+  return out.length ? out : undefined\n+}\n+\n+function normalizeContextSources(raw: unknown): ContextSource[] | undefined {\n+  if (!Array.isArray(raw)) return undefined\n+  const out: ContextSource[] = []\n+  for (const item of raw) {\n+    const obj = asRecord(item)\n+    if (!obj) continue\n+    const repoPath = normalizeString(obj.repoPath).trim()\n+    const sourceNodeId = normalizeString(obj.sourceNodeId).trim()\n+    if (!repoPath || !sourceNodeId) continue\n+    const files = normalizeLineRangesRecord(obj.files)\n+    if (!files) continue\n+    out.push({\n+      repoPath,\n+      sourceNodeId,\n+      explanation: normalizeString(obj.explanation),\n+      files,\n+    })\n+  }\n+  return out.length ? out : undefined\n+}\n+\n function normalizeNode(raw: unknown): AppNode | null {\n   const obj = asRecord(raw)\n   if (!obj) return null\n@@ -318,6 +352,10 @@ function normalizeNode(raw: unknown): AppNode | null {\n \n   if (type === 'context-converter') {\n     const mergedFiles = normalizeLineRangesRecord(data.mergedFiles)\n+    const contextSources = normalizeContextSources(data.contextSources)\n+    const repoPaths =\n+      normalizeStringArray(data.repoPaths) ??\n+      (contextSources ? [...new Set(contextSources.map((s) => s.repoPath))] : undefined)\n     return {\n       id,\n       type,\n@@ -327,6 +365,8 @@ function normalizeNode(raw: unknown): AppNode | null {\n         fullFile: normalizeBool(data.fullFile, false),\n         output: typeof data.output === 'string' ? data.output : null,\n         mergedFiles,\n+        contextSources,\n+        repoPaths,\n       },\n     }\n   }"
+      },
+      {
+        "sha": "74d54a15f7be631eb8734374e9b7511d0717f482",
+        "filename": "shared/appDataTypes.ts",
+        "status": "modified",
+        "additions": 10,
+        "deletions": 0,
+        "changes": 10,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/f7241528d5a73699856fc213cf0ac4cd9969a502/shared%2FappDataTypes.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/f7241528d5a73699856fc213cf0ac4cd9969a502/shared%2FappDataTypes.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/shared%2FappDataTypes.ts?ref=f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "patch": "@@ -23,6 +23,13 @@ export type CodeSearchOutput = {\n   files: Record<string, [number, number][]>\n }\n \n+export type ContextSource = {\n+  repoPath: string\n+  sourceNodeId: string\n+  explanation: string\n+  files: Record<string, [number, number][]>\n+}\n+\n export type ManualImportItem = {\n   kind: 'file' | 'dir'\n   relPath: string\n@@ -45,6 +52,9 @@ export type ContextConverterData = BaseNodeData & {\n   fullFile: boolean\n   output: string | null\n   mergedFiles?: Record<string, [number, number][]>\n+  // Canonical structured inputs used for context-converter → context-converter chaining.\n+  contextSources?: ContextSource[]\n+  repoPaths?: string[]\n }\n \n export type InstructionData = BaseNodeData & {"
+      },
+      {
+        "sha": "6b1123e682504a5d18d70490dc94ed5b157b549a",
+        "filename": "src/specflow/hooks/useAppData.ts",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/f7241528d5a73699856fc213cf0ac4cd9969a502/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/f7241528d5a73699856fc213cf0ac4cd9969a502/src%2Fspecflow%2Fhooks%2FuseAppData.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseAppData.ts?ref=f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "patch": "@@ -259,6 +259,8 @@ export function useAppData() {\n         }\n         if (memberToRestore.type === 'context-converter') {\n           restoredData.mergedFiles = undefined\n+          restoredData.contextSources = undefined\n+          restoredData.repoPaths = undefined\n         }\n \n         const restoredNode: AppNode = {"
+      },
+      {
+        "sha": "9018b6932c61b6dc60d7dc3c89b611f423ceb870",
+        "filename": "src/specflow/hooks/useNodeRunner.ts",
+        "status": "modified",
+        "additions": 85,
+        "deletions": 22,
+        "changes": 107,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/f7241528d5a73699856fc213cf0ac4cd9969a502/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/f7241528d5a73699856fc213cf0ac4cd9969a502/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Fhooks%2FuseNodeRunner.ts?ref=f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "patch": "@@ -1,5 +1,5 @@\n import { useCallback, useRef } from 'react'\n-import type { AppData, AppNode, ArchiveData, CodeSearchOutput } from '../types'\n+import type { AppData, AppNode, ArchiveData, CodeSearchOutput, ContextSource } from '../types'\n import { buildRepoContext, runCodeSearch, runConductor, runLLM, resolveManualImport } from '../api'\n import { mergeCodeSearchOutputs } from '../../../shared/rangeUtils'\n import {\n@@ -12,7 +12,7 @@ import {\n } from '../utils'\n \n export type LocalOutput =\n-  | { kind: 'string'; value: string }\n+  | { kind: 'string'; value: string; contextSources?: ContextSource[] }\n   | { kind: 'code-search'; value: CodeSearchOutput; repoPath: string }\n   | { kind: 'conductor'; value: Record<string, string> }\n \n@@ -78,7 +78,13 @@ export function useNodeRunner(\n       return node.data.output ? { kind: 'conductor', value: node.data.output } : null\n     }\n     if (node.type === 'context-converter' || node.type === 'instruction' || node.type === 'llm') {\n-      return node.data.output ? { kind: 'string', value: node.data.output } : null\n+      return node.data.output\n+        ? {\n+            kind: 'string',\n+            value: node.data.output,\n+            ...(node.type === 'context-converter' ? { contextSources: node.data.contextSources } : {}),\n+          }\n+        : null\n     }\n     if (node.type === 'archive') {\n       return node.data.output !== null && node.data.output !== undefined\n@@ -161,6 +167,24 @@ export function useNodeRunner(\n     [appDataRef],\n   )\n \n+  const getContextSources = useCallback(\n+    (nodeId: string, localOutputs?: Map<string, LocalOutput>): ContextSource[] | null => {\n+      const snap = getActiveTab(appDataRef.current)\n+      const n = snap.canvas.nodes.find((x) => x.id === nodeId)\n+\n+      // Mute check: muted nodes contribute no structured context\n+      if (n?.data.muted) return []\n+\n+      const local = localOutputs?.get(nodeId)\n+      if (local?.kind === 'string' && Array.isArray(local.contextSources)) return local.contextSources\n+\n+      if (!n) return null\n+      if (n.type === 'context-converter') return n.data.contextSources ?? null\n+      return null\n+    },\n+    [appDataRef],\n+  )\n+\n   const concatPredStrings = useCallback(\n     (preds: AppNode[], localOutputs?: Map<string, LocalOutput>) => {\n       const parts: string[] = []\n@@ -217,7 +241,9 @@ export function useNodeRunner(\n               data: {\n                 ...n.data,\n                 output: emptyOutput,\n-                ...(n.type === 'context-converter' ? { mergedFiles: undefined } : {}),\n+                ...(n.type === 'context-converter'\n+                  ? { mergedFiles: undefined, contextSources: undefined, repoPaths: undefined }\n+                  : {}),\n                 status: 'success',\n                 error: null,\n               },\n@@ -516,41 +542,76 @@ export function useNodeRunner(\n \n           if (node.type === 'context-converter') {\n             throwIfAborted(signal)\n-            const searchPreds = preds.filter((p) => p.type === 'code-search' || p.type === 'manual-import')\n-            if (searchPreds.length === 0)\n-              throw new Error('Context converter requires a code-search/manual-import predecessor.')\n+            const searchPreds = preds.filter((p) => p.type === 'code-search' || p.type === 'manual-import').sort((a, b) => a.id.localeCompare(b.id))\n+            const ctxPreds = preds.filter((p) => p.type === 'context-converter').sort((a, b) => a.id.localeCompare(b.id))\n+            if (searchPreds.length === 0 && ctxPreds.length === 0) {\n+              throw new Error('Context converter requires a code-search/manual-import/context-converter predecessor.')\n+            }\n \n-            const byRepo = new Map<\n-              string,\n-              { outputs: Array<{ explanation: string; files: CodeSearchOutput['files'] }>; explanations: string[] }\n-            >()\n+            // @@@context-sources - keep atomic per-node context pieces so context-converter merges are associative/idempotent\n+            const sourcesByKey = new Map<string, ContextSource>()\n \n             for (const p of searchPreds) {\n               const out = getCodeSearchOutput(p.id, localOutputs)\n               if (!out) throw new Error('Code-search predecessor has no output.')\n+              if (Object.keys(out.files ?? {}).length === 0) continue\n               const repoPath = getCodeSearchRepoPath(p.id, localOutputs)\n-              const entry = byRepo.get(repoPath) ?? { outputs: [], explanations: [] }\n-              entry.outputs.push({ explanation: out.explanation, files: out.files })\n-              if (out.explanation) entry.explanations.push(out.explanation)\n-              byRepo.set(repoPath, entry)\n+              const key = `${repoPath}\\n${p.id}`\n+              if (!sourcesByKey.has(key)) {\n+                sourcesByKey.set(key, { repoPath, sourceNodeId: p.id, explanation: out.explanation, files: out.files })\n+              }\n+            }\n+\n+            for (const p of ctxPreds) {\n+              const predSources = getContextSources(p.id, localOutputs)\n+              if (predSources === null) {\n+                throw new Error('Context-converter predecessor has no structured context. Re-run it to enable chaining.')\n+              }\n+              for (const s of predSources) {\n+                const key = `${s.repoPath}\\n${s.sourceNodeId}`\n+                if (!sourcesByKey.has(key)) sourcesByKey.set(key, s)\n+              }\n+            }\n+\n+            const contextSources = [...sourcesByKey.values()].sort((a, b) => {\n+              const repo = a.repoPath.localeCompare(b.repoPath)\n+              if (repo !== 0) return repo\n+              return a.sourceNodeId.localeCompare(b.sourceNodeId)\n+            })\n+            if (contextSources.length === 0) {\n+              throw new Error('Context converter requires at least one predecessor with file context.')\n             }\n \n             const contexts: string[] = []\n             const allMergedFiles: Record<string, Array<[number, number]>> = {}\n \n-            for (const [repoPath, { outputs, explanations }] of byRepo.entries()) {\n-              const mergedFiles = mergeCodeSearchOutputs(outputs)\n+            const byRepo = new Map<string, ContextSource[]>()\n+            for (const s of contextSources) {\n+              const arr = byRepo.get(s.repoPath) ?? []\n+              arr.push(s)\n+              byRepo.set(s.repoPath, arr)\n+            }\n+\n+            const repoPaths = [...byRepo.keys()].sort()\n+\n+            for (const repoPath of repoPaths) {\n+              const sources = byRepo.get(repoPath) ?? []\n+              const mergedFiles = mergeCodeSearchOutputs(sources.map((s) => ({ files: s.files })))\n               const mergedFilesForDisplay = node.data.fullFile\n                 ? Object.fromEntries(Object.keys(mergedFiles).map((p) => [p, [[1, -1]] as [number, number][]]))\n                 : mergedFiles\n               Object.assign(allMergedFiles, mergedFilesForDisplay)\n \n+              const explanation = sources\n+                .map((s) => ({ id: s.sourceNodeId, text: (s.explanation ?? '').trim() }))\n+                .filter((x) => x.text)\n+                .sort((a, b) => a.id.localeCompare(b.id))\n+                .map((x) => x.text)\n+                .join('\\n\\n---\\n\\n')\n+\n               const text = await buildRepoContext({\n                 repoPath,\n-                explanation: explanations\n-                  .map((x) => x.trim())\n-                  .filter(Boolean)\n-                  .join('\\n\\n---\\n\\n'),\n+                explanation,\n                 files: mergedFiles,\n                 fullFile: node.data.fullFile,\n                 signal,\n@@ -567,12 +628,14 @@ export function useNodeRunner(\n                   ...n.data,\n                   output: text,\n                   mergedFiles: allMergedFiles,\n+                  contextSources,\n+                  repoPaths,\n                   status: 'success',\n                   error: null,\n                 },\n               }\n             })\n-            const out: LocalOutput = { kind: 'string', value: text }\n+            const out: LocalOutput = { kind: 'string', value: text, contextSources }\n             localOutputs?.set(nodeId, out)\n             return out\n           }"
+      },
+      {
+        "sha": "c605914bff804727227e76837d7599897b21ea4f",
+        "filename": "src/specflow/types.ts",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "changes": 2,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/f7241528d5a73699856fc213cf0ac4cd9969a502/src%2Fspecflow%2Ftypes.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/f7241528d5a73699856fc213cf0ac4cd9969a502/src%2Fspecflow%2Ftypes.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Ftypes.ts?ref=f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "patch": "@@ -8,6 +8,7 @@ import type {\n   CodeSearchData,\n   CodeSearchOutput,\n   ConductorOutput,\n+  ContextSource,\n   ContextConverterData,\n   InstructionData,\n   LLMData,\n@@ -29,6 +30,7 @@ export type {\n   CodeSearchData,\n   CodeSearchOutput,\n   ConductorOutput,\n+  ContextSource,\n   ContextConverterData,\n   InstructionData,\n   LLMData,"
+      },
+      {
+        "sha": "ec62349fcd87058765c4bc25ccb6b235234fcf40",
+        "filename": "src/specflow/utils.ts",
+        "status": "modified",
+        "additions": 12,
+        "deletions": 2,
+        "changes": 14,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/f7241528d5a73699856fc213cf0ac4cd9969a502/src%2Fspecflow%2Futils.ts",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/f7241528d5a73699856fc213cf0ac4cd9969a502/src%2Fspecflow%2Futils.ts",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/src%2Fspecflow%2Futils.ts?ref=f7241528d5a73699856fc213cf0ac4cd9969a502",
+        "patch": "@@ -42,7 +42,15 @@ export function resetNodeRuntime(node: AppNode): AppNode {\n   if (node.type === 'context-converter') {\n     return {\n       ...node,\n-      data: { ...node.data, status: 'idle', error: null, output: null, mergedFiles: undefined },\n+      data: {\n+        ...node.data,\n+        status: 'idle',\n+        error: null,\n+        output: null,\n+        mergedFiles: undefined,\n+        contextSources: undefined,\n+        repoPaths: undefined,\n+      },\n     } as AppNode\n   }\n   return { ...node, data: { ...node.data, status: 'idle', error: null, output: null } } as AppNode\n@@ -60,6 +68,8 @@ export function resetNodeRuntimeForPaste(node: AppNode): AppNode {\n         muted: false,\n         output: null,\n         mergedFiles: undefined,\n+        contextSources: undefined,\n+        repoPaths: undefined,\n       },\n     } as AppNode\n   }\n@@ -135,7 +145,7 @@ const CONNECTION_MATRIX: Record<AppNode['type'], Record<AppNode['type'], boolean\n     'code-search-conductor': true,\n     'manual-import': false,\n     'code-search': true,\n-    'context-converter': false,\n+    'context-converter': true,\n     llm: true,\n     archive: false,\n   },"
+      }
+    ]
+  }
+}

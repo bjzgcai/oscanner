@@ -1,0 +1,106 @@
+{
+  "cached_at": "2025-12-22T15:31:56.528679",
+  "commit_sha": "1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+  "repo": "shuxueshuxue/SpexFlow",
+  "data": {
+    "sha": "1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+    "node_id": "C_kwDOQnjG49oAKDFhNjJhMGVmMTYxNThiMDY3MzFjNzdiZGQ1NTE2MmYwNmVlM2Q0OGY",
+    "commit": {
+      "author": {
+        "name": "F2J",
+        "email": "98064968+shuxueshuxue@users.noreply.github.com",
+        "date": "2025-12-19T01:13:13Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "date": "2025-12-19T01:13:13Z"
+      },
+      "message": "Update README.zh.md with new images and content\n\nAdded images and content about code search and planning iterations.",
+      "tree": {
+        "sha": "6ca732bd72fb86e83b015861721660cd189b3bea",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/trees/6ca732bd72fb86e83b015861721660cd189b3bea"
+      },
+      "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/git/commits/1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpRKapCRC1aQ7uu5UhlAAAQdwQACxV/ysbThpgvILUq5w4WJZI\nFA6kWz/lR32/8364+AviQVa16UvEgYD4XEIOVD3uP4XFDiMeblMjKw43onqQzX9j\n3e97pUVeQm/B1ZiI0zUC6p/aqxX2TqbMtd77mudqvCqWseq32QLcqtzQbouARxXh\n1y5OFOXVzrer1MhmawVpkuH3sPucwsge4sSuaR80ibBzKkOCMaylrQCHAGMMi8Kb\nG/tfx1TDpzmaCf0y2XQqe2tgdv1dg8Df7SAKINdwJF9m7dV1P3+XPynromaJ0UTB\nzAFVnTinwsS6wsmAHFUNw03VjeUEPDYUyOnRtj145/tj2aigXrv+eYyh2ZIx9Gvb\nJpoJGhqLHUfR4xfUTS2j5ZA/I4EDhFVVx3319y/f2l3++Ts/G8lhOfQ58pDWcVQ3\nxfb+rG/bIyR9JWaP8FkxnEbmzvWqFXCMy2bkfzjhaL3x8DOgASqM8Lj1wg1xhqi6\nk9u8sRvMJiMLMUlJuRdsStGkcY6ZMI0hT+Bj19vZk+LUuUh/31hlHuOcv/id9snP\n45f0OGep/pP96X0AIkrPR6rk9QwqsmnaDa9lEoIAQqN4Wx4S1Qu62llwXYH2Ufkm\nRjGpDrFbgPX9dXj7DpawO8cF0l+R21MZxMaKwt0y1YCddRtkjW5kRvGkMm0rXgj3\nHZPFhqGkQsx6rn70JkPT\n=3c0b\n-----END PGP SIGNATURE-----\n",
+        "payload": "tree 6ca732bd72fb86e83b015861721660cd189b3bea\nparent 38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1766106793 +0800\ncommitter GitHub <noreply@github.com> 1766106793 +0800\n\nUpdate README.zh.md with new images and content\n\nAdded images and content about code search and planning iterations.",
+        "verified_at": "2025-12-19T01:13:13Z"
+      }
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+    "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+    "comments_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/1a62a0ef16158b06731c77bdd55162f06ee3d48f/comments",
+    "author": {
+      "login": "shuxueshuxue",
+      "id": 98064968,
+      "node_id": "U_kgDOBdhaSA",
+      "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/shuxueshuxue",
+      "html_url": "https://github.com/shuxueshuxue",
+      "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+      "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+      "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+      "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+      "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+      "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "web-flow",
+      "id": 19864447,
+      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+      "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/web-flow",
+      "html_url": "https://github.com/web-flow",
+      "followers_url": "https://api.github.com/users/web-flow/followers",
+      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+      "organizations_url": "https://api.github.com/users/web-flow/orgs",
+      "repos_url": "https://api.github.com/users/web-flow/repos",
+      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/web-flow/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c",
+        "url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/commits/38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c",
+        "html_url": "https://github.com/shuxueshuxue/SpexFlow/commit/38adf8bebfdc7399db96c4e8b57d9915e8cdbf7c"
+      }
+    ],
+    "stats": {
+      "total": 6,
+      "additions": 5,
+      "deletions": 1
+    },
+    "files": [
+      {
+        "sha": "8e4faf078bf5eeea09fd9d70268fcc5dbf11d7d5",
+        "filename": "README.zh.md",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 1,
+        "changes": 6,
+        "blob_url": "https://github.com/shuxueshuxue/SpexFlow/blob/1a62a0ef16158b06731c77bdd55162f06ee3d48f/README.zh.md",
+        "raw_url": "https://github.com/shuxueshuxue/SpexFlow/raw/1a62a0ef16158b06731c77bdd55162f06ee3d48f/README.zh.md",
+        "contents_url": "https://api.github.com/repos/shuxueshuxue/SpexFlow/contents/README.zh.md?ref=1a62a0ef16158b06731c77bdd55162f06ee3d48f",
+        "patch": "@@ -18,7 +18,11 @@ SpexFlow 是一个基于 React Flow 的可视化 context/spec 工作流工具。\n \n **更大的画布**：把一些可复用的 context/指令块当作\"积木\"保存起来，需要更新时只 rerun 那个节点：\n \n-<img width=\"2770\" height=\"1686\" alt=\"image\" src=\"https://github.com/user-attachments/assets/b0d105d5-f203-405a-b18f-44071302ce3f\" />\n+<img width=\"2770\" height=\"1696\" alt=\"image\" src=\"https://github.com/user-attachments/assets/c1fd8f25-da1f-4d5b-85ed-73cabfceee65\" />\n+\n+**两次迭代的代码搜索和规划**\n+\n+<img width=\"2758\" height=\"1690\" alt=\"image\" src=\"https://github.com/user-attachments/assets/eebb0f6f-9c56-4258-ba2c-f3ab18058e0d\" />\n \n ## 你能用它做什么\n "
+      }
+    ]
+  }
+}
