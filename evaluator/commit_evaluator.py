@@ -14,13 +14,13 @@ import requests
 class CommitEvaluator:
     """Evaluates engineer skill based on commit history and code changes"""
 
-    def __init__(self, api_key: Optional[str] = None, max_input_tokens: int = 50000):
+    def __init__(self, api_key: Optional[str] = None, max_input_tokens: int = 190000):
         """
         Initialize the commit evaluator
 
         Args:
             api_key: OpenRouter API key for LLM calls
-            max_input_tokens: Maximum tokens to send to LLM (default: 50k)
+            max_input_tokens: Maximum tokens to send to LLM (default: 100k)
         """
         self.api_key = api_key or os.getenv("OPEN_ROUTER_KEY")
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
