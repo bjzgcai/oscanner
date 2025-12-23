@@ -146,12 +146,10 @@ curl -X POST "http://localhost:8000/api/evaluate/octocat/Hello-World/octocat?lim
 │   │   └── gitee.py           # Gitee API integration
 │   ├── analyzers/             # (Reserved for future use)
 │   └── reporters/             # (Reserved for future use)
-├── data/                      # Cached commit data
-│   └── {owner}/{repo}/
-│       ├── commits/           # Individual commit files
-│       └── commits_list.json
-├── tests/                     # (Reserved for future use)
-└── examples/                  # (Reserved for future use)
+└── data/                      # Cached commit data
+    └── {owner}/{repo}/
+        ├── commits/           # Individual commit files
+        └── commits_list.json
 ```
 
 ## How It Works
