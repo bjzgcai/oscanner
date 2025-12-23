@@ -1,10 +1,10 @@
 # Engineer Capability Assessment System
 
-A comprehensive system for evaluating engineer capabilities based on GitHub and Gitee activity analysis, using a six-dimensional evaluation framework.
+AI-powered system for evaluating engineering capabilities by analyzing GitHub and Gitee commits, code changes, and collaboration patterns using a six-dimensional evaluation framework.
 
 ## Overview
 
-This system analyzes engineering activity from version control platforms (GitHub, Gitee) and generates a multi-dimensional capability assessment for software engineers.
+This system uses LLM-powered analysis (Claude 4.5 Haiku) to evaluate software engineers based on actual code commits, diffs, and collaboration patterns from GitHub and Gitee repositories. Features a modern React + Antd dashboard and FastAPI backend with intelligent caching.
 
 ## Six-Dimensional Evaluation Framework
 
@@ -45,145 +45,228 @@ This system analyzes engineering activity from version control platforms (GitHub
 - System architecture trade-offs
 - Team collaboration and mentorship
 
-## Input
+## Features
 
-- GitHub account names
-- Gitee account names
-- Repository URLs (individual, pair programming, team projects)
+- **AI-Powered Analysis**: Uses Claude 4.5 Haiku to analyze actual code changes and commit patterns
+- **Dual Platform Support**: Analyzes both GitHub and Gitee repositories
+- **Smart Caching**: Local storage system to minimize API calls and LLM token usage
+- **Modern UI**: React + Antd + Antd-x dashboard with radar charts and detailed breakdowns
+- **Real Commit Analysis**: Evaluates actual diffs, file changes, and code quality (not just keywords)
 
-## Output
+## Input & Output
 
+**Input:**
+- Repository URLs (GitHub/Gitee)
+- Contributor username
+
+**Output:**
 - Six-dimensional scores (0-100 scale)
-- Strengths and weaknesses analysis
-- Detailed capability report
-- Improvement recommendations
+- AI-generated reasoning and analysis
+- Commit statistics and code metrics
+- Visual radar chart and detailed breakdowns
 
 ## Installation
+
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Configuration
+### 2. Configure Environment Variables
 
-Copy the example configuration file and update with your credentials:
+Create a `.env.local` file with your API keys:
 
 ```bash
-cp config.example.yaml config.yaml
+# OpenRouter API key for LLM evaluation
+OPEN_ROUTER_KEY=sk-or-v1-your-key-here
+
+# Optional: GitHub token for higher rate limits
+GITHUB_TOKEN=ghp_your-token-here
+
+# Optional: Gitee token
+GITEE_TOKEN=your-gitee-token-here
 ```
 
-Edit `config.yaml` with your GitHub and Gitee API tokens.
+See `.env.example` for reference.
 
 ## Usage
 
-### Basic Usage
-
-```python
-from evaluator import EngineerEvaluator
-
-evaluator = EngineerEvaluator()
-
-# Evaluate a single engineer
-result = evaluator.evaluate(
-    github_username="username",
-    gitee_username="username",
-    repos=[
-        "https://github.com/org/project1",
-        "https://gitee.com/org/project2"
-    ]
-)
-
-# Print report
-print(result.get_report())
-```
-
-### CLI Usage
+### 1. Start the Server
 
 ```bash
-# Evaluate from configuration file
-python main.py --config engineer_profile.yaml
+python server.py
+```
 
-# Evaluate with direct parameters
-python main.py --github-user username --gitee-user username --repos repo1,repo2
+The server will auto-detect an available port (8000, 8001, etc.).
 
-# Generate detailed report
-python main.py --config engineer_profile.yaml --output-format json --output report.json
+### 2. Open the Dashboard
+
+Open `dashboard.html` in your browser, or navigate to:
+```
+http://localhost:8000/dashboard.html
+```
+
+### 3. Analyze Engineers
+
+**Via Dashboard:**
+1. Enter a GitHub/Gitee repository URL
+2. Click "Analyze Repository"
+3. Select a contributor to evaluate
+4. View AI-powered evaluation results with scores and charts
+
+**Via API:**
+
+```bash
+# Fetch commits
+curl http://localhost:8000/api/commits/octocat/Hello-World
+
+# Evaluate a contributor
+curl -X POST "http://localhost:8000/api/evaluate/octocat/Hello-World/octocat?limit=30"
 ```
 
 ## Project Structure
 
 ```
 .
-├── README.md
-├── requirements.txt
-├── config.example.yaml
-├── main.py
+├── README.md                   # This file
+├── README_EVALUATION.md        # Detailed technical documentation
+├── requirements.txt            # Python dependencies
+├── .env.example               # Environment variables template
+├── server.py                  # FastAPI backend server
+├── dashboard.html             # Frontend UI (React + Antd)
 ├── evaluator/
 │   ├── __init__.py
-│   ├── core.py              # Main evaluation engine
-│   ├── dimensions.py        # Six dimension evaluators
+│   ├── core.py                # Main evaluation engine
+│   ├── dimensions.py          # Six dimension evaluators
+│   ├── commit_evaluator.py    # LLM-powered commit analysis
 │   ├── collectors/
 │   │   ├── __init__.py
-│   │   ├── github.py        # GitHub data collection
-│   │   └── gitee.py         # Gitee data collection
-│   ├── analyzers/
-│   │   ├── __init__.py
-│   │   ├── code_analyzer.py
-│   │   ├── commit_analyzer.py
-│   │   └── collaboration_analyzer.py
-│   └── reporters/
-│       ├── __init__.py
-│       ├── text_reporter.py
-│       └── json_reporter.py
-├── tests/
-│   └── __init__.py
-└── examples/
-    └── sample_evaluation.py
+│   │   ├── github.py          # GitHub API integration
+│   │   └── gitee.py           # Gitee API integration
+│   ├── analyzers/             # (Reserved for future use)
+│   └── reporters/             # (Reserved for future use)
+├── data/                      # Cached commit data
+│   └── {owner}/{repo}/
+│       ├── commits/           # Individual commit files
+│       └── commits_list.json
+├── tests/                     # (Reserved for future use)
+└── examples/                  # (Reserved for future use)
 ```
 
-## Data Sources
+## How It Works
 
-The system collects and analyzes:
+### 1. Commit Collection
+- Fetches commits from GitHub/Gitee API
+- Retrieves detailed commit data including files changed and diffs
+- Caches data locally in `./data/{owner}/{repo}/commits/` to reduce API calls
 
-- **Commit History:** Frequency, quality, patterns
-- **Code Review:** PR reviews, feedback quality
-- **Issue Management:** Issue creation, resolution, communication
-- **Repository Structure:** Architecture patterns, technology choices
-- **Documentation:** README, comments, API docs
-- **Collaboration:** Team interactions, mentorship indicators
-- **Technology Stack:** Languages, frameworks, tools
-- **CI/CD:** Pipeline configurations, automation
+### 2. LLM-Powered Analysis
+The system sends commit data to Claude 4.5 Haiku with:
+- Commit messages and descriptions
+- File changes (additions/deletions by language)
+- Code diffs (patches)
+- Commit statistics and patterns
 
-## Scoring Methodology
+### 3. Evaluation Criteria
 
-Each dimension is scored based on weighted indicators:
+The LLM evaluates based on actual code evidence:
 
-- **Quantitative Metrics:** Commit frequency, PR count, code volume
-- **Qualitative Analysis:** Code quality, architecture decisions, documentation
-- **Collaboration Patterns:** Review quality, issue resolution, team engagement
-- **Innovation Indicators:** Novel solutions, technology adoption, experimentation
+**AI Full-Stack**
+- ML framework usage (TensorFlow, PyTorch, etc.)
+- Model architecture implementations
+- Training and optimization code
+- Model deployment patterns
 
-## Development
+**AI Architecture**
+- API design quality
+- Service architecture patterns
+- Documentation quality
+- Integration and interface design
 
-### Running Tests
+**Cloud Native**
+- Docker/Kubernetes configurations
+- CI/CD pipeline definitions
+- Infrastructure as Code
+- Cloud platform integration
 
-```bash
-pytest tests/
+**Open Source Collaboration**
+- Commit message clarity
+- Issue/PR references and linking
+- Code review participation
+- Refactoring and improvement quality
+
+**Intelligent Development**
+- Test coverage and automation
+- Development tooling and scripts
+- Build configurations
+- AI-assisted development practices
+
+**Engineering Leadership**
+- Performance optimizations
+- Security considerations
+- Best practice adoption
+- Architectural decision making
+
+### 4. Scoring
+- Each dimension scored 0-100
+- Scores based on actual code analysis (not keywords)
+- LLM provides detailed reasoning for each evaluation
+- Caching ensures efficient token usage
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API information |
+| `/health` | GET | Health check |
+| `/api/commits/{owner}/{repo}` | GET | Get commits list |
+| `/api/commits/{owner}/{repo}/{sha}` | GET | Get commit details |
+| `/api/commits/{owner}/{repo}/fetch-all` | POST | Fetch all commits with details |
+| `/api/evaluate/{owner}/{repo}/{username}` | POST | Evaluate engineer capabilities |
+| `/api/cache/stats` | GET | View cache statistics |
+| `/api/cache/clear` | DELETE | Clear all cached data |
+
+## Architecture
+
+```
+Frontend (dashboard.html - React + Antd)
+    ↓
+FastAPI Server (server.py)
+    ↓
+┌─────────────────┴─────────────────┐
+│                                    │
+GitHubCollector/GiteeCollector   CommitEvaluator
+(collectors/*.py)                (commit_evaluator.py)
+    ↓                                 ↓
+GitHub/Gitee API              OpenRouter API
+    ↓                                 ↓
+Local Cache (data/)           Claude 4.5 Haiku
 ```
 
-### Contributing
+## Limitations & Considerations
 
-Contributions are welcome! Please read the contributing guidelines before submitting PRs.
+- **API Rate Limits**: GitHub API has rate limits (60/hour without token, 5000/hour with token)
+- **LLM Costs**: Each evaluation costs ~$0.02-0.05 depending on commit volume
+- **Analysis Depth**: Analyzes up to 30 commits per evaluation by default (configurable)
+- **Caching**: Smart local caching minimizes API calls and LLM token usage
+
+## Roadmap
+
+- [ ] Complete Gitee integration
+- [ ] Batch evaluation of all contributors
+- [ ] Historical trend analysis
+- [ ] Team-level aggregation
+- [ ] Export reports (PDF, JSON)
+- [ ] Comparison between contributors
+- [ ] Time-series skill evolution
+- [ ] Integration with CI/CD pipelines
+- [ ] Enhanced UI with more visualizations
 
 ## License
 
 MIT License
 
-## Roadmap
+## Documentation
 
-- [ ] GitLab support
-- [ ] Enhanced AI/ML project detection
-- [ ] Team-level analytics
-- [ ] Historical trend analysis
-- [ ] Benchmarking against industry standards
-- [ ] Visual dashboard
+For detailed technical documentation, see [README_EVALUATION.md](README_EVALUATION.md)
