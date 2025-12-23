@@ -6,6 +6,39 @@ AI-powered system for evaluating engineering capabilities by analyzing GitHub an
 
 This system uses LLM-powered analysis (Claude 4.5 Haiku) to evaluate software engineers based on actual code commits, diffs, and collaboration patterns from GitHub and Gitee repositories. Features a modern React + Antd dashboard and FastAPI backend with intelligent caching.
 
+## Usage
+
+### 1. Start the Server
+
+```bash
+./start_server.sh
+```
+
+The server will auto-detect an available port (8000, 8001, etc.).
+
+### 2. Open the Dashboard
+
+Open `dashboard.html` in your browser
+
+### 3. Analyze Engineers
+
+**Via Dashboard:**
+1. Enter a GitHub/Gitee repository URL
+2. Click "Analyze Repository"
+3. Select a contributor to evaluate
+4. View AI-powered evaluation results with scores and charts
+
+**Via API:**
+
+```bash
+# Fetch commits
+curl http://localhost:8000/api/commits/octocat/Hello-World
+
+# Evaluate a contributor
+curl -X POST "http://localhost:8000/api/evaluate/octocat/Hello-World/octocat?limit=30"
+```
+
+
 ## Six-Dimensional Evaluation Framework
 
 ### 1. AI Model Full-Stack & Trade-off Capability (AI模型全栈与权衡能力)
@@ -89,41 +122,6 @@ GITEE_TOKEN=your-gitee-token-here
 ```
 
 See `.env.example` for reference.
-
-## Usage
-
-### 1. Start the Server
-
-```bash
-python server.py
-```
-
-The server will auto-detect an available port (8000, 8001, etc.).
-
-### 2. Open the Dashboard
-
-Open `dashboard.html` in your browser, or navigate to:
-```
-http://localhost:8000/dashboard.html
-```
-
-### 3. Analyze Engineers
-
-**Via Dashboard:**
-1. Enter a GitHub/Gitee repository URL
-2. Click "Analyze Repository"
-3. Select a contributor to evaluate
-4. View AI-powered evaluation results with scores and charts
-
-**Via API:**
-
-```bash
-# Fetch commits
-curl http://localhost:8000/api/commits/octocat/Hello-World
-
-# Evaluate a contributor
-curl -X POST "http://localhost:8000/api/evaluate/octocat/Hello-World/octocat?limit=30"
-```
 
 ## Project Structure
 
