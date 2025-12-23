@@ -14,7 +14,7 @@ This system uses LLM-powered analysis (Claude 4.5 Haiku) to evaluate software en
 ./start_server.sh
 ```
 
-The server will auto-detect an available port (8000, 8001, etc.).
+make sure the server port is 8000. 
 
 ### 2. Open the Dashboard
 
