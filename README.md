@@ -8,19 +8,67 @@ This system uses LLM-powered analysis (Claude 4.5 Haiku) to evaluate software en
 
 ## Usage
 
-### 1. Start the Server
+### Quick Start: Full Context + Cached Evaluation (Best Approach! ⭐)
+
+Evaluate contributors one at a time using **full repository context** with **caching**:
+
+```bash
+# Evaluate all contributors with caching
+python full_context_cached_evaluator.py
+
+# Or evaluate specific contributor
+python full_context_cached_evaluator.py "contributor_name"
+
+# Force re-evaluation (ignore cache)
+python full_context_cached_evaluator.py "contributor_name" --force
+```
+
+**Why This is Best:**
+- ✅ **Full repo context** (~650k tokens) for accuracy
+- ✅ **Evaluate ONE contributor at a time** for flexibility
+- ✅ **Caches each result** to avoid re-evaluation
+- ✅ **Add new contributors later** without re-evaluating everyone
+- 📊 ~100-200k tokens per contributor (first time)
+- 💰 ~$0.005-0.01 per contributor (first time)
+- 🆓 **FREE** when using cache!
+
+See [BEST_APPROACH.md](BEST_APPROACH.md) for full details.
+
+---
+
+### Alternative: Full Repo Analysis (All at Once)
+
+Evaluate ALL contributors in ONE API call:
+
+```bash
+python full_repo_evaluator.py
+```
+
+- Uses ~650k tokens, costs ~$0.03
+- Evaluates all contributors at once
+- No caching (re-evaluates everything each time)
+
+See [FULL_REPO_ANALYSIS_EXPLAINED.md](FULL_REPO_ANALYSIS_EXPLAINED.md) for details.
+
+---
+
+### Alternative: Server + Dashboard
+
+For API-based evaluation with caching:
+
+#### 1. Start the Server
 
 ```bash
 ./start_server.sh
 ```
 
-make sure the server port is 8000. 
+make sure the server port is 8000.
 
-### 2. Open the Dashboard
+#### 2. Open the Dashboard
 
 Open `dashboard.html` in your browser
 
-### 3. Analyze Engineers
+#### 3. Analyze Engineers
 
 **Via Dashboard:**
 1. Enter a GitHub/Gitee repository URL
@@ -34,9 +82,31 @@ Open `dashboard.html` in your browser
 # Fetch commits
 curl http://localhost:8000/api/commits/octocat/Hello-World
 
-# Evaluate a contributor
-curl -X POST "http://localhost:8000/api/evaluate/octocat/Hello-World/octocat?limit=30"
+# Evaluate a contributor (full analysis of all commits)
+curl -X POST "http://localhost:8000/api/evaluate/octocat/Hello-World/octocat"
 ```
+
+**Moderate Mode (Diffs + Files):**
+
+```bash
+# Per-contributor evaluation with file context
+python example_moderate_evaluation.py
+```
+
+---
+
+## Evaluation Approaches Comparison
+
+| Approach | Tokens | API Calls | Cost | Caching | Best For |
+|----------|--------|-----------|------|---------|----------|
+| **Full Context + Cached** ⭐ | ~100-200k each | 1 per contributor | $0.005-0.01 each | ✅ Yes | **Complete + Flexible** |
+| **Full Repo Analysis** | ~650k | 1 | $0.03 | ❌ No | One-time team evaluation |
+| **Moderate per-contributor** | ~45k each | N | $0.005×N | ❌ No | Individual assessments |
+| **Conservative (diffs only)** | ~3k each | N | $0.0002×N | ❌ No | Quick screening |
+
+**Recommended**: Use **Full Context + Cached** for best accuracy and flexibility!
+
+See [BEST_APPROACH.md](BEST_APPROACH.md) and [TOKEN_USAGE_VISUAL_COMPARISON.md](TOKEN_USAGE_VISUAL_COMPARISON.md) for detailed comparison.
 
 
 ## Six-Dimensional Evaluation Framework
@@ -258,6 +328,8 @@ Local Cache (data/)           Claude 4.5 Haiku
 - [ ] Time-series skill evolution
 - [ ] Integration with CI/CD pipelines
 - [ ] Enhanced UI with more visualizations
+- [ ] 我们对于学院每一个学生和他的每一个项目和 PR 记录，都会下载并做后处理。 这个需要多少钱， 我们都要支持。  （gitee，github）。 我们的产品不能只扫描一个用户的 10 个commit 就可以做出判断。 😄  我们可以估算一下， 600 个不同程度的学生在各种开源项目中留下的 commit，合并起来估计多少？ 如果只是源文件和文字， 估计是 100G - 1T？ 
+- [ ] 且可以排除一些 非必要的提交文件, 比如/node_modules 等依赖文件 (可以加入gitignore但是没有加入的, 等不规范行为)
 
 ## License
 
