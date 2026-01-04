@@ -1,0 +1,42 @@
+{
+  "sha": "b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+  "node_id": "C_kwDOP2Zrm9oAKGIzNDA5ZDg3MTBmZmI3ZTJmZTc0YjdiNDg3NzBhODY0ZTY5ZjBmMGE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T15:51:15Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T15:51:15Z"
+    },
+    "message": "fix comment group not display latest comment issue",
+    "tree": {
+      "sha": "6c3153db62dc99e52d68b2a2003f13f481b25309",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/6c3153db62dc99e52d68b2a2003f13f481b25309"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "fc203bf679b5bcd3430162815da289cb78719d35",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fc203bf679b5bcd3430162815da289cb78719d35",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fc203bf679b5bcd3430162815da289cb78719d35"
+    }
+  ]
+}

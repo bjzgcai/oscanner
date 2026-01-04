@@ -1,118 +1,113 @@
 {
-  "cached_at": "2025-12-22T16:46:53.582842",
-  "commit_sha": "bc06173f92d704ef74ef5839123ea519d448d160",
-  "repo": "shuxueshuxue/ink-and-memory",
-  "data": {
-    "sha": "bc06173f92d704ef74ef5839123ea519d448d160",
-    "node_id": "C_kwDOP2Zrm9oAKGJjMDYxNzNmOTJkNzA0ZWY3NGVmNTgzOTEyM2VhNTE5ZDQ0OGQxNjA",
-    "commit": {
-      "author": {
-        "name": "Shaobin-Jiang",
-        "email": "shaobin-jiang@outlook.com",
-        "date": "2025-11-28T03:24:10Z"
-      },
-      "committer": {
-        "name": "Shaobin-Jiang",
-        "email": "shaobin-jiang@outlook.com",
-        "date": "2025-11-28T03:24:10Z"
-      },
-      "message": "support voice input",
-      "tree": {
-        "sha": "828243088b2b84a0a9e6bac29e053b2decb21d74",
-        "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/828243088b2b84a0a9e6bac29e053b2decb21d74"
-      },
-      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/bc06173f92d704ef74ef5839123ea519d448d160",
-      "comment_count": 0,
-      "verification": {
-        "verified": true,
-        "reason": "valid",
-        "signature": "-----BEGIN PGP SIGNATURE-----\n\niQGzBAABCAAdFiEEhfQW+O5+vUJlGXwjtnnMcOFZaR8FAmkpFegACgkQtnnMcOFZ\naR+u3gv/R0DHlLbGBy8FfEsuPlLDO/F5WZEWZmECITfBj/dC61cJzvnhSEsNnl6P\npl//XrUuCNncx1ktGhHm3DK39ulWTm+7RjAYLQPliZ4Jm+SlngVkmUv9r6u63LvV\nvWkk5GZmPAyKQbMUsPWXIEsBNFwFhg/hLbMjyLespV9Mdo+ssGGLhMIr3K9HwFVj\nU5mv9y3xa3Wj247zgrek8jIZTpt+qAmjJE6nVj2rd8QmJjhNRiURUee2OVykQenH\nsQCBIsKYCL0AjynSWB1tmgY09ZNWao8KdLoYbYCXQIjjppzx8GKDf8v88txjazO4\ntoml0d/hQ+pLvvnm3T3JlCuGj1gQB4uPK4ECtgMQcCbbHxsbtWqc1AGHR0lgYp+0\nyLj2YfStdwGCZpnIaB7wfVsqBRr0/ugf+Hr8aqEZY9Nf/aZrQcgm0RLGmb9wZ+hc\nDdwBEHcOWU1rt+gfPL0UrwGZzXT38okagFgTciVYXH2U2Y1vRQS+qxm7vXXF7Jl1\noPujkSbj\n=bk1g\n-----END PGP SIGNATURE-----",
-        "payload": "tree 828243088b2b84a0a9e6bac29e053b2decb21d74\nparent 2deb4b115d8c48ad1e6f986fb8d074e71b14dde5\nauthor Shaobin-Jiang <shaobin-jiang@outlook.com> 1764300250 +0800\ncommitter Shaobin-Jiang <shaobin-jiang@outlook.com> 1764300250 +0800\n\nsupport voice input\n",
-        "verified_at": "2025-11-28T03:24:35Z"
-      }
-    },
-    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/bc06173f92d704ef74ef5839123ea519d448d160",
-    "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/bc06173f92d704ef74ef5839123ea519d448d160",
-    "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/bc06173f92d704ef74ef5839123ea519d448d160/comments",
+  "sha": "bc06173f92d704ef74ef5839123ea519d448d160",
+  "node_id": "C_kwDOP2Zrm9oAKGJjMDYxNzNmOTJkNzA0ZWY3NGVmNTgzOTEyM2VhNTE5ZDQ0OGQxNjA",
+  "commit": {
     "author": {
-      "login": "Shaobin-Jiang",
-      "id": 74588034,
-      "node_id": "MDQ6VXNlcjc0NTg4MDM0",
-      "avatar_url": "https://avatars.githubusercontent.com/u/74588034?v=4",
-      "gravatar_id": "",
-      "url": "https://api.github.com/users/Shaobin-Jiang",
-      "html_url": "https://github.com/Shaobin-Jiang",
-      "followers_url": "https://api.github.com/users/Shaobin-Jiang/followers",
-      "following_url": "https://api.github.com/users/Shaobin-Jiang/following{/other_user}",
-      "gists_url": "https://api.github.com/users/Shaobin-Jiang/gists{/gist_id}",
-      "starred_url": "https://api.github.com/users/Shaobin-Jiang/starred{/owner}{/repo}",
-      "subscriptions_url": "https://api.github.com/users/Shaobin-Jiang/subscriptions",
-      "organizations_url": "https://api.github.com/users/Shaobin-Jiang/orgs",
-      "repos_url": "https://api.github.com/users/Shaobin-Jiang/repos",
-      "events_url": "https://api.github.com/users/Shaobin-Jiang/events{/privacy}",
-      "received_events_url": "https://api.github.com/users/Shaobin-Jiang/received_events",
-      "type": "User",
-      "user_view_type": "public",
-      "site_admin": false
+      "name": "Shaobin-Jiang",
+      "email": "shaobin-jiang@outlook.com",
+      "date": "2025-11-28T03:24:10Z"
     },
     "committer": {
-      "login": "Shaobin-Jiang",
-      "id": 74588034,
-      "node_id": "MDQ6VXNlcjc0NTg4MDM0",
-      "avatar_url": "https://avatars.githubusercontent.com/u/74588034?v=4",
-      "gravatar_id": "",
-      "url": "https://api.github.com/users/Shaobin-Jiang",
-      "html_url": "https://github.com/Shaobin-Jiang",
-      "followers_url": "https://api.github.com/users/Shaobin-Jiang/followers",
-      "following_url": "https://api.github.com/users/Shaobin-Jiang/following{/other_user}",
-      "gists_url": "https://api.github.com/users/Shaobin-Jiang/gists{/gist_id}",
-      "starred_url": "https://api.github.com/users/Shaobin-Jiang/starred{/owner}{/repo}",
-      "subscriptions_url": "https://api.github.com/users/Shaobin-Jiang/subscriptions",
-      "organizations_url": "https://api.github.com/users/Shaobin-Jiang/orgs",
-      "repos_url": "https://api.github.com/users/Shaobin-Jiang/repos",
-      "events_url": "https://api.github.com/users/Shaobin-Jiang/events{/privacy}",
-      "received_events_url": "https://api.github.com/users/Shaobin-Jiang/received_events",
-      "type": "User",
-      "user_view_type": "public",
-      "site_admin": false
+      "name": "Shaobin-Jiang",
+      "email": "shaobin-jiang@outlook.com",
+      "date": "2025-11-28T03:24:10Z"
     },
-    "parents": [
-      {
-        "sha": "2deb4b115d8c48ad1e6f986fb8d074e71b14dde5",
-        "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2deb4b115d8c48ad1e6f986fb8d074e71b14dde5",
-        "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2deb4b115d8c48ad1e6f986fb8d074e71b14dde5"
-      }
-    ],
-    "stats": {
-      "total": 289,
-      "additions": 287,
-      "deletions": 2
+    "message": "support voice input",
+    "tree": {
+      "sha": "828243088b2b84a0a9e6bac29e053b2decb21d74",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/828243088b2b84a0a9e6bac29e053b2decb21d74"
     },
-    "files": [
-      {
-        "sha": "4f0f8d98bd52d1d5ba921ac81f7a13ca065ce41d",
-        "filename": "frontend/src/App.css",
-        "status": "modified",
-        "additions": 44,
-        "deletions": 0,
-        "changes": 44,
-        "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/bc06173f92d704ef74ef5839123ea519d448d160/frontend%2Fsrc%2FApp.css",
-        "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/bc06173f92d704ef74ef5839123ea519d448d160/frontend%2Fsrc%2FApp.css",
-        "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=bc06173f92d704ef74ef5839123ea519d448d160",
-        "patch": "@@ -263,3 +263,47 @@\n .comments-panel::-webkit-scrollbar-thumb:hover {\n   background: #999;\n }\n+\n+.voice-input-modal {\n+  background-color: #25252588;\n+  display: flex;\n+  align-items: center;\n+  justify-content: center;\n+  height: 100vh;\n+  width: 100vw;\n+  position: fixed;\n+  top: 0;\n+  left: 0;\n+  z-index: 99999;\n+}\n+\n+.voice-input-container {\n+  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;\n+  background-color: #ddd;\n+  border-radius: 10px;\n+  width: 50%;\n+  height: 50%;\n+}\n+\n+.voice-input-result {\n+  font-size: 1.25rem;\n+  box-sizing: border-box;\n+  width: 100%;\n+  height: 80%;\n+  padding: 20px;\n+  overflow: auto;\n+}\n+\n+.voice-input-button-group {\n+  display: flex;\n+  align-items: center;\n+  justify-content: space-around;\n+  width: 100%;\n+  height: 18%;\n+}\n+\n+.voice-input-button-group button {\n+  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;\n+  padding: 5px 10px;\n+  font-size: 1.25rem;\n+}"
-      },
-      {
-        "sha": "1c9409845899f4b73955faec76e6680b3a078eb1",
-        "filename": "frontend/src/App.tsx",
-        "status": "modified",
-        "additions": 243,
-        "deletions": 2,
-        "changes": 245,
-        "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/bc06173f92d704ef74ef5839123ea519d448d160/frontend%2Fsrc%2FApp.tsx",
-        "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/bc06173f92d704ef74ef5839123ea519d448d160/frontend%2Fsrc%2FApp.tsx",
-        "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=bc06173f92d704ef74ef5839123ea519d448d160",
-        "patch": "@@ -9,7 +9,7 @@ import {\n   FaSync,\n   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,\n   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass,\n-  FaAlignRight\n+  FaAlignRight, FaMicrophone\n } from 'react-icons/fa';\n import TopNavBar from './components/TopNavBar';\n import DeckManager from './components/DeckManager';\n@@ -47,12 +47,14 @@ function LeftToolbar({\n   onToggleAlign,\n   onShowCalendar,\n   onSaveToday,\n+  onStartTalking,\n   isAligned\n }: {\n   onInsertAgent: () => void;\n   onToggleAlign: () => void;\n   onShowCalendar: () => void;\n   onSaveToday: () => void;\n+  onStartTalking: () => void;\n   isAligned: boolean;\n }) {\n   return (\n@@ -162,7 +164,7 @@ function LeftToolbar({\n         @\n       </button>\n \n-      {/* Align button - last */}\n+      {/* Align button - fourth */}\n       <button\n         onClick={onToggleAlign}\n         title={isAligned ? \"Unalign Comments\" : \"Align Comments Right\"}\n@@ -187,6 +189,32 @@ function LeftToolbar({\n       >\n         <FaAlignRight size={18} color={isAligned ? '#1976d2' : '#333'} />\n       </button>\n+\n+      {/* Align button - last */}\n+      <button\n+        onClick={onStartTalking}\n+        title=\"Voice Input\"\n+        style={{\n+          width: '36px',\n+          height: '36px',\n+          border: 'none',\n+          borderRadius: '4px',\n+          backgroundColor: isAligned ? '#e3f2fd' : '#fff',\n+          cursor: 'pointer',\n+          display: 'flex',\n+          alignItems: 'center',\n+          justifyContent: 'center',\n+          transition: 'all 0.2s ease'\n+        }}\n+        onMouseEnter={(e) => {\n+          e.currentTarget.style.backgroundColor = isAligned ? '#bbdefb' : '#f0f0f0';\n+        }}\n+        onMouseLeave={(e) => {\n+          e.currentTarget.style.backgroundColor = isAligned ? '#e3f2fd' : '#fff';\n+        }}\n+      >\n+        <FaMicrophone size={18} color={isAligned ? '#1976d2' : '#333'} />\n+      </button>\n     </div>\n   );\n }\n@@ -1412,6 +1440,218 @@ export default function App() {\n     }\n   }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);\n \n+  const handleStartTalking = useCallback(async () => {\n+    if (!textareaRefs.current) return;\n+    if (!isAuthenticated) {\n+      const toast = document.createElement('div');\n+      toast.textContent = 'Please sign in to enable voice input';\n+      toast.style.cssText = `\n+        position: fixed;\n+        top: 70px;\n+        right: 20px;\n+        background: #f44336;\n+        color: white;\n+        padding: 12px 20px;\n+        borderRadius: 6px;\n+        fontSize: 14px;\n+        fontFamily: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto;\n+        zIndex: 10000;\n+        boxShadow: 0 4px 12px rgba(0,0,0,0.15);\n+      `;\n+      document.body.appendChild(toast);\n+      setTimeout(() => {\n+        toast.style.opacity = '0';\n+        toast.style.transition = 'opacity 0.3s';\n+        setTimeout(() => document.body.removeChild(toast), 300);\n+      }, 2000);\n+      return;\n+    }\n+\n+    let voiceInputModal: HTMLDivElement = document.createElement('div');\n+    voiceInputModal.className = 'voice-input-modal';\n+    document.body.append(voiceInputModal);\n+\n+    let voiceInputContainer: HTMLDivElement = document.createElement('div');\n+    voiceInputContainer.className = 'voice-input-container';\n+    voiceInputModal.append(voiceInputContainer);\n+\n+    let voiceInputResult: HTMLParagraphElement = document.createElement('div');\n+    voiceInputResult.className = 'voice-input-result';\n+    voiceInputContainer.append(voiceInputResult);\n+\n+    let btnGroup: HTMLDivElement = document.createElement('div');\n+    btnGroup.className = 'voice-input-button-group';\n+    voiceInputContainer.append(btnGroup);\n+\n+    let startBtn: HTMLButtonElement = document.createElement('button');\n+    startBtn.innerText = 'Start';\n+\n+    let stopBtn: HTMLButtonElement = document.createElement('button');\n+    stopBtn.innerText = 'Pause';\n+    stopBtn.disabled = true;\n+\n+    let applyBtn: HTMLButtonElement = document.createElement('button');\n+    applyBtn.innerText = 'Apply';\n+    applyBtn.disabled = true;\n+\n+    let cancelBtn: HTMLButtonElement = document.createElement('button');\n+    cancelBtn.innerText = 'Cancel';\n+\n+    btnGroup.append(startBtn);\n+    btnGroup.append(stopBtn);\n+    btnGroup.append(applyBtn);\n+    btnGroup.append(cancelBtn);\n+\n+    try {\n+      let audioCtx: AudioContext;\n+      let stream: MediaStream;\n+      let processor: ScriptProcessorNode;\n+      let source: MediaStreamAudioSourceNode;\n+      let ws: WebSocket;\n+      const targetSampleRate = 16000;\n+\n+      let sentences: Array<string> = [];\n+      let sentenceId: number = -1;\n+\n+      function floatTo16BitPCM(float32Array: Float32Array): ArrayBuffer {\n+        const buffer = new ArrayBuffer(float32Array.length * 2);\n+        const view = new DataView(buffer);\n+        let offset = 0;\n+        for (let i = 0; i < float32Array.length; i++, offset += 2) {\n+          let s = Math.max(-1, Math.min(1, float32Array[i]));\n+          view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);\n+        }\n+        return buffer;\n+      }\n+\n+      function downsampleBuffer(buffer: Float32Array, inSampleRate: number, outSampleRate: number): Float32Array {\n+        if (outSampleRate === inSampleRate) {\n+          return buffer;\n+        }\n+        if (outSampleRate > inSampleRate) {\n+          console.warn(\"downsampleBuffer: target sample rate is higher than input, returning original\");\n+          return buffer;\n+        }\n+        const sampleRateRatio = inSampleRate / outSampleRate;\n+        const newLength = Math.round(buffer.length / sampleRateRatio);\n+        const result = new Float32Array(newLength);\n+        let offsetResult = 0;\n+        let offsetBuffer = 0;\n+        while (offsetResult < result.length) {\n+          const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);\n+          let accum = 0, count = 0;\n+          for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {\n+            accum += buffer[i];\n+            count++;\n+          }\n+          result[offsetResult] = count ? accum / count : 0;\n+          offsetResult++;\n+          offsetBuffer = nextOffsetBuffer;\n+        }\n+        return result;\n+      }\n+\n+      async function start() {\n+        startBtn.disabled = true;\n+        stopBtn.disabled = false;\n+        applyBtn.disabled = false;\n+\n+        ws = new WebSocket('ws://127.0.0.1:8765/ws/speech-recognition');\n+        ws.binaryType = 'arraybuffer';\n+        ws.onerror = (e) => {\n+          console.error('WS err', e);\n+        };\n+        ws.onmessage = (evt) => {\n+          try {\n+            const data = JSON.parse(evt.data);\n+            let id = data.id;\n+            if (id != sentenceId) {\n+              sentenceId = id;\n+              sentences.push('');\n+            }\n+            sentences[sentences.length - 1] = data.sentence;\n+            voiceInputResult.innerHTML = sentences.map(v => `<p>${v}</p>`).join('');\n+          } catch (e) {\n+            console.log('Non-JSON message from server:', evt.data);\n+          }\n+        };\n+\n+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });\n+        audioCtx = new window.AudioContext();\n+        source = audioCtx.createMediaStreamSource(stream);\n+\n+        const inputSampleRate = audioCtx.sampleRate;\n+        console.log('input sample rate', inputSampleRate);\n+\n+        const bufferSize = 4096;\n+        processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);\n+\n+        processor.onaudioprocess = (event) => {\n+          const inputBuffer = event.inputBuffer.getChannelData(0);\n+          const downsampled = downsampleBuffer(inputBuffer, inputSampleRate, targetSampleRate);\n+          const pcm16ab = floatTo16BitPCM(downsampled);\n+          if (ws && ws.readyState === WebSocket.OPEN) {\n+            ws.send(pcm16ab);\n+          }\n+        };\n+\n+        source.connect(processor);\n+        processor.connect(audioCtx.destination);\n+\n+        startBtn.disabled = true;\n+        stopBtn.disabled = false;\n+      }\n+\n+      function stop() {\n+        startBtn.disabled = false;\n+        stopBtn.disabled = true;\n+\n+        processor?.disconnect();\n+        source?.disconnect();\n+        audioCtx?.close();\n+        stream?.getTracks().forEach(t => t.stop());\n+        ws?.close();\n+        startBtn.disabled = false;\n+        stopBtn.disabled = true;\n+        sentenceId = -1;\n+      }\n+\n+      function apply() {\n+        stop();\n+        voiceInputModal.remove();\n+\n+        if (!engineRef.current) return;\n+        const lastTextCell = [...engineRef.current.getState().cells].reverse().find(c => c.type === 'text');\n+        if (!lastTextCell) return;\n+        const textarea = textareaRefs.current.get(lastTextCell.id);\n+        if (!textarea) return;\n+\n+        const currentContent = (lastTextCell as TextCell).content;\n+        const newContent = currentContent + sentences.join('');\n+        engineRef.current.updateTextCell(lastTextCell.id, newContent);\n+\n+        // Postpone setting of textarea height\n+        setTimeout(() => {\n+          textarea.style.height = `${textarea.scrollHeight}px`;\n+        }, 100);\n+      }\n+\n+      function cancel() {\n+        stop();\n+        voiceInputModal.remove();\n+      }\n+\n+      startBtn.addEventListener('click', start);\n+      stopBtn.addEventListener('click', stop);\n+      applyBtn.addEventListener('click', apply);\n+      cancelBtn.addEventListener('click', cancel);\n+    \n+    } catch (error) {\n+      console.error('Voice input encountered an unexpected error:', error);\n+      voiceInputModal.remove();\n+    }\n+  }, [isAuthenticated]);\n+\n   const handleLoadEntry = useCallback((entry: CalendarEntry) => {\n     if (!engineRef.current) return;\n \n@@ -2108,6 +2348,7 @@ export default function App() {\n                 onToggleAlign={handleToggleAlign}\n                 onShowCalendar={() => setShowCalendarPopup(true)}\n                 onSaveToday={handleSaveToday}\n+                onStartTalking={handleStartTalking}\n                 isAligned={commentsAligned}\n               />\n             </div>"
-      }
-    ]
-  }
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/bc06173f92d704ef74ef5839123ea519d448d160",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\niQGzBAABCAAdFiEEhfQW+O5+vUJlGXwjtnnMcOFZaR8FAmkpFegACgkQtnnMcOFZ\naR+u3gv/R0DHlLbGBy8FfEsuPlLDO/F5WZEWZmECITfBj/dC61cJzvnhSEsNnl6P\npl//XrUuCNncx1ktGhHm3DK39ulWTm+7RjAYLQPliZ4Jm+SlngVkmUv9r6u63LvV\nvWkk5GZmPAyKQbMUsPWXIEsBNFwFhg/hLbMjyLespV9Mdo+ssGGLhMIr3K9HwFVj\nU5mv9y3xa3Wj247zgrek8jIZTpt+qAmjJE6nVj2rd8QmJjhNRiURUee2OVykQenH\nsQCBIsKYCL0AjynSWB1tmgY09ZNWao8KdLoYbYCXQIjjppzx8GKDf8v88txjazO4\ntoml0d/hQ+pLvvnm3T3JlCuGj1gQB4uPK4ECtgMQcCbbHxsbtWqc1AGHR0lgYp+0\nyLj2YfStdwGCZpnIaB7wfVsqBRr0/ugf+Hr8aqEZY9Nf/aZrQcgm0RLGmb9wZ+hc\nDdwBEHcOWU1rt+gfPL0UrwGZzXT38okagFgTciVYXH2U2Y1vRQS+qxm7vXXF7Jl1\noPujkSbj\n=bk1g\n-----END PGP SIGNATURE-----",
+      "payload": "tree 828243088b2b84a0a9e6bac29e053b2decb21d74\nparent 2deb4b115d8c48ad1e6f986fb8d074e71b14dde5\nauthor Shaobin-Jiang <shaobin-jiang@outlook.com> 1764300250 +0800\ncommitter Shaobin-Jiang <shaobin-jiang@outlook.com> 1764300250 +0800\n\nsupport voice input\n",
+      "verified_at": "2025-11-28T03:24:35Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/bc06173f92d704ef74ef5839123ea519d448d160",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/bc06173f92d704ef74ef5839123ea519d448d160",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/bc06173f92d704ef74ef5839123ea519d448d160/comments",
+  "author": {
+    "login": "Shaobin-Jiang",
+    "id": 74588034,
+    "node_id": "MDQ6VXNlcjc0NTg4MDM0",
+    "avatar_url": "https://avatars.githubusercontent.com/u/74588034?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/Shaobin-Jiang",
+    "html_url": "https://github.com/Shaobin-Jiang",
+    "followers_url": "https://api.github.com/users/Shaobin-Jiang/followers",
+    "following_url": "https://api.github.com/users/Shaobin-Jiang/following{/other_user}",
+    "gists_url": "https://api.github.com/users/Shaobin-Jiang/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/Shaobin-Jiang/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/Shaobin-Jiang/subscriptions",
+    "organizations_url": "https://api.github.com/users/Shaobin-Jiang/orgs",
+    "repos_url": "https://api.github.com/users/Shaobin-Jiang/repos",
+    "events_url": "https://api.github.com/users/Shaobin-Jiang/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/Shaobin-Jiang/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "Shaobin-Jiang",
+    "id": 74588034,
+    "node_id": "MDQ6VXNlcjc0NTg4MDM0",
+    "avatar_url": "https://avatars.githubusercontent.com/u/74588034?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/Shaobin-Jiang",
+    "html_url": "https://github.com/Shaobin-Jiang",
+    "followers_url": "https://api.github.com/users/Shaobin-Jiang/followers",
+    "following_url": "https://api.github.com/users/Shaobin-Jiang/following{/other_user}",
+    "gists_url": "https://api.github.com/users/Shaobin-Jiang/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/Shaobin-Jiang/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/Shaobin-Jiang/subscriptions",
+    "organizations_url": "https://api.github.com/users/Shaobin-Jiang/orgs",
+    "repos_url": "https://api.github.com/users/Shaobin-Jiang/repos",
+    "events_url": "https://api.github.com/users/Shaobin-Jiang/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/Shaobin-Jiang/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "2deb4b115d8c48ad1e6f986fb8d074e71b14dde5",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2deb4b115d8c48ad1e6f986fb8d074e71b14dde5",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2deb4b115d8c48ad1e6f986fb8d074e71b14dde5"
+    }
+  ],
+  "stats": {
+    "total": 289,
+    "additions": 287,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "4f0f8d98bd52d1d5ba921ac81f7a13ca065ce41d",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 44,
+      "deletions": 0,
+      "changes": 44,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/bc06173f92d704ef74ef5839123ea519d448d160/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/bc06173f92d704ef74ef5839123ea519d448d160/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=bc06173f92d704ef74ef5839123ea519d448d160",
+      "patch": "@@ -263,3 +263,47 @@\n .comments-panel::-webkit-scrollbar-thumb:hover {\n   background: #999;\n }\n+\n+.voice-input-modal {\n+  background-color: #25252588;\n+  display: flex;\n+  align-items: center;\n+  justify-content: center;\n+  height: 100vh;\n+  width: 100vw;\n+  position: fixed;\n+  top: 0;\n+  left: 0;\n+  z-index: 99999;\n+}\n+\n+.voice-input-container {\n+  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;\n+  background-color: #ddd;\n+  border-radius: 10px;\n+  width: 50%;\n+  height: 50%;\n+}\n+\n+.voice-input-result {\n+  font-size: 1.25rem;\n+  box-sizing: border-box;\n+  width: 100%;\n+  height: 80%;\n+  padding: 20px;\n+  overflow: auto;\n+}\n+\n+.voice-input-button-group {\n+  display: flex;\n+  align-items: center;\n+  justify-content: space-around;\n+  width: 100%;\n+  height: 18%;\n+}\n+\n+.voice-input-button-group button {\n+  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;\n+  padding: 5px 10px;\n+  font-size: 1.25rem;\n+}"
+    },
+    {
+      "sha": "1c9409845899f4b73955faec76e6680b3a078eb1",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 243,
+      "deletions": 2,
+      "changes": 245,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/bc06173f92d704ef74ef5839123ea519d448d160/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/bc06173f92d704ef74ef5839123ea519d448d160/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=bc06173f92d704ef74ef5839123ea519d448d160",
+      "patch": "@@ -9,7 +9,7 @@ import {\n   FaSync,\n   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,\n   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass,\n-  FaAlignRight\n+  FaAlignRight, FaMicrophone\n } from 'react-icons/fa';\n import TopNavBar from './components/TopNavBar';\n import DeckManager from './components/DeckManager';\n@@ -47,12 +47,14 @@ function LeftToolbar({\n   onToggleAlign,\n   onShowCalendar,\n   onSaveToday,\n+  onStartTalking,\n   isAligned\n }: {\n   onInsertAgent: () => void;\n   onToggleAlign: () => void;\n   onShowCalendar: () => void;\n   onSaveToday: () => void;\n+  onStartTalking: () => void;\n   isAligned: boolean;\n }) {\n   return (\n@@ -162,7 +164,7 @@ function LeftToolbar({\n         @\n       </button>\n \n-      {/* Align button - last */}\n+      {/* Align button - fourth */}\n       <button\n         onClick={onToggleAlign}\n         title={isAligned ? \"Unalign Comments\" : \"Align Comments Right\"}\n@@ -187,6 +189,32 @@ function LeftToolbar({\n       >\n         <FaAlignRight size={18} color={isAligned ? '#1976d2' : '#333'} />\n       </button>\n+\n+      {/* Align button - last */}\n+      <button\n+        onClick={onStartTalking}\n+        title=\"Voice Input\"\n+        style={{\n+          width: '36px',\n+          height: '36px',\n+          border: 'none',\n+          borderRadius: '4px',\n+          backgroundColor: isAligned ? '#e3f2fd' : '#fff',\n+          cursor: 'pointer',\n+          display: 'flex',\n+          alignItems: 'center',\n+          justifyContent: 'center',\n+          transition: 'all 0.2s ease'\n+        }}\n+        onMouseEnter={(e) => {\n+          e.currentTarget.style.backgroundColor = isAligned ? '#bbdefb' : '#f0f0f0';\n+        }}\n+        onMouseLeave={(e) => {\n+          e.currentTarget.style.backgroundColor = isAligned ? '#e3f2fd' : '#fff';\n+        }}\n+      >\n+        <FaMicrophone size={18} color={isAligned ? '#1976d2' : '#333'} />\n+      </button>\n     </div>\n   );\n }\n@@ -1412,6 +1440,218 @@ export default function App() {\n     }\n   }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);\n \n+  const handleStartTalking = useCallback(async () => {\n+    if (!textareaRefs.current) return;\n+    if (!isAuthenticated) {\n+      const toast = document.createElement('div');\n+      toast.textContent = 'Please sign in to enable voice input';\n+      toast.style.cssText = `\n+        position: fixed;\n+        top: 70px;\n+        right: 20px;\n+        background: #f44336;\n+        color: white;\n+        padding: 12px 20px;\n+        borderRadius: 6px;\n+        fontSize: 14px;\n+        fontFamily: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto;\n+        zIndex: 10000;\n+        boxShadow: 0 4px 12px rgba(0,0,0,0.15);\n+      `;\n+      document.body.appendChild(toast);\n+      setTimeout(() => {\n+        toast.style.opacity = '0';\n+        toast.style.transition = 'opacity 0.3s';\n+        setTimeout(() => document.body.removeChild(toast), 300);\n+      }, 2000);\n+      return;\n+    }\n+\n+    let voiceInputModal: HTMLDivElement = document.createElement('div');\n+    voiceInputModal.className = 'voice-input-modal';\n+    document.body.append(voiceInputModal);\n+\n+    let voiceInputContainer: HTMLDivElement = document.createElement('div');\n+    voiceInputContainer.className = 'voice-input-container';\n+    voiceInputModal.append(voiceInputContainer);\n+\n+    let voiceInputResult: HTMLParagraphElement = document.createElement('div');\n+    voiceInputResult.className = 'voice-input-result';\n+    voiceInputContainer.append(voiceInputResult);\n+\n+    let btnGroup: HTMLDivElement = document.createElement('div');\n+    btnGroup.className = 'voice-input-button-group';\n+    voiceInputContainer.append(btnGroup);\n+\n+    let startBtn: HTMLButtonElement = document.createElement('button');\n+    startBtn.innerText = 'Start';\n+\n+    let stopBtn: HTMLButtonElement = document.createElement('button');\n+    stopBtn.innerText = 'Pause';\n+    stopBtn.disabled = true;\n+\n+    let applyBtn: HTMLButtonElement = document.createElement('button');\n+    applyBtn.innerText = 'Apply';\n+    applyBtn.disabled = true;\n+\n+    let cancelBtn: HTMLButtonElement = document.createElement('button');\n+    cancelBtn.innerText = 'Cancel';\n+\n+    btnGroup.append(startBtn);\n+    btnGroup.append(stopBtn);\n+    btnGroup.append(applyBtn);\n+    btnGroup.append(cancelBtn);\n+\n+    try {\n+      let audioCtx: AudioContext;\n+      let stream: MediaStream;\n+      let processor: ScriptProcessorNode;\n+      let source: MediaStreamAudioSourceNode;\n+      let ws: WebSocket;\n+      const targetSampleRate = 16000;\n+\n+      let sentences: Array<string> = [];\n+      let sentenceId: number = -1;\n+\n+      function floatTo16BitPCM(float32Array: Float32Array): ArrayBuffer {\n+        const buffer = new ArrayBuffer(float32Array.length * 2);\n+        const view = new DataView(buffer);\n+        let offset = 0;\n+        for (let i = 0; i < float32Array.length; i++, offset += 2) {\n+          let s = Math.max(-1, Math.min(1, float32Array[i]));\n+          view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);\n+        }\n+        return buffer;\n+      }\n+\n+      function downsampleBuffer(buffer: Float32Array, inSampleRate: number, outSampleRate: number): Float32Array {\n+        if (outSampleRate === inSampleRate) {\n+          return buffer;\n+        }\n+        if (outSampleRate > inSampleRate) {\n+          console.warn(\"downsampleBuffer: target sample rate is higher than input, returning original\");\n+          return buffer;\n+        }\n+        const sampleRateRatio = inSampleRate / outSampleRate;\n+        const newLength = Math.round(buffer.length / sampleRateRatio);\n+        const result = new Float32Array(newLength);\n+        let offsetResult = 0;\n+        let offsetBuffer = 0;\n+        while (offsetResult < result.length) {\n+          const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);\n+          let accum = 0, count = 0;\n+          for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {\n+            accum += buffer[i];\n+            count++;\n+          }\n+          result[offsetResult] = count ? accum / count : 0;\n+          offsetResult++;\n+          offsetBuffer = nextOffsetBuffer;\n+        }\n+        return result;\n+      }\n+\n+      async function start() {\n+        startBtn.disabled = true;\n+        stopBtn.disabled = false;\n+        applyBtn.disabled = false;\n+\n+        ws = new WebSocket('ws://127.0.0.1:8765/ws/speech-recognition');\n+        ws.binaryType = 'arraybuffer';\n+        ws.onerror = (e) => {\n+          console.error('WS err', e);\n+        };\n+        ws.onmessage = (evt) => {\n+          try {\n+            const data = JSON.parse(evt.data);\n+            let id = data.id;\n+            if (id != sentenceId) {\n+              sentenceId = id;\n+              sentences.push('');\n+            }\n+            sentences[sentences.length - 1] = data.sentence;\n+            voiceInputResult.innerHTML = sentences.map(v => `<p>${v}</p>`).join('');\n+          } catch (e) {\n+            console.log('Non-JSON message from server:', evt.data);\n+          }\n+        };\n+\n+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });\n+        audioCtx = new window.AudioContext();\n+        source = audioCtx.createMediaStreamSource(stream);\n+\n+        const inputSampleRate = audioCtx.sampleRate;\n+        console.log('input sample rate', inputSampleRate);\n+\n+        const bufferSize = 4096;\n+        processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);\n+\n+        processor.onaudioprocess = (event) => {\n+          const inputBuffer = event.inputBuffer.getChannelData(0);\n+          const downsampled = downsampleBuffer(inputBuffer, inputSampleRate, targetSampleRate);\n+          const pcm16ab = floatTo16BitPCM(downsampled);\n+          if (ws && ws.readyState === WebSocket.OPEN) {\n+            ws.send(pcm16ab);\n+          }\n+        };\n+\n+        source.connect(processor);\n+        processor.connect(audioCtx.destination);\n+\n+        startBtn.disabled = true;\n+        stopBtn.disabled = false;\n+      }\n+\n+      function stop() {\n+        startBtn.disabled = false;\n+        stopBtn.disabled = true;\n+\n+        processor?.disconnect();\n+        source?.disconnect();\n+        audioCtx?.close();\n+        stream?.getTracks().forEach(t => t.stop());\n+        ws?.close();\n+        startBtn.disabled = false;\n+        stopBtn.disabled = true;\n+        sentenceId = -1;\n+      }\n+\n+      function apply() {\n+        stop();\n+        voiceInputModal.remove();\n+\n+        if (!engineRef.current) return;\n+        const lastTextCell = [...engineRef.current.getState().cells].reverse().find(c => c.type === 'text');\n+        if (!lastTextCell) return;\n+        const textarea = textareaRefs.current.get(lastTextCell.id);\n+        if (!textarea) return;\n+\n+        const currentContent = (lastTextCell as TextCell).content;\n+        const newContent = currentContent + sentences.join('');\n+        engineRef.current.updateTextCell(lastTextCell.id, newContent);\n+\n+        // Postpone setting of textarea height\n+        setTimeout(() => {\n+          textarea.style.height = `${textarea.scrollHeight}px`;\n+        }, 100);\n+      }\n+\n+      function cancel() {\n+        stop();\n+        voiceInputModal.remove();\n+      }\n+\n+      startBtn.addEventListener('click', start);\n+      stopBtn.addEventListener('click', stop);\n+      applyBtn.addEventListener('click', apply);\n+      cancelBtn.addEventListener('click', cancel);\n+    \n+    } catch (error) {\n+      console.error('Voice input encountered an unexpected error:', error);\n+      voiceInputModal.remove();\n+    }\n+  }, [isAuthenticated]);\n+\n   const handleLoadEntry = useCallback((entry: CalendarEntry) => {\n     if (!engineRef.current) return;\n \n@@ -2108,6 +2348,7 @@ export default function App() {\n                 onToggleAlign={handleToggleAlign}\n                 onShowCalendar={() => setShowCalendarPopup(true)}\n                 onSaveToday={handleSaveToday}\n+                onStartTalking={handleStartTalking}\n                 isAligned={commentsAligned}\n               />\n             </div>"
+    }
+  ]
 }

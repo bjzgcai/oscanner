@@ -1,0 +1,84 @@
+{
+  "sha": "cc76de28cf588e463628f9b8b1fff5389c5bbfb8",
+  "node_id": "C_kwDOP2Zrm9oAKGNjNzZkZTI4Y2Y1ODhlNDYzNjI4ZjliOGIxZmZmNTM4OWM1YmJmYjg",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T09:01:31Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T09:01:31Z"
+    },
+    "message": "Fix calendar display after migration - load from database when authenticated\n\nChanges:\n- CalendarPopup.tsx now loads calendar entries from database when authenticated\n- Falls back to localStorage for guest mode\n- Delete operations also database-aware\n- Fixes issue where calendar appeared empty after successful migration\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "82c54e867aef3fb62f5478141b0432fe56b67828",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/82c54e867aef3fb62f5478141b0432fe56b67828"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/cc76de28cf588e463628f9b8b1fff5389c5bbfb8",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cc76de28cf588e463628f9b8b1fff5389c5bbfb8",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cc76de28cf588e463628f9b8b1fff5389c5bbfb8",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cc76de28cf588e463628f9b8b1fff5389c5bbfb8/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "000c695e755b03df45d727a7d206710891e6f8e9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/000c695e755b03df45d727a7d206710891e6f8e9",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/000c695e755b03df45d727a7d206710891e6f8e9"
+    }
+  ],
+  "stats": {
+    "total": 115,
+    "additions": 108,
+    "deletions": 7
+  },
+  "files": [
+    {
+      "sha": "0bf47a74fbd035af212c9f57ac53cf7a7cc20d44",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cc76de28cf588e463628f9b8b1fff5389c5bbfb8/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cc76de28cf588e463628f9b8b1fff5389c5bbfb8/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=cc76de28cf588e463628f9b8b1fff5389c5bbfb8"
+    },
+    {
+      "sha": "5582ee91b73f5481ba078570eb2b4f41361ff3b6",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 19,
+      "deletions": 0,
+      "changes": 19,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cc76de28cf588e463628f9b8b1fff5389c5bbfb8/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cc76de28cf588e463628f9b8b1fff5389c5bbfb8/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=cc76de28cf588e463628f9b8b1fff5389c5bbfb8",
+      "patch": "@@ -370,6 +370,8 @@ export default function App() {\n \n   // @@@ Check for localStorage migration after login\n   useEffect(() => {\n+    console.log('🔍 Migration check:', { isAuthenticated, isLoading });\n+\n     if (isAuthenticated && !isLoading) {\n       // Check if user has localStorage data that needs migration\n       const hasLocalData =\n@@ -385,7 +387,24 @@ export default function App() {\n       // Check if migration already done (flag stored after migration)\n       const migrationDone = localStorage.getItem(STORAGE_KEYS.MIGRATION_COMPLETED);\n \n+      console.log('📦 Migration status:', {\n+        hasLocalData: !!hasLocalData,\n+        migrationDone: !!migrationDone,\n+        editorState: !!localStorage.getItem(STORAGE_KEYS.EDITOR_STATE),\n+        calendarEntries: !!localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES),\n+        dailyPictures: !!localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES)\n+      });\n+\n+      // @@@ TEMPORARY: Force re-migration if calendar entries exist but weren't imported\n+      // Check if calendar entries exist but no sessions in database (migration failed)\n+      const hasCalendar = !!localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES);\n+      if (hasCalendar && migrationDone) {\n+        console.warn('⚠️ Found calendar entries but migration was marked done - forcing re-migration');\n+        localStorage.removeItem(STORAGE_KEYS.MIGRATION_COMPLETED);\n+      }\n+\n       if (hasLocalData && !migrationDone) {\n+        console.log('✅ Showing migration dialog');\n         setShowMigrationDialog(true);\n       }\n     }"
+    },
+    {
+      "sha": "8fba1a6ad31d74db521997f71d9b6ecf2934ab7d",
+      "filename": "frontend/src/components/CalendarPopup.tsx",
+      "status": "modified",
+      "additions": 89,
+      "deletions": 7,
+      "changes": 96,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cc76de28cf588e463628f9b8b1fff5389c5bbfb8/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cc76de28cf588e463628f9b8b1fff5389c5bbfb8/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx?ref=cc76de28cf588e463628f9b8b1fff5389c5bbfb8",
+      "patch": "@@ -6,21 +6,68 @@ import {\n   deleteEntry,\n   type CalendarEntry\n } from '../utils/calendarStorage';\n+import { useAuth } from '../contexts/AuthContext';\n \n interface Props {\n   onLoadEntry: (entry: CalendarEntry) => void;\n   onClose: () => void;\n }\n \n export default function CalendarPopup({ onLoadEntry, onClose }: Props) {\n+  const { isAuthenticated } = useAuth();\n   const [currentMonth, setCurrentMonth] = useState(new Date());\n   const [selectedDate, setSelectedDate] = useState<string | null>(getTodayKey());\n-  const [calendarData, setCalendarData] = useState(getCalendarData());\n+  const [calendarData, setCalendarData] = useState<Record<string, CalendarEntry[]>>({});\n \n-  // Refresh calendar data when component mounts or updates\n+  // @@@ Load calendar data from database if authenticated, localStorage if guest\n   useEffect(() => {\n-    setCalendarData(getCalendarData());\n-  }, []);\n+    const loadData = async () => {\n+      if (isAuthenticated) {\n+        try {\n+          // Load from database - sessions imported during migration\n+          const { listSessions, getSession } = await import('../api/voiceApi');\n+          const sessions = await listSessions();\n+\n+          // Group sessions by date (extract from session name which has format \"YYYY-MM-DD - FirstLine\")\n+          const grouped: Record<string, CalendarEntry[]> = {};\n+\n+          for (const session of sessions) {\n+            const fullSession = await getSession(session.id);\n+\n+            // Extract date from name or use created_at\n+            let dateKey = session.created_at?.split('T')[0] || getTodayKey();\n+\n+            // If name starts with YYYY-MM-DD format, use that\n+            if (session.name && /^\\d{4}-\\d{2}-\\d{2}/.test(session.name)) {\n+              dateKey = session.name.split(' - ')[0];\n+            }\n+\n+            if (!grouped[dateKey]) {\n+              grouped[dateKey] = [];\n+            }\n+\n+            grouped[dateKey].push({\n+              id: session.id,\n+              timestamp: new Date(session.created_at || Date.now()).getTime(),\n+              state: fullSession.editor_state,\n+              firstLine: session.name || 'Untitled'\n+            });\n+          }\n+\n+          setCalendarData(grouped);\n+        } catch (error) {\n+          console.error('Failed to load calendar from database:', error);\n+          // Fallback to localStorage\n+          setCalendarData(getCalendarData());\n+        }\n+      } else {\n+        // Guest mode: load from localStorage\n+        setCalendarData(getCalendarData());\n+      }\n+    };\n+\n+    loadData();\n+  }, [isAuthenticated]);\n \n   const today = getTodayKey();\n   const datesWithEntries = Object.keys(calendarData);\n@@ -64,10 +111,45 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {\n     setSelectedDate(dateKey);\n   };\n \n-  const handleDeleteEntry = (dateKey: string, entryId: string) => {\n+  const handleDeleteEntry = async (dateKey: string, entryId: string) => {\n     if (confirm('Delete this entry?')) {\n-      deleteEntry(dateKey, entryId);\n-      setCalendarData(getCalendarData());\n+      if (isAuthenticated) {\n+        try {\n+          // Delete from database\n+          const { deleteSession } = await import('../api/voiceApi');\n+          await deleteSession(entryId);\n+\n+          // Reload calendar data\n+          const { listSessions, getSession } = await import('../api/voiceApi');\n+          const sessions = await listSessions();\n+          const grouped: Record<string, CalendarEntry[]> = {};\n+\n+          for (const session of sessions) {\n+            const fullSession = await getSession(session.id);\n+            let dateKey = session.created_at?.split('T')[0] || getTodayKey();\n+            if (session.name && /^\\d{4}-\\d{2}-\\d{2}/.test(session.name)) {\n+              dateKey = session.name.split(' - ')[0];\n+            }\n+            if (!grouped[dateKey]) {\n+              grouped[dateKey] = [];\n+            }\n+            grouped[dateKey].push({\n+              id: session.id,\n+              timestamp: new Date(session.created_at || Date.now()).getTime(),\n+              state: fullSession.editor_state,\n+              firstLine: session.name || 'Untitled'\n+            });\n+          }\n+          setCalendarData(grouped);\n+        } catch (error) {\n+          console.error('Failed to delete from database:', error);\n+          alert('Failed to delete entry');\n+        }\n+      } else {\n+        // Guest mode: delete from localStorage\n+        deleteEntry(dateKey, entryId);\n+        setCalendarData(getCalendarData());\n+      }\n     }\n   };\n "
+    }
+  ]
+}

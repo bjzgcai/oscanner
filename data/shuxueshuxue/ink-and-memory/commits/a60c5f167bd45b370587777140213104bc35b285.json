@@ -1,0 +1,61 @@
+{
+  "sha": "a60c5f167bd45b370587777140213104bc35b285",
+  "node_id": "C_kwDOP2Zrm9oAKGE2MGM1ZjE2N2JkNDViMzcwNTg3Nzc3MTQwMjEzMTA0YmMzNWIyODU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:26:18Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:26:18Z"
+    },
+    "message": "Hover only changes z-index, not position",
+    "tree": {
+      "sha": "b8c53d9779a2e0008aa72df4201dbdab7b8314b6",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/b8c53d9779a2e0008aa72df4201dbdab7b8314b6"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/a60c5f167bd45b370587777140213104bc35b285",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a60c5f167bd45b370587777140213104bc35b285",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/a60c5f167bd45b370587777140213104bc35b285",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a60c5f167bd45b370587777140213104bc35b285/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "ca5c9798bb898329869d0a01a12937215b5eb2cf",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ca5c9798bb898329869d0a01a12937215b5eb2cf",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ca5c9798bb898329869d0a01a12937215b5eb2cf"
+    }
+  ],
+  "stats": {
+    "total": 3,
+    "additions": 1,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "03f2e6d6e680f65430a3d3ef24de3ddc9e7de2a9",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 2,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/a60c5f167bd45b370587777140213104bc35b285/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/a60c5f167bd45b370587777140213104bc35b285/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=a60c5f167bd45b370587777140213104bc35b285",
+      "patch": "@@ -117,10 +117,9 @@\n }\n \n /* @@@ Stacking: latest card on top, older cards stack below */\n-/* Only non-top cards can pop up on hover */\n+/* Only non-top cards can pop to top layer on hover (position stays same) */\n .voice-comment:not(.top-card):hover {\n   z-index: 1000 !important;\n-  transform: translateY(0) !important;\n   box-shadow: 0 8px 16px rgba(0,0,0,0.15);\n }\n "
+    }
+  ]
+}

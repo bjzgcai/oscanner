@@ -1,0 +1,87 @@
+{
+  "sha": "dd81fd7e271183515eab9b4220c7b5602e0fcbe9",
+  "node_id": "C_kwDOP2Zrm9oAKGRkODFmZDdlMjcxMTgzNTE1ZWFiOWI0MjIwYzdiNTYwMmUwZmNiZTk",
+  "commit": {
+    "author": {
+      "name": "F2J",
+      "email": "98064968+shuxueshuxue@users.noreply.github.com",
+      "date": "2025-12-28T12:56:23Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2025-12-28T12:56:23Z"
+    },
+    "message": "Merge pull request #25 from zhuchenyu2008/Frontend-Energy-Accumulation-Visualization\n\nFrontend Energy Accumulation Visualization",
+    "tree": {
+      "sha": "c01a427c7145d784ee3c757b3b6b109144a5d40c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/c01a427c7145d784ee3c757b3b6b109144a5d40c"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/dd81fd7e271183515eab9b4220c7b5602e0fcbe9",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpUSj4CRC1aQ7uu5UhlAAAQFUQAJtQ6u2Lou5RmAQxkoR/icj4\naGYEioJacZOBILPrUMVE0rAXIG1JWfNUdkbigZmjJebPIwLGpcpw/o9NmrHQkADu\nPn9mPGSd0ltREK+q01WsHPTBD/XJUfMb1/gc91BaIsKUg2g8GB7A7aNR1iuMthYU\nbQkPVOoU20PXa509Jb4/682WXy7BNGGcqek938tyU4S/YQ/2LsWMyo8x9vAoYOOY\nBwOitUylxohxDWmjo/4ZuofBbR7O5cotrDsY+Wa06IYQrYCin59Pg9POgmpAGSDz\n/YdOnx/ZbjtfA+W6Y0wN7PZrK+WnuEV/VOuK92NkxsFlrOZVL4+2ekrtZMGMWgc3\n/mAuArbP2XlEWqDtOoJyDLZ36W2bK89eDYkWP1/AKwE3dM3TvaDpY+OiS6dANE5r\nBUB8Np3I9CPDSNyb1Dcw5QrXi2c3S/9cdNj45ppYwwpHtjsrzbFNj3cs5diWX6KJ\nuMMlGNYzlmAHfYolkAfrWR2Pj0Ijcd24KeKgz2COd73RDi9kB1Q5U3DAQBDQVcL1\nfMRoCWIodTAoWsoSaYUPR72qzzGp/ZfVa4ulAJDfqvxBglhcXw3RS1WG/vj3zXOz\nGrJlTNvpbzNvrkSN09e4k985gVuKINDEdjeKTsRbETDI5DY5tMWSsQjTTO6A4klX\nnrQX5rPZIRn3NtidD9PK\n=5l6W\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree c01a427c7145d784ee3c757b3b6b109144a5d40c\nparent 06b7c9539721d80431b5f072591f13ab241be5c9\nparent 4056c8636f0adc483f65c6e914e3b9e374517773\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1766926583 -0800\ncommitter GitHub <noreply@github.com> 1766926583 -0800\n\nMerge pull request #25 from zhuchenyu2008/Frontend-Energy-Accumulation-Visualization\n\nFrontend Energy Accumulation Visualization",
+      "verified_at": "2025-12-28T12:56:24Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/dd81fd7e271183515eab9b4220c7b5602e0fcbe9",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/dd81fd7e271183515eab9b4220c7b5602e0fcbe9",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/dd81fd7e271183515eab9b4220c7b5602e0fcbe9/comments",
+  "author": {
+    "login": "shuxueshuxue",
+    "id": 98064968,
+    "node_id": "U_kgDOBdhaSA",
+    "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/shuxueshuxue",
+    "html_url": "https://github.com/shuxueshuxue",
+    "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+    "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+    "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+    "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+    "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+    "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "06b7c9539721d80431b5f072591f13ab241be5c9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/06b7c9539721d80431b5f072591f13ab241be5c9",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/06b7c9539721d80431b5f072591f13ab241be5c9"
+    },
+    {
+      "sha": "4056c8636f0adc483f65c6e914e3b9e374517773",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4056c8636f0adc483f65c6e914e3b9e374517773",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4056c8636f0adc483f65c6e914e3b9e374517773"
+    }
+  ]
+}

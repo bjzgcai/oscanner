@@ -1,0 +1,73 @@
+{
+  "sha": "cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+  "node_id": "C_kwDOP2Zrm9oAKGNlZmExMWEyMWVhZjZmMDEyZjgzOWU4MjIzYTU4ZDhlNTFlYzZiYjE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:01:22Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:01:22Z"
+    },
+    "message": "Move demo video to assets folder and update README reference",
+    "tree": {
+      "sha": "3b04e754e045260374078bd31307f880a4e49cf5",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/3b04e754e045260374078bd31307f880a4e49cf5"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1"
+    }
+  ],
+  "stats": {
+    "total": 17,
+    "additions": 9,
+    "deletions": 8
+  },
+  "files": [
+    {
+      "sha": "38f09e0af003d80f22ee71845d11d9def44b1ee3",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 8,
+      "changes": 17,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+      "patch": "@@ -2,7 +2,7 @@\n \n A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.\n \n-https://github.com/user-attachments/assets/demo.mov\n+![Demo](assets/demo.mov)\n \n ## ✨ Features\n \n@@ -162,18 +162,19 @@ re.split(r'[.!?。！？]+|\\n+', text)\n \n ```\n ink-and-memory/\n+├── assets/\n+│   └── demo.mov               # Demo video\n ├── backend/\n │   ├── server.py              # PolyCLI Session Registry server\n │   ├── stateful_analyzer.py   # Core voice detection logic\n │   ├── config.py              # Voice archetypes & prompts\n │   └── archive/               # Learning examples\n-├── frontend/\n-│   ├── src/\n-│   │   ├── components/        # React components\n-│   │   ├── extensions/        # TipTap voice highlighting\n-│   │   └── api/               # Backend API client\n-│   └── public/                # Fonts & assets\n-└── demo.mov                   # Demo video\n+└── frontend/\n+    ├── src/\n+    │   ├── components/        # React components\n+    │   ├── extensions/        # TipTap voice highlighting\n+    │   └── api/               # Backend API client\n+    └── public/                # Fonts & assets\n ```\n \n ## 🤝 Contributing"
+    },
+    {
+      "sha": "52748c7e6caefcf6edafd846b01d17f3637f8208",
+      "filename": "assets/demo.mov",
+      "status": "renamed",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1/assets%2Fdemo.mov",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1/assets%2Fdemo.mov",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/assets%2Fdemo.mov?ref=cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+      "previous_filename": "demo.mov"
+    }
+  ]
+}

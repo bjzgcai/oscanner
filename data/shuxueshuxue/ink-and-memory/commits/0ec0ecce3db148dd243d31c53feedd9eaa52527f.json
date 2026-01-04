@@ -1,0 +1,97 @@
+{
+  "sha": "0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+  "node_id": "C_kwDOP2Zrm9oAKDBlYzBlY2NlM2RiMTQ4ZGQyNDNkMzFjNTNmZWVkZDllYWE1MjUyN2Y",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-01T11:46:18Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-01T11:46:18Z"
+    },
+    "message": "Implement voice highlighting with custom Tiptap extension\n\n- Created VoiceHighlight extension using ProseMirror decorations\n- Highlights only first occurrence of trigger phrases (\"i feel\", \"i think\", \"should i\")\n- Uses decoration system instead of marks to avoid state conflicts\n- Applied watercolor brush styles via CSS classes\n- Removed Highlight extension and manual highlighting logic\n- Simplified component interfaces by removing editor instance passing\n- No cursor interference or infinite loop issues\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "42df176bb2ea0f26ac48bb39eab641407a6591f7",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/42df176bb2ea0f26ac48bb39eab641407a6591f7"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0ec0ecce3db148dd243d31c53feedd9eaa52527f/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "b26c6af4f2c4cee2a0327b4f03e056ee29e91694",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b26c6af4f2c4cee2a0327b4f03e056ee29e91694",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/b26c6af4f2c4cee2a0327b4f03e056ee29e91694"
+    }
+  ],
+  "stats": {
+    "total": 159,
+    "additions": 131,
+    "deletions": 28
+  },
+  "files": [
+    {
+      "sha": "8acbcac12afcaef937d36c76cc28041f20211179",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 5,
+      "deletions": 6,
+      "changes": 11,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0ec0ecce3db148dd243d31c53feedd9eaa52527f/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0ec0ecce3db148dd243d31c53feedd9eaa52527f/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+      "patch": "@@ -156,24 +156,23 @@\n }\n \n /* Watercolor highlight effects */\n-mark {\n-  background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-9&color=ffff43);\n+.voice-highlight {\n   margin: -2px -6px;\n   padding: 2px 6px;\n }\n \n-mark[data-color=\"yellow\"] {\n+.voice-highlight-yellow {\n   background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-9&color=ffff43);\n }\n \n-mark[data-color=\"blue\"] {\n+.voice-highlight-blue {\n   background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-7&color=a3d5ff);\n }\n \n-mark[data-color=\"pink\"] {\n+.voice-highlight-pink {\n   background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-8&color=ffb3d9);\n }\n \n-mark[data-color=\"green\"] {\n+.voice-highlight-green {\n   background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-6&color=b3ffb3);\n }\n\\ No newline at end of file"
+    },
+    {
+      "sha": "a67e1f46fff989324a002c9d9e1f813136526cd2",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 39,
+      "deletions": 11,
+      "changes": 50,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0ec0ecce3db148dd243d31c53feedd9eaa52527f/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0ec0ecce3db148dd243d31c53feedd9eaa52527f/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+      "patch": "@@ -8,8 +8,18 @@ import BinderRings from './components/BinderRings'\n interface Voice {\n   name: string;\n   text: string;\n+  range: { from: number; to: number };\n+  color: string;\n }\n \n+// Voice type to color mapping\n+const VOICE_COLORS: Record<string, string> = {\n+  'Logic': 'blue',\n+  'Emotion': 'pink',\n+  'Doubt': 'yellow',\n+  'Memory': 'green',\n+};\n+\n function App() {\n   const [text, setText] = useState('');\n   const [voices, setVoices] = useState<Voice[]>([]);\n@@ -18,18 +28,36 @@ function App() {\n     setText(newText);\n \n     const newVoices: Voice[] = [];\n+    const lowerText = newText.toLowerCase();\n \n-    if (newText.toLowerCase().includes('i feel')) {\n-      newVoices.push({ name: 'Logic', text: 'Feelings are just chemical reactions.' });\n-    }\n-    if (newText.toLowerCase().includes('i think')) {\n-      newVoices.push({ name: 'Emotion', text: 'But what does your heart say?' });\n-    }\n-    if (newText.toLowerCase().includes('should i')) {\n-      newVoices.push({ name: 'Doubt', text: 'Are you sure you even want to know?' });\n-    }\n-    if (newText.length > 50) {\n-      newVoices.push({ name: 'Memory', text: 'This reminds me of something you wrote before...' });\n+    // Find trigger phrases\n+    const triggers = [\n+      { phrase: 'i feel', voice: 'Logic', comment: 'Feelings are just chemical reactions.' },\n+      { phrase: 'i think', voice: 'Emotion', comment: 'But what does your heart say?' },\n+      { phrase: 'should i', voice: 'Doubt', comment: 'Are you sure you even want to know?' },\n+    ];\n+\n+    triggers.forEach(({ phrase, voice, comment }) => {\n+      const index = lowerText.indexOf(phrase);\n+      if (index !== -1) {\n+        const color = VOICE_COLORS[voice];\n+        newVoices.push({\n+          name: voice,\n+          text: comment,\n+          range: { from: index, to: index + phrase.length },\n+          color\n+        });\n+      }\n+    });\n+\n+    // Memory voice for long text (no specific range)\n+    if (newText.length > 50 && !newVoices.find(v => v.name === 'Memory')) {\n+      newVoices.push({\n+        name: 'Memory',\n+        text: 'This reminds me of something you wrote before...',\n+        range: { from: 0, to: 0 },\n+        color: VOICE_COLORS['Memory']\n+      });\n     }\n \n     setVoices(newVoices);"
+    },
+    {
+      "sha": "b700ddaa943392b02147051ddb3f3c4d22f752b1",
+      "filename": "frontend/src/components/EditableTextArea.tsx",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 11,
+      "changes": 13,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0ec0ecce3db148dd243d31c53feedd9eaa52527f/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0ec0ecce3db148dd243d31c53feedd9eaa52527f/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx?ref=0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+      "patch": "@@ -1,7 +1,6 @@\n import { useEditor, EditorContent } from '@tiptap/react';\n import StarterKit from '@tiptap/starter-kit';\n-import Highlight from '@tiptap/extension-highlight';\n-import { useEffect } from 'react';\n+import { VoiceHighlight } from '../extensions/VoiceHighlight';\n \n interface EditableTextAreaProps {\n   value: string;\n@@ -12,9 +11,7 @@ export default function EditableTextArea({ value, onChange }: EditableTextAreaPr\n   const editor = useEditor({\n     extensions: [\n       StarterKit,\n-      Highlight.configure({\n-        multicolor: true,\n-      }),\n+      VoiceHighlight,\n     ],\n     content: value,\n     onUpdate: ({ editor }) => {\n@@ -23,11 +20,5 @@ export default function EditableTextArea({ value, onChange }: EditableTextAreaPr\n     autofocus: true,\n   });\n \n-  useEffect(() => {\n-    if (editor && editor.getText() !== value) {\n-      editor.commands.setContent(value);\n-    }\n-  }, [value, editor]);\n-\n   return <div className=\"editable-text-area\"><EditorContent editor={editor} /></div>;\n }\n\\ No newline at end of file"
+    },
+    {
+      "sha": "f81d832d935edda8981140b866fee7a1f7c38d91",
+      "filename": "frontend/src/extensions/VoiceHighlight.ts",
+      "status": "added",
+      "additions": 85,
+      "deletions": 0,
+      "changes": 85,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0ec0ecce3db148dd243d31c53feedd9eaa52527f/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0ec0ecce3db148dd243d31c53feedd9eaa52527f/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts?ref=0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+      "patch": "@@ -0,0 +1,85 @@\n+import { Extension } from '@tiptap/core';\n+import { Plugin, PluginKey } from '@tiptap/pm/state';\n+import { Decoration, DecorationSet } from '@tiptap/pm/view';\n+\n+const VOICE_TRIGGERS = [\n+  { phrase: 'i feel', color: 'blue' },\n+  { phrase: 'i think', color: 'pink' },\n+  { phrase: 'should i', color: 'yellow' },\n+];\n+\n+export const VoiceHighlight = Extension.create({\n+  name: 'voiceHighlight',\n+\n+  addProseMirrorPlugins() {\n+    return [\n+      new Plugin({\n+        key: new PluginKey('voiceHighlight'),\n+\n+        state: {\n+          init(_, { doc }) {\n+            return findHighlights(doc);\n+          },\n+\n+          apply(tr, oldState) {\n+            // Only recalculate if document changed\n+            if (tr.docChanged) {\n+              return findHighlights(tr.doc);\n+            }\n+            return oldState;\n+          },\n+        },\n+\n+        props: {\n+          decorations(state) {\n+            return this.getState(state);\n+          },\n+        },\n+      }),\n+    ];\n+  },\n+});\n+\n+function findHighlights(doc: any): DecorationSet {\n+  const decorations: Decoration[] = [];\n+  const text = doc.textContent.toLowerCase();\n+\n+  VOICE_TRIGGERS.forEach(({ phrase, color }) => {\n+    const pos = text.indexOf(phrase);\n+\n+    if (pos !== -1) {\n+      // Convert text position to document position\n+      let docPos = 0;\n+      let textPos = 0;\n+      let found = false;\n+\n+      doc.descendants((node: any, nodePos: number) => {\n+        if (found) return false;\n+\n+        if (node.isText) {\n+          const nodeText = node.text || '';\n+          if (textPos + nodeText.length > pos) {\n+            // The match starts in this text node\n+            const offsetInNode = pos - textPos;\n+            docPos = nodePos + offsetInNode;\n+            found = true;\n+            return false;\n+          }\n+          textPos += nodeText.length;\n+        }\n+\n+        return true;\n+      });\n+\n+      if (found) {\n+        decorations.push(\n+          Decoration.inline(docPos, docPos + phrase.length, {\n+            class: `voice-highlight voice-highlight-${color}`,\n+          })\n+        );\n+      }\n+    }\n+  });\n+\n+  return DecorationSet.create(doc, decorations);\n+}"
+    }
+  ]
+}

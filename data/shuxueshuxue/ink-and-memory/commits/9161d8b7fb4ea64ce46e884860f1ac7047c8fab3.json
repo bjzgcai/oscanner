@@ -1,0 +1,61 @@
+{
+  "sha": "9161d8b7fb4ea64ce46e884860f1ac7047c8fab3",
+  "node_id": "C_kwDOP2Zrm9oAKDkxNjFkOGI3ZmI0ZWE2NGNlNDZlODg0ODYwZjFhYzcwNDdjOGZhYjM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-23T04:02:35Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-23T04:02:35Z"
+    },
+    "message": "Guard against session id races during save",
+    "tree": {
+      "sha": "76a0c6eaa71a96aaa19ab92d9f20b10c7e3d1c34",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/76a0c6eaa71a96aaa19ab92d9f20b10c7e3d1c34"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/9161d8b7fb4ea64ce46e884860f1ac7047c8fab3",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9161d8b7fb4ea64ce46e884860f1ac7047c8fab3",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9161d8b7fb4ea64ce46e884860f1ac7047c8fab3",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9161d8b7fb4ea64ce46e884860f1ac7047c8fab3/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "866b6922d615c87c39d6d589a32a18a1defcb9f4",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/866b6922d615c87c39d6d589a32a18a1defcb9f4",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/866b6922d615c87c39d6d589a32a18a1defcb9f4"
+    }
+  ],
+  "stats": {
+    "total": 40,
+    "additions": 31,
+    "deletions": 9
+  },
+  "files": [
+    {
+      "sha": "be163e229788baecbbed64032d6585eafd35db4c",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 31,
+      "deletions": 9,
+      "changes": 40,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9161d8b7fb4ea64ce46e884860f1ac7047c8fab3/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9161d8b7fb4ea64ce46e884860f1ac7047c8fab3/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=9161d8b7fb4ea64ce46e884860f1ac7047c8fab3",
+      "patch": "@@ -350,12 +350,24 @@ export default function App() {\n   const saveSessionToDatabase = useCallback(async (editorState: EditorState, firstLine?: string) => {\n     const line = firstLine ?? getFirstLineFromState(editorState);\n     const { saveSession } = await import('./api/voiceApi');\n-    const sessionId = editorState.currentEntryId || crypto.randomUUID();\n-    await saveSession(sessionId, editorState, line);\n+    const idToSave = editorState.currentEntryId || crypto.randomUUID();\n+    await saveSession(idToSave, editorState, line);\n+\n     if (engineRef.current) {\n-      engineRef.current.setCurrentEntryId(sessionId);\n+      const liveId = engineRef.current.getState().currentEntryId;\n+      const snapshotId = editorState.currentEntryId;\n+      const isSafeToUpdate =\n+        !liveId ||\n+        liveId === idToSave ||\n+        (snapshotId && liveId === snapshotId);\n+\n+      if (isSafeToUpdate) {\n+        engineRef.current.setCurrentEntryId(idToSave);\n+      } else {\n+        console.warn(`🛡️ Race Condition Caught: Save finished for ${idToSave}, but editor is on ${liveId}. Skipping ID reset.`);\n+      }\n     }\n-    return sessionId;\n+    return idToSave;\n   }, [getFirstLineFromState]);\n \n   const persistSessionImmediately = useCallback(async (editorState: EditorState) => {\n@@ -791,16 +803,26 @@ export default function App() {\n     if (!isAuthenticated) return;\n \n     const autoSaveTimer = setTimeout(async () => {\n-      const currentState = ensureStateForPersistence();\n-      if (!currentState) return;\n-      if (!currentState.currentEntryId) {\n+      const stateSnapshot = ensureStateForPersistence();\n+      if (!stateSnapshot) return;\n+\n+      if (engineRef.current) {\n+        const liveId = engineRef.current.getState().currentEntryId;\n+        const snapshotId = stateSnapshot.currentEntryId;\n+        if (liveId && snapshotId && liveId !== snapshotId) {\n+          console.warn(`✋ Auto-save aborted: timer captured ${snapshotId} but editor is now on ${liveId}`);\n+          return;\n+        }\n+      }\n+\n+      if (!stateSnapshot.currentEntryId) {\n         console.error('BUG: currentEntryId should always be defined after engine init');\n         return;\n       }\n \n       try {\n-        const firstLine = getFirstLineFromState(currentState);\n-        await saveSessionToDatabase(currentState, firstLine);\n+        const firstLine = getFirstLineFromState(stateSnapshot);\n+        await saveSessionToDatabase(stateSnapshot, firstLine);\n         console.log('Auto-saved to database');\n       } catch (error) {\n         console.error('Auto-save failed:', error);"
+    }
+  ]
+}

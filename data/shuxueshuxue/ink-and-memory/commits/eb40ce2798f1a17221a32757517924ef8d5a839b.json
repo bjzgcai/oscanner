@@ -1,0 +1,61 @@
+{
+  "sha": "eb40ce2798f1a17221a32757517924ef8d5a839b",
+  "node_id": "C_kwDOP2Zrm9oAKGViNDBjZTI3OThmMWExNzIyMWEzMjc1NzUxNzkyNGVmOGQ1YTgzOWI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:16:56Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:16:56Z"
+    },
+    "message": "Update project structure in README",
+    "tree": {
+      "sha": "dcda7c224dcc3dbf2b11fccedcc9fe28f94b2c4c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/dcda7c224dcc3dbf2b11fccedcc9fe28f94b2c4c"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/eb40ce2798f1a17221a32757517924ef8d5a839b",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/eb40ce2798f1a17221a32757517924ef8d5a839b",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/eb40ce2798f1a17221a32757517924ef8d5a839b",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/eb40ce2798f1a17221a32757517924ef8d5a839b/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "f22ba0c2caf239b5d52191ae1b80783731b1e4db",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f22ba0c2caf239b5d52191ae1b80783731b1e4db",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f22ba0c2caf239b5d52191ae1b80783731b1e4db"
+    }
+  ],
+  "stats": {
+    "total": 3,
+    "additions": 1,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "c4cfd83a0774b829487b0e4a4aca97de3ed464d4",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 2,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/eb40ce2798f1a17221a32757517924ef8d5a839b/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/eb40ce2798f1a17221a32757517924ef8d5a839b/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=eb40ce2798f1a17221a32757517924ef8d5a839b",
+      "patch": "@@ -167,8 +167,7 @@ re.split(r'[.!?。！？]+|\\n+', text)\n ink-and-memory/\n ├── assets/\n │   ├── demo-screenshot.png    # Demo screenshot\n-│   ├── book-ui-design.png     # Original UI design\n-│   └── demo.mov               # Demo video\n+│   └── book-ui-design.png     # Original UI design\n ├── backend/\n │   ├── server.py              # PolyCLI Session Registry server\n │   ├── stateful_analyzer.py   # Core voice detection logic"
+    }
+  ]
+}

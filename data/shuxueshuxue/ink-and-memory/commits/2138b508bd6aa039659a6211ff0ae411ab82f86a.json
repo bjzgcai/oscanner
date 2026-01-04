@@ -1,0 +1,97 @@
+{
+  "sha": "2138b508bd6aa039659a6211ff0ae411ab82f86a",
+  "node_id": "C_kwDOP2Zrm9oAKDIxMzhiNTA4YmQ2YWEwMzk2NTlhNjIxMWZmMGFlNDExYWI4MmY4NmE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-30T03:04:51Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-30T03:04:51Z"
+    },
+    "message": "Add overlap feedback loop to prevent repetitive comment suggestions\n\nFrontend:\n- Track overlappedPhrases in EditorState (persistent across requests)\n- Add rejected phrases to state when overlap detected\n- Pass overlappedPhrases array to backend API calls\n- Add migration for old state (ensure field exists on load)\n\nBackend:\n- Accept overlapped_phrases parameter in analyze_text()\n- Pass through to stateless_analyzer\n- Add \"REJECTED PHRASES\" section to LLM prompt\n- Explicit warnings to avoid re-suggesting overlapping phrases\n\nThis prevents the system from getting stuck in loops where it\nrepeatedly suggests variations of the same phrase that were\nalready rejected due to overlap (e.g., \"worst model\", \"by far\nthe worst model\", etc.)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "730c2e59301ba8089eba9bcf87e6109d5c59d524",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/730c2e59301ba8089eba9bcf87e6109d5c59d524"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/2138b508bd6aa039659a6211ff0ae411ab82f86a",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2138b508bd6aa039659a6211ff0ae411ab82f86a",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2138b508bd6aa039659a6211ff0ae411ab82f86a",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2138b508bd6aa039659a6211ff0ae411ab82f86a/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/c5d760b6a1ed874b63f6de7585d9280c5125208e"
+    }
+  ],
+  "stats": {
+    "total": 38,
+    "additions": 30,
+    "deletions": 8
+  },
+  "files": [
+    {
+      "sha": "c14b2ec683a7cda8221e9a2f592cb4210db3bbe2",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 2,
+      "changes": 6,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2138b508bd6aa039659a6211ff0ae411ab82f86a/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2138b508bd6aa039659a6211ff0ae411ab82f86a/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=2138b508bd6aa039659a6211ff0ae411ab82f86a",
+      "patch": "@@ -125,7 +125,7 @@ def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: l\n     },\n     category=\"Analysis\"\n )\n-def analyze_text(text: str, session_id: str, voices: dict = None, applied_comments: list = None, meta_prompt: str = \"\", state_prompt: str = \"\"):\n+def analyze_text(text: str, session_id: str, voices: dict = None, applied_comments: list = None, meta_prompt: str = \"\", state_prompt: str = \"\", overlapped_phrases: list = None):\n     \"\"\"\n     Stateless analysis - returns ONE new comment based on text and applied comments.\n \n@@ -136,6 +136,7 @@ def analyze_text(text: str, session_id: str, voices: dict = None, applied_commen\n         applied_comments: List of already applied comments (to avoid duplicates)\n         meta_prompt: Additional instructions that apply to all voices\n         state_prompt: User's current emotional state prompt\n+        overlapped_phrases: Phrases that were rejected due to overlap (feedback loop)\n \n     Returns:\n         Dictionary with single new voice (or empty list)\n@@ -144,14 +145,15 @@ def analyze_text(text: str, session_id: str, voices: dict = None, applied_commen\n     print(f\"🎯 Stateless analyze_text() called\")\n     print(f\"   Text: {text[:100]}...\")\n     print(f\"   Applied comments: {len(applied_comments or [])}\")\n+    print(f\"   Overlapped phrases: {len(overlapped_phrases or [])}\")\n     print(f\"   Meta prompt: {repr(meta_prompt)[:100]}\")\n     print(f\"   State prompt: {repr(state_prompt)[:100]}\")\n     print(f\"{'='*60}\\n\")\n \n     agent = PolyAgent(id=\"voice-analyzer\")\n \n     # Get voices from stateless analyzer\n-    result = analyze_stateless(agent, text, applied_comments or [], voices, meta_prompt, state_prompt)\n+    result = analyze_stateless(agent, text, applied_comments or [], voices, meta_prompt, state_prompt, overlapped_phrases or [])\n \n     print(f\"✅ Returning {result['new_voices_added']} new voice(s)\")\n "
+    },
+    {
+      "sha": "efdce36f9478d773b33022bd1530cabacf37b3a0",
+      "filename": "backend/stateless_analyzer.py",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 1,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2138b508bd6aa039659a6211ff0ae411ab82f86a/backend%2Fstateless_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2138b508bd6aa039659a6211ff0ae411ab82f86a/backend%2Fstateless_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateless_analyzer.py?ref=2138b508bd6aa039659a6211ff0ae411ab82f86a",
+      "patch": "@@ -16,7 +16,7 @@ class VoiceTrigger(BaseModel):\n class SingleVoiceAnalysis(BaseModel):\n     voice: Optional[VoiceTrigger] = Field(description=\"Single voice trigger, or None if nothing to comment\")\n \n-def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict], voices: dict = None, meta_prompt: str = \"\", state_prompt: str = \"\") -> dict:\n+def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict], voices: dict = None, meta_prompt: str = \"\", state_prompt: str = \"\", overlapped_phrases: List[str] = None) -> dict:\n     \"\"\"\n     Stateless analysis - receives applied comments, returns ONE new comment.\n \n@@ -27,10 +27,12 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],\n         voices: Voice configuration\n         meta_prompt: Additional instructions that apply to all voices\n         state_prompt: User's current emotional state prompt\n+        overlapped_phrases: Phrases that were rejected due to overlap (feedback loop)\n \n     Returns:\n         Dict with single new voice (or empty list if none)\n     \"\"\"\n+    overlapped_phrases = overlapped_phrases or []\n     print(f\"\\n{'='*60}\")\n     print(f\"📊 Stateless Analysis\")\n     print(f\"   Text: {text[:100]}...\")\n@@ -58,6 +60,14 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],\n         existing_summary += f\"\\n👉 These phrases are already highlighted: {highlighted_phrases}\\n\"\n         existing_summary += \"👉 Choose a DIFFERENT phrase that does NOT overlap with any of these!\\n\"\n \n+    # @@@ Add overlapped phrases feedback (phrases that were rejected due to overlap)\n+    if overlapped_phrases:\n+        existing_summary += f\"\\n\\nREJECTED PHRASES (these overlapped with existing highlights):\\n\"\n+        for phrase in overlapped_phrases:\n+            existing_summary += f\"- \\\"{phrase}\\\" (REJECTED - do NOT suggest this again)\\n\"\n+        existing_summary += f\"\\n⚠️ AVOID these phrases: {overlapped_phrases}\\n\"\n+        existing_summary += \"⚠️ The system already tried these and rejected them - choose something completely different!\\n\"\n+\n     prompt = f\"\"\"You are analyzing internal dialogue as distinct inner voice personas.\n \n Analyze this text and identify ONE NEW voice that wants to comment:"
+    },
+    {
+      "sha": "14b00aa6fedff213367fde6af15c5b7a87f4344d",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 4,
+      "changes": 8,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2138b508bd6aa039659a6211ff0ae411ab82f86a/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2138b508bd6aa039659a6211ff0ae411ab82f86a/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=2138b508bd6aa039659a6211ff0ae411ab82f86a",
+      "patch": "@@ -45,14 +45,14 @@ interface StatusResponse {\n /**\n  * Trigger voice analysis session\n  */\n-export async function triggerAnalysis(text: string, sessionId: string, voices?: any, appliedComments?: any[], metaPrompt?: string, statePrompt?: string): Promise<string> {\n+export async function triggerAnalysis(text: string, sessionId: string, voices?: any, appliedComments?: any[], metaPrompt?: string, statePrompt?: string, overlappedPhrases?: string[]): Promise<string> {\n   console.log('📤 Sending trigger request...');\n   const response = await fetch(`${API_BASE}/api/trigger`, {\n     method: 'POST',\n     headers: { 'Content-Type': 'application/json' },\n     body: JSON.stringify({\n       session_id: 'analyze_text',\n-      params: { text, session_id: sessionId, voices, applied_comments: appliedComments || [], meta_prompt: metaPrompt || '', state_prompt: statePrompt || '' }\n+      params: { text, session_id: sessionId, voices, applied_comments: appliedComments || [], meta_prompt: metaPrompt || '', state_prompt: statePrompt || '', overlapped_phrases: overlappedPhrases || [] }\n     })\n   });\n \n@@ -104,8 +104,8 @@ export async function getAnalysisResult(exec_id: string): Promise<StatusResponse\n /**\n  * Analyze text and return voices with metadata (all-in-one)\n  */\n-export async function analyzeText(text: string, sessionId: string, voices?: any, appliedComments?: any[], metaPrompt?: string, statePrompt?: string) {\n-  const exec_id = await triggerAnalysis(text, sessionId, voices, appliedComments, metaPrompt, statePrompt);\n+export async function analyzeText(text: string, sessionId: string, voices?: any, appliedComments?: any[], metaPrompt?: string, statePrompt?: string, overlappedPhrases?: string[]) {\n+  const exec_id = await triggerAnalysis(text, sessionId, voices, appliedComments, metaPrompt, statePrompt, overlappedPhrases);\n   const result = await getAnalysisResult(exec_id);\n   // @@@ Return both voices and new_voices_added for energy refund mechanism\n   return {"
+    },
+    {
+      "sha": "e033445b1a468b7932bb5f80bae2d72131c44d1b",
+      "filename": "frontend/src/engine/EditorEngine.ts",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 1,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2138b508bd6aa039659a6211ff0ae411ab82f86a/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2138b508bd6aa039659a6211ff0ae411ab82f86a/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fengine%2FEditorEngine.ts?ref=2138b508bd6aa039659a6211ff0ae411ab82f86a",
+      "patch": "@@ -11,6 +11,7 @@ export interface EditorState {\n   commentors: Commentor[];\n   tasks: Task[];\n   weightPath: WeightEntry[];\n+  overlappedPhrases: string[];  // @@@ Phrases rejected due to overlap (feedback to backend)\n   sessionId: string;\n   currentEntryId?: string;  // Track which calendar entry is being edited (for overwrite on save)\n }\n@@ -126,6 +127,7 @@ export class EditorEngine {\n       commentors: [],\n       tasks: [],\n       weightPath: [],\n+      overlappedPhrases: [],\n       sessionId\n     };\n   }\n@@ -301,6 +303,10 @@ export class EditorEngine {\n       }\n \n       if (hasOverlap) {\n+        // @@@ Track overlapped phrase for backend feedback\n+        if (!this.state.overlappedPhrases.includes(commentor.phrase)) {\n+          this.state.overlappedPhrases.push(commentor.phrase);\n+        }\n         skippedAny = true;\n         continue;\n       }\n@@ -376,7 +382,7 @@ export class EditorEngine {\n         ? stateConfig.states[selectedState].prompt\n         : '';\n \n-      const result = await analyzeText(text, this.state.sessionId, backendVoices, appliedCommentors, metaPrompt, statePrompt);\n+      const result = await analyzeText(text, this.state.sessionId, backendVoices, appliedCommentors, metaPrompt, statePrompt, this.state.overlappedPhrases);\n \n       // Backend returns at most ONE voice\n       if (result.voices.length > 0) {\n@@ -656,6 +662,10 @@ export class EditorEngine {\n   // @@@ Load state from storage\n   loadState(state: EditorState) {\n     this.state = state;\n+    // @@@ Ensure overlappedPhrases field exists (migration for old state)\n+    if (!this.state.overlappedPhrases) {\n+      this.state.overlappedPhrases = [];\n+    }\n     // Recompute used energy from applied commentors\n     this.usedEnergy = this.state.commentors.filter(c => c.appliedAt).length * this.threshold;\n     this.notifyChange();"
+    }
+  ]
+}

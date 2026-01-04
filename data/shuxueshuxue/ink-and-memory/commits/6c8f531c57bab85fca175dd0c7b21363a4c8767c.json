@@ -1,0 +1,61 @@
+{
+  "sha": "6c8f531c57bab85fca175dd0c7b21363a4c8767c",
+  "node_id": "C_kwDOP2Zrm9oAKDZjOGY1MzFjNTdiYWI4NWZjYTE3NWRkMGM3YjIxMzYzYTRjODc2N2M",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-13T09:37:10Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-13T09:37:10Z"
+    },
+    "message": "Simplify database.py: replace migrations with direct table creation\n\n- Remove migration system (migrate_v1-v4, schema_version tracking)\n- Add create_tables() function that creates all tables directly\n- Add decks table for organizing voice personas into themed collections\n- Add voices table for individual voice personas within decks\n- Consolidate v1-v4 migrations into single clean schema",
+    "tree": {
+      "sha": "fb55f7cc2f6f68d6a372acc1b207e7f2c272715d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/fb55f7cc2f6f68d6a372acc1b207e7f2c272715d"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/6c8f531c57bab85fca175dd0c7b21363a4c8767c",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6c8f531c57bab85fca175dd0c7b21363a4c8767c",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/6c8f531c57bab85fca175dd0c7b21363a4c8767c",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6c8f531c57bab85fca175dd0c7b21363a4c8767c/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "07aaff86a658c5cf0d8ef3d24462dc03fb917c91",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/07aaff86a658c5cf0d8ef3d24462dc03fb917c91",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/07aaff86a658c5cf0d8ef3d24462dc03fb917c91"
+    }
+  ],
+  "stats": {
+    "total": 156,
+    "additions": 55,
+    "deletions": 101
+  },
+  "files": [
+    {
+      "sha": "1a9c790011655ba888cb6b28f8da699129a8c092",
+      "filename": "backend/database.py",
+      "status": "modified",
+      "additions": 55,
+      "deletions": 101,
+      "changes": 156,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/6c8f531c57bab85fca175dd0c7b21363a4c8767c/backend%2Fdatabase.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/6c8f531c57bab85fca175dd0c7b21363a4c8767c/backend%2Fdatabase.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdatabase.py?ref=6c8f531c57bab85fca175dd0c7b21363a4c8767c",
+      "patch": "@@ -34,43 +34,16 @@ def get_db():\n     return db\n \n def init_db():\n-    \"\"\"Initialize database with schema and migrations.\"\"\"\n+    \"\"\"Initialize database by creating all tables.\"\"\"\n     db = get_db()\n-\n-    # Check current schema version\n-    try:\n-        result = db.execute(\"SELECT MAX(version) FROM schema_version\").fetchone()\n-        current_version = result[0] if result[0] else 0\n-    except sqlite3.OperationalError:\n-        # schema_version table doesn't exist yet\n-        current_version = 0\n-\n-    # Run migrations\n-    if current_version < 1:\n-        migrate_v1(db)\n-    if current_version < 2:\n-        migrate_v2(db)\n-    if current_version < 3:\n-        migrate_v3(db)\n-    if current_version < 4:\n-        migrate_v4(db)\n-\n+    create_tables(db)\n     db.commit()\n     db.close()\n-\n     print(f\"✅ Database initialized at {DB_PATH}\")\n \n-def migrate_v1(db):\n-    \"\"\"Initial schema - users, sessions, pictures, preferences.\"\"\"\n-    print(\"📦 Running migration v1: Initial schema\")\n-\n-    # Schema version tracking\n-    db.execute(\"\"\"\n-    CREATE TABLE IF NOT EXISTS schema_version (\n-      version INTEGER PRIMARY KEY,\n-      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP\n-    )\n-    \"\"\")\n+def create_tables(db):\n+    \"\"\"Create all database tables.\"\"\"\n+    print(\"📦 Creating database tables...\")\n \n     # Users table\n     db.execute(\"\"\"\n@@ -97,17 +70,17 @@ def migrate_v1(db):\n     \"\"\")\n     db.execute(\"CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id)\")\n \n-    # Daily pictures (generated images)\n+    # Daily pictures (generated images) - no UNIQUE constraint, allows multiple per day\n     db.execute(\"\"\"\n     CREATE TABLE IF NOT EXISTS daily_pictures (\n       id INTEGER PRIMARY KEY AUTOINCREMENT,\n       user_id INTEGER NOT NULL,\n       date TEXT NOT NULL,\n       image_base64 TEXT NOT NULL,\n       prompt TEXT,\n+      thumbnail_base64 TEXT,\n       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n-      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,\n-      UNIQUE(user_id, date)\n+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE\n     )\n     \"\"\")\n     db.execute(\"CREATE INDEX IF NOT EXISTS idx_pictures_user_date ON daily_pictures(user_id, date)\")\n@@ -120,12 +93,13 @@ def migrate_v1(db):\n       meta_prompt TEXT,\n       state_config_json TEXT,\n       selected_state TEXT,\n+      first_login_completed INTEGER DEFAULT 0,\n       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE\n     )\n     \"\"\")\n \n-    # Auth sessions (JWT alternative - optional, using JWT for now)\n+    # Auth sessions\n     db.execute(\"\"\"\n     CREATE TABLE IF NOT EXISTS auth_sessions (\n       token TEXT PRIMARY KEY,\n@@ -137,7 +111,7 @@ def migrate_v1(db):\n     \"\"\")\n     db.execute(\"CREATE INDEX IF NOT EXISTS idx_auth_user ON auth_sessions(user_id)\")\n \n-    # @@@ Analysis reports (echoes, traits, patterns)\n+    # Analysis reports\n     db.execute(\"\"\"\n     CREATE TABLE IF NOT EXISTS analysis_reports (\n       id INTEGER PRIMARY KEY AUTOINCREMENT,\n@@ -151,78 +125,58 @@ def migrate_v1(db):\n     \"\"\")\n     db.execute(\"CREATE INDEX IF NOT EXISTS idx_reports_user ON analysis_reports(user_id, created_at)\")\n \n-    # Record migration\n-    db.execute(\"INSERT INTO schema_version (version) VALUES (1)\")\n-\n-    print(\"✅ Migration v1 completed\")\n-\n-def migrate_v2(db):\n-    \"\"\"Add first_login_completed field to user_preferences.\"\"\"\n-    print(\"📦 Running migration v2: Add first_login_completed field\")\n-\n-    # Add first_login_completed column to user_preferences\n-    db.execute(\"\"\"\n-    ALTER TABLE user_preferences ADD COLUMN first_login_completed INTEGER DEFAULT 0\n-    \"\"\")\n-\n-    # Record migration\n-    db.execute(\"INSERT INTO schema_version (version) VALUES (2)\")\n-\n-    print(\"✅ Migration v2 completed\")\n-\n-def migrate_v3(db):\n-    \"\"\"Add thumbnail_base64 field to daily_pictures.\"\"\"\n-    print(\"📦 Running migration v3: Add thumbnail support for images\")\n-\n-    # Add thumbnail_base64 column to daily_pictures\n-    db.execute(\"\"\"\n-    ALTER TABLE daily_pictures ADD COLUMN thumbnail_base64 TEXT\n-    \"\"\")\n-\n-    # Record migration\n-    db.execute(\"INSERT INTO schema_version (version) VALUES (3)\")\n-\n-    print(\"✅ Migration v3 completed\")\n-\n-def migrate_v4(db):\n-    \"\"\"Remove UNIQUE constraint on (user_id, date) to allow multiple pictures per day.\"\"\"\n-    print(\"📦 Running migration v4: Allow multiple pictures per day\")\n-\n-    # @@@ SQLite doesn't support DROP CONSTRAINT, so we need to recreate the table\n-    # Create new table without UNIQUE constraint\n+    # @@@ Decks table - organize voices into themed collections\n     db.execute(\"\"\"\n-    CREATE TABLE daily_pictures_new (\n-      id INTEGER PRIMARY KEY AUTOINCREMENT,\n-      user_id INTEGER NOT NULL,\n-      date TEXT NOT NULL,\n-      image_base64 TEXT NOT NULL,\n-      prompt TEXT,\n+    CREATE TABLE IF NOT EXISTS decks (\n+      id TEXT PRIMARY KEY,\n+      name TEXT NOT NULL,\n+      name_zh TEXT,\n+      name_en TEXT,\n+      description TEXT,\n+      description_zh TEXT,\n+      description_en TEXT,\n+      icon TEXT,\n+      color TEXT,\n+      is_system BOOLEAN DEFAULT 0,\n+      parent_id TEXT,\n+      owner_id INTEGER,\n+      enabled BOOLEAN DEFAULT 1,\n+      order_index INTEGER,\n       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n-      thumbnail_base64 TEXT,\n-      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE\n+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n+      FOREIGN KEY (parent_id) REFERENCES decks(id),\n+      FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE\n     )\n     \"\"\")\n+    db.execute(\"CREATE INDEX IF NOT EXISTS idx_decks_owner ON decks(owner_id)\")\n \n-    # Copy all data from old table to new table\n+    # @@@ Voices table - individual voice personas within decks\n     db.execute(\"\"\"\n-    INSERT INTO daily_pictures_new (id, user_id, date, image_base64, prompt, created_at, thumbnail_base64)\n-    SELECT id, user_id, date, image_base64, prompt, created_at, thumbnail_base64\n-    FROM daily_pictures\n+    CREATE TABLE IF NOT EXISTS voices (\n+      id TEXT PRIMARY KEY,\n+      deck_id TEXT NOT NULL,\n+      name TEXT NOT NULL,\n+      name_zh TEXT,\n+      name_en TEXT,\n+      system_prompt TEXT NOT NULL,\n+      icon TEXT,\n+      color TEXT,\n+      is_system BOOLEAN DEFAULT 0,\n+      parent_id TEXT,\n+      owner_id INTEGER,\n+      enabled BOOLEAN DEFAULT 1,\n+      order_index INTEGER,\n+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n+      FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE,\n+      FOREIGN KEY (parent_id) REFERENCES voices(id),\n+      FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE\n+    )\n     \"\"\")\n+    db.execute(\"CREATE INDEX IF NOT EXISTS idx_voices_deck ON voices(deck_id)\")\n+    db.execute(\"CREATE INDEX IF NOT EXISTS idx_voices_owner ON voices(owner_id)\")\n \n-    # Drop old table\n-    db.execute(\"DROP TABLE daily_pictures\")\n-\n-    # Rename new table to original name\n-    db.execute(\"ALTER TABLE daily_pictures_new RENAME TO daily_pictures\")\n-\n-    # Recreate index (without UNIQUE constraint)\n-    db.execute(\"CREATE INDEX idx_pictures_user_date ON daily_pictures(user_id, date)\")\n-\n-    # Record migration\n-    db.execute(\"INSERT INTO schema_version (version) VALUES (4)\")\n-\n-    print(\"✅ Migration v4 completed\")\n+    print(\"✅ Tables created\")\n \n # ========== User Management ==========\n "
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "sha": "4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+  "node_id": "C_kwDOP2Zrm9oAKDRkOTZlN2Y2YmM0MWNlYjY4NTE0MDJiZThmMTQzYjBhNTdhMzY2OTQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-05T07:05:09Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-05T07:05:09Z"
+    },
+    "message": "Fix calendar entries disappearing after delete\n\n- Added missing check to skip unnamed sessions in reload logic\n- Made date extraction consistent (substring vs split)\n- Reload logic now matches initial load logic exactly\n\nThis fixes the bug where all entries for a date would disappear\nafter deleting one entry, requiring a page refresh to see them again.",
+    "tree": {
+      "sha": "5c06b57416cfce11bbbaa70a9b48714aa6fc7dfe",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/5c06b57416cfce11bbbaa70a9b48714aa6fc7dfe"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4d96e7f6bc41ceb6851402be8f143b0a57a36694/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "c1615716493cf107168609c880e808d153eb00b7",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c1615716493cf107168609c880e808d153eb00b7",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/c1615716493cf107168609c880e808d153eb00b7"
+    }
+  ],
+  "stats": {
+    "total": 36,
+    "additions": 24,
+    "deletions": 12
+  },
+  "files": [
+    {
+      "sha": "e9dba6e2f610e8af3cae981096216ee9ae5af248",
+      "filename": "frontend/src/components/CalendarPopup.tsx",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 2,
+      "changes": 11,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4d96e7f6bc41ceb6851402be8f143b0a57a36694/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4d96e7f6bc41ceb6851402be8f143b0a57a36694/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx?ref=4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+      "patch": "@@ -129,19 +129,26 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {\n           const grouped: Record<string, CalendarEntry[]> = {};\n \n           for (const session of sessions) {\n+            // @@@ Skip unnamed sessions (same check as initial load)\n+            if (!session.name) continue;\n+\n             const fullSession = await getSession(session.id);\n-            let dateKey = session.created_at?.split('T')[0] || getTodayKey();\n+            // @@@ Extract date from created_at timestamp (format: \"2025-11-02 10:42:17\")\n+            let dateKey = session.created_at?.substring(0, 10) || getTodayKey();\n+\n+            // Legacy: if name starts with YYYY-MM-DD format, use that\n             if (session.name && /^\\d{4}-\\d{2}-\\d{2}/.test(session.name)) {\n               dateKey = session.name.split(' - ')[0];\n             }\n+\n             if (!grouped[dateKey]) {\n               grouped[dateKey] = [];\n             }\n             grouped[dateKey].push({\n               id: session.id,\n               timestamp: new Date(session.created_at || Date.now()).getTime(),\n               state: fullSession.editor_state,\n-              firstLine: session.name || 'Untitled'\n+              firstLine: session.name\n             });\n           }\n           setCalendarData(grouped);"
+    },
+    {
+      "sha": "1f9c2b40f8b920d792a78fa7e196f832de462dcb",
+      "filename": "frontend/src/components/StateChooser.tsx",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 2,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4d96e7f6bc41ceb6851402be8f143b0a57a36694/frontend%2Fsrc%2Fcomponents%2FStateChooser.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4d96e7f6bc41ceb6851402be8f143b0a57a36694/frontend%2Fsrc%2Fcomponents%2FStateChooser.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FStateChooser.tsx?ref=4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+      "patch": "@@ -35,7 +35,7 @@ export default function StateChooser({ stateConfig, selectedState, onChoose }: P\n   };\n \n   // @@@ Mini icon generator for collapsed state (24px version)\n-  const getMiniStateIcon = (stateId: string): JSX.Element => {\n+  const getMiniStateIcon = (stateId: string) => {\n     const iconProps = { width: 24, height: 24, viewBox: \"0 0 100 100\" };\n \n     switch(stateId.toLowerCase()) {\n@@ -121,7 +121,7 @@ export default function StateChooser({ stateConfig, selectedState, onChoose }: P\n           >\n             {/* Shrunken state icon */}\n             <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>\n-              {getMiniStateIcon(selectedState)}\n+              {selectedState && getMiniStateIcon(selectedState)}\n             </div>\n \n             <span style={{"
+    },
+    {
+      "sha": "aeb55967e2d9195ef7ba4832b12ebeee0d6d1359",
+      "filename": "frontend/src/components/StateCube.tsx",
+      "status": "modified",
+      "additions": 13,
+      "deletions": 8,
+      "changes": 21,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4d96e7f6bc41ceb6851402be8f143b0a57a36694/frontend%2Fsrc%2Fcomponents%2FStateCube.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4d96e7f6bc41ceb6851402be8f143b0a57a36694/frontend%2Fsrc%2Fcomponents%2FStateCube.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FStateCube.tsx?ref=4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+      "patch": "@@ -17,12 +17,17 @@ interface CubeFace {\n \n // @@@ Quaternion class for smooth 3D rotation\n class Quaternion {\n-  constructor(\n-    public w: number,\n-    public x: number,\n-    public y: number,\n-    public z: number\n-  ) {}\n+  w: number;\n+  x: number;\n+  y: number;\n+  z: number;\n+\n+  constructor(w: number, x: number, y: number, z: number) {\n+    this.w = w;\n+    this.x = x;\n+    this.y = y;\n+    this.z = z;\n+  }\n \n   static identity(): Quaternion {\n     return new Quaternion(1, 0, 0, 0);\n@@ -392,7 +397,7 @@ export function StateCube({ onStateSelect, stateConfig }: StateCubeProps) {\n   }, []);\n \n   // @@@ Simple SVG icon generator for each state\n-  const getStateIcon = (stateId: string): JSX.Element => {\n+  const getStateIcon = (stateId: string) => {\n     const iconProps = { width: 40, height: 40, viewBox: \"0 0 100 100\", style: { margin: '0 auto' } };\n \n     switch(stateId.toLowerCase()) {\n@@ -455,7 +460,7 @@ export function StateCube({ onStateSelect, stateConfig }: StateCubeProps) {\n           gap: '8px'\n         }}\n       >\n-        {face.states.map((state, idx) => {\n+        {face.states.map((state) => {\n           const isClicked = clickedState === state.id;\n           return (\n             <div"
+    }
+  ]
+}

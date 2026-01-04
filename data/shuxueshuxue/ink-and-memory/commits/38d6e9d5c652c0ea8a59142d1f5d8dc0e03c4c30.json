@@ -1,0 +1,72 @@
+{
+  "sha": "38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30",
+  "node_id": "C_kwDOP2Zrm9oAKDM4ZDZlOWQ1YzY1MmMwZWE4YTU5MTQyZDFmNWQ4ZGMwZTAzYzRjMzA",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T10:44:46Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T10:44:46Z"
+    },
+    "message": "CRITICAL FIX: Save entries to database when authenticated\n\nChanges:\n- handleSaveToday now database-aware:\n  * Authenticated: saves to database via saveSession()\n  * Guest: saves to localStorage (original behavior)\n- Generates session name: \"YYYY-MM-DD - FirstLine\"\n- Added error handling with red toast notification\n\nThis was the fatal bug preventing authenticated users from saving entries.\nThe save was going to localStorage while calendar/reflections read from database.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "3adbdf08589ea7d54d522e81d651be8ee7c90bc3",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/3adbdf08589ea7d54d522e81d651be8ee7c90bc3"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "948c570895f15df95e651917eed1cc2c27bee571",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/948c570895f15df95e651917eed1cc2c27bee571",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/948c570895f15df95e651917eed1cc2c27bee571"
+    }
+  ],
+  "stats": {
+    "total": 102,
+    "additions": 73,
+    "deletions": 29
+  },
+  "files": [
+    {
+      "sha": "dc246f847090b20042c0752f30a0c7a33e0ec8d4",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30"
+    },
+    {
+      "sha": "0f218d51fa201b81535488f25f3d9ceb1b9dd66e",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 73,
+      "deletions": 29,
+      "changes": 102,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30",
+      "patch": "@@ -903,38 +903,82 @@ export default function App() {\n     }\n   }, [isAuthenticated]);\n \n-  const handleSaveToday = useCallback(() => {\n+  const handleSaveToday = useCallback(async () => {\n     if (!state || !engineRef.current) return;\n \n-    // Save and get the entry ID (either new or overwritten)\n-    const entryId = saveEntryToToday(state);\n-\n-    // Update current entry ID in engine state\n-    engineRef.current.setCurrentEntryId(entryId);\n-\n-    // Show toast notification\n-    const toast = document.createElement('div');\n-    toast.textContent = state.currentEntryId ? 'Saved (updated)' : 'Saved';\n-    toast.style.cssText = `\n-      position: fixed;\n-      top: 70px;\n-      right: 20px;\n-      background: #4CAF50;\n-      color: white;\n-      padding: 12px 20px;\n-      borderRadius: 6px;\n-      fontSize: 14px;\n-      fontFamily: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto;\n-      zIndex: 10000;\n-      boxShadow: 0 4px 12px rgba(0,0,0,0.15);\n+    try {\n+      // @@@ Save to database if authenticated, localStorage if guest\n+      if (isAuthenticated) {\n+        // Get first line of text for session name\n+        const firstTextCell = state.cells.find(c => c.type === 'text') as TextCell | undefined;\n+        const firstLine = firstTextCell?.content.split('\\n')[0].trim() || 'Untitled';\n+\n+        // Generate date-prefixed name: \"YYYY-MM-DD - FirstLine\"\n+        const today = new Date();\n+        const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;\n+        const sessionName = `${dateKey} - ${firstLine}`;\n+\n+        // Save to database\n+        const { saveSession } = await import('./api/voiceApi');\n+        const sessionId = state.currentEntryId || crypto.randomUUID();\n+        await saveSession(sessionId, state, sessionName);\n+\n+        // Update current entry ID in engine state\n+        engineRef.current.setCurrentEntryId(sessionId);\n+      } else {\n+        // Guest mode: save to localStorage\n+        const entryId = saveEntryToToday(state);\n+        engineRef.current.setCurrentEntryId(entryId);\n+      }\n+\n+      // Show toast notification\n+      const toast = document.createElement('div');\n+      toast.textContent = state.currentEntryId ? 'Saved (updated)' : 'Saved';\n+      toast.style.cssText = `\n+        position: fixed;\n+        top: 70px;\n+        right: 20px;\n+        background: #4CAF50;\n+        color: white;\n+        padding: 12px 20px;\n+        borderRadius: 6px;\n+        fontSize: 14px;\n+        fontFamily: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto;\n+        zIndex: 10000;\n+        boxShadow: 0 4px 12px rgba(0,0,0,0.15);\n     `;\n-    document.body.appendChild(toast);\n-    setTimeout(() => {\n-      toast.style.opacity = '0';\n-      toast.style.transition = 'opacity 0.3s';\n-      setTimeout(() => document.body.removeChild(toast), 300);\n-    }, 2000);\n-  }, [state]);\n+      document.body.appendChild(toast);\n+      setTimeout(() => {\n+        toast.style.opacity = '0';\n+        toast.style.transition = 'opacity 0.3s';\n+        setTimeout(() => document.body.removeChild(toast), 300);\n+      }, 2000);\n+    } catch (error) {\n+      console.error('Failed to save:', error);\n+      // Show error toast\n+      const toast = document.createElement('div');\n+      toast.textContent = 'Save failed';\n+      toast.style.cssText = `\n+        position: fixed;\n+        top: 70px;\n+        right: 20px;\n+        background: #f44336;\n+        color: white;\n+        padding: 12px 20px;\n+        borderRadius: 6px;\n+        fontSize: 14px;\n+        fontFamily: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto;\n+        zIndex: 10000;\n+        boxShadow: 0 4px 12px rgba(0,0,0,0.15);\n+      `;\n+      document.body.appendChild(toast);\n+      setTimeout(() => {\n+        toast.style.opacity = '0';\n+        toast.style.transition = 'opacity 0.3s';\n+        setTimeout(() => document.body.removeChild(toast), 300);\n+      }, 2000);\n+    }\n+  }, [state, isAuthenticated]);\n \n   const handleLoadEntry = useCallback((entry: CalendarEntry) => {\n     if (engineRef.current) {"
+    }
+  ]
+}

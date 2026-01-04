@@ -1,0 +1,61 @@
+{
+  "sha": "37bdcbfb94a08088bff3eca426535f3ebcf88ea9",
+  "node_id": "C_kwDOP2Zrm9oAKDM3YmRjYmZiOTRhMDgwODhiZmYzZWNhNDI2NTM1ZjNlYmNmODhlYTk",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:31:54Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:31:54Z"
+    },
+    "message": "Polish README structure",
+    "tree": {
+      "sha": "b2ec23dbcd21c2fb5e64969ae5aa909d8b33607b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/b2ec23dbcd21c2fb5e64969ae5aa909d8b33607b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/37bdcbfb94a08088bff3eca426535f3ebcf88ea9",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/37bdcbfb94a08088bff3eca426535f3ebcf88ea9",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/37bdcbfb94a08088bff3eca426535f3ebcf88ea9",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/37bdcbfb94a08088bff3eca426535f3ebcf88ea9/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614"
+    }
+  ],
+  "stats": {
+    "total": 31,
+    "additions": 7,
+    "deletions": 24
+  },
+  "files": [
+    {
+      "sha": "6743934e5a46c18374bf64f7caa68170fef9e631",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 7,
+      "deletions": 24,
+      "changes": 31,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/37bdcbfb94a08088bff3eca426535f3ebcf88ea9/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/37bdcbfb94a08088bff3eca426535f3ebcf88ea9/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=37bdcbfb94a08088bff3eca426535f3ebcf88ea9",
+      "patch": "@@ -1,22 +1,22 @@\n-# Ink and Memory\n+# Ink & Memory\n \n-Ink & Memory is a Disco Elysium–inspired journaling environment where your inner voices respond to every sentence. The product has graduated from a quick concept to a multi-surface workspace with auto-save, calendar/timeline review, friend timelines, and per-user timezone awareness. We now treat English and Chinese as first-class citizens: voices, state prompts, and every UI label support both languages out of the box.\n+Ink & Memory is a Disco Elysium–inspired journaling studio where your inner voices react to every sentence. It has grown beyond a concept demo into a multi-surface workspace with auto-save, calendar + timeline review, friend timelines, and per-user timezone awareness. English and Chinese are first-class citizens: the editor, calendar, timeline, voices, and prompts work in both languages from the first keystroke.\n \n ![Writing Area Screenshot](assets/writing-area.png)\n \n-## ✨ Product Capabilities\n+## ✨ Experience Highlights\n \n - **Living Commentary** — Thirteen Disco-style voices (Logic, Empathy, Volition, etc.) watch your text and deliver contextual comments, each with unique color/highlight styling.\n - **Dynamic Highlighting** — Trigger phrases are painted directly on the notebook, pairing each voice’s comment with the exact text that summoned it.\n - **Stateful Engine** — The backend remembers prior comments, prevents duplicates, enforces per-voice density, and honors the current emotional state/cube selection.\n-- **English + Chinese Support** — The editor, calendar/timeline, and all voices can operate seamlessly in either language. Calendar titles, timeline captions, and first-line extraction work with both scripts.\n-- **Auto-Save = Save** — Manual “Save today” and silent auto-save now share identical logic, guaranteeing every session writes `editor_state.createdAt`. Nothing gets lost, and the timeline/calendar stay synchronized.\n-- **Calendar + Timeline Unification** — Both surfaces consume the same grouped session data, so captions/timezones always match. Clicking a day loads the exact session with full comments.\n+- **English + Chinese Support** — The editor, calendar/timeline, and all voices operate seamlessly in either language. Titles, captions, and first-line extraction work with both scripts.\n+- **Auto-Save = Save** — Manual “Save today” and silent auto-save share identical logic, so every session writes `editor_state.createdAt`. Nothing gets lost, and the calendar/timeline stay synchronized.\n+- **Calendar + Timeline Unification** — Both surfaces consume the same grouped session data, so captions + timezones always match. Clicking a day loads the exact session with full comments.\n - **Timezone-Aware Timeline** — Timestamps are stored in UTC but rendered in the viewer’s local timezone. We also capture each user’s preferred timezone to support future per-user scheduling.\n - **Friend Timelines** — Select friends to compare their daily pictures/comments side-by-side, with gentle hint cards when no friend data exists.\n - **Binder Aesthetic** — The UI is intentionally tactile with ring binders, Excalifont handwriting, and Xiaolai Chinese glyphs.\n \n-# 🎭 The Voices\n+## 🎭 The Voices\n \n All thirteen voices from Disco Elysium ship with the app: Logic, Empathy, Inland Empire, Volition, Drama, Authority, Half Light, Shivers, Composure, Encyclopedia, Conceptualization, Suggestion, and Electrochemistry. Each voice stores its history, applies its own highlight gradient, and responds in English or Chinese depending on your writing language.\n \n@@ -102,23 +102,6 @@ App runs at `http://localhost:5173`\n 5. Friend timelines appear on the right, with hint cards when no data exists\n 6. Export/import your calendar via the built-in API endpoints\n \n-## 🎨 Design Philosophy\n-\n-### Vibe-Coding\n-This project was built using \"observe-code-observe-code\" rapid iteration:\n-- Minimal planning, maximal experimentation\n-- See `backend/archive/vibe-coding-scraper-example/` for a documented example\n-\n-### Minimal Implementation\n-- Simple is better than complex\n-- Code buys features with complexity - spend wisely\n-- `@@@` comments mark tricky parts for easy navigation\n-\n-## 🔧 Technical Highlights\n-\n-### Stateful Commentary System\n-```\n-\n ## 🗺️ Roadmap / TODO\n \n - **Per-user timeline scheduling** — Scheduler still triggers in a single timezone. Now that each user preference stores `timezone`, we need to update the cron job + DB helpers to run at each user’s local midnight."
+    }
+  ]
+}

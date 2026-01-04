@@ -1,0 +1,97 @@
+{
+  "sha": "9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+  "node_id": "C_kwDOP2Zrm9oAKDlkYmY0NmJiMGY0NzBmNjQzZmQxNmY1YjJlOGM3ZjQ5MGQzYjFkMmU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:14:09Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:14:09Z"
+    },
+    "message": "Add stacking card effect with 70% overlap and hover expansion",
+    "tree": {
+      "sha": "f5c5ef8c8d3e102678893d14277dbdde24bbdc4a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/f5c5ef8c8d3e102678893d14277dbdde24bbdc4a"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "9b384932b9fe0f85a80c4373acdd33b60d418e3b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9b384932b9fe0f85a80c4373acdd33b60d418e3b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9b384932b9fe0f85a80c4373acdd33b60d418e3b"
+    }
+  ],
+  "stats": {
+    "total": 42,
+    "additions": 37,
+    "deletions": 5
+  },
+  "files": [
+    {
+      "sha": "d93827bbbac570a42f683d7c0aabb1825a326ea9",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 19,
+      "deletions": 2,
+      "changes": 21,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+      "patch": "@@ -44,12 +44,16 @@\n \n .book-page.right-page {\n   flex-direction: column;\n-  gap: 1rem;\n   padding: 2rem;\n+  overflow: visible;\n }\n \n-.book-page.right-page > * {\n+/* @@@ Voice stacking container */\n+.voice-stack {\n+  position: relative;\n   margin-left: 2rem;\n+  padding-top: 0;\n+  min-height: 200px;\n }\n \n /* Editable text area overlay */\n@@ -96,6 +100,10 @@\n }\n \n .voice-comment {\n+  position: absolute;\n+  top: 0;\n+  left: 0;\n+  right: 0;\n   padding: 1rem;\n   border-left: 4px solid;\n   border-radius: 4px;\n@@ -104,6 +112,15 @@\n   line-height: 1.6;\n   color: #333;\n   animation: fadeIn 0.5s ease-in;\n+  transition: all 0.3s ease;\n+  cursor: pointer;\n+}\n+\n+/* @@@ Stacking: each card offset by 30% of card height */\n+.voice-comment:hover {\n+  z-index: 1000 !important;\n+  transform: translateY(0) !important;\n+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);\n }\n \n .voice-header {"
+    },
+    {
+      "sha": "897e290cee204e58c7e19b88fc1057ec3cbca87c",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 1,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+      "patch": "@@ -95,7 +95,17 @@ function App() {\n       <WritingArea onChange={handleTextChange} triggers={voiceTriggers} />\n       <VoicesPanel>\n         {voices.map((voice, index) => (\n-          <VoiceComment key={index} voice={voice.name} text={voice.text} icon={voice.icon} color={voice.color} />\n+          <VoiceComment\n+            key={index}\n+            voice={voice.name}\n+            text={voice.text}\n+            icon={voice.icon}\n+            color={voice.color}\n+            style={{\n+              zIndex: voices.length - index,\n+              transform: `translateY(${index * 30}%)`,\n+            }}\n+          />\n         ))}\n       </VoicesPanel>\n       <BinderRings />"
+    },
+    {
+      "sha": "da5d86e05999778c1662e72d37227b116d48ff9d",
+      "filename": "frontend/src/components/VoiceComment.tsx",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 1,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx?ref=9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+      "patch": "@@ -1,10 +1,12 @@\n import { FaBrain, FaHeart, FaQuestion, FaCloud } from 'react-icons/fa';\n+import { CSSProperties } from 'react';\n \n interface VoiceCommentProps {\n   voice: string;\n   text: string;\n   icon: string;\n   color: string;\n+  style?: CSSProperties;\n }\n \n const iconMap = {\n@@ -22,7 +24,7 @@ const colorMap: Record<string, { background: string; border: string }> = {\n   purple: { background: '#f3e6ff', border: '#b366ff' },\n };\n \n-export default function VoiceComment({ voice, text, icon, color }: VoiceCommentProps) {\n+export default function VoiceComment({ voice, text, icon, color, style }: VoiceCommentProps) {\n   const Icon = iconMap[icon as keyof typeof iconMap];\n   const colors = colorMap[color] || { background: '#f0f0f0', border: '#ccc' };\n \n@@ -32,6 +34,7 @@ export default function VoiceComment({ voice, text, icon, color }: VoiceCommentP\n       style={{\n         backgroundColor: colors.background,\n         borderColor: colors.border,\n+        ...style,\n       }}\n     >\n       <div className=\"voice-header\">"
+    },
+    {
+      "sha": "b135c745c799a5129944d9828bbbffc5e65e3607",
+      "filename": "frontend/src/components/VoicesPanel.tsx",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 1,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx?ref=9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+      "patch": "@@ -8,7 +8,9 @@ interface VoicesPanelProps {\n export default function VoicesPanel({ children }: VoicesPanelProps) {\n   return (\n     <BookPage side=\"right\">\n-      {children}\n+      <div className=\"voice-stack\">\n+        {children}\n+      </div>\n     </BookPage>\n   );\n }\n\\ No newline at end of file"
+    }
+  ]
+}

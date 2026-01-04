@@ -1,0 +1,82 @@
+{
+  "sha": "20008fb4646e77b4f1d4c76f8139c3c4f1e1129f",
+  "node_id": "C_kwDOP2Zrm9oAKDIwMDA4ZmI0NjQ2ZTc3YjRmMWQ0Yzc2ZjgxMzljM2M0ZjFlMTEyOWY",
+  "commit": {
+    "author": {
+      "name": "zhuchenyu2008",
+      "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+      "date": "2026-01-03T04:04:14Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-01-03T04:04:14Z"
+    },
+    "message": "\u79fb\u52a8\u7aef\u5199\u4f5c\u754c\u9762\u7684\u201c\u91cd\u7f6e\u201d\u6309\u94ae\u6362\u6210\u4e86\u4e0e\u684c\u9762\u7aef\u7684\u201c+\u201d\u6309\u94ae\n\n  - \u79fb\u52a8\u7aef\u5199\u4f5c\u754c\u9762\u7684\u201c\u91cd\u7f6e\u201d\u6309\u94ae\u6362\u6210\u4e86\u4e0e\u684c\u9762\u7aef\u4e00\u81f4\u7684\u201c+\u201d\u6309\u94ae\u3002\r\n  - \u6309\u94ae\u70b9\u51fb\u903b\u8f91\u4ece handleStartFresh \u6539\u4e3a handleNewSessionClick\u3002\r\n  - \u6309\u94ae\u5c3a\u5bf8\u4e0e\u65c1\u8fb9\u7684 @ \u6309\u94ae\u7edf\u4e00\u4e3a 44x44\u3002",
+    "tree": {
+      "sha": "ec965e9e2fc89d8a5cf18ae5bb42a8e04415d47a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/ec965e9e2fc89d8a5cf18ae5bb42a8e04415d47a"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/20008fb4646e77b4f1d4c76f8139c3c4f1e1129f",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpWJU+CRC1aQ7uu5UhlAAAfPMQAK1eMdQJH+vggj3p4mT1g0CK\nFA4laN0e0PRdg7QiBwnYV/H+RJTXQCDcmWBo9ivMr/eAyxCI+U7yt+VQXZJ83MBN\nNZ8LkojJtSCfKzugjAJ1itF/vNcgYXGPvr8FNR2rfEl7jAJrtdrrgAG8uFyu8uhk\n67hr3gRif+pWNaeZSQTYmqqaCkebfASMLmg5gII2ayVmaCJL6IREIjznvZsfrvt4\nz5TW0khnWdON8TGVeiRItBBYvcPMLGjHIaVKupUjpfoSyzto+PnMEyLNXzxDI8dN\n5Oy74e391UGWTlTNAF+9N2lnXc8xQMOedaQ/CPXwh6BDzOOVfb2ZGmENGmQ4hthg\nXMRyBmHCHkIIwiIC81/EyQuCUadFyH0XR5Mu2Lq7nnXBeMZaLRRqiu1Eq8n3jLEf\n/urABbNYoW1WSKY/YVfakJkkQrX4tFyAg5rGn3XGo+3fjM2XysOumdYen/YURhrj\nZj2QZFOO6HzyjTbnlbB4HSAWkVjtE0+E6A06bv7SDr2SdYKl3Xd9s4/Jiyp4yKwE\nBzQF3hmK4kMVXncErvKX5+uzrYxEFx5/XMLLFOEK3W1NYuUrrS12L5mCA2lqyScm\na6fQWQKL73iGGHtKaQoZ5fmvyaUrky25ENaFSOYhpRmozQb19F6UA7hnfgOlxtXR\nLNkgRcVTSj3HSzwlTL49\n=5siw\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree ec965e9e2fc89d8a5cf18ae5bb42a8e04415d47a\nparent 4c0c4c845b534b2a24d3293ce552362a76df0090\nauthor zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com> 1767413054 +0800\ncommitter GitHub <noreply@github.com> 1767413054 +0800\n\n\u79fb\u52a8\u7aef\u5199\u4f5c\u754c\u9762\u7684\u201c\u91cd\u7f6e\u201d\u6309\u94ae\u6362\u6210\u4e86\u4e0e\u684c\u9762\u7aef\u7684\u201c+\u201d\u6309\u94ae\n\n  - \u79fb\u52a8\u7aef\u5199\u4f5c\u754c\u9762\u7684\u201c\u91cd\u7f6e\u201d\u6309\u94ae\u6362\u6210\u4e86\u4e0e\u684c\u9762\u7aef\u4e00\u81f4\u7684\u201c+\u201d\u6309\u94ae\u3002\r\n  - \u6309\u94ae\u70b9\u51fb\u903b\u8f91\u4ece handleStartFresh \u6539\u4e3a handleNewSessionClick\u3002\r\n  - \u6309\u94ae\u5c3a\u5bf8\u4e0e\u65c1\u8fb9\u7684 @ \u6309\u94ae\u7edf\u4e00\u4e3a 44x44\u3002",
+      "verified_at": "2026-01-03T04:04:14Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/20008fb4646e77b4f1d4c76f8139c3c4f1e1129f",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/20008fb4646e77b4f1d4c76f8139c3c4f1e1129f",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/20008fb4646e77b4f1d4c76f8139c3c4f1e1129f/comments",
+  "author": {
+    "login": "zhuchenyu2008",
+    "id": 132262479,
+    "node_id": "U_kgDOB-IqTw",
+    "avatar_url": "https://avatars.githubusercontent.com/u/132262479?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/zhuchenyu2008",
+    "html_url": "https://github.com/zhuchenyu2008",
+    "followers_url": "https://api.github.com/users/zhuchenyu2008/followers",
+    "following_url": "https://api.github.com/users/zhuchenyu2008/following{/other_user}",
+    "gists_url": "https://api.github.com/users/zhuchenyu2008/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/zhuchenyu2008/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/zhuchenyu2008/subscriptions",
+    "organizations_url": "https://api.github.com/users/zhuchenyu2008/orgs",
+    "repos_url": "https://api.github.com/users/zhuchenyu2008/repos",
+    "events_url": "https://api.github.com/users/zhuchenyu2008/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/zhuchenyu2008/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "4c0c4c845b534b2a24d3293ce552362a76df0090",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4c0c4c845b534b2a24d3293ce552362a76df0090",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4c0c4c845b534b2a24d3293ce552362a76df0090"
+    }
+  ]
+}

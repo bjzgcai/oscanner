@@ -1,0 +1,72 @@
+{
+  "sha": "aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1",
+  "node_id": "C_kwDOP2Zrm9oAKGFhM2Q4YzhjMTZmMjI3MGRmNWFhNDYzNTI4NWM1MWJjOGRmYmEyYzE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T13:54:26Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T13:54:26Z"
+    },
+    "message": "Add comprehensive README with demo video",
+    "tree": {
+      "sha": "756962fea3d20d1a9abac773c83912e49345f6b6",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/756962fea3d20d1a9abac773c83912e49345f6b6"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "4a329010b16261df9e7118d5ded94f45c9543613",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4a329010b16261df9e7118d5ded94f45c9543613",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4a329010b16261df9e7118d5ded94f45c9543613"
+    }
+  ],
+  "stats": {
+    "total": 227,
+    "additions": 170,
+    "deletions": 57
+  },
+  "files": [
+    {
+      "sha": "a58794bcd89dc91bded5c511c1dfee7dd5ddf004",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 170,
+      "deletions": 57,
+      "changes": 227,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1",
+      "patch": "@@ -1,78 +1,191 @@\n-# Consciousness\n+# Ink and Memory\n \n-**Your thoughts have thoughts about your thoughts.**\n+A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.\n \n-An introspective writing companion where different aspects of your psyche provide real-time commentary as you write.\n+https://github.com/user-attachments/assets/demo.mov\n \n-**Main Goal:** 情感陪伴，生活建议 (Emotional companionship, life advice)\n+## ✨ Features\n \n-## UI Design\n+- **Living Commentary**: As you write, distinct inner voices (Logic, Empathy, Volition, etc.) spontaneously comment on your thoughts\n+- **Dynamic Highlighting**: Voice-triggered phrases are highlighted with watercolor-style brushstrokes\n+- **Stateful Analysis**: LLM-powered backend remembers past comments and avoids repetition\n+- **Multilingual**: Supports both English and Chinese text with matching commentary language\n+- **Binder Aesthetic**: Beautiful notebook-style UI with ring binders and handwritten fonts\n \n-![Book UI Design](assets/book-ui-design.png)\n+## 🎭 The Voices\n \n-## Design Principles\n+13 Disco Elysium-inspired archetypes provide commentary:\n \n-- **Something to take away** - Each session produces insights worth keeping\n-- **Actively prompt user** - Voices ask questions, don't just comment\n-- **Make the process interesting** - Real-time feedback keeps engagement\n-- **Long-term retrospection** - Statistics, patterns, relationship mapping over time\n-- **Community** - Note polish with auto image generation, sharing features\n+- **Logic**: Wield raw intellectual power\n+- **Empathy**: Work your mirror neurons\n+- **Volition**: Keep your morale up\n+- **Inland Empire**: Hunches and gut feelings\n+- **Drama**: Detect lies and perform\n+- **Authority**: Assert yourself\n+- **Half Light**: Fight or flight\n+- **Shivers**: Tune in to the city\n+- **Composure**: Keep your poker face\n+- *...and more*\n \n-## Structure\n+## 🏗️ Architecture\n \n-```\n-consciousness/\n-├── frontend/\n-│   ├── src/\n-│   │   ├── components/\n-│   │   │   ├── WritingArea.tsx     # Main writing input\n-│   │   │   ├── Voice.tsx           # Individual voice component\n-│   │   │   └── VoicesPanel.tsx     # Container for all voices\n-│   │   ├── hooks/\n-│   │   │   └── useSSE.ts           # Server-sent events hook\n-│   │   ├── App.tsx\n-│   │   └── main.tsx\n-│   ├── package.json\n-│   └── vite.config.ts\n-└── backend/\n-    ├── main.py                      # PolyCLI orchestration server\n-    ├── voices/\n-    │   ├── logic.py                 # Logic voice agent\n-    │   ├── emotion.py               # Emotion voice agent\n-    │   ├── doubt.py                 # Doubt voice agent\n-    │   ├── memory.py                # Memory voice agent\n-    │   └── intuition.py             # Intuition voice agent\n-    └── requirements.txt\n-```\n+### Frontend (React + TypeScript)\n+- TipTap editor with custom voice highlighting extension\n+- 5-second polling with >10 character change threshold\n+- Instant phrase detection and highlighting\n+- Excalifont + Xiaolai fonts for handwritten aesthetic\n \n-## Implementation\n+### Backend (Python + PolyCLI)\n+- **Stateful Analyzer**: Tracks existing comments, prunes deleted phrases\n+- **Density Control**: Max 1 voice per persona, 1 comment per sentence\n+- **LLM Integration**: GPT-4 via free API proxy\n+- **Session Registry**: Web control panel for monitoring\n \n-### Frontend\n-- **React + TypeScript** - UI components\n-- **Vite** - Build tool\n-- **EventSource API** - SSE for voice streaming\n+## 🚀 Setup\n \n-### Backend (PolyCLI)\n-- **HTTP API** - Send user text, get analysis\n-- **SSE Stream** - Real-time voice comments\n-- **Session Persistence** - Save conversations\n-- **Multi-agent Orchestration** - Voices as PolyAgents\n+### Prerequisites\n+- Python 3.11+\n+- Node.js 18+\n+- [uv](https://github.com/astral-sh/uv) for Python package management\n \n-## Shipping Strategy\n+### Backend\n \n-**Web first, then mobile app**\n+```bash\n+cd backend\n+\n+# Create virtual environment and install dependencies\n+uv venv\n+source .venv/bin/activate  # On Windows: .venv\\Scripts\\activate\n+\n+# Install PolyCLI (from parent directory)\n+cd ~/Codebase/PolyCLI\n+uv pip install -e .\n+\n+cd ~/Codebase/ink-and-memory/backend\n+\n+# Install additional dependencies\n+uv pip install beautifulsoup4 requests 'httpx[socks]'\n+\n+# Create models.json with your LLM API config\n+cat > models.json << 'EOC'\n+{\n+  \"models\": {\n+    \"gpt-4o-dou\": {\n+      \"endpoint\": \"https://api.example.com/v1\",\n+      \"api_key\": \"your-api-key\",\n+      \"model\": \"openai/chatgpt-4o-latest\"\n+    }\n+  }\n+}\n+EOC\n+\n+# Start server\n+python server.py\n+```\n \n-## Getting Started\n+Server runs at `http://localhost:8765`\n+\n+### Frontend\n \n ```bash\n-# Frontend\n cd frontend\n-npm create vite@latest . -- --template react-ts\n+\n+# Install dependencies\n npm install\n+\n+# Start dev server\n npm run dev\n+```\n \n-# Backend\n-cd backend\n-pip install polycli\n-python main.py\n-```\n\\ No newline at end of file\n+App runs at `http://localhost:5173`\n+\n+## 📖 Usage\n+\n+1. Start both backend and frontend servers\n+2. Open `http://localhost:5173` in your browser\n+3. Start writing your thoughts\n+4. Every 5 seconds (if you've written >10 new characters), voices will comment\n+5. Delete text to remove its associated comments\n+6. Highlights show which phrases triggered each voice\n+\n+## 🎨 Design Philosophy\n+\n+### Vibe-Coding\n+This project was built using \"observe-code-observe-code\" rapid iteration:\n+- Minimal planning, maximal experimentation\n+- See `backend/archive/vibe-coding-scraper-example/` for a documented example\n+\n+### Minimal Implementation\n+- Simple is better than complex\n+- Code buys features with complexity - spend wisely\n+- `@@@` comments mark tricky parts for easy navigation\n+\n+## 🔧 Technical Highlights\n+\n+### Stateful Commentary System\n+```python\n+class StatefulVoiceAnalyzer:\n+    def analyze(self, agent, text):\n+        # 1. Prune deleted comments\n+        self._prune_deleted_comments(text)\n+\n+        # 2. Only ask LLM for NEW comments\n+        # (shows existing comments to avoid repetition)\n+\n+        # 3. Enforce density rules\n+        # (1 per persona, 1 per sentence)\n+\n+        # 4. Return ALL comments (old + new)\n+```\n+\n+### Polling Strategy\n+```typescript\n+// Every 5 seconds, check if text changed >10 chars\n+useEffect(() => {\n+  const interval = setInterval(async () => {\n+    if (textDiff > 10 && !isAnalyzing) {\n+      const voices = await analyzeText(currentText);\n+      setVoiceTriggers(voices);\n+    }\n+  }, 5000);\n+  return () => clearInterval(interval);\n+}, []);\n+```\n+\n+### Sentence Splitting (Multilingual)\n+```python\n+# English: .!?  Chinese: 。！？  Also: newlines\n+re.split(r'[.!?。！？]+|\\n+', text)\n+```\n+\n+## 📁 Project Structure\n+\n+```\n+ink-and-memory/\n+├── backend/\n+│   ├── server.py              # PolyCLI Session Registry server\n+│   ├── stateful_analyzer.py   # Core voice detection logic\n+│   ├── config.py              # Voice archetypes & prompts\n+│   └── archive/               # Learning examples\n+├── frontend/\n+│   ├── src/\n+│   │   ├── components/        # React components\n+│   │   ├── extensions/        # TipTap voice highlighting\n+│   │   └── api/               # Backend API client\n+│   └── public/                # Fonts & assets\n+└── demo.mov                   # Demo video\n+```\n+\n+## 🤝 Contributing\n+\n+This is a personal experimental project, but feel free to fork and adapt!\n+\n+## 📜 License\n+\n+MIT\n+\n+## 🙏 Credits\n+\n+- Inspired by [Disco Elysium](https://discoelysium.com/)\n+- Built with [PolyCLI](https://github.com/shuxueshuxue/PolyCLI)\n+- Fonts: [Excalifont](https://github.com/excalidraw/excalidraw) & Xiaolai"
+    },
+    {
+      "sha": "52748c7e6caefcf6edafd846b01d17f3637f8208",
+      "filename": "demo.mov",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1/demo.mov",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1/demo.mov",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/demo.mov?ref=aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1"
+    }
+  ]
+}

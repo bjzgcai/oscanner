@@ -1,0 +1,61 @@
+{
+  "sha": "194eadabf052f47285276b3f0e483487d1cfa38b",
+  "node_id": "C_kwDOP2Zrm9oAKDE5NGVhZGFiZjA1MmY0NzI4NTI3NmIzZjBlNDgzNDg3ZDFjZmEzOGI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:40:48Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:40:48Z"
+    },
+    "message": "Fix Start Fresh button to create new session/entry\n\nRoot cause: Start Fresh was clearing content but keeping same sessionId\n- Old: Saved empty state with SAME sessionId → reloaded same session\n- Result: Appeared empty but was still the same entry\n\nFix: Create NEW session with new sessionId\n- Generate new sessionId: session_${timestamp}_${random}\n- Clear currentEntryId → forces new calendar entry on save\n- Save new empty session to database\n- Reload → loads the new empty session\n\nBenefits:\n- Each \"Start Fresh\" creates a genuinely new writing session\n- New calendar entry created on save (not overwriting old one)\n- Console log added: \"✅ Created new session: <id>\"\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "cb7b82afd7d99118f6022e1a9ab79e43b499817b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/cb7b82afd7d99118f6022e1a9ab79e43b499817b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/194eadabf052f47285276b3f0e483487d1cfa38b",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/194eadabf052f47285276b3f0e483487d1cfa38b",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/194eadabf052f47285276b3f0e483487d1cfa38b",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/194eadabf052f47285276b3f0e483487d1cfa38b/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "0f5de428ee88fea7dc7df350338c6a8a0e621944",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0f5de428ee88fea7dc7df350338c6a8a0e621944",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0f5de428ee88fea7dc7df350338c6a8a0e621944"
+    }
+  ],
+  "stats": {
+    "total": 11,
+    "additions": 7,
+    "deletions": 4
+  },
+  "files": [
+    {
+      "sha": "5deb407d32d18f1f74fbc054d13d43557d5ef1af",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 7,
+      "deletions": 4,
+      "changes": 11,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/194eadabf052f47285276b3f0e483487d1cfa38b/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/194eadabf052f47285276b3f0e483487d1cfa38b/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=194eadabf052f47285276b3f0e483487d1cfa38b",
+      "patch": "@@ -837,22 +837,25 @@ export default function App() {\n \n   const confirmStartFresh = useCallback(async () => {\n     if (isAuthenticated && engineRef.current) {\n-      // For authenticated users: save empty state to database\n-      const currentState = engineRef.current.getState();\n+      // @@@ For authenticated users: create NEW session with new sessionId\n+      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;\n       const emptyState = {\n         cells: [{ id: Math.random().toString(36).slice(2), type: 'text', content: '' }],\n         commentors: [],\n         tasks: [],\n         weightPath: [],\n         overlappedPhrases: [],\n-        sessionId: currentState.sessionId\n+        sessionId: newSessionId,\n+        // @@@ Clear currentEntryId so it creates a NEW calendar entry on save\n+        currentEntryId: undefined\n       };\n \n       try {\n         const { saveSession } = await import('./api/voiceApi');\n         await saveSession(emptyState.sessionId, emptyState);\n+        console.log(`✅ Created new session: ${newSessionId}`);\n       } catch (error) {\n-        console.error('Failed to clear session in database:', error);\n+        console.error('Failed to create new session in database:', error);\n       }\n     } else {\n       // For guest users: clear localStorage"
+    }
+  ]
+}

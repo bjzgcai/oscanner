@@ -1,0 +1,85 @@
+{
+  "sha": "9e6fe1454b6e694b038915b27787276ec6c7130e",
+  "node_id": "C_kwDOP2Zrm9oAKDllNmZlMTQ1NGI2ZTY5NGIwMzg5MTViMjc3ODcyNzZlYzZjNzEzMGU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:46:37Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:46:37Z"
+    },
+    "message": "Use two-container layout for proper card separation",
+    "tree": {
+      "sha": "7bd51fa1a8bbf4aa4a46ea8f4bb2ba8808d37cab",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/7bd51fa1a8bbf4aa4a46ea8f4bb2ba8808d37cab"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/9e6fe1454b6e694b038915b27787276ec6c7130e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9e6fe1454b6e694b038915b27787276ec6c7130e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9e6fe1454b6e694b038915b27787276ec6c7130e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9e6fe1454b6e694b038915b27787276ec6c7130e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee"
+    }
+  ],
+  "stats": {
+    "total": 62,
+    "additions": 46,
+    "deletions": 16
+  },
+  "files": [
+    {
+      "sha": "59ea5989fc57dd0e055d4eb9fbe03db54b124aa4",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 15,
+      "deletions": 4,
+      "changes": 19,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9e6fe1454b6e694b038915b27787276ec6c7130e/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9e6fe1454b6e694b038915b27787276ec6c7130e/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=9e6fe1454b6e694b038915b27787276ec6c7130e",
+      "patch": "@@ -48,12 +48,22 @@\n   overflow: visible;\n }\n \n-/* @@@ Voice stacking container */\n+/* @@@ Two-box layout for stacked vs latest cards */\n+.voices-container {\n+  display: flex;\n+  flex-direction: column;\n+  gap: 2rem;\n+  margin-left: 2rem;\n+}\n+\n .voice-stack {\n   position: relative;\n-  margin-left: 2rem;\n-  padding-top: 0;\n-  min-height: 200px;\n+  min-height: 100px;\n+}\n+\n+.latest-card-container {\n+  position: relative;\n+  min-height: 100px;\n }\n \n /* Editable text area overlay */\n@@ -114,6 +124,7 @@\n   animation: fadeIn 0.5s ease-in;\n   transition: all 0.3s ease;\n   cursor: pointer;\n+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);\n }\n \n /* @@@ Stacking: latest card on top, older cards stack below */"
+    },
+    {
+      "sha": "676c1d742d25ba76431a118957990d28f7f44872",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 21,
+      "deletions": 8,
+      "changes": 29,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9e6fe1454b6e694b038915b27787276ec6c7130e/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9e6fe1454b6e694b038915b27787276ec6c7130e/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=9e6fe1454b6e694b038915b27787276ec6c7130e",
+      "patch": "@@ -90,30 +90,43 @@ function App() {\n     detectVoices(currentText, voiceTriggers);\n   }, [voiceTriggers]);\n \n+  const stackedVoices = voices.slice(0, -1);\n+  const latestVoice = voices[voices.length - 1];\n+\n   return (\n     <div className=\"book-interface\">\n       <WritingArea onChange={handleTextChange} triggers={voiceTriggers} />\n-      <VoicesPanel>\n-        {voices.map((voice, index) => (\n+      <VoicesPanel\n+        stackedCards={stackedVoices.map((voice, index) => (\n           <VoiceComment\n             key={index}\n             voice={voice.name}\n             text={voice.text}\n             icon={voice.icon}\n             color={voice.color}\n-            isTopCard={index === voices.length - 1}\n+            isTopCard={false}\n             style={{\n               zIndex: index + 1,\n-              transform: index === voices.length - 1\n-                ? `translateY(${Math.max(0, (voices.length - 2) * 50 + 100)}%)`\n-                : `translateY(${index * 50}%)`,\n+              transform: `translateY(${index * 50}%)`,\n             }}\n           />\n         ))}\n-      </VoicesPanel>\n+        latestCard={latestVoice && (\n+          <VoiceComment\n+            voice={latestVoice.name}\n+            text={latestVoice.text}\n+            icon={latestVoice.icon}\n+            color={latestVoice.color}\n+            isTopCard={true}\n+            style={{\n+              zIndex: voices.length,\n+            }}\n+          />\n+        )}\n+      />\n       <BinderRings />\n     </div>\n   );\n }\n \n-export default App\n\\ No newline at end of file\n+export default App"
+    },
+    {
+      "sha": "1b7e77033f549e1d557e8b4059ecdd5a076b0bfc",
+      "filename": "frontend/src/components/VoicesPanel.tsx",
+      "status": "modified",
+      "additions": 10,
+      "deletions": 4,
+      "changes": 14,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9e6fe1454b6e694b038915b27787276ec6c7130e/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9e6fe1454b6e694b038915b27787276ec6c7130e/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx?ref=9e6fe1454b6e694b038915b27787276ec6c7130e",
+      "patch": "@@ -2,14 +2,20 @@ import { ReactNode } from 'react';\n import BookPage from './BookPage';\n \n interface VoicesPanelProps {\n-  children: ReactNode;\n+  stackedCards: ReactNode;\n+  latestCard: ReactNode;\n }\n \n-export default function VoicesPanel({ children }: VoicesPanelProps) {\n+export default function VoicesPanel({ stackedCards, latestCard }: VoicesPanelProps) {\n   return (\n     <BookPage side=\"right\">\n-      <div className=\"voice-stack\">\n-        {children}\n+      <div className=\"voices-container\">\n+        <div className=\"voice-stack\">\n+          {stackedCards}\n+        </div>\n+        <div className=\"latest-card-container\">\n+          {latestCard}\n+        </div>\n       </div>\n     </BookPage>\n   );"
+    }
+  ]
+}

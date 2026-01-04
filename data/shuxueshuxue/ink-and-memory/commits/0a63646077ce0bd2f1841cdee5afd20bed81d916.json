@@ -1,0 +1,85 @@
+{
+  "sha": "0a63646077ce0bd2f1841cdee5afd20bed81d916",
+  "node_id": "C_kwDOP2Zrm9oAKDBhNjM2NDYwNzdjZTBiZDJmMTg0MWNkZWU1YWZkMjBiZWQ4MWQ5MTY",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-05T07:46:19Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-05T07:46:19Z"
+    },
+    "message": "Add animations and daily state reset\n\n- Cube idle animation: starts after 3 seconds of inactivity\n- State indicator highlight animation when selected\n- Daily reset: state selection now expires each day\n- Cube will pop out again on new day to prompt daily check-in\n- Date stored in localStorage for reset logic",
+    "tree": {
+      "sha": "58b2449388f1eb0c1f2d8611902640cbfc30b972",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/58b2449388f1eb0c1f2d8611902640cbfc30b972"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/0a63646077ce0bd2f1841cdee5afd20bed81d916",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0a63646077ce0bd2f1841cdee5afd20bed81d916",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0a63646077ce0bd2f1841cdee5afd20bed81d916",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0a63646077ce0bd2f1841cdee5afd20bed81d916/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4d96e7f6bc41ceb6851402be8f143b0a57a36694",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4d96e7f6bc41ceb6851402be8f143b0a57a36694"
+    }
+  ],
+  "stats": {
+    "total": 161,
+    "additions": 120,
+    "deletions": 41
+  },
+  "files": [
+    {
+      "sha": "407be2cbbdebbf1fbc9b9871dfc07c089a946bf6",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 15,
+      "deletions": 2,
+      "changes": 17,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0a63646077ce0bd2f1841cdee5afd20bed81d916/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0a63646077ce0bd2f1841cdee5afd20bed81d916/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=0a63646077ce0bd2f1841cdee5afd20bed81d916",
+      "patch": "@@ -499,10 +499,19 @@ export default function App() {\n           setState(engine.getState());\n         }\n \n-        // @@@ Load selectedState from localStorage for guest mode\n+        // @@@ Load selectedState with daily reset check\n         const savedState = localStorage.getItem(STORAGE_KEYS.SELECTED_STATE);\n-        if (savedState) {\n+        const savedDate = localStorage.getItem('selected-state-date');\n+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD\n+\n+        // Reset state if it's a new day\n+        if (savedState && savedDate === today) {\n           setSelectedState(savedState);\n+        } else {\n+          // New day - clear the selection to show cube again\n+          localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);\n+          localStorage.removeItem('selected-state-date');\n+          setSelectedState(null);\n         }\n       }\n     };\n@@ -1042,17 +1051,21 @@ export default function App() {\n \n   const handleStateChoose = useCallback(async (stateId: string) => {\n     setSelectedState(stateId);\n+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD\n \n     // @@@ Save to database if authenticated, localStorage if guest\n     if (isAuthenticated) {\n       try {\n         const { savePreferences } = await import('./api/voiceApi');\n         await savePreferences({ selected_state: stateId });\n+        // Also save date to localStorage for daily reset check\n+        localStorage.setItem('selected-state-date', today);\n       } catch (error) {\n         console.error('Failed to save state to database:', error);\n       }\n     } else {\n       localStorage.setItem(STORAGE_KEYS.SELECTED_STATE, stateId);\n+      localStorage.setItem('selected-state-date', today);\n     }\n   }, [isAuthenticated]);\n "
+    },
+    {
+      "sha": "c6d9cc11bed842f06823ccb7bd2296fcd279bb5c",
+      "filename": "frontend/src/components/StateChooser.tsx",
+      "status": "modified",
+      "additions": 67,
+      "deletions": 39,
+      "changes": 106,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0a63646077ce0bd2f1841cdee5afd20bed81d916/frontend%2Fsrc%2Fcomponents%2FStateChooser.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0a63646077ce0bd2f1841cdee5afd20bed81d916/frontend%2Fsrc%2Fcomponents%2FStateChooser.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FStateChooser.tsx?ref=0a63646077ce0bd2f1841cdee5afd20bed81d916",
+      "patch": "@@ -1,4 +1,4 @@\n-import { useState, useEffect } from 'react';\n+import { useState, useEffect, useRef } from 'react';\n import { StateCube } from './StateCube';\n import type { StateConfig } from '../types/voice';\n \n@@ -10,11 +10,16 @@ interface Props {\n \n export default function StateChooser({ stateConfig, selectedState, onChoose }: Props) {\n   const [isExpanded, setIsExpanded] = useState(!selectedState);\n+  const [shouldAnimate, setShouldAnimate] = useState(false);\n+  const indicatorRef = useRef<HTMLDivElement>(null);\n \n   // @@@ Collapse when selectedState is set externally\n   useEffect(() => {\n     if (selectedState) {\n       setIsExpanded(false);\n+      // Trigger highlight animation\n+      setShouldAnimate(true);\n+      setTimeout(() => setShouldAnimate(false), 600);\n     }\n   }, [selectedState]);\n \n@@ -76,49 +81,71 @@ export default function StateChooser({ stateConfig, selectedState, onChoose }: P\n   };\n \n   return (\n-    <div style={{\n-      padding: '0',\n-      fontFamily: \"'Excalifont', 'Xiaolai', 'Georgia', serif\"\n-    }}>\n-      {/* Compact view when state is selected */}\n-      {selectedStateData && !isExpanded ? (\n-        <div style={{\n-          display: 'flex',\n-          alignItems: 'center',\n-          gap: 16,\n-          cursor: 'pointer'\n-        }}\n-        onClick={() => setIsExpanded(true)}\n-        >\n-          {/* Date */}\n-          <div style={{\n-            fontSize: 13,\n-            color: '#666',\n-            fontWeight: 400\n-          }}>\n-            {dateString}\n-          </div>\n+    <>\n+      {/* @@@ Keyframe animation for highlight effect */}\n+      <style>{`\n+        @keyframes stateHighlight {\n+          0% {\n+            transform: scale(1);\n+            box-shadow: 0 0 0 0 rgba(100, 150, 255, 0.4);\n+          }\n+          50% {\n+            transform: scale(1.05);\n+            box-shadow: 0 0 0 8px rgba(100, 150, 255, 0);\n+          }\n+          100% {\n+            transform: scale(1);\n+            box-shadow: 0 0 0 0 rgba(100, 150, 255, 0);\n+          }\n+        }\n+      `}</style>\n \n-          {/* Mini icon + state name */}\n+      <div style={{\n+        padding: '0',\n+        fontFamily: \"'Excalifont', 'Xiaolai', 'Georgia', serif\"\n+      }}>\n+        {/* Compact view when state is selected */}\n+        {selectedStateData && !isExpanded ? (\n           <div style={{\n             display: 'flex',\n             alignItems: 'center',\n-            gap: 10,\n-            padding: '4px 12px',\n-            background: 'rgba(255,255,255,0.6)',\n-            borderRadius: 6,\n-            border: '1px solid rgba(0,0,0,0.08)',\n-            transition: 'all 0.2s'\n-          }}\n-          onMouseEnter={(e) => {\n-            e.currentTarget.style.background = 'rgba(255,255,255,0.9)';\n-            e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)';\n-          }}\n-          onMouseLeave={(e) => {\n-            e.currentTarget.style.background = 'rgba(255,255,255,0.6)';\n-            e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';\n+            gap: 16,\n+            cursor: 'pointer'\n           }}\n+          onClick={() => setIsExpanded(true)}\n           >\n+            {/* Date */}\n+            <div style={{\n+              fontSize: 13,\n+              color: '#666',\n+              fontWeight: 400\n+            }}>\n+              {dateString}\n+            </div>\n+\n+            {/* Mini icon + state name */}\n+            <div\n+              ref={indicatorRef}\n+              style={{\n+                display: 'flex',\n+                alignItems: 'center',\n+                gap: 10,\n+                padding: '4px 12px',\n+                background: 'rgba(255,255,255,0.6)',\n+                borderRadius: 6,\n+                border: '1px solid rgba(0,0,0,0.08)',\n+                transition: 'all 0.2s',\n+                animation: shouldAnimate ? 'stateHighlight 0.6s ease-out' : 'none'\n+              }}\n+              onMouseEnter={(e) => {\n+                e.currentTarget.style.background = 'rgba(255,255,255,0.9)';\n+                e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)';\n+              }}\n+              onMouseLeave={(e) => {\n+                e.currentTarget.style.background = 'rgba(255,255,255,0.6)';\n+                e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';\n+              }}\n+            >\n             {/* Shrunken state icon */}\n             <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>\n               {selectedState && getMiniStateIcon(selectedState)}\n@@ -182,6 +209,7 @@ export default function StateChooser({ stateConfig, selectedState, onChoose }: P\n           </div>\n         </>\n       )}\n-    </div>\n+      </div>\n+    </>\n   );\n }"
+    },
+    {
+      "sha": "bbecdd92c7cda716f2eb024101cd5629e8321270",
+      "filename": "frontend/src/components/StateCube.tsx",
+      "status": "modified",
+      "additions": 38,
+      "deletions": 0,
+      "changes": 38,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0a63646077ce0bd2f1841cdee5afd20bed81d916/frontend%2Fsrc%2Fcomponents%2FStateCube.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0a63646077ce0bd2f1841cdee5afd20bed81d916/frontend%2Fsrc%2Fcomponents%2FStateCube.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FStateCube.tsx?ref=0a63646077ce0bd2f1841cdee5afd20bed81d916",
+      "patch": "@@ -396,6 +396,44 @@ export function StateCube({ onStateSelect, stateConfig }: StateCubeProps) {\n     };\n   }, []);\n \n+  // @@@ Idle animation: slowly rotate cube after 3 seconds of inactivity\n+  useEffect(() => {\n+    if (isDragging || isSnapping) return;\n+\n+    let idleTimeoutId: number;\n+    let idleAnimationId: number;\n+    const baseRotation = rotation; // Capture current rotation when idle starts\n+\n+    // Wait 3 seconds before starting idle animation\n+    idleTimeoutId = window.setTimeout(() => {\n+      const startTime = performance.now();\n+      const idleRotationSpeed = 0.0002; // Very slow rotation\n+\n+      const animateIdle = (currentTime: number) => {\n+        const elapsed = currentTime - startTime;\n+        const angle = elapsed * idleRotationSpeed;\n+\n+        // Rotate slowly around Y axis (left-right)\n+        const idleRotation = Quaternion.fromAxisAngle({ x: 0, y: 1, z: 0 }, angle);\n+        const newRotation = idleRotation.multiply(baseRotation);\n+\n+        setRotation(newRotation);\n+        idleAnimationId = requestAnimationFrame(animateIdle);\n+      };\n+\n+      idleAnimationId = requestAnimationFrame(animateIdle);\n+    }, 3000);\n+\n+    return () => {\n+      if (idleTimeoutId) {\n+        clearTimeout(idleTimeoutId);\n+      }\n+      if (idleAnimationId) {\n+        cancelAnimationFrame(idleAnimationId);\n+      }\n+    };\n+  }, [isDragging, isSnapping]);\n+\n   // @@@ Simple SVG icon generator for each state\n   const getStateIcon = (stateId: string) => {\n     const iconProps = { width: 40, height: 40, viewBox: \"0 0 100 100\", style: { margin: '0 auto' } };"
+    }
+  ]
+}

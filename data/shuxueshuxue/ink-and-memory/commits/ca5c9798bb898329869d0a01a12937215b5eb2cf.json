@@ -1,0 +1,73 @@
+{
+  "sha": "ca5c9798bb898329869d0a01a12937215b5eb2cf",
+  "node_id": "C_kwDOP2Zrm9oAKGNhNWM5Nzk4YmI4OTgzMjk4NjlkMGEwMWExMjkzNzIxNWI1ZWIyY2Y",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:21:39Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:21:39Z"
+    },
+    "message": "Restore pop-out transform on hover for stacked cards",
+    "tree": {
+      "sha": "7a8b5e30af27660d8b11e126ef47452e8cee0f38",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/7a8b5e30af27660d8b11e126ef47452e8cee0f38"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/ca5c9798bb898329869d0a01a12937215b5eb2cf",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ca5c9798bb898329869d0a01a12937215b5eb2cf",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ca5c9798bb898329869d0a01a12937215b5eb2cf",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ca5c9798bb898329869d0a01a12937215b5eb2cf/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "4d679086a398e40188755cc85373bb37a1a16442",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4d679086a398e40188755cc85373bb37a1a16442",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4d679086a398e40188755cc85373bb37a1a16442"
+    }
+  ],
+  "stats": {
+    "total": 5,
+    "additions": 3,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "155de6cf7d601b81989b9c50e87906efa4954ac2",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 0,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ca5c9798bb898329869d0a01a12937215b5eb2cf/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ca5c9798bb898329869d0a01a12937215b5eb2cf/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=ca5c9798bb898329869d0a01a12937215b5eb2cf",
+      "patch": "@@ -120,6 +120,7 @@\n /* Only non-top cards can pop up on hover */\n .voice-comment:not(.top-card):hover {\n   z-index: 1000 !important;\n+  transform: translateY(0) !important;\n   box-shadow: 0 8px 16px rgba(0,0,0,0.15);\n }\n "
+    },
+    {
+      "sha": "1bcda2c149baf6b76d344f5b8dac3f28a645af9d",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 2,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ca5c9798bb898329869d0a01a12937215b5eb2cf/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ca5c9798bb898329869d0a01a12937215b5eb2cf/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=ca5c9798bb898329869d0a01a12937215b5eb2cf",
+      "patch": "@@ -103,8 +103,8 @@ function App() {\n             color={voice.color}\n             isTopCard={index === voices.length - 1}\n             style={{\n-              zIndex: voices.length - index,\n-              transform: `translateY(${index * 30}%)`,\n+              zIndex: index + 1,\n+              transform: `translateY(${(voices.length - 1 - index) * 30}%)`,\n             }}\n           />\n         ))}"
+    }
+  ]
+}

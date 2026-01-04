@@ -1,0 +1,61 @@
+{
+  "sha": "43e01d30e0c47cc87db8af6959eb6d59b65d3516",
+  "node_id": "C_kwDOP2Zrm9oAKDQzZTAxZDMwZTBjNDdjYzg3ZGI4YWY2OTU5ZWI2ZDU5YjY1ZDM1MTY",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-21T14:46:54Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-21T14:46:54Z"
+    },
+    "message": "Fix voice triggers not reappearing after config change\n\nBug Fix:\n- When changing voice settings, triggers and highlights were cleared but didn't reappear\n- Root cause: Energy pool wasn't triggered after clearing old triggers\n- Solution: Force immediate re-analysis by setting energy to 40 when voiceConfigs changes\n\nChanges:\n- Add immediate analyzeIfNeeded() call when voice config changes\n- Set energy to 40 to trigger analysis threshold\n- Skip on initial mount to avoid unnecessary analysis\n- Backend session ID ensures correct results with new config\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "86137f9ea5642a3c67b08c909179e5b82547108a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/86137f9ea5642a3c67b08c909179e5b82547108a"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/43e01d30e0c47cc87db8af6959eb6d59b65d3516",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/43e01d30e0c47cc87db8af6959eb6d59b65d3516",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/43e01d30e0c47cc87db8af6959eb6d59b65d3516",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/43e01d30e0c47cc87db8af6959eb6d59b65d3516/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/36628abad643b521e4b29308aa5d6b6d7f2ea2ed"
+    }
+  ],
+  "stats": {
+    "total": 9,
+    "additions": 8,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "eeeadb481f7b824b6e1495a1f873c103ea3372e0",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 8,
+      "deletions": 1,
+      "changes": 9,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/43e01d30e0c47cc87db8af6959eb6d59b65d3516/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/43e01d30e0c47cc87db8af6959eb6d59b65d3516/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=43e01d30e0c47cc87db8af6959eb6d59b65d3516",
+      "patch": "@@ -243,9 +243,16 @@ function App() {\n   // @@@ Clear old triggers when voice config changes (e.g., Use Default)\n   // This forces immediate re-analysis with new config\n   useEffect(() => {\n-    console.log('🔄 Voice config changed, clearing old triggers');\n+    // Skip on initial mount (voiceConfigs is empty)\n+    if (Object.keys(voiceConfigs).length === 0) return;\n+\n+    console.log('🔄 Voice config changed, clearing old triggers and triggering immediate analysis');\n     setVoiceTriggers([]);\n     setVoices([]);\n+\n+    // Force immediate re-analysis (session ID ensures backend returns cached results)\n+    energyRef.current = 40;\n+    analyzeIfNeeded();\n   }, [voiceConfigs]);\n \n   return ("
+    }
+  ]
+}

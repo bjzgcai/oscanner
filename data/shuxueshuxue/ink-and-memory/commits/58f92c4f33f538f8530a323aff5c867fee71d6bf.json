@@ -1,0 +1,87 @@
+{
+  "sha": "58f92c4f33f538f8530a323aff5c867fee71d6bf",
+  "node_id": "C_kwDOP2Zrm9oAKDU4ZjkyYzRmMzNmNTM4Zjg1MzBhMzIzYWZmNWM4NjdmZWU3MWQ2YmY",
+  "commit": {
+    "author": {
+      "name": "zhuchenyu2008",
+      "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+      "date": "2026-01-01T05:36:34Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-01-01T05:36:34Z"
+    },
+    "message": "Merge pull request #10 from zhuchenyu2008/Mobile-adaptation\n\n\u79fb\u52a8\u7aef\u9002\u914d",
+    "tree": {
+      "sha": "26f4cd700e9bd45fa7c2ef140ee4e706f851f6aa",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/26f4cd700e9bd45fa7c2ef140ee4e706f851f6aa"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/58f92c4f33f538f8530a323aff5c867fee71d6bf",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpVgfiCRC1aQ7uu5UhlAAApQQQAKcpdLXuoxgchM56dDL7YR1c\nHbswn7gaiBEyT2+uh92UhkQhH45t9jz7UlGZMfwTFmEPYpE1tvkcUwSZDZ+fJAPA\nk5WOr3AscI8JiXQ6CS1BYbp2JUcUS8DdTi1dX1CXkN4t8bA3uqadgz3zvQdrCxki\nilmFMMpC1rodXLIgxZfzFMImbYXjPUo7ntpOBgU57rgbkPWMm/FwnVnat6VOc1yo\n8jgdOjt6vYrH+QX5MidIYtFsnEINXeNykWSNq3XCOsgqRljw5qHe1zAMg7RzTPlx\n4kvxQE601JNo2K4h3DEthCO3WIqMFQ+8ub3vFaCEulcTvvqkCePsXplrRzRAaxE+\n4puS1Qte8e0qWhkQEs0aE+EQRNA0ZhRoTL2/p4lYnZ9zSElN1F76bpvmXuO6D4ri\nWFU53TbLKjwbZZZ5SlM32rjDWDT4dcXwnyVUr9GEusulQe13ih9ZIeEZciqO/bmu\nJ/h82tvXz2qXqlcDD1IXqYstzw/DIHqhIKeDfVlhM5MVLXugbwds0anNEq5xCKJ0\nkTkLs0BfBOgCF4vcioifZlr9or5Z8Cjo3zh8eH125fwHc3RDGP4Cku1P1kTM2Doo\nEDQwtTO6257UV1ZZIcprTaYBL+xPTCa8ABf7Uquw5bL8mA/gaqdSR8jF/dJb4g9c\nCy/1k6TDTYUu/dchLo/w\n=VEE9\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 26f4cd700e9bd45fa7c2ef140ee4e706f851f6aa\nparent b56fdc9077af4657752cd5434560ff09b8cfcd2b\nparent aaa1932d14a5a8061959403c88697c1b93fe26aa\nauthor zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com> 1767245794 +0800\ncommitter GitHub <noreply@github.com> 1767245794 +0800\n\nMerge pull request #10 from zhuchenyu2008/Mobile-adaptation\n\n\u79fb\u52a8\u7aef\u9002\u914d",
+      "verified_at": "2026-01-01T05:36:34Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/58f92c4f33f538f8530a323aff5c867fee71d6bf",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/58f92c4f33f538f8530a323aff5c867fee71d6bf",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/58f92c4f33f538f8530a323aff5c867fee71d6bf/comments",
+  "author": {
+    "login": "zhuchenyu2008",
+    "id": 132262479,
+    "node_id": "U_kgDOB-IqTw",
+    "avatar_url": "https://avatars.githubusercontent.com/u/132262479?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/zhuchenyu2008",
+    "html_url": "https://github.com/zhuchenyu2008",
+    "followers_url": "https://api.github.com/users/zhuchenyu2008/followers",
+    "following_url": "https://api.github.com/users/zhuchenyu2008/following{/other_user}",
+    "gists_url": "https://api.github.com/users/zhuchenyu2008/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/zhuchenyu2008/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/zhuchenyu2008/subscriptions",
+    "organizations_url": "https://api.github.com/users/zhuchenyu2008/orgs",
+    "repos_url": "https://api.github.com/users/zhuchenyu2008/repos",
+    "events_url": "https://api.github.com/users/zhuchenyu2008/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/zhuchenyu2008/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "b56fdc9077af4657752cd5434560ff09b8cfcd2b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b56fdc9077af4657752cd5434560ff09b8cfcd2b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/b56fdc9077af4657752cd5434560ff09b8cfcd2b"
+    },
+    {
+      "sha": "aaa1932d14a5a8061959403c88697c1b93fe26aa",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/aaa1932d14a5a8061959403c88697c1b93fe26aa",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/aaa1932d14a5a8061959403c88697c1b93fe26aa"
+    }
+  ]
+}

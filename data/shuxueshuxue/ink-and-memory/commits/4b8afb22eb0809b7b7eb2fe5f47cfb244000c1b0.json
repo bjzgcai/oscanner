@@ -1,0 +1,72 @@
+{
+  "sha": "4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0",
+  "node_id": "C_kwDOP2Zrm9oAKDRiOGFmYjIyZWIwODA5YjdiN2ViMmZlNWY0N2NmYjI0NDAwMGMxYjA",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:12:38Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:12:38Z"
+    },
+    "message": "Update README screenshot and mention language support",
+    "tree": {
+      "sha": "8185a0ca6ea832a3de5b5c332776976625becd1f",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/8185a0ca6ea832a3de5b5c332776976625becd1f"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "744cedb6c07d146ebfabaea3a5b53544493ac5d7",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/744cedb6c07d146ebfabaea3a5b53544493ac5d7",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/744cedb6c07d146ebfabaea3a5b53544493ac5d7"
+    }
+  ],
+  "stats": {
+    "total": 7,
+    "additions": 2,
+    "deletions": 5
+  },
+  "files": [
+    {
+      "sha": "5b3099cc93361676def684ca44a2838ea6366aa3",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 5,
+      "changes": 7,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0",
+      "patch": "@@ -1,11 +1,8 @@\n # Ink and Memory\n \n-A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.\n+A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write—supporting both English and Chinese from the first keystroke.\n \n-![Demo Screenshot](assets/demo-screenshot.png)\n-\n-*Original UI Design Concept:*\n-![Book UI Design](assets/book-ui-design.png)\n+![Writing Area Screenshot](assets/writing-area.png)\n \n ## ✨ Features\n "
+    },
+    {
+      "sha": "81a84885b86900b74741960d67133565221fc520",
+      "filename": "assets/writing-area.png",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0/assets%2Fwriting-area.png",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0/assets%2Fwriting-area.png",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/assets%2Fwriting-area.png?ref=4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0"
+    }
+  ]
+}

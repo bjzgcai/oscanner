@@ -1,0 +1,72 @@
+{
+  "sha": "fd21fac0377a9c3d062743f597d2629fa24b67d3",
+  "node_id": "C_kwDOP2Zrm9oAKGZkMjFmYWMwMzc3YTljM2QwNjI3NDNmNTk3ZDI2MjlmYTI0YjY3ZDM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:57:36Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:57:36Z"
+    },
+    "message": "Remove remaining ProseMirror/TipTap CSS (64 lines)\n\n- Removed entire .editable-text-area section\n- All ProseMirror-related styles now removed\n- CSS bundle: 4.89 kB → 3.88 kB (~20% reduction)",
+    "tree": {
+      "sha": "c54808beb671700bdcbdc444c001a9d6571f5b75",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/c54808beb671700bdcbdc444c001a9d6571f5b75"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/fd21fac0377a9c3d062743f597d2629fa24b67d3",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fd21fac0377a9c3d062743f597d2629fa24b67d3",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fd21fac0377a9c3d062743f597d2629fa24b67d3",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fd21fac0377a9c3d062743f597d2629fa24b67d3/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "fff1153a5765dbf818987a9a0bb6ff59cdce8e0b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fff1153a5765dbf818987a9a0bb6ff59cdce8e0b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fff1153a5765dbf818987a9a0bb6ff59cdce8e0b"
+    }
+  ],
+  "stats": {
+    "total": 65,
+    "additions": 0,
+    "deletions": 65
+  },
+  "files": [
+    {
+      "sha": "78fe5725026734cf0204d42e4b80f3ce8dc4d206",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fd21fac0377a9c3d062743f597d2629fa24b67d3/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fd21fac0377a9c3d062743f597d2629fa24b67d3/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=fd21fac0377a9c3d062743f597d2629fa24b67d3"
+    },
+    {
+      "sha": "e59a41707aa872301bcf15568849c5a6e5a4c17a",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 65,
+      "changes": 65,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fd21fac0377a9c3d062743f597d2629fa24b67d3/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fd21fac0377a9c3d062743f597d2629fa24b67d3/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=fd21fac0377a9c3d062743f597d2629fa24b67d3",
+      "patch": "@@ -68,71 +68,6 @@\n   overflow-wrap: break-word;\n }\n \n-/* Editable text area overlay */\n-.editable-text-area {\n-  width: 100%;\n-  height: 100%;\n-  box-sizing: border-box;\n-  display: flex;\n-  flex-direction: column;\n-  overflow: hidden;\n-}\n-\n-.editable-text-area .ProseMirror {\n-  flex: 1;\n-  width: 100%;\n-  padding: 2rem;\n-  padding-right: 4rem;\n-  font-size: 1.2rem;\n-  line-height: 1.8;\n-  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;\n-  color: #333 !important;\n-  background: #fffef9 !important;\n-  outline: none;\n-  box-sizing: border-box;\n-  cursor: text;\n-  overflow-y: auto;\n-  overflow-x: hidden;\n-  scrollbar-width: none; /* Firefox */\n-  -ms-overflow-style: none; /* IE/Edge */\n-}\n-\n-.editable-text-area .ProseMirror::-webkit-scrollbar {\n-  display: none; /* Chrome/Safari */\n-}\n-\n-.editable-text-area .ProseMirror p {\n-  margin: 0.5rem 0;\n-  color: #333 !important;\n-}\n-\n-.editable-text-area .ProseMirror p:first-child {\n-  margin-top: 0;\n-}\n-\n-.editable-text-area .ProseMirror * {\n-  color: inherit !important;\n-}\n-\n-/* Placeholder styling */\n-.editable-text-area .ProseMirror p.is-editor-empty:first-child::before {\n-  content: attr(data-placeholder);\n-  color: #aaa;\n-  pointer-events: none;\n-  height: 0;\n-  float: left;\n-}\n-\n-/* Blockquote styling for quoted comments */\n-.editable-text-area .ProseMirror blockquote {\n-  margin: 1rem 0;\n-  padding: 0.5rem 1rem;\n-  border-left: 4px solid #8b7355;\n-  background: #f9f5ed;\n-  font-style: italic;\n-  color: #555;\n-}\n-\n .voice-comment {\n   padding: 1rem;\n   border-left: 4px solid;"
+    }
+  ]
+}

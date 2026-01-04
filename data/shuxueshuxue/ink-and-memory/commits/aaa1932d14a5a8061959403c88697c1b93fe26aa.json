@@ -1,0 +1,82 @@
+{
+  "sha": "aaa1932d14a5a8061959403c88697c1b93fe26aa",
+  "node_id": "C_kwDOP2Zrm9oAKGFhYTE5MzJkMTRhNWE4MDYxOTU5NDAzYzg4Njk3YzFiOTNmZTI2YWE",
+  "commit": {
+    "author": {
+      "name": "zhuchenyu2008",
+      "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+      "date": "2026-01-01T05:29:02Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-01-01T05:29:02Z"
+    },
+    "message": "\u79fb\u52a8\u7aef\u9002\u914d\n\n  - frontend/src/App.tsx\uff1a\u65b0\u589e\u79fb\u52a8\u7aef\u5e95\u90e8\u5bfc\u822a\uff1b\u5199\u4f5c/\u65f6\u95f4\u7ebf/\u5206\u6790/\u5361\u7ec4/\u8bbe\u7f6e\u9875\u7edf\u4e00\u9002\r\n    \u914d\u79fb\u52a8\u7aef\u5b89\u5168\u533a\u4e0e\u5e95\u90e8\u5bfc\u822a\u9ad8\u5ea6\uff1b\u79fb\u52a8\u7aef\u8bc4\u8bba\u5f39\u7a97\u4e0e\u5199\u4f5c\u533a\u6eda\u52a8\u7559\u51fa\u5e95\u90e8\u7a7a\u95f4\uff1b\u5e95\u90e8\u7edf\r\n    \u8ba1\u6761\u5728\u79fb\u52a8\u7aef\u7f29\u5c0f\u5e76\u5141\u8bb8\u6362\u884c\uff1b\u80fd\u91cf\u6761\u5f00\u5173\u5706\u70b9\u6539\u4e3a\u53f3\u5bf9\u9f50\u907f\u514d\u6ea2\u51fa\u3002\r\n  - frontend/src/App.css\uff1a\u8865\u4e86\u79fb\u52a8\u7aef\u5a92\u4f53\u67e5\u8be2\uff0c\u4fee\u6b63\u4e66\u9875\u5e03\u5c40\u4e0e\u8bed\u97f3\u8f93\u5165\u6d6e\u5c42\u5728\u7a84\u5c4f\u7684\r\n    \u5c3a\u5bf8\u548c\u4f4d\u7f6e\u3002\r\n  - frontend/src/components/DeckManager.tsx\uff1a\u5361\u7247\u4e0e\u6eda\u52a8\u5bb9\u5668\u6539\u4e3a\u81ea\u9002\u5e94\u5bbd\u5ea6\u4e0e\u95f4\r\n    \u8ddd\uff0c\u907f\u514d\u7a84\u5c4f\u6ea2\u51fa\u3002\r\n  - frontend/src/components/CollectionsView.tsx\uff1a\u65f6\u95f4\u7ebf\u79fb\u52a8\u7aef\u6539\u4e3a\u5355\u5217\u5c45\u4e2d\u5361\u7247\u3001\r\n    \u7f29\u5c0f\u5361\u7247\u5bbd\u5ea6\uff1b\u65f6\u95f4\u7ebf\u70b9\u5c45\u4e2d\uff1b\u6062\u590d\u5e76\u7ec6\u5316\u4e2d\u7ebf\uff1b\u56fe\u7247\u9884\u89c8\u5f39\u7a97\u5728\u79fb\u52a8\u7aef\u6539\u4e3a\u7eb5\u5411\u5e03\u5c40\r\n    \u5e76\u7f29\u7d27\u5185\u8fb9\u8ddd\u3002\r\n  - frontend/src/components/AnalysisView.tsx\uff1a\u5f15\u5165\u79fb\u52a8\u7aef\u68c0\u6d4b\uff0c\u7f29\u5c0f\u62a5\u544a\u9875\u4e0e\r\n    dashboard \u7684\u6392\u7248\u5c3a\u5bf8\uff1b\u7eb8\u5f20\u5806\u6808\u5728\u79fb\u52a8\u7aef\u6536\u7a84\u3001\u5185\u5bb9\u9ad8\u5ea6\u81ea\u9002\u5e94\uff0c\u5bfc\u822a\u6309\u94ae\u9760\u8fb9\u663e\r\n    \u793a\uff0ctraits \u7f51\u683c\u5728\u79fb\u52a8\u7aef\u5355\u5217\u3002",
+    "tree": {
+      "sha": "26f4cd700e9bd45fa7c2ef140ee4e706f851f6aa",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/26f4cd700e9bd45fa7c2ef140ee4e706f851f6aa"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/aaa1932d14a5a8061959403c88697c1b93fe26aa",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpVgYfCRC1aQ7uu5UhlAAA0a0QAE/ihfR/xPXhtZ/A+NmBFH0V\ndUieUx85Q1G/JwENGt3n9VLY3ir8INeDtSfac1xFTdqHJgZuWh7GNxeSZhEYWiKv\nFT6BiRyBKXUCL1hjWTpVkagBbrlZ8xybCHD8XEOSbaWMyEnThAvOte46oFq/Ck1n\n30/+Rlc9hc0jMNd2RweJLJ5ucFYJ1nrNw7BH47XG/pll8RnZ6PNh596GkMwLpUgL\nEiSgSCYhr/HemN3MoIH/cOsZ5L3IXMDeOZzpplSFYiutqCK9/amfy3lfWF2dUVyv\nl75LOB5xFO9tsk+JAzC3FErwBLRIKJXO0xGuw0QHD4ZAjU9qf7hh1lQiEjSiXLmK\nLEJoxQ39GCzT9/z4JDT34zHU2Qz2zwFNhpCmtpF3vY+7xrlPc72ojzX4xi5vQXoc\nLc/IJGWpa5OFE2ByZqRS2BxnKj29KtpUm8EQG3euGCRXHFpNiHe7heu3e3EQeoll\nfCcI6Dq6w0hGsrikTzzUztfUZs9yX2AhEcv5YbrgEmPURg9fS23BthGdeIe2SG8H\nrzEx6I9BnaBJ8cqNwxkUSJKF/uhq0dpFtjyleaaBYOzP81M6coY2KS071gcquMTJ\n8brChBMg0GQ6/z5jmTEk8qVI8itr60eZh9ZjKB1jpZOjtGSu0hKhBz3br19yYOjY\nz5PvoWJIBSiJbqAYWmsn\n=BDrp\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 26f4cd700e9bd45fa7c2ef140ee4e706f851f6aa\nparent b56fdc9077af4657752cd5434560ff09b8cfcd2b\nauthor zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com> 1767245342 +0800\ncommitter GitHub <noreply@github.com> 1767245342 +0800\n\n\u79fb\u52a8\u7aef\u9002\u914d\n\n  - frontend/src/App.tsx\uff1a\u65b0\u589e\u79fb\u52a8\u7aef\u5e95\u90e8\u5bfc\u822a\uff1b\u5199\u4f5c/\u65f6\u95f4\u7ebf/\u5206\u6790/\u5361\u7ec4/\u8bbe\u7f6e\u9875\u7edf\u4e00\u9002\r\n    \u914d\u79fb\u52a8\u7aef\u5b89\u5168\u533a\u4e0e\u5e95\u90e8\u5bfc\u822a\u9ad8\u5ea6\uff1b\u79fb\u52a8\u7aef\u8bc4\u8bba\u5f39\u7a97\u4e0e\u5199\u4f5c\u533a\u6eda\u52a8\u7559\u51fa\u5e95\u90e8\u7a7a\u95f4\uff1b\u5e95\u90e8\u7edf\r\n    \u8ba1\u6761\u5728\u79fb\u52a8\u7aef\u7f29\u5c0f\u5e76\u5141\u8bb8\u6362\u884c\uff1b\u80fd\u91cf\u6761\u5f00\u5173\u5706\u70b9\u6539\u4e3a\u53f3\u5bf9\u9f50\u907f\u514d\u6ea2\u51fa\u3002\r\n  - frontend/src/App.css\uff1a\u8865\u4e86\u79fb\u52a8\u7aef\u5a92\u4f53\u67e5\u8be2\uff0c\u4fee\u6b63\u4e66\u9875\u5e03\u5c40\u4e0e\u8bed\u97f3\u8f93\u5165\u6d6e\u5c42\u5728\u7a84\u5c4f\u7684\r\n    \u5c3a\u5bf8\u548c\u4f4d\u7f6e\u3002\r\n  - frontend/src/components/DeckManager.tsx\uff1a\u5361\u7247\u4e0e\u6eda\u52a8\u5bb9\u5668\u6539\u4e3a\u81ea\u9002\u5e94\u5bbd\u5ea6\u4e0e\u95f4\r\n    \u8ddd\uff0c\u907f\u514d\u7a84\u5c4f\u6ea2\u51fa\u3002\r\n  - frontend/src/components/CollectionsView.tsx\uff1a\u65f6\u95f4\u7ebf\u79fb\u52a8\u7aef\u6539\u4e3a\u5355\u5217\u5c45\u4e2d\u5361\u7247\u3001\r\n    \u7f29\u5c0f\u5361\u7247\u5bbd\u5ea6\uff1b\u65f6\u95f4\u7ebf\u70b9\u5c45\u4e2d\uff1b\u6062\u590d\u5e76\u7ec6\u5316\u4e2d\u7ebf\uff1b\u56fe\u7247\u9884\u89c8\u5f39\u7a97\u5728\u79fb\u52a8\u7aef\u6539\u4e3a\u7eb5\u5411\u5e03\u5c40\r\n    \u5e76\u7f29\u7d27\u5185\u8fb9\u8ddd\u3002\r\n  - frontend/src/components/AnalysisView.tsx\uff1a\u5f15\u5165\u79fb\u52a8\u7aef\u68c0\u6d4b\uff0c\u7f29\u5c0f\u62a5\u544a\u9875\u4e0e\r\n    dashboard \u7684\u6392\u7248\u5c3a\u5bf8\uff1b\u7eb8\u5f20\u5806\u6808\u5728\u79fb\u52a8\u7aef\u6536\u7a84\u3001\u5185\u5bb9\u9ad8\u5ea6\u81ea\u9002\u5e94\uff0c\u5bfc\u822a\u6309\u94ae\u9760\u8fb9\u663e\r\n    \u793a\uff0ctraits \u7f51\u683c\u5728\u79fb\u52a8\u7aef\u5355\u5217\u3002",
+      "verified_at": "2026-01-01T05:29:04Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/aaa1932d14a5a8061959403c88697c1b93fe26aa",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/aaa1932d14a5a8061959403c88697c1b93fe26aa",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/aaa1932d14a5a8061959403c88697c1b93fe26aa/comments",
+  "author": {
+    "login": "zhuchenyu2008",
+    "id": 132262479,
+    "node_id": "U_kgDOB-IqTw",
+    "avatar_url": "https://avatars.githubusercontent.com/u/132262479?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/zhuchenyu2008",
+    "html_url": "https://github.com/zhuchenyu2008",
+    "followers_url": "https://api.github.com/users/zhuchenyu2008/followers",
+    "following_url": "https://api.github.com/users/zhuchenyu2008/following{/other_user}",
+    "gists_url": "https://api.github.com/users/zhuchenyu2008/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/zhuchenyu2008/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/zhuchenyu2008/subscriptions",
+    "organizations_url": "https://api.github.com/users/zhuchenyu2008/orgs",
+    "repos_url": "https://api.github.com/users/zhuchenyu2008/repos",
+    "events_url": "https://api.github.com/users/zhuchenyu2008/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/zhuchenyu2008/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "b56fdc9077af4657752cd5434560ff09b8cfcd2b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b56fdc9077af4657752cd5434560ff09b8cfcd2b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/b56fdc9077af4657752cd5434560ff09b8cfcd2b"
+    }
+  ]
+}

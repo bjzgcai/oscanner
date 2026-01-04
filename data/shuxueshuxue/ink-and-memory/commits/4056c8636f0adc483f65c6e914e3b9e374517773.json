@@ -1,0 +1,82 @@
+{
+  "sha": "4056c8636f0adc483f65c6e914e3b9e374517773",
+  "node_id": "C_kwDOP2Zrm9oAKDQwNTZjODYzNmYwYWRjNDgzZjY1YzZlOTE0ZTNiOWUzNzQ1MTc3NzM",
+  "commit": {
+    "author": {
+      "name": "zhuchenyu2008",
+      "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+      "date": "2025-12-28T12:49:05Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2025-12-28T12:49:05Z"
+    },
+    "message": "Frontend Energy Accumulation Visualization\n\n  - Added an Energy progress bar to the writing view\u2019s bottom debug stats bar\r\n    and made it animate when crossing each energy threshold.\r\n  - Implemented threshold-based progress calculation (per 50 energy) with a\r\n    brief full-fill flash before rolling into the next cycle.\r\n  - Enhanced the pulse animation for clearer visual feedback.\r\n\r\n  Changes\r\n\r\n  - frontend/src/App.tsx Added energy threshold/progress logic, pulse trigger,\r\n    and the UI for Energy: + progress bar in the bottom stats bar.\r\n  - frontend/src/App.css Added @keyframes energyPulse with stronger glow/\r\n    scale/brightness.",
+    "tree": {
+      "sha": "c01a427c7145d784ee3c757b3b6b109144a5d40c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/c01a427c7145d784ee3c757b3b6b109144a5d40c"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4056c8636f0adc483f65c6e914e3b9e374517773",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpUSdBCRC1aQ7uu5UhlAAA1hUQAKXmRvdJtaLS9AGY1iEz9AeL\nnpkZ1CqeUv3WLShNLxyphoeYEnhLVbgzeuJ53L05gb9IWvOOehQHKCu9fAfzGazG\nFTqHAcNSqE55f8dIomRd7OQ+a84H0Kg11VHBmWCdg0KlAaHSewUPw6/b3/NT9dlN\nIHutP2QRdcWKTDHNNUtxAH8PoKqW/IKbLAmpdfw6vmLl96H6c0jXnMtTLruyl2cG\nPGHiiA/camCSNt4wSond6yEnMy+tm09MztmjJPVvgvnkIxMA7SWseOie/akwJYrV\nGpgCTvHDAcUkzMh6FkeC8Y1ySfWLzYAqP0WHMF6mwmc1Emwm8hKYoRN5xmHJ69i0\nluFp/5/c6y2YMdom2X/QHtm6v+VDcvQ52buigQbZ0irUP9TxOseKq/4XuLd04p7s\nD/cAE/s17cM64ZYlWUK+fdp+pb24Px2OtfyIodZYt2wwJJpsRjCh23kEwj0LIUxJ\nRZQf98oITlaBnaSk2D/iin1eOwRSPglGj23aORd6MkHiDu33+CULQkwk6oGhgXWE\nhip0oIN/uoX5rY+BanuO8xQJWMI66kYbbyZgC+e/xSRattxaF+D05GESa3HNHbDY\n0IR4m/ToBBsl30OWVSnwZqOm2oUQnuIgnEQQjoWMqEqbDAlIts4jjo0I/WI73S55\nUgrKHqNu/NVwtslaPXGj\n=96YU\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree c01a427c7145d784ee3c757b3b6b109144a5d40c\nparent 06b7c9539721d80431b5f072591f13ab241be5c9\nauthor zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com> 1766926145 +0800\ncommitter GitHub <noreply@github.com> 1766926145 +0800\n\nFrontend Energy Accumulation Visualization\n\n  - Added an Energy progress bar to the writing view\u2019s bottom debug stats bar\r\n    and made it animate when crossing each energy threshold.\r\n  - Implemented threshold-based progress calculation (per 50 energy) with a\r\n    brief full-fill flash before rolling into the next cycle.\r\n  - Enhanced the pulse animation for clearer visual feedback.\r\n\r\n  Changes\r\n\r\n  - frontend/src/App.tsx Added energy threshold/progress logic, pulse trigger,\r\n    and the UI for Energy: + progress bar in the bottom stats bar.\r\n  - frontend/src/App.css Added @keyframes energyPulse with stronger glow/\r\n    scale/brightness.",
+      "verified_at": "2025-12-28T12:49:05Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4056c8636f0adc483f65c6e914e3b9e374517773",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4056c8636f0adc483f65c6e914e3b9e374517773",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4056c8636f0adc483f65c6e914e3b9e374517773/comments",
+  "author": {
+    "login": "zhuchenyu2008",
+    "id": 132262479,
+    "node_id": "U_kgDOB-IqTw",
+    "avatar_url": "https://avatars.githubusercontent.com/u/132262479?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/zhuchenyu2008",
+    "html_url": "https://github.com/zhuchenyu2008",
+    "followers_url": "https://api.github.com/users/zhuchenyu2008/followers",
+    "following_url": "https://api.github.com/users/zhuchenyu2008/following{/other_user}",
+    "gists_url": "https://api.github.com/users/zhuchenyu2008/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/zhuchenyu2008/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/zhuchenyu2008/subscriptions",
+    "organizations_url": "https://api.github.com/users/zhuchenyu2008/orgs",
+    "repos_url": "https://api.github.com/users/zhuchenyu2008/repos",
+    "events_url": "https://api.github.com/users/zhuchenyu2008/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/zhuchenyu2008/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "06b7c9539721d80431b5f072591f13ab241be5c9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/06b7c9539721d80431b5f072591f13ab241be5c9",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/06b7c9539721d80431b5f072591f13ab241be5c9"
+    }
+  ]
+}

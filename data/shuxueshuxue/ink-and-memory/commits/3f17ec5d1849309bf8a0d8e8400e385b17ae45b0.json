@@ -1,0 +1,121 @@
+{
+  "sha": "3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+  "node_id": "C_kwDOP2Zrm9oAKDNmMTdlYzVkMTg0OTMwOWJmOGEwZDhlODQwMGUzODViMTdhZTQ1YjA",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T12:14:25Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T12:14:25Z"
+    },
+    "message": "Fix migration system and date parsing bugs\n\nBackend:\n- Add migration v2: first_login_completed field to user_preferences\n- Add set_first_login_completed() database function\n- Add POST /api/mark-first-login-completed endpoint\n- Update get_preferences() to include first_login_completed\n\nFrontend:\n- Fix migration logic to use database flag instead of localStorage\n- Fix date parsing bug: use substring(0,10) instead of split('T')\n  (SQLite timestamps use space, not 'T', causing 9 fake \"days\")\n- Fix auto-save to use same session ID as manual save\n- Preserve auth token when clearing localStorage for returning users\n- Clear localStorage for returning users on every login (clean slate)\n- Show migration dialog only on first login with localStorage data\n\nMigration Flow:\n1. First login without data → mark completed, no dialog\n2. First login with data → show dialog → migrate/skip → mark completed → clear localStorage\n3. Returning user → clear localStorage (keep token), never show dialog\n\nFixes:\n- Reflections showing wrong stats (9 days instead of 1)\n- Auto-save creating duplicate \"Current Session\" entries\n- Migration dialog appearing repeatedly after skip\n- Auth token being cleared for returning users\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "7665dc5a090f9fa5239d42de5412691110cd554f",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/7665dc5a090f9fa5239d42de5412691110cd554f"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30"
+    }
+  ],
+  "stats": {
+    "total": 217,
+    "additions": 153,
+    "deletions": 64
+  },
+  "files": [
+    {
+      "sha": "adfce5c23507d78b8f14d5bcc4dd1a3413147ec2",
+      "filename": "backend/database.py",
+      "status": "modified",
+      "additions": 43,
+      "deletions": 1,
+      "changes": 44,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/backend%2Fdatabase.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/backend%2Fdatabase.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdatabase.py?ref=3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+      "patch": "@@ -48,6 +48,8 @@ def init_db():\n     # Run migrations\n     if current_version < 1:\n         migrate_v1(db)\n+    if current_version < 2:\n+        migrate_v2(db)\n \n     db.commit()\n     db.close()\n@@ -150,6 +152,20 @@ def migrate_v1(db):\n \n     print(\"✅ Migration v1 completed\")\n \n+def migrate_v2(db):\n+    \"\"\"Add first_login_completed field to user_preferences.\"\"\"\n+    print(\"📦 Running migration v2: Add first_login_completed field\")\n+\n+    # Add first_login_completed column to user_preferences\n+    db.execute(\"\"\"\n+    ALTER TABLE user_preferences ADD COLUMN first_login_completed INTEGER DEFAULT 0\n+    \"\"\")\n+\n+    # Record migration\n+    db.execute(\"INSERT INTO schema_version (version) VALUES (2)\")\n+\n+    print(\"✅ Migration v2 completed\")\n+\n # ========== User Management ==========\n \n def create_user(email: str, password_hash: str, display_name: str = None) -> int:\n@@ -335,7 +351,8 @@ def get_preferences(user_id: int):\n     db = get_db()\n     try:\n         row = db.execute(\"\"\"\n-        SELECT voice_configs_json, meta_prompt, state_config_json, selected_state, updated_at\n+        SELECT voice_configs_json, meta_prompt, state_config_json, selected_state,\n+               first_login_completed, updated_at\n         FROM user_preferences\n         WHERE user_id = ?\n         \"\"\", (user_id,)).fetchone()\n@@ -351,6 +368,31 @@ def get_preferences(user_id: int):\n     finally:\n         db.close()\n \n+def set_first_login_completed(user_id: int):\n+    \"\"\"Mark user's first login as completed.\"\"\"\n+    db = get_db()\n+    try:\n+        # Check if preferences exist\n+        existing = db.execute(\"SELECT user_id FROM user_preferences WHERE user_id = ?\", (user_id,)).fetchone()\n+\n+        if existing:\n+            # Update existing\n+            db.execute(\"\"\"\n+            UPDATE user_preferences\n+            SET first_login_completed = 1, updated_at = CURRENT_TIMESTAMP\n+            WHERE user_id = ?\n+            \"\"\", (user_id,))\n+        else:\n+            # Insert new\n+            db.execute(\"\"\"\n+            INSERT INTO user_preferences (user_id, first_login_completed)\n+            VALUES (?, 1)\n+            \"\"\", (user_id,))\n+\n+        db.commit()\n+    finally:\n+        db.close()\n+\n # ========== Analysis Reports ==========\n \n def save_analysis_report(user_id: int, report_type: str, report_data: dict, all_notes_text: str = None):"
+    },
+    {
+      "sha": "95d720412e62d57c7c264149f9352ed21cb40f7a",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 10,
+      "deletions": 0,
+      "changes": 10,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+      "patch": "@@ -907,6 +907,16 @@ def save_preferences_endpoint(\n \n     return {\"success\": True}\n \n+@app.post(\"/api/mark-first-login-completed\")\n+def mark_first_login_completed(current_user: dict = Depends(get_current_user)):\n+    \"\"\"\n+    Mark user's first login as completed.\n+    Called after migration dialog is shown (migrate or skip).\n+    \"\"\"\n+    user_id = current_user['user_id']\n+    database.set_first_login_completed(user_id)\n+    return {\"success\": True}\n+\n # ========== Analysis Reports Endpoints ==========\n \n @app.get(\"/api/reports\")"
+    },
+    {
+      "sha": "bc583eee47344e265c3ec69715e805e4c09965ad",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 76,
+      "deletions": 60,
+      "changes": 136,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+      "patch": "@@ -370,57 +370,52 @@ export default function App() {\n \n   // @@@ Check for localStorage migration after login\n   useEffect(() => {\n-    console.log('🔍 Migration check:', { isAuthenticated, isLoading });\n-\n-    if (isAuthenticated && !isLoading) {\n-      // Check if user has localStorage data that needs migration\n-      const hasLocalData =\n-        localStorage.getItem(STORAGE_KEYS.EDITOR_STATE) ||\n-        localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES) ||\n-        localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES) ||\n-        localStorage.getItem(STORAGE_KEYS.VOICE_CONFIGS) ||\n-        localStorage.getItem(STORAGE_KEYS.META_PROMPT) ||\n-        localStorage.getItem(STORAGE_KEYS.STATE_CONFIG) ||\n-        localStorage.getItem(STORAGE_KEYS.SELECTED_STATE) ||\n-        localStorage.getItem(STORAGE_KEYS.ANALYSIS_REPORTS);\n-\n-      // Check if migration already done (flag stored after migration)\n-      const migrationDone = localStorage.getItem(STORAGE_KEYS.MIGRATION_COMPLETED);\n-\n-      console.log('📦 Migration status:', {\n-        hasLocalData: !!hasLocalData,\n-        migrationDone: !!migrationDone,\n-        editorState: !!localStorage.getItem(STORAGE_KEYS.EDITOR_STATE),\n-        calendarEntries: !!localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES),\n-        dailyPictures: !!localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES)\n-      });\n+    const checkMigration = async () => {\n+      if (!isAuthenticated || isLoading) return;\n \n-      // @@@ Handle migration scenarios\n-      const hasCalendar = !!localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES);\n-      let shouldShowDialog = false;\n+      try {\n+        // Get user preferences from database (includes first_login_completed)\n+        const { getPreferences } = await import('./api/voiceApi');\n+        const preferences = await getPreferences();\n+\n+        // If user has already completed first login, clear localStorage\n+        if (preferences?.first_login_completed) {\n+          console.log('✅ Returning user, clearing localStorage');\n+          // Clear all app data from localStorage (keep only auth token)\n+          Object.values(STORAGE_KEYS).forEach(key => {\n+            if (key !== STORAGE_KEYS.AUTH_TOKEN) {\n+              localStorage.removeItem(key);\n+            }\n+          });\n+          return;\n+        }\n \n-      // If user explicitly skipped, don't show dialog again\n-      if (migrationDone === 'skipped') {\n-        console.log('🚫 Migration was skipped by user, not showing dialog');\n-        shouldShowDialog = false;\n-      }\n-      // If migration was marked done but calendar entries still exist, it may have failed\n-      else if (hasCalendar && migrationDone === 'true') {\n-        console.warn('⚠️ Found calendar entries but migration was marked done - may have failed, forcing re-migration');\n-        localStorage.removeItem(STORAGE_KEYS.MIGRATION_COMPLETED);\n-        // Re-check immediately after clearing flag\n-        shouldShowDialog = !!hasLocalData; // Migration is now not done\n-      }\n-      // Normal case: show if there's data and migration not done\n-      else {\n-        shouldShowDialog = !!hasLocalData && !migrationDone;\n+        // First time login - check for localStorage data to migrate\n+        const hasLocalData =\n+          localStorage.getItem(STORAGE_KEYS.EDITOR_STATE) ||\n+          localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES) ||\n+          localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES) ||\n+          localStorage.getItem(STORAGE_KEYS.VOICE_CONFIGS) ||\n+          localStorage.getItem(STORAGE_KEYS.META_PROMPT) ||\n+          localStorage.getItem(STORAGE_KEYS.STATE_CONFIG) ||\n+          localStorage.getItem(STORAGE_KEYS.SELECTED_STATE) ||\n+          localStorage.getItem(STORAGE_KEYS.ANALYSIS_REPORTS);\n+\n+        if (hasLocalData) {\n+          console.log('🔍 First login with localStorage data, showing migration dialog');\n+          setShowMigrationDialog(true);\n+        } else {\n+          // No localStorage data, just mark first login as completed\n+          console.log('🔍 First login without localStorage data, marking as completed');\n+          const { markFirstLoginCompleted } = await import('./api/voiceApi');\n+          await markFirstLoginCompleted();\n+        }\n+      } catch (error) {\n+        console.error('Failed to check migration status:', error);\n       }\n+    };\n \n-      if (shouldShowDialog) {\n-        console.log('✅ Showing migration dialog');\n-        setShowMigrationDialog(true);\n-      }\n-    }\n+    checkMigration();\n   }, [isAuthenticated, isLoading]);\n \n   // Initialize engine\n@@ -547,12 +542,20 @@ export default function App() {\n \n   // @@@ Auto-save to database for authenticated users\n   useEffect(() => {\n-    if (!isAuthenticated || !state) return;\n+    if (!isAuthenticated || !state || !engineRef.current) return;\n \n     const autoSaveTimer = setTimeout(async () => {\n       try {\n+        // Use currentEntryId if exists, otherwise create new UUID\n+        let sessionId = state.currentEntryId;\n+        if (!sessionId) {\n+          sessionId = crypto.randomUUID();\n+          engineRef.current?.setCurrentEntryId(sessionId);\n+        }\n+\n         const { saveSession } = await import('./api/voiceApi');\n-        await saveSession('current-session', state, 'Current Session');\n+        // Auto-save without name (unsaved draft)\n+        await saveSession(sessionId, state);\n         console.log('Auto-saved to database');\n       } catch (error) {\n         console.error('Auto-save failed:', error);\n@@ -1097,14 +1100,13 @@ export default function App() {\n       // Call backend migration endpoint\n       const result = await importLocalData(migrationData);\n \n-      // Mark migration as complete\n-      localStorage.setItem(STORAGE_KEYS.MIGRATION_COMPLETED, 'true');\n+      // Mark first login as completed in database\n+      const { markFirstLoginCompleted } = await import('./api/voiceApi');\n+      await markFirstLoginCompleted();\n \n-      // Clear old localStorage data (keep auth token and migration flag)\n-      const keysToKeep: string[] = [STORAGE_KEYS.AUTH_TOKEN, STORAGE_KEYS.MIGRATION_COMPLETED];\n-      const allKeys = Object.keys(localStorage);\n-      allKeys.forEach(key => {\n-        if (!keysToKeep.includes(key)) {\n+      // Clear ALL localStorage data (keep only auth token)\n+      Object.values(STORAGE_KEYS).forEach(key => {\n+        if (key !== STORAGE_KEYS.AUTH_TOKEN) {\n           localStorage.removeItem(key);\n         }\n       });\n@@ -1134,10 +1136,24 @@ export default function App() {\n     }\n   }, []);\n \n-  const handleSkipMigration = useCallback(() => {\n-    // @@@ Set flag to 'skipped' instead of 'true' to distinguish from successful migration\n-    localStorage.setItem(STORAGE_KEYS.MIGRATION_COMPLETED, 'skipped');\n-    setShowMigrationDialog(false);\n+  const handleSkipMigration = useCallback(async () => {\n+    try {\n+      // Mark first login as completed in database\n+      const { markFirstLoginCompleted } = await import('./api/voiceApi');\n+      await markFirstLoginCompleted();\n+\n+      // Clear ALL localStorage data (keep only auth token)\n+      Object.values(STORAGE_KEYS).forEach(key => {\n+        if (key !== STORAGE_KEYS.AUTH_TOKEN) {\n+          localStorage.removeItem(key);\n+        }\n+      });\n+\n+      setShowMigrationDialog(false);\n+    } catch (error) {\n+      console.error('Failed to skip migration:', error);\n+      alert('Failed to skip migration. Please try again.');\n+    }\n   }, []);\n \n   const handleAuthSuccess = useCallback(() => {"
+    },
+    {
+      "sha": "4d7076b2f3032194ac0038607473e6693c09a227",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 15,
+      "deletions": 0,
+      "changes": 15,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+      "patch": "@@ -421,3 +421,18 @@ export async function getAnalysisReports(limit: number = 10): Promise<any[]> {\n   const data = await response.json();\n   return data.reports;\n }\n+\n+/**\n+ * Mark first login as completed (after migration dialog)\n+ */\n+export async function markFirstLoginCompleted(): Promise<void> {\n+  const response = await fetch(`${API_BASE}/api/mark-first-login-completed`, {\n+    method: 'POST',\n+    headers: getAuthHeaders()\n+  });\n+\n+  if (!response.ok) {\n+    const error = await response.json();\n+    throw new Error(error.detail || 'Mark first login completed failed');\n+  }\n+}"
+    },
+    {
+      "sha": "811e6a5ca87e7542926f51447f2dd66f07e8c2f9",
+      "filename": "frontend/src/components/AnalysisView.tsx",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 1,
+      "changes": 7,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/frontend%2Fsrc%2Fcomponents%2FAnalysisView.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/frontend%2Fsrc%2Fcomponents%2FAnalysisView.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FAnalysisView.tsx?ref=3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+      "patch": "@@ -102,7 +102,12 @@ export default function AnalysisView() {\n           const grouped: Record<string, any[]> = {};\n           for (const session of sessions) {\n             const fullSession = await getSession(session.id);\n-            let dateKey = session.created_at?.split('T')[0];\n+\n+            // @@@ BUGFIX: Extract date from timestamp (format: \"2025-11-02 10:42:17\" or \"2025-11-02T10:42:17\")\n+            // Just take first 10 characters to get \"YYYY-MM-DD\"\n+            let dateKey = session.created_at?.substring(0, 10);\n+\n+            // Prefer date from session name if it has one\n             if (session.name && /^\\d{4}-\\d{2}-\\d{2}/.test(session.name)) {\n               dateKey = session.name.split(' - ')[0];\n             }"
+    },
+    {
+      "sha": "aa905e89a68f602f9afa8a797abea4b8659f9d53",
+      "filename": "frontend/src/components/CalendarPopup.tsx",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 2,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCalendarPopup.tsx?ref=3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+      "patch": "@@ -34,8 +34,9 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {\n           for (const session of sessions) {\n             const fullSession = await getSession(session.id);\n \n-            // Extract date from name or use created_at\n-            let dateKey = session.created_at?.split('T')[0] || getTodayKey();\n+            // @@@ BUGFIX: Extract date from timestamp (format: \"2025-11-02 10:42:17\" or \"2025-11-02T10:42:17\")\n+            // Just take first 10 characters to get \"YYYY-MM-DD\"\n+            let dateKey = session.created_at?.substring(0, 10) || getTodayKey();\n \n             // If name starts with YYYY-MM-DD format, use that\n             if (session.name && /^\\d{4}-\\d{2}-\\d{2}/.test(session.name)) {"
+    }
+  ]
+}

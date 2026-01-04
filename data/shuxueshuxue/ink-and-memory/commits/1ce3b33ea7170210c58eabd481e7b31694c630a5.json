@@ -1,0 +1,61 @@
+{
+  "sha": "1ce3b33ea7170210c58eabd481e7b31694c630a5",
+  "node_id": "C_kwDOP2Zrm9oAKDFjZTNiMzNlYTcxNzAyMTBjNThlYWJkNDgxZTdiMzE2OTRjNjMwYTU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-13T09:52:19Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-13T09:52:19Z"
+    },
+    "message": "Add seed_system_decks() to populate 3 decks with 16 voices\n\n- Deck 1: Introspection (6 voices from existing config.py)\n- Deck 2: Scholar (6 academic voices with placeholder prompts)\n- Deck 3: Philosophy (4 philosophical voices with placeholder prompts)\n- Idempotent seeding (safe to run multiple times)\n- Called automatically from init_db()",
+    "tree": {
+      "sha": "93f66736f89dcd066e15f9819fec478ef2f6e8d7",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/93f66736f89dcd066e15f9819fec478ef2f6e8d7"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/1ce3b33ea7170210c58eabd481e7b31694c630a5",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/1ce3b33ea7170210c58eabd481e7b31694c630a5",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/1ce3b33ea7170210c58eabd481e7b31694c630a5",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/1ce3b33ea7170210c58eabd481e7b31694c630a5/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "6c8f531c57bab85fca175dd0c7b21363a4c8767c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6c8f531c57bab85fca175dd0c7b21363a4c8767c",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/6c8f531c57bab85fca175dd0c7b21363a4c8767c"
+    }
+  ],
+  "stats": {
+    "total": 109,
+    "additions": 109,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "037db8a881d4e607fb0075c140c0931b5a86f356",
+      "filename": "backend/database.py",
+      "status": "modified",
+      "additions": 109,
+      "deletions": 0,
+      "changes": 109,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/1ce3b33ea7170210c58eabd481e7b31694c630a5/backend%2Fdatabase.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/1ce3b33ea7170210c58eabd481e7b31694c630a5/backend%2Fdatabase.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdatabase.py?ref=1ce3b33ea7170210c58eabd481e7b31694c630a5",
+      "patch": "@@ -41,6 +41,9 @@ def init_db():\n     db.close()\n     print(f\"✅ Database initialized at {DB_PATH}\")\n \n+    # Seed system decks\n+    seed_system_decks()\n+\n def create_tables(db):\n     \"\"\"Create all database tables.\"\"\"\n     print(\"📦 Creating database tables...\")\n@@ -178,6 +181,112 @@ def create_tables(db):\n \n     print(\"✅ Tables created\")\n \n+def seed_system_decks():\n+    \"\"\"Seed system decks and voices. Idempotent - safe to call multiple times.\"\"\"\n+    db = get_db()\n+\n+    # Check if already seeded\n+    existing = db.execute(\"SELECT COUNT(*) FROM decks WHERE is_system = 1\").fetchone()[0]\n+    if existing > 0:\n+        print(\"⏭️  System decks already seeded, skipping\")\n+        db.close()\n+        return\n+\n+    print(\"🌱 Seeding system decks...\")\n+\n+    # ========== Deck 1: Introspection Deck ==========\n+    db.execute(\"\"\"\n+    INSERT INTO decks (id, name, name_zh, name_en, description, description_zh, description_en, icon, color, is_system, enabled, order_index)\n+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n+    \"\"\", ('introspection_deck', '内省卡组', '内省卡组', 'Introspection Deck',\n+          '内心对话原型', '内心对话原型', 'Inner dialogue archetypes',\n+          'brain', 'purple', 1, 1, 0))\n+\n+    # Import config to get existing voice prompts\n+    import config\n+\n+    # Introspection voices (from existing VOICE_ARCHETYPES)\n+    introspection_voices = [\n+        ('holder', config.VOICE_ARCHETYPES['holder']['name'], '接纳者', 'The Holder',\n+         config.VOICE_ARCHETYPES['holder']['systemPrompt'], 'heart', 'pink', 0),\n+        ('unpacker', config.VOICE_ARCHETYPES['unpacker']['name'], '拆解者', 'The Unpacker',\n+         config.VOICE_ARCHETYPES['unpacker']['systemPrompt'], 'brain', 'blue', 1),\n+        ('starter', config.VOICE_ARCHETYPES['starter']['name'], '启动者', 'The Starter',\n+         config.VOICE_ARCHETYPES['starter']['systemPrompt'], 'fist', 'yellow', 2),\n+        ('mirror', config.VOICE_ARCHETYPES['mirror']['name'], '照镜者', 'The Mirror',\n+         config.VOICE_ARCHETYPES['mirror']['systemPrompt'], 'eye', 'green', 3),\n+        ('weaver', config.VOICE_ARCHETYPES['weaver']['name'], '连接者', 'The Weaver',\n+         config.VOICE_ARCHETYPES['weaver']['systemPrompt'], 'compass', 'purple', 4),\n+        ('absurdist', config.VOICE_ARCHETYPES['absurdist']['name'], '幽默者', 'The Absurdist',\n+         config.VOICE_ARCHETYPES['absurdist']['systemPrompt'], 'masks', 'pink', 5),\n+    ]\n+\n+    for voice_id, name, name_zh, name_en, prompt, icon, color, order in introspection_voices:\n+        db.execute(\"\"\"\n+        INSERT INTO voices (id, deck_id, name, name_zh, name_en, system_prompt, icon, color, is_system, enabled, order_index)\n+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n+        \"\"\", (voice_id, 'introspection_deck', name, name_zh, name_en, prompt, icon, color, 1, 1, order))\n+\n+    # ========== Deck 2: Scholar Deck ==========\n+    db.execute(\"\"\"\n+    INSERT INTO decks (id, name, name_zh, name_en, description, description_zh, description_en, icon, color, is_system, enabled, order_index)\n+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n+    \"\"\", ('scholar_deck', '学者卡组', '学者卡组', 'Scholar Deck',\n+          '从学术角度分析思考', '从学术角度分析思考', 'Analyze from academic perspectives',\n+          'lightbulb', 'blue', 1, 1, 1))\n+\n+    # Scholar voices (placeholder prompts - TODO: write detailed prompts)\n+    scholar_voices = [\n+        ('linguist', '语言学家', '语言学家', 'Linguist',\n+         'Analyze from linguistic structure, semantics, and pragmatics.', 'compass', 'blue', 0),\n+        ('painter', '画家', '画家', 'Painter',\n+         'Analyze from aesthetics, visual imagery, and mood.', 'eye', 'pink', 1),\n+        ('physicist', '物理学家', '物理学家', 'Physicist',\n+         'Analyze using physics laws, mechanics, and energy.', 'lightbulb', 'yellow', 2),\n+        ('computer_scientist', '计算机科学家', '计算机科学家', 'Computer Scientist',\n+         'Analyze using algorithms, data structures, and complexity.', 'brain', 'purple', 3),\n+        ('doctor', '医生', '医生', 'Doctor',\n+         'Analyze from medical, physiological, and psychological health perspectives.', 'heart', 'pink', 4),\n+        ('historian', '历史学家', '历史学家', 'Historian',\n+         'Provide historical context, cultural background, and patterns.', 'compass', 'green', 5),\n+    ]\n+\n+    for voice_id, name, name_zh, name_en, prompt, icon, color, order in scholar_voices:\n+        db.execute(\"\"\"\n+        INSERT INTO voices (id, deck_id, name, name_zh, name_en, system_prompt, icon, color, is_system, enabled, order_index)\n+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n+        \"\"\", (voice_id, 'scholar_deck', name, name_zh, name_en, prompt, icon, color, 1, 1, order))\n+\n+    # ========== Deck 3: Philosophy Deck ==========\n+    db.execute(\"\"\"\n+    INSERT INTO decks (id, name, name_zh, name_en, description, description_zh, description_en, icon, color, is_system, enabled, order_index)\n+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n+    \"\"\", ('philosophy_deck', '哲学卡组', '哲学卡组', 'Philosophy Deck',\n+          '不同哲学流派的审视', '不同哲学流派的审视', 'Examine through philosophical lenses',\n+          'cloud', 'purple', 1, 1, 2))\n+\n+    # Philosophy voices (placeholder prompts - TODO: write detailed prompts)\n+    philosophy_voices = [\n+        ('stoic', '斯多葛派', '斯多葛派', 'Stoic',\n+         'Emphasize reason, self-control, and acceptance of the uncontrollable.', 'shield', 'blue', 0),\n+        ('taoist', '道家', '道家', 'Taoist',\n+         'Emphasize wu-wei (effortless action), natural flow, and simplicity.', 'wind', 'green', 1),\n+        ('existentialist', '存在主义者', '存在主义者', 'Existentialist',\n+         'Emphasize choice, freedom, responsibility, and creating meaning.', 'question', 'purple', 2),\n+        ('pragmatist', '实用主义者', '实用主义者', 'Pragmatist',\n+         'Focus on practical effects, usefulness, and real-world results.', 'fist', 'yellow', 3),\n+    ]\n+\n+    for voice_id, name, name_zh, name_en, prompt, icon, color, order in philosophy_voices:\n+        db.execute(\"\"\"\n+        INSERT INTO voices (id, deck_id, name, name_zh, name_en, system_prompt, icon, color, is_system, enabled, order_index)\n+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n+        \"\"\", (voice_id, 'philosophy_deck', name, name_zh, name_en, prompt, icon, color, 1, 1, order))\n+\n+    db.commit()\n+    db.close()\n+    print(\"✅ System decks seeded (3 decks, 16 voices)\")\n+\n # ========== User Management ==========\n \n def create_user(email: str, password_hash: str, display_name: str = None) -> int:"
+    }
+  ]
+}

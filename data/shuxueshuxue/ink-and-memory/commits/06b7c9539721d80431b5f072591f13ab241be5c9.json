@@ -1,0 +1,82 @@
+{
+  "sha": "06b7c9539721d80431b5f072591f13ab241be5c9",
+  "node_id": "C_kwDOP2Zrm9oAKDA2YjdjOTUzOTcyMWQ4MDQzMWI1ZjA3MjU5MWYxM2FiMjQxYmU1Yzk",
+  "commit": {
+    "author": {
+      "name": "shuxueshuxue",
+      "email": "shuxue@protonmail.com",
+      "date": "2025-12-28T12:41:59Z"
+    },
+    "committer": {
+      "name": "shuxueshuxue",
+      "email": "shuxue@protonmail.com",
+      "date": "2025-12-28T12:41:59Z"
+    },
+    "message": "Refactor model role config",
+    "tree": {
+      "sha": "0121c9c4c192720c03b117e1d6fd3d616b05a2bd",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/0121c9c4c192720c03b117e1d6fd3d616b05a2bd"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/06b7c9539721d80431b5f072591f13ab241be5c9",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/06b7c9539721d80431b5f072591f13ab241be5c9",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/06b7c9539721d80431b5f072591f13ab241be5c9",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/06b7c9539721d80431b5f072591f13ab241be5c9/comments",
+  "author": {
+    "login": "shuxueshuxue",
+    "id": 98064968,
+    "node_id": "U_kgDOBdhaSA",
+    "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/shuxueshuxue",
+    "html_url": "https://github.com/shuxueshuxue",
+    "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+    "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+    "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+    "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+    "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+    "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "shuxueshuxue",
+    "id": 98064968,
+    "node_id": "U_kgDOBdhaSA",
+    "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/shuxueshuxue",
+    "html_url": "https://github.com/shuxueshuxue",
+    "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+    "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+    "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+    "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+    "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+    "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "ef86eae3a0b76d40b623db81076277c87b8192cd",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ef86eae3a0b76d40b623db81076277c87b8192cd",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ef86eae3a0b76d40b623db81076277c87b8192cd"
+    }
+  ]
+}

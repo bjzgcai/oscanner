@@ -1,0 +1,84 @@
+{
+  "sha": "2dd9656a9e95e86d6e5f44fc1393192810a32298",
+  "node_id": "C_kwDOP2Zrm9oAKDJkZDk2NTZhOWU5NWU4NmQ2ZTVmNDRmYzEzOTMxOTI4MTBhMzIyOTg",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T08:36:12Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T08:36:12Z"
+    },
+    "message": "Improve migration error handling for 413 errors\n\n- Handle 413 (Payload Too Large) specifically in voiceApi.ts\n- Provide helpful user message explaining the issue\n- Explain workaround options (skip or wait for fix)\n- Prevent crash when nginx returns HTML instead of JSON",
+    "tree": {
+      "sha": "534d36e1f8e27cad18333120095beb44f8957dde",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/534d36e1f8e27cad18333120095beb44f8957dde"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/2dd9656a9e95e86d6e5f44fc1393192810a32298",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2dd9656a9e95e86d6e5f44fc1393192810a32298",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2dd9656a9e95e86d6e5f44fc1393192810a32298",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2dd9656a9e95e86d6e5f44fc1393192810a32298/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "fd21fac0377a9c3d062743f597d2629fa24b67d3",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fd21fac0377a9c3d062743f597d2629fa24b67d3",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fd21fac0377a9c3d062743f597d2629fa24b67d3"
+    }
+  ],
+  "stats": {
+    "total": 30,
+    "additions": 27,
+    "deletions": 3
+  },
+  "files": [
+    {
+      "sha": "273bbb485fdbddc7b042db194ca8ac76a2a67bfc",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2dd9656a9e95e86d6e5f44fc1393192810a32298/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2dd9656a9e95e86d6e5f44fc1393192810a32298/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=2dd9656a9e95e86d6e5f44fc1393192810a32298"
+    },
+    {
+      "sha": "c8e0a6a4009adeb92c02c9a9bc81916732e45d82",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 14,
+      "deletions": 1,
+      "changes": 15,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2dd9656a9e95e86d6e5f44fc1393192810a32298/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2dd9656a9e95e86d6e5f44fc1393192810a32298/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=2dd9656a9e95e86d6e5f44fc1393192810a32298",
+      "patch": "@@ -1033,7 +1033,20 @@ export default function App() {\n       alert(`Migration successful! Imported:\\n- ${result.imported.sessions} sessions\\n- ${result.imported.pictures} pictures\\n- ${result.imported.preferences} preferences\\n- ${result.imported.reports} reports`);\n     } catch (error: any) {\n       console.error('Migration failed:', error);\n-      alert(`Migration failed: ${error.message}\\n\\nYou can try again later from Settings.`);\n+\n+      // Provide helpful error message based on error type\n+      let errorMsg = 'Migration failed: ';\n+      if (error.message?.includes('413') || error.message?.includes('too large')) {\n+        errorMsg += 'Your data is too large to migrate in one request.\\n\\n';\n+        errorMsg += 'This is a known issue that will be fixed soon.\\n';\n+        errorMsg += 'For now, you can:\\n';\n+        errorMsg += '1. Skip migration and start fresh, or\\n';\n+        errorMsg += '2. Wait for the fix and try again later';\n+      } else {\n+        errorMsg += error.message + '\\n\\nYou can try again later from Settings.';\n+      }\n+\n+      alert(errorMsg);\n     } finally {\n       setIsMigrating(false);\n     }"
+    },
+    {
+      "sha": "3fcff3563e5f2b70d491d0b741b89b76cadc171d",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 13,
+      "deletions": 2,
+      "changes": 15,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2dd9656a9e95e86d6e5f44fc1393192810a32298/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2dd9656a9e95e86d6e5f44fc1393192810a32298/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=2dd9656a9e95e86d6e5f44fc1393192810a32298",
+      "patch": "@@ -225,8 +225,19 @@ export async function importLocalData(data: {\n   });\n \n   if (!response.ok) {\n-    const error = await response.json();\n-    throw new Error(error.detail || 'Import failed');\n+    // Handle 413 Payload Too Large (nginx returns HTML, not JSON)\n+    if (response.status === 413) {\n+      throw new Error('413: Request too large - your data exceeds the server limit');\n+    }\n+\n+    // Try to parse JSON error response\n+    try {\n+      const error = await response.json();\n+      throw new Error(error.detail || 'Import failed');\n+    } catch {\n+      // If JSON parsing fails, throw generic error with status\n+      throw new Error(`Import failed with status ${response.status}`);\n+    }\n   }\n \n   return await response.json();"
+    }
+  ]
+}

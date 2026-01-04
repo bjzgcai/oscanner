@@ -1,0 +1,97 @@
+{
+  "sha": "0d64428f80672da08393009ca9c0e02b76bf8284",
+  "node_id": "C_kwDOP2Zrm9oAKDBkNjQ0MjhmODA2NzJkYTA4MzkzMDA5Y2E5YzBlMDJiNzZiZjgyODQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-19T15:27:13Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-19T15:27:13Z"
+    },
+    "message": "Add deployment support and voice customization design\n\nDeployment Changes:\n- Configure Vite base path for /ink-and-memory/ subdirectory\n- Update API_BASE to use relative path for nginx proxying\n- Enable production deployment at lexicalmathical.com/ink-and-memory\n\nFeatures:\n- Add weighted character counting (CJK = 3x, Latin = 1x)\n- Threshold: 40 weight units (~40 English OR ~13 Chinese chars)\n- Version logging for cache debugging (v1.1.0-weighted-40)\n\nDocumentation:\n- Add voice customization design doc\n- Define localStorage-based customization system\n- Document no-merge rule and upload/download pattern\n- Specify TypeScript/Python type contract\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "a3e22f6c314fc1af2404ab16d2158cebe97fb114",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/a3e22f6c314fc1af2404ab16d2158cebe97fb114"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/0d64428f80672da08393009ca9c0e02b76bf8284",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0d64428f80672da08393009ca9c0e02b76bf8284",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0d64428f80672da08393009ca9c0e02b76bf8284",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0d64428f80672da08393009ca9c0e02b76bf8284/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "32cb8e834fba996aac0047e2a24027fc45f87b2d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/32cb8e834fba996aac0047e2a24027fc45f87b2d",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/32cb8e834fba996aac0047e2a24027fc45f87b2d"
+    }
+  ],
+  "stats": {
+    "total": 317,
+    "additions": 312,
+    "deletions": 5
+  },
+  "files": [
+    {
+      "sha": "da125ad86de8b13e386a58e998431ca38a30bb78",
+      "filename": "docs/voice-customization.md",
+      "status": "added",
+      "additions": 277,
+      "deletions": 0,
+      "changes": 277,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0d64428f80672da08393009ca9c0e02b76bf8284/docs%2Fvoice-customization.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0d64428f80672da08393009ca9c0e02b76bf8284/docs%2Fvoice-customization.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/docs%2Fvoice-customization.md?ref=0d64428f80672da08393009ca9c0e02b76bf8284",
+      "patch": "@@ -0,0 +1,277 @@\n+# Voice Customization System\n+\n+## Architecture\n+\n+### Source of Truth\n+- **Server**: Owns default voice configurations\n+- **localStorage**: Stores user customizations (complete replacement, not merge)\n+\n+### Rule: No Merging\n+- User either uses server defaults OR their own customizations\n+- Never merge the two\n+- Clear ownership prevents conflicts\n+\n+## Data Flow\n+\n+```\n+┌─────────────────────────────────────────────────────────┐\n+│ 1. App Init: GET /api/sessions/analyze_text            │\n+│    Server returns default voices                        │\n+└────────────────┬────────────────────────────────────────┘\n+                 │\n+┌────────────────▼────────────────────────────────────────┐\n+│ 2. Check localStorage['voice-customizations']          │\n+│    EXISTS    → Use customizations (ignore server)       │\n+│    NOT EXIST → Use server defaults                      │\n+└────────────────┬────────────────────────────────────────┘\n+                 │\n+┌────────────────▼────────────────────────────────────────┐\n+│ 3. User edits in Settings Panel                        │\n+│    [Save]        → Write to localStorage                │\n+│    [Use Default] → Delete from localStorage             │\n+│    [Export]      → Download JSON file                   │\n+│    [Import]      → Read JSON → Write to localStorage    │\n+└─────────────────────────────────────────────────────────┘\n+```\n+\n+## API Contract\n+\n+### GET /api/sessions/{session_id}\n+\n+**Response:**\n+```json\n+{\n+  \"id\": \"analyze_text\",\n+  \"name\": \"Analyze Voices\",\n+  \"description\": \"Detect inner voices in writing\",\n+  \"defaultVoices\": {\n+    \"logic\": {\n+      \"name\": \"Logic\",\n+      \"systemPrompt\": \"You are Logic. Analyze for patterns and inconsistencies...\",\n+      \"icon\": \"🧠\",\n+      \"color\": \"#4a5568\",\n+      \"highlightColor\": \"blue\"\n+    },\n+    \"empathy\": {\n+      \"name\": \"Empathy\",\n+      \"systemPrompt\": \"You are Empathy. Focus on emotional depth...\",\n+      \"icon\": \"❤️\",\n+      \"color\": \"#e53e3e\",\n+      \"highlightColor\": \"pink\"\n+    },\n+    \"creativity\": { /* ... */ },\n+    \"criticism\": { /* ... */ }\n+  }\n+}\n+```\n+\n+### POST /api/trigger\n+\n+**Request:**\n+```json\n+{\n+  \"text\": \"The protagonist walked slowly...\",\n+  \"voices\": {\n+    \"logic\": {\n+      \"name\": \"Logic\",\n+      \"systemPrompt\": \"You are Logic...\",\n+      \"enabled\": true,\n+      \"icon\": \"🧠\",\n+      \"color\": \"#4a5568\",\n+      \"highlightColor\": \"blue\"\n+    }\n+  }\n+}\n+```\n+\n+**Notes:**\n+- Frontend sends complete voice configs (not IDs)\n+- Backend uses provided systemPrompt (doesn't look up)\n+- Only enabled voices are sent\n+\n+## Type Definitions\n+\n+### TypeScript\n+```typescript\n+// src/types/voice.ts\n+export interface VoiceConfig {\n+  name: string;\n+  systemPrompt: string;\n+  enabled: boolean;\n+  icon: string;\n+  color: string;\n+  highlightColor: string;\n+}\n+\n+export type VoicesPayload = Record<string, VoiceConfig>;\n+```\n+\n+### Python\n+```python\n+# backend/types.py\n+from pydantic import BaseModel\n+\n+class VoiceConfig(BaseModel):\n+    name: str\n+    systemPrompt: str\n+    enabled: bool\n+    icon: str\n+    color: str\n+    highlightColor: str\n+```\n+\n+## localStorage Schema\n+\n+**Key:** `voice-customizations`\n+\n+**Value:**\n+```json\n+{\n+  \"version\": \"1.0.0\",\n+  \"voices\": {\n+    \"logic\": {\n+      \"name\": \"My Logic\",\n+      \"systemPrompt\": \"Custom prompt...\",\n+      \"enabled\": true,\n+      \"icon\": \"🧠\",\n+      \"color\": \"#4a5568\",\n+      \"highlightColor\": \"blue\"\n+    }\n+  }\n+}\n+```\n+\n+**Important:** If key exists, use it completely. Don't merge with server defaults.\n+\n+## Settings Panel UI\n+\n+```\n+┌────────────────────────────────────┐\n+│ Voice Settings              [Close]│\n+├────────────────────────────────────┤\n+│                                    │\n+│ [Import] [Export] [Use Default]    │\n+│                                    │\n+│ ┌──────────────────────────────┐  │\n+│ │ ☑ 🧠 Logic                   │  │\n+│ │ System Prompt:                │  │\n+│ │ ┌──────────────────────────┐ │  │\n+│ │ │You are Logic. Analyze... │ │  │\n+│ │ │                          │ │  │\n+│ │ └──────────────────────────┘ │  │\n+│ │ Color: [#4a5568 ▼]           │  │\n+│ └──────────────────────────────┘  │\n+│                                    │\n+│ ┌──────────────────────────────┐  │\n+│ │ ☑ ❤️ Empathy                  │  │\n+│ │ ...                           │  │\n+│ └──────────────────────────────┘  │\n+│                                    │\n+│              [Save Changes]        │\n+└────────────────────────────────────┘\n+```\n+\n+### Buttons\n+\n+**[Import]**\n+- Opens file picker\n+- Reads JSON file\n+- Validates schema\n+- Writes to localStorage\n+- Reloads app state\n+\n+**[Export]**\n+- Reads current voices (from state, not localStorage)\n+- Downloads as `voice-config-{timestamp}.json`\n+- No server interaction\n+\n+**[Use Default]**\n+- Deletes `voice-customizations` from localStorage\n+- Fetches server defaults again\n+- Reloads app state\n+\n+**[Save Changes]**\n+- Writes current form state to localStorage\n+- No server interaction\n+- Shows confirmation toast\n+\n+## Implementation Checklist\n+\n+### Backend\n+- [ ] Add `defaultVoices` to session response\n+- [ ] Update `/api/trigger` to accept `voices` parameter\n+- [ ] Remove hardcoded voice lookups\n+\n+### Frontend\n+- [ ] Create `VoiceConfig` type\n+- [ ] Create `SettingsPanel` component\n+- [ ] Create `VoiceEditor` component\n+- [ ] Implement localStorage manager\n+- [ ] Add import/export functions\n+- [ ] Update API calls to send voices\n+- [ ] Add settings toggle button\n+\n+### Testing\n+- [ ] Test: Use server defaults (no localStorage)\n+- [ ] Test: Save customizations\n+- [ ] Test: Export → Import\n+- [ ] Test: Use Default (clears localStorage)\n+- [ ] Test: Invalid import JSON (error handling)\n+\n+## Edge Cases\n+\n+### Server defaults change\n+- User has old customizations in localStorage\n+- **Decision:** User customizations take precedence\n+- User must manually \"Use Default\" to get new server voices\n+- Alternative: Show notification \"Server voices updated\" with option to review\n+\n+### Invalid localStorage data\n+- Corrupted JSON\n+- Missing required fields\n+- **Decision:** Delete and fall back to server defaults\n+- Log error to console for debugging\n+\n+### Voice disabled mid-analysis\n+- User disables voice while analysis running\n+- **Decision:** Let current analysis finish\n+- Next trigger respects new enabled state\n+\n+## Migration Plan\n+\n+### Phase 1: Backend changes\n+1. Add `defaultVoices` to session endpoint\n+2. Accept `voices` in trigger endpoint\n+3. Deploy backend\n+\n+### Phase 2: Frontend changes (compatible)\n+1. Add Settings Panel UI (hidden behind flag)\n+2. Add localStorage logic\n+3. Update trigger to send voices\n+4. Deploy frontend\n+\n+### Phase 3: Enable feature\n+1. Remove feature flag\n+2. Show Settings button\n+3. Add onboarding tooltip\n+\n+## Future Enhancements\n+\n+### Voice Templates\n+- Share voice configs via URL\n+- Community voice library\n+- One-click install presets\n+\n+### Validation\n+- Max prompt length (prevent token overflow)\n+- Required fields validation\n+- Color format validation\n+\n+### Analytics\n+- Track which voices are most used\n+- Track customization adoption rate\n+- Track default vs custom usage\n+\n+---\n+\n+**Last Updated:** 2025-10-16"
+    },
+    {
+      "sha": "26c4b8724f99dfc70e2d6939ad38f47b698fd6ac",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 32,
+      "deletions": 4,
+      "changes": 36,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0d64428f80672da08393009ca9c0e02b76bf8284/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0d64428f80672da08393009ca9c0e02b76bf8284/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=0d64428f80672da08393009ca9c0e02b76bf8284",
+      "patch": "@@ -32,6 +32,12 @@ function App() {\n       : generateUUID()\n   ).current;\n \n+  // @@@ Version logging for cache debugging\n+  useEffect(() => {\n+    console.log('🎭 Ink & Memory - Version: v1.1.0-weighted-40');\n+    console.log('📊 Analysis trigger threshold: 40 weight units (~40 English chars OR ~13 Chinese chars)');\n+  }, []);\n+\n   const [voices, setVoices] = useState<Voice[]>([]);\n   const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>([]);\n   const [currentText, setCurrentText] = useState<string>('');\n@@ -80,25 +86,47 @@ function App() {\n     setFocusedVoiceIndex(closestIndex);\n   }, [cursorPosition, voices]);\n \n+  // @@@ weighted-character-counting - English chars = 1 weight, CJK chars = 3 weight\n+  // This elegantly balances both languages: ~30 English chars OR ~10 Chinese chars to trigger\n+  const getWeightedLength = (text: string): number => {\n+    let weight = 0;\n+\n+    for (const char of text) {\n+      // CJK characters (Chinese, Japanese, Korean)\n+      if (/[\\u4e00-\\u9fa5\\u3040-\\u309f\\u30a0-\\u30ff]/.test(char)) {\n+        weight += 3;  // Chinese character = 3 weight\n+      } else {\n+        weight += 1;  // English/other = 1 weight\n+      }\n+    }\n+\n+    return weight;\n+  };\n+\n   const analyzeIfNeeded = async () => {\n     // Skip if already analyzing\n     if (isAnalyzingRef.current) {\n       return;\n     }\n \n     const currentTextValue = currentTextRef.current;\n-    const textDiff = Math.abs(currentTextValue.length - lastAnalyzedTextRef.current.length);\n+    const lastTextValue = lastAnalyzedTextRef.current;\n+\n+    const currentWeight = getWeightedLength(currentTextValue);\n+    const lastWeight = getWeightedLength(lastTextValue);\n+    const weightDiff = Math.abs(currentWeight - lastWeight);\n \n-    // Only analyze if text changed by >10 characters\n-    if (textDiff <= 10) {\n+    // Only analyze if text changed by >40 weight\n+    // (~40 English chars OR ~13 Chinese chars OR mixed)\n+    if (weightDiff <= 40) {\n       return;\n     }\n \n     isAnalyzingRef.current = true;\n     lastAnalyzedTextRef.current = currentTextValue;\n \n     try {\n-      console.log(`🔍 Calling backend analysis (${textDiff} chars changed)...`);\n+      console.log(`🔍 Calling backend analysis (${weightDiff} weight units changed)...`);\n       const backendVoices = await analyzeText(currentTextValue, sessionId);\n       console.log(`✅ Got ${backendVoices.length} voices from backend`);\n "
+    },
+    {
+      "sha": "76ba8ab4d908a4fa62932394f3a24e357194ba6c",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 1,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0d64428f80672da08393009ca9c0e02b76bf8284/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0d64428f80672da08393009ca9c0e02b76bf8284/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=0d64428f80672da08393009ca9c0e02b76bf8284",
+      "patch": "@@ -2,7 +2,8 @@\n  * API client for voice analysis backend\n  */\n \n-const API_BASE = 'http://101.201.227.31:8765';\n+// nginx proxies /ink-and-memory/api/* to backend (8765)\n+const API_BASE = '/ink-and-memory';\n \n interface TriggerResponse {\n   success: boolean;"
+    },
+    {
+      "sha": "b12451a3fb0cdd7887d2d9e75480a88f64cc90ec",
+      "filename": "frontend/vite.config.ts",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 0,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0d64428f80672da08393009ca9c0e02b76bf8284/frontend%2Fvite.config.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0d64428f80672da08393009ca9c0e02b76bf8284/frontend%2Fvite.config.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fvite.config.ts?ref=0d64428f80672da08393009ca9c0e02b76bf8284",
+      "patch": "@@ -4,4 +4,5 @@ import react from '@vitejs/plugin-react'\n // https://vite.dev/config/\n export default defineConfig({\n   plugins: [react()],\n+  base: '/ink-and-memory/',  // Deploy at lexicalmathical.com/ink-and-memory/\n })"
+    }
+  ]
+}

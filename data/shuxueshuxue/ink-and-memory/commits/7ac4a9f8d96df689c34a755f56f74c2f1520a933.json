@@ -1,0 +1,85 @@
+{
+  "sha": "7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+  "node_id": "C_kwDOP2Zrm9oAKDdhYzRhOWY4ZDk2ZGY2ODljMzRhNzU1ZjU2Zjc0YzJmMTUyMGE5MzM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T12:29:17Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T12:29:17Z"
+    },
+    "message": "Fix TypeScript build errors - remove unused imports and variables",
+    "tree": {
+      "sha": "0894732af24e12f8ff66c2e7e9fb4705b19150f5",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/0894732af24e12f8ff66c2e7e9fb4705b19150f5"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/7ac4a9f8d96df689c34a755f56f74c2f1520a933/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "3b4a2b8deb2752278f8903d7f0c23d3f81bb9c45",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3b4a2b8deb2752278f8903d7f0c23d3f81bb9c45",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/3b4a2b8deb2752278f8903d7f0c23d3f81bb9c45"
+    }
+  ],
+  "stats": {
+    "total": 9,
+    "additions": 2,
+    "deletions": 7
+  },
+  "files": [
+    {
+      "sha": "d0e2f367d2cd398596061d6bf1acdf285b9c8e3e",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 3,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/7ac4a9f8d96df689c34a755f56f74c2f1520a933/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/7ac4a9f8d96df689c34a755f56f74c2f1520a933/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+      "patch": "@@ -5,8 +5,7 @@ import { ChatWidget } from './engine/ChatWidget';\n import type { ChatWidgetData } from './engine/ChatWidget';\n import './App.css';\n import {\n-  FaSync, FaBold, FaItalic, FaUnderline, FaAlignLeft, FaAlignCenter,\n-  FaAlignRight, FaListUl, FaListOl, FaQuoteRight, FaTable, FaLink, FaImage,\n+  FaSync,\n   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,\n   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass\n } from 'react-icons/fa';\n@@ -983,7 +982,6 @@ export default function App() {\n                       const textCell = cell as TextCell;\n                       // Use local text if available, otherwise use engine state\n                       const content = localTexts.get(cell.id) ?? textCell.content;\n-                      const lineCount = Math.max(content.split('\\n').length, 1);\n \n                       return (\n                         <div key={cell.id} style={{ position: 'relative' }}>"
+    },
+    {
+      "sha": "87471312d6f8b31274a22313ccc94a09fbcd3fbb",
+      "filename": "frontend/src/components/AgentDropdown.tsx",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 3,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/7ac4a9f8d96df689c34a755f56f74c2f1520a933/frontend%2Fsrc%2Fcomponents%2FAgentDropdown.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/7ac4a9f8d96df689c34a755f56f74c2f1520a933/frontend%2Fsrc%2Fcomponents%2FAgentDropdown.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FAgentDropdown.tsx?ref=7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+      "patch": "@@ -62,9 +62,6 @@ export default function AgentDropdown({ voices, position, onSelect, onClose }: A\n     const container = containerRef.current;\n \n     if (selectedItem && container) {\n-      const itemRect = selectedItem.getBoundingClientRect();\n-      const containerRect = container.getBoundingClientRect();\n-\n       // Calculate positions relative to container\n       const itemTop = selectedItem.offsetTop;\n       const itemBottom = itemTop + selectedItem.offsetHeight;"
+    },
+    {
+      "sha": "a5ad0123a93cbd1cccf367392b0692444d5ad4b5",
+      "filename": "frontend/src/components/ChatWidgetUI.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/7ac4a9f8d96df689c34a755f56f74c2f1520a933/frontend%2Fsrc%2Fcomponents%2FChatWidgetUI.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/7ac4a9f8d96df689c34a755f56f74c2f1520a933/frontend%2Fsrc%2Fcomponents%2FChatWidgetUI.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FChatWidgetUI.tsx?ref=7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+      "patch": "@@ -1,5 +1,5 @@\n import React, { useState, useRef, useEffect } from 'react';\n-import type { ChatWidgetData, ChatMessage } from '../engine/ChatWidget';\n+import type { ChatWidgetData } from '../engine/ChatWidget';\n import {\n   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,\n   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass"
+    }
+  ]
+}

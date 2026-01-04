@@ -1,0 +1,61 @@
+{
+  "sha": "a86b58408f7e9dd6b7d494ff02cb0a606195cdaf",
+  "node_id": "C_kwDOP2Zrm9oAKGE4NmI1ODQwOGY3ZTlkZDZiN2Q0OTRmZjAyY2IwYTYwNjE5NWNkYWY",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T02:14:54Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T02:14:54Z"
+    },
+    "message": "Add overflow control to prevent cards escaping container",
+    "tree": {
+      "sha": "5bf272a2349339276b961ad9b7ecf5b6784974c8",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/5bf272a2349339276b961ad9b7ecf5b6784974c8"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/a86b58408f7e9dd6b7d494ff02cb0a606195cdaf",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a86b58408f7e9dd6b7d494ff02cb0a606195cdaf",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/a86b58408f7e9dd6b7d494ff02cb0a606195cdaf",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a86b58408f7e9dd6b7d494ff02cb0a606195cdaf/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "257d6f847b55dd7b5c6de0063803714edad7da5e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/257d6f847b55dd7b5c6de0063803714edad7da5e",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/257d6f847b55dd7b5c6de0063803714edad7da5e"
+    }
+  ],
+  "stats": {
+    "total": 3,
+    "additions": 2,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "a0795668584230bf7cb8e3e81608f15b0a46b29a",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 1,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/a86b58408f7e9dd6b7d494ff02cb0a606195cdaf/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/a86b58408f7e9dd6b7d494ff02cb0a606195cdaf/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=a86b58408f7e9dd6b7d494ff02cb0a606195cdaf",
+      "patch": "@@ -45,7 +45,8 @@\n .book-page.right-page {\n   flex-direction: column;\n   padding: 2rem;\n-  overflow: visible;\n+  overflow-y: auto;\n+  overflow-x: visible;\n }\n \n /* @@@ Two-box layout for stacked vs latest cards */"
+    }
+  ]
+}

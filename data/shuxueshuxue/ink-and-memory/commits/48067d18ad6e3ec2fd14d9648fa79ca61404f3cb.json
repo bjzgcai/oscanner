@@ -1,0 +1,61 @@
+{
+  "sha": "48067d18ad6e3ec2fd14d9648fa79ca61404f3cb",
+  "node_id": "C_kwDOP2Zrm9oAKDQ4MDY3ZDE4YWQ2ZTNlYzJmZDE0ZDk2NDhmYTc5Y2E2MTQwNGYzY2I",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-22T04:34:40Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-22T04:34:40Z"
+    },
+    "message": "Fix timezone parser for timestamps with spaces",
+    "tree": {
+      "sha": "186b8e90ecd11d607818ca0b74f3451770597a47",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/186b8e90ecd11d607818ca0b74f3451770597a47"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "cbf0de72ee0e70c3b50444df894100d93cb16164",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cbf0de72ee0e70c3b50444df894100d93cb16164",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cbf0de72ee0e70c3b50444df894100d93cb16164"
+    }
+  ],
+  "stats": {
+    "total": 14,
+    "additions": 13,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "076046aa18f9022898513c96af67c5c184a6e364",
+      "filename": "frontend/src/utils/timezone.ts",
+      "status": "modified",
+      "additions": 13,
+      "deletions": 1,
+      "changes": 14,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb/frontend%2Fsrc%2Futils%2Ftimezone.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb/frontend%2Fsrc%2Futils%2Ftimezone.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Futils%2Ftimezone.ts?ref=48067d18ad6e3ec2fd14d9648fa79ca61404f3cb",
+      "patch": "@@ -8,7 +8,19 @@ function ensureDate(value?: string | number | Date | null): Date | null {\n     return Number.isNaN(parsed.getTime()) ? null : parsed;\n   }\n   if (typeof value === 'string') {\n-    const normalized = value.includes('T') ? value : `${value}T00:00:00Z`;\n+    const trimmed = value.trim();\n+    let normalized = trimmed;\n+    const hasT = trimmed.includes('T');\n+    const hasSpace = trimmed.includes(' ');\n+    const hasZone = /([zZ]|[+-]\\d{2}:\\d{2})$/.test(trimmed);\n+    if (!hasT && hasSpace) {\n+      normalized = trimmed.replace(' ', 'T');\n+    } else if (!hasT && !hasSpace) {\n+      normalized = `${trimmed}T00:00:00`;\n+    }\n+    if (!hasZone) {\n+      normalized = `${normalized}Z`;\n+    }\n     const parsed = new Date(normalized);\n     return Number.isNaN(parsed.getTime()) ? null : parsed;\n   }"
+    }
+  ]
+}

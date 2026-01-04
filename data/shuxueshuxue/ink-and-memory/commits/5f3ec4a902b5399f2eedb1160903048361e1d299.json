@@ -1,0 +1,181 @@
+{
+  "sha": "5f3ec4a902b5399f2eedb1160903048361e1d299",
+  "node_id": "C_kwDOP2Zrm9oAKDVmM2VjNGE5MDJiNTM5OWYyZWVkYjExNjA5MDMwNDgzNjFlMWQyOTk",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-09T11:12:40Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-09T11:12:40Z"
+    },
+    "message": "Add multi-user support with session isolation and TTL cleanup\n\nBackend:\n- Replace global analyzer with session-based storage (_user_analyzers dict)\n- Add session_id parameter to analyze_text() API\n- Implement automatic cleanup of sessions inactive >1 hour\n- Track last access time per session to prevent memory leaks\n\nFrontend:\n- Generate unique session_id on mount using crypto.randomUUID()\n- Pass session_id in all API requests\n- Each browser tab gets isolated voice comment state\n\nAdditional improvements:\n- Increase icon diversity (lightbulb, masks, shield, compass, eye, fist, fire, wind)\n- Add cursor-based auto-scroll to focused voice comment\n- Fix text overflow with word-wrap\n- Hide scrollbar while maintaining scroll functionality\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "8704b13e0cff0ce022d865b957d780302e57b299",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/8704b13e0cff0ce022d865b957d780302e57b299"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/5f3ec4a902b5399f2eedb1160903048361e1d299",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5f3ec4a902b5399f2eedb1160903048361e1d299",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/5f3ec4a902b5399f2eedb1160903048361e1d299",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5f3ec4a902b5399f2eedb1160903048361e1d299/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "a86b58408f7e9dd6b7d494ff02cb0a606195cdaf",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a86b58408f7e9dd6b7d494ff02cb0a606195cdaf",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/a86b58408f7e9dd6b7d494ff02cb0a606195cdaf"
+    }
+  ],
+  "stats": {
+    "total": 281,
+    "additions": 162,
+    "deletions": 119
+  },
+  "files": [
+    {
+      "sha": "b1e97768c3bcf7784f47c96d19da74465e2651a4",
+      "filename": "backend/config.py",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 9,
+      "changes": 18,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/backend%2Fconfig.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/backend%2Fconfig.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fconfig.py?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -17,12 +17,12 @@\n     },\n     \"Rhetoric\": {\n         \"tagline\": \"Practice the art of persuasion. Enjoy rigorous intellectual discourse.\",\n-        \"icon\": \"brain\",\n+        \"icon\": \"lightbulb\",\n         \"color\": \"purple\"\n     },\n     \"Drama\": {\n         \"tagline\": \"Play the actor. Lie and detect lies.\",\n-        \"icon\": \"question\",\n+        \"icon\": \"masks\",\n         \"color\": \"pink\"\n     },\n     \"Conceptualization\": {\n@@ -32,12 +32,12 @@\n     },\n     \"Volition\": {\n         \"tagline\": \"Hold yourself together. Keep your Morale up.\",\n-        \"icon\": \"brain\",\n+        \"icon\": \"shield\",\n         \"color\": \"green\"\n     },\n     \"Inland Empire\": {\n         \"tagline\": \"Hunches and gut feelings. Dreams in waking life.\",\n-        \"icon\": \"cloud\",\n+        \"icon\": \"compass\",\n         \"color\": \"purple\"\n     },\n     \"Empathy\": {\n@@ -47,17 +47,17 @@\n     },\n     \"Authority\": {\n         \"tagline\": \"Intimidate the public. Assert yourself.\",\n-        \"icon\": \"brain\",\n+        \"icon\": \"fist\",\n         \"color\": \"yellow\"\n     },\n     \"Electrochemistry\": {\n         \"tagline\": \"Go to party planet. Love and be loved by drugs.\",\n-        \"icon\": \"heart\",\n+        \"icon\": \"fire\",\n         \"color\": \"pink\"\n     },\n     \"Shivers\": {\n         \"tagline\": \"Raise the hair on your neck. Tune in to the city.\",\n-        \"icon\": \"cloud\",\n+        \"icon\": \"wind\",\n         \"color\": \"blue\"\n     },\n     \"Half Light\": {\n@@ -67,12 +67,12 @@\n     },\n     \"Perception\": {\n         \"tagline\": \"See, hear and smell everything. Let no detail go unnoticed.\",\n-        \"icon\": \"brain\",\n+        \"icon\": \"eye\",\n         \"color\": \"green\"\n     },\n     \"Composure\": {\n         \"tagline\": \"Straighten your back. Keep your poker face.\",\n-        \"icon\": \"brain\",\n+        \"icon\": \"shield\",\n         \"color\": \"blue\"\n     }\n }"
+    },
+    {
+      "sha": "d7c7a94fdbdc3f88acd3f1c2de80613776f9be4e",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 3,
+      "changes": 7,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -9,10 +9,10 @@\n @session_def(\n     name=\"Analyze Voices\",\n     description=\"Detect inner voices in text using Disco Elysium archetypes\",\n-    params={\"text\": str},\n+    params={\"text\": str, \"session_id\": str},\n     category=\"Analysis\"\n )\n-def analyze_text(text: str):\n+def analyze_text(text: str, session_id: str):\n     \"\"\"\n     Analyze text and detect inner voice triggers.\n \n@@ -24,6 +24,7 @@ def analyze_text(text: str):\n     \"\"\"\n     print(f\"\\n{'='*60}\")\n     print(f\"🎯 analyze_text() called\")\n+    print(f\"   Session ID: {session_id}\")\n     print(f\"   Text length: {len(text)}\")\n     print(f\"   Text preview: {text[:100]}...\")\n     print(f\"{'='*60}\\n\")\n@@ -32,7 +33,7 @@ def analyze_text(text: str):\n     agent = PolyAgent(id=\"voice-analyzer\")\n \n     print(\"Calling analyze_stateful pattern...\")\n-    voices = analyze_stateful(agent, text)\n+    voices = analyze_stateful(agent, text, session_id)\n \n     print(f\"✅ Got {len(voices)} voices\")\n     for i, v in enumerate(voices):"
+    },
+    {
+      "sha": "45831e25a12b321fe6a14df5d3d52d7ac971c492",
+      "filename": "backend/stateful_analyzer.py",
+      "status": "modified",
+      "additions": 43,
+      "deletions": 6,
+      "changes": 49,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/backend%2Fstateful_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/backend%2Fstateful_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateful_analyzer.py?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -7,12 +7,13 @@\n from polycli.orchestration import pattern\n import config\n import re\n+import time\n \n class VoiceTrigger(BaseModel):\n     phrase: str = Field(description=\"Exact trigger phrase from text (verbatim)\")\n     voice: str = Field(description=\"Voice archetype name from the available list\")\n     comment: str = Field(description=\"What this voice is saying (as if speaking)\")\n-    icon: str = Field(description=\"Icon: brain, heart, question, cloud\")\n+    icon: str = Field(description=\"Icon: brain, heart, question, cloud, masks, eye, fist, lightbulb, shield, wind, fire, compass\")\n     color: str = Field(description=\"Color: blue, pink, yellow, green, purple\")\n \n class VoiceAnalysis(BaseModel):\n@@ -252,9 +253,45 @@ def analyze(self, agent: PolyAgent, text: str) -> list[dict]:\n \n         return self.comments\n \n-# Global instance (shared across all session calls)\n-global_analyzer = StatefulVoiceAnalyzer()\n+# @@@ Multi-user support - Session-based storage\n+# Each user gets their own analyzer instance, keyed by session_id\n+_user_analyzers = {}  # session_id -> StatefulVoiceAnalyzer\n+_last_access = {}     # session_id -> timestamp\n \n-def analyze_stateful(agent: PolyAgent, text: str) -> list[dict]:\n-    \"\"\"Wrapper function that uses global analyzer instance.\"\"\"\n-    return global_analyzer.analyze(agent, text)\n+# @@@ Session cleanup config\n+SESSION_TTL = 3600  # 1 hour - sessions inactive for this long will be cleaned up\n+\n+def cleanup_stale_sessions():\n+    \"\"\"Remove sessions that haven't been accessed in SESSION_TTL seconds.\"\"\"\n+    now = time.time()\n+    stale_sessions = [\n+        sid for sid, last_time in _last_access.items()\n+        if now - last_time > SESSION_TTL\n+    ]\n+\n+    for sid in stale_sessions:\n+        print(f\"🗑️  Cleaning up stale session: {sid} (inactive for {SESSION_TTL}s)\")\n+        del _user_analyzers[sid]\n+        del _last_access[sid]\n+\n+    if stale_sessions:\n+        print(f\"📊 Active sessions: {len(_user_analyzers)}\")\n+\n+def get_analyzer(session_id: str) -> StatefulVoiceAnalyzer:\n+    \"\"\"Get or create analyzer for this user session.\"\"\"\n+    if session_id not in _user_analyzers:\n+        print(f\"🆕 Creating new analyzer for session: {session_id}\")\n+        _user_analyzers[session_id] = StatefulVoiceAnalyzer()\n+\n+    # Update last access time\n+    _last_access[session_id] = time.time()\n+\n+    return _user_analyzers[session_id]\n+\n+def analyze_stateful(agent: PolyAgent, text: str, session_id: str) -> list[dict]:\n+    \"\"\"Analyze text using session-isolated analyzer.\"\"\"\n+    # Cleanup stale sessions before processing\n+    cleanup_stale_sessions()\n+\n+    analyzer = get_analyzer(session_id)\n+    return analyzer.analyze(agent, text)"
+    },
+    {
+      "sha": "73ea2ce9e20b0b24389790fd9234eb000fc69995",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 13,
+      "deletions": 32,
+      "changes": 45,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -44,27 +44,22 @@\n \n .book-page.right-page {\n   flex-direction: column;\n+  gap: 1rem;\n   padding: 2rem;\n   overflow-y: auto;\n-  overflow-x: visible;\n+  overflow-x: hidden;\n+  scrollbar-width: none; /* Firefox */\n+  -ms-overflow-style: none; /* IE/Edge */\n }\n \n-/* @@@ Two-box layout for stacked vs latest cards */\n-.voices-container {\n-  display: flex;\n-  flex-direction: column;\n-  gap: 4rem;\n-  margin-left: 2rem;\n-}\n-\n-.voice-stack {\n-  position: relative;\n-  width: 100%;\n+.book-page.right-page::-webkit-scrollbar {\n+  display: none; /* Chrome/Safari */\n }\n \n-.latest-card-container {\n-  position: relative;\n-  min-height: 100px;\n+.book-page.right-page > * {\n+  margin-left: 2rem;\n+  word-wrap: break-word;\n+  overflow-wrap: break-word;\n }\n \n /* Editable text area overlay */\n@@ -111,7 +106,6 @@\n }\n \n .voice-comment {\n-  position: relative;\n   padding: 1rem;\n   border-left: 4px solid;\n   border-radius: 4px;\n@@ -120,22 +114,9 @@\n   line-height: 1.6;\n   color: #333;\n   animation: fadeIn 0.5s ease-in;\n-  transition: all 0.3s ease;\n-  cursor: pointer;\n-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);\n-}\n-\n-/* @@@ Stacking: latest card on top, older cards stack below */\n-/* Only non-top cards can pop to top layer on hover (position stays same) */\n-.voice-comment:not(.top-card):hover {\n-  z-index: 1000 !important;\n-  box-shadow: 0 8px 16px rgba(0,0,0,0.15);\n-}\n-\n-.top-card {\n-  cursor: default;\n-  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;\n-  transform: scale(1.02) rotate(-1deg);\n+  word-wrap: break-word;\n+  overflow-wrap: break-word;\n+  max-width: 100%;\n }\n \n .voice-header {"
+    },
+    {
+      "sha": "9fee64c1f0f72f68581f8a0448e53c4a6a49c44e",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 38,
+      "deletions": 34,
+      "changes": 72,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -16,9 +16,14 @@ interface Voice {\n }\n \n function App() {\n+  // @@@ Multi-user support - Generate unique session ID on mount\n+  const sessionId = useRef(crypto.randomUUID()).current;\n+\n   const [voices, setVoices] = useState<Voice[]>([]);\n   const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>([]);\n   const [currentText, setCurrentText] = useState<string>('');\n+  const [cursorPosition, setCursorPosition] = useState<number>(0);\n+  const [focusedVoiceIndex, setFocusedVoiceIndex] = useState<number | undefined>(undefined);\n   const currentTextRef = useRef<string>('');\n   const lastAnalyzedTextRef = useRef<string>('');\n   const isAnalyzingRef = useRef<boolean>(false);\n@@ -40,6 +45,28 @@ function App() {\n     setVoices(newVoices);\n   };\n \n+  // @@@ Track which voice comment to focus based on cursor position\n+  useEffect(() => {\n+    if (voices.length === 0) {\n+      setFocusedVoiceIndex(undefined);\n+      return;\n+    }\n+\n+    // Find the comment whose trigger phrase is closest to cursor\n+    let closestIndex = 0;\n+    let closestDistance = Math.abs(voices[0].position - cursorPosition);\n+\n+    for (let i = 1; i < voices.length; i++) {\n+      const distance = Math.abs(voices[i].position - cursorPosition);\n+      if (distance < closestDistance) {\n+        closestDistance = distance;\n+        closestIndex = i;\n+      }\n+    }\n+\n+    setFocusedVoiceIndex(closestIndex);\n+  }, [cursorPosition, voices]);\n+\n   const analyzeIfNeeded = async () => {\n     // Skip if already analyzing\n     if (isAnalyzingRef.current) {\n@@ -59,7 +86,7 @@ function App() {\n \n     try {\n       console.log(`🔍 Calling backend analysis (${textDiff} chars changed)...`);\n-      const backendVoices = await analyzeText(currentTextValue);\n+      const backendVoices = await analyzeText(currentTextValue, sessionId);\n       console.log(`✅ Got ${backendVoices.length} voices from backend`);\n \n       setVoiceTriggers(backendVoices);\n@@ -90,44 +117,21 @@ function App() {\n     detectVoices(currentText, voiceTriggers);\n   }, [voiceTriggers]);\n \n-  const stackedVoices = voices.slice(0, -1);\n-  const latestVoice = voices[voices.length - 1];\n-\n   return (\n     <div className=\"book-interface\">\n-      <WritingArea onChange={handleTextChange} triggers={voiceTriggers} />\n-      <VoicesPanel\n-        stackedCards={stackedVoices.map((voice, index) => (\n-          <VoiceComment\n-            key={index}\n-            voice={voice.name}\n-            text={voice.text}\n-            icon={voice.icon}\n-            color={voice.color}\n-            isTopCard={false}\n-            style={{\n-              zIndex: index + 1,\n-              marginTop: index === 0 ? 0 : '-45%',\n-            }}\n-          />\n-        ))}\n-        latestCard={latestVoice && (\n-          <VoiceComment\n-            voice={latestVoice.name}\n-            text={latestVoice.text}\n-            icon={latestVoice.icon}\n-            color={latestVoice.color}\n-            isTopCard={true}\n-            style={{\n-              zIndex: voices.length,\n-            }}\n-          />\n-        )}\n-        stackedCount={stackedVoices.length}\n+      <WritingArea\n+        onChange={handleTextChange}\n+        triggers={voiceTriggers}\n+        onCursorChange={setCursorPosition}\n       />\n+      <VoicesPanel focusedVoiceIndex={focusedVoiceIndex}>\n+        {voices.map((voice, index) => (\n+          <VoiceComment key={index} voice={voice.name} text={voice.text} icon={voice.icon} color={voice.color} />\n+        ))}\n+      </VoicesPanel>\n       <BinderRings />\n     </div>\n   );\n }\n \n-export default App\n+export default App\n\\ No newline at end of file"
+    },
+    {
+      "sha": "e690802026e2eda9ee6a093bc3964140e2342ea2",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 4,
+      "changes": 8,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -28,13 +28,13 @@ interface StatusResponse {\n /**\n  * Trigger voice analysis session\n  */\n-export async function triggerAnalysis(text: string): Promise<string> {\n+export async function triggerAnalysis(text: string, sessionId: string): Promise<string> {\n   const response = await fetch(`${API_BASE}/api/trigger`, {\n     method: 'POST',\n     headers: { 'Content-Type': 'application/json' },\n     body: JSON.stringify({\n       session_id: 'analyze_text',\n-      params: { text }\n+      params: { text, session_id: sessionId }\n     })\n   });\n \n@@ -77,8 +77,8 @@ export async function getAnalysisResult(exec_id: string): Promise<StatusResponse\n /**\n  * Analyze text and return voices (all-in-one)\n  */\n-export async function analyzeText(text: string) {\n-  const exec_id = await triggerAnalysis(text);\n+export async function analyzeText(text: string, sessionId: string) {\n+  const exec_id = await triggerAnalysis(text, sessionId);\n   const result = await getAnalysisResult(exec_id);\n   return result?.voices || [];\n }"
+    },
+    {
+      "sha": "540c45aa1c7d06245e3cc9e3aa45061571f16af6",
+      "filename": "frontend/src/components/BookPage.tsx",
+      "status": "modified",
+      "additions": 8,
+      "deletions": 4,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FBookPage.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FBookPage.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FBookPage.tsx?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -1,14 +1,18 @@\n-import { ReactNode } from 'react';\n+import { ReactNode, forwardRef } from 'react';\n \n interface BookPageProps {\n   children?: ReactNode;\n   side: 'left' | 'right';\n }\n \n-export default function BookPage({ children, side }: BookPageProps) {\n+const BookPage = forwardRef<HTMLDivElement, BookPageProps>(({ children, side }, ref) => {\n   return (\n-    <div className={`book-page ${side}-page`}>\n+    <div className={`book-page ${side}-page`} ref={ref}>\n       {children}\n     </div>\n   );\n-}\n\\ No newline at end of file\n+});\n+\n+BookPage.displayName = 'BookPage';\n+\n+export default BookPage;\n\\ No newline at end of file"
+    },
+    {
+      "sha": "fd53152425b9910039252d67fa4d6a19ff7d9214",
+      "filename": "frontend/src/components/EditableTextArea.tsx",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 2,
+      "changes": 11,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -6,15 +6,22 @@ import { VoiceHighlight, type VoiceTrigger } from '../extensions/VoiceHighlight'\n interface EditableTextAreaProps {\n   onChange: (text: string) => void;\n   triggers: VoiceTrigger[];\n+  onCursorChange?: (position: number) => void;\n }\n \n-export default function EditableTextArea({ onChange, triggers }: EditableTextAreaProps) {\n+export default function EditableTextArea({ onChange, triggers, onCursorChange }: EditableTextAreaProps) {\n   const editor = useEditor({\n     extensions: [\n       StarterKit,\n       VoiceHighlight.configure({ triggers })\n     ],\n-    onUpdate: ({ editor }) => onChange(editor.getText()),\n+    onUpdate: ({ editor }) => {\n+      onChange(editor.getText());\n+      onCursorChange?.(editor.state.selection.from);\n+    },\n+    onSelectionUpdate: ({ editor }) => {\n+      onCursorChange?.(editor.state.selection.from);\n+    },\n     autofocus: true,\n   });\n "
+    },
+    {
+      "sha": "d2fc12769f2cde11afa2ae31015e5bba6d2c1443",
+      "filename": "frontend/src/components/VoiceComment.tsx",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 7,
+      "changes": 18,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -1,20 +1,25 @@\n-import { FaBrain, FaHeart, FaQuestion, FaCloud } from 'react-icons/fa';\n-import { CSSProperties } from 'react';\n+import { FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye, FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass } from 'react-icons/fa';\n \n interface VoiceCommentProps {\n   voice: string;\n   text: string;\n   icon: string;\n   color: string;\n-  isTopCard: boolean;\n-  style?: CSSProperties;\n }\n \n const iconMap = {\n   brain: FaBrain,\n   heart: FaHeart,\n   question: FaQuestion,\n   cloud: FaCloud,\n+  masks: FaTheaterMasks,\n+  eye: FaEye,\n+  fist: FaFistRaised,\n+  lightbulb: FaLightbulb,\n+  shield: FaShieldAlt,\n+  wind: FaWind,\n+  fire: FaFire,\n+  compass: FaCompass,\n };\n \n const colorMap: Record<string, { background: string; border: string }> = {\n@@ -25,17 +30,16 @@ const colorMap: Record<string, { background: string; border: string }> = {\n   purple: { background: '#f3e6ff', border: '#b366ff' },\n };\n \n-export default function VoiceComment({ voice, text, icon, color, isTopCard, style }: VoiceCommentProps) {\n+export default function VoiceComment({ voice, text, icon, color }: VoiceCommentProps) {\n   const Icon = iconMap[icon as keyof typeof iconMap];\n   const colors = colorMap[color] || { background: '#f0f0f0', border: '#ccc' };\n \n   return (\n     <div\n-      className={`voice-comment ${isTopCard ? 'top-card' : ''}`}\n+      className=\"voice-comment\"\n       style={{\n         backgroundColor: colors.background,\n         borderColor: colors.border,\n-        ...style,\n       }}\n     >\n       <div className=\"voice-header\">"
+    },
+    {
+      "sha": "ff32586ff2191b3dbf9e93f8f00b01ea926c2536",
+      "filename": "frontend/src/components/VoicesPanel.tsx",
+      "status": "modified",
+      "additions": 20,
+      "deletions": 16,
+      "changes": 36,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -1,25 +1,29 @@\n-import { ReactNode } from 'react';\n+import { ReactNode, useRef, useEffect } from 'react';\n import BookPage from './BookPage';\n \n interface VoicesPanelProps {\n-  stackedCards: ReactNode;\n-  latestCard: ReactNode;\n-  stackedCount: number;\n+  children: ReactNode;\n+  focusedVoiceIndex?: number;\n }\n \n-export default function VoicesPanel({ stackedCards, latestCard, stackedCount }: VoicesPanelProps) {\n+export default function VoicesPanel({ children, focusedVoiceIndex }: VoicesPanelProps) {\n+  const panelRef = useRef<HTMLDivElement>(null);\n+\n+  // @@@ Auto-scroll to focused comment with margin\n+  useEffect(() => {\n+    if (focusedVoiceIndex !== undefined && panelRef.current) {\n+      const comments = panelRef.current.querySelectorAll('.voice-comment');\n+      const targetComment = comments[focusedVoiceIndex] as HTMLElement;\n+\n+      if (targetComment) {\n+        targetComment.scrollIntoView({ behavior: 'smooth', block: 'center' });\n+      }\n+    }\n+  }, [focusedVoiceIndex]);\n+\n   return (\n-    <BookPage side=\"right\">\n-      <div className=\"voices-container\">\n-        {stackedCount > 0 && (\n-          <div className=\"voice-stack\">\n-            {stackedCards}\n-          </div>\n-        )}\n-        <div className=\"latest-card-container\">\n-          {latestCard}\n-        </div>\n-      </div>\n+    <BookPage side=\"right\" ref={panelRef}>\n+      {children}\n     </BookPage>\n   );\n }\n\\ No newline at end of file"
+    },
+    {
+      "sha": "a969dc269a7f716a8707d229061ecc581171a281",
+      "filename": "frontend/src/components/WritingArea.tsx",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 2,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5f3ec4a902b5399f2eedb1160903048361e1d299/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx?ref=5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "patch": "@@ -5,12 +5,13 @@ import type { VoiceTrigger } from '../extensions/VoiceHighlight';\n interface WritingAreaProps {\n   onChange: (text: string) => void;\n   triggers: VoiceTrigger[];\n+  onCursorChange?: (position: number) => void;\n }\n \n-export default function WritingArea({ onChange, triggers }: WritingAreaProps) {\n+export default function WritingArea({ onChange, triggers, onCursorChange }: WritingAreaProps) {\n   return (\n     <BookPage side=\"left\">\n-      <EditableTextArea onChange={onChange} triggers={triggers} />\n+      <EditableTextArea onChange={onChange} triggers={triggers} onCursorChange={onCursorChange} />\n     </BookPage>\n   );\n }\n\\ No newline at end of file"
+    }
+  ]
+}

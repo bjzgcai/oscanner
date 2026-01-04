@@ -1,0 +1,61 @@
+{
+  "sha": "4f16b989f963c91e1aef4ac34d2b21b5cec10ef4",
+  "node_id": "C_kwDOP2Zrm9oAKDRmMTZiOTg5Zjk2M2M5MWUxYWVmNGFjMzRkMmIyMWI1Y2VjMTBlZjQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:51:33Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:51:33Z"
+    },
+    "message": "Remove unused TipTap extension file\n\n- Deleted frontend/src/extensions/VoiceHighlight.ts (143 lines)\n- Removed empty extensions/ directory\n- This file was from old TipTap editor implementation\n- App now uses plain textareas, so TipTap extension is obsolete\n- No imports found anywhere in codebase\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "9d949273ff9187c14d9d840741194c0ac4c2ff5d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/9d949273ff9187c14d9d840741194c0ac4c2ff5d"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4f16b989f963c91e1aef4ac34d2b21b5cec10ef4",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4f16b989f963c91e1aef4ac34d2b21b5cec10ef4",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4f16b989f963c91e1aef4ac34d2b21b5cec10ef4",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4f16b989f963c91e1aef4ac34d2b21b5cec10ef4/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "adda5e7288db885babac02005215aedaa9c50221",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/adda5e7288db885babac02005215aedaa9c50221",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/adda5e7288db885babac02005215aedaa9c50221"
+    }
+  ],
+  "stats": {
+    "total": 142,
+    "additions": 0,
+    "deletions": 142
+  },
+  "files": [
+    {
+      "sha": "e0abfbf6ea443c2ec2e9a61883b9ce2a10053f31",
+      "filename": "frontend/src/extensions/VoiceHighlight.ts",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 142,
+      "changes": 142,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/adda5e7288db885babac02005215aedaa9c50221/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/adda5e7288db885babac02005215aedaa9c50221/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts?ref=adda5e7288db885babac02005215aedaa9c50221",
+      "patch": "@@ -1,142 +0,0 @@\n-import { Extension } from '@tiptap/core';\n-import { Plugin, PluginKey } from '@tiptap/pm/state';\n-import { Decoration, DecorationSet } from '@tiptap/pm/view';\n-import { findNormalizedPhrase } from '../utils/textNormalize';\n-\n-export interface VoiceTrigger {\n-  phrase: string;\n-  voice: string;\n-  comment: string;\n-  color: string;\n-  icon: string;\n-}\n-\n-export interface VoiceHighlightOptions {\n-  triggers: VoiceTrigger[];\n-  onPhraseHover?: (phrase: string | null) => void;\n-}\n-\n-export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n-  name: 'voiceHighlight',\n-\n-  addOptions() {\n-    return {\n-      triggers: [],\n-      onPhraseHover: undefined,\n-    };\n-  },\n-\n-  addProseMirrorPlugins() {\n-    let triggers = this.options.triggers;\n-    const onPhraseHover = this.options.onPhraseHover;\n-\n-    return [\n-      new Plugin({\n-        key: new PluginKey('voiceHighlight'),\n-\n-        state: {\n-          init(_, { doc }) {\n-            return { decorations: findHighlights(doc, triggers), triggers };\n-          },\n-\n-          apply(tr, oldState) {\n-            // @@@ Dynamic updates - Recalculate on doc change or meta change\n-            const metaChanged = tr.getMeta('voiceHighlight');\n-            if (metaChanged?.triggers) {\n-              const newTriggers = metaChanged.triggers;\n-              return {\n-                decorations: findHighlights(tr.doc, newTriggers),\n-                triggers: newTriggers\n-              };\n-            }\n-            if (tr.docChanged) {\n-              const currentTriggers = oldState.triggers || triggers;\n-              return {\n-                decorations: findHighlights(tr.doc, currentTriggers),\n-                triggers: currentTriggers\n-              };\n-            }\n-            return oldState;\n-          },\n-        },\n-\n-        props: {\n-          decorations(state) {\n-            return this.getState(state)?.decorations;\n-          },\n-\n-          // @@@ Hover detection - Find which phrase is being hovered\n-          handleDOMEvents: {\n-            mouseover(_view, event) {\n-              const target = event.target as HTMLElement;\n-\n-              // Check if hovering over a highlighted element\n-              if (target.classList.contains('voice-highlight')) {\n-                // Extract the text content\n-                const phrase = target.textContent || '';\n-                onPhraseHover?.(phrase);\n-                return false;\n-              }\n-              return false;\n-            },\n-\n-            mouseout(_view, event) {\n-              const target = event.target as HTMLElement;\n-\n-              // Check if leaving a highlighted element\n-              if (target.classList.contains('voice-highlight')) {\n-                onPhraseHover?.(null);\n-                return false;\n-              }\n-              return false;\n-            },\n-          },\n-        },\n-      }),\n-    ];\n-  },\n-});\n-\n-function findHighlights(doc: any, triggers: VoiceTrigger[]): DecorationSet {\n-  const decorations: Decoration[] = [];\n-  const text = doc.textContent;\n-\n-  triggers.forEach(({ phrase, color }) => {\n-    const pos = findNormalizedPhrase(text, phrase);\n-\n-    if (pos !== -1) {\n-      // Convert text position to document position\n-      let docPos = 0;\n-      let textPos = 0;\n-      let found = false;\n-\n-      doc.descendants((node: any, nodePos: number) => {\n-        if (found) return false;\n-\n-        if (node.isText) {\n-          const nodeText = node.text || '';\n-          if (textPos + nodeText.length > pos) {\n-            // The match starts in this text node\n-            const offsetInNode = pos - textPos;\n-            docPos = nodePos + offsetInNode;\n-            found = true;\n-            return false;\n-          }\n-          textPos += nodeText.length;\n-        }\n-\n-        return true;\n-      });\n-\n-      if (found) {\n-        decorations.push(\n-          Decoration.inline(docPos, docPos + phrase.length, {\n-            class: `voice-highlight voice-highlight-${color}`,\n-          })\n-        );\n-      }\n-    }\n-  });\n-\n-  return DecorationSet.create(doc, decorations);\n-}"
+    }
+  ]
+}

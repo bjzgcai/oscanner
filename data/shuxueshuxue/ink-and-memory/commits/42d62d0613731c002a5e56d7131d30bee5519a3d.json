@@ -1,0 +1,85 @@
+{
+  "sha": "42d62d0613731c002a5e56d7131d30bee5519a3d",
+  "node_id": "C_kwDOP2Zrm9oAKDQyZDYyZDA2MTM3MzFjMDAyYTVlNTZkNzEzMWQzMGJlZTU1MTlhM2Q",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T02:09:39Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T02:09:39Z"
+    },
+    "message": "Increase margin to 4rem to accommodate tilted latest card",
+    "tree": {
+      "sha": "a26de0e914ddd55e79d3dcddaee1ae9652b1e3b7",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/a26de0e914ddd55e79d3dcddaee1ae9652b1e3b7"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/42d62d0613731c002a5e56d7131d30bee5519a3d",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/42d62d0613731c002a5e56d7131d30bee5519a3d",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/42d62d0613731c002a5e56d7131d30bee5519a3d",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/42d62d0613731c002a5e56d7131d30bee5519a3d/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "9e6fe1454b6e694b038915b27787276ec6c7130e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9e6fe1454b6e694b038915b27787276ec6c7130e",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9e6fe1454b6e694b038915b27787276ec6c7130e"
+    }
+  ],
+  "stats": {
+    "total": 24,
+    "additions": 17,
+    "deletions": 7
+  },
+  "files": [
+    {
+      "sha": "fc356a080366f596075314df5857fcbaf458c71a",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 2,
+      "changes": 6,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/42d62d0613731c002a5e56d7131d30bee5519a3d/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/42d62d0613731c002a5e56d7131d30bee5519a3d/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=42d62d0613731c002a5e56d7131d30bee5519a3d",
+      "patch": "@@ -52,13 +52,13 @@\n .voices-container {\n   display: flex;\n   flex-direction: column;\n-  gap: 2rem;\n+  gap: 4rem;\n   margin-left: 2rem;\n }\n \n .voice-stack {\n   position: relative;\n-  min-height: 100px;\n+  width: 100%;\n }\n \n .latest-card-container {\n@@ -136,6 +136,8 @@\n \n .top-card {\n   cursor: default;\n+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;\n+  transform: scale(1.02) rotate(-1deg);\n }\n \n .voice-header {"
+    },
+    {
+      "sha": "5af8ff482b788b16949cbd587345c3029986869f",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 1,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/42d62d0613731c002a5e56d7131d30bee5519a3d/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/42d62d0613731c002a5e56d7131d30bee5519a3d/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=42d62d0613731c002a5e56d7131d30bee5519a3d",
+      "patch": "@@ -107,7 +107,7 @@ function App() {\n             isTopCard={false}\n             style={{\n               zIndex: index + 1,\n-              transform: `translateY(${index * 50}%)`,\n+              transform: `translateY(${index * 55}%)`,\n             }}\n           />\n         ))}\n@@ -123,6 +123,7 @@ function App() {\n             }}\n           />\n         )}\n+        stackedCount={stackedVoices.length}\n       />\n       <BinderRings />\n     </div>"
+    },
+    {
+      "sha": "6a2b78d30cf548e2c14553935b010f0689574f0c",
+      "filename": "frontend/src/components/VoicesPanel.tsx",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 4,
+      "changes": 15,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/42d62d0613731c002a5e56d7131d30bee5519a3d/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/42d62d0613731c002a5e56d7131d30bee5519a3d/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx?ref=42d62d0613731c002a5e56d7131d30bee5519a3d",
+      "patch": "@@ -4,15 +4,22 @@ import BookPage from './BookPage';\n interface VoicesPanelProps {\n   stackedCards: ReactNode;\n   latestCard: ReactNode;\n+  stackedCount: number;\n }\n \n-export default function VoicesPanel({ stackedCards, latestCard }: VoicesPanelProps) {\n+export default function VoicesPanel({ stackedCards, latestCard, stackedCount }: VoicesPanelProps) {\n+  // Calculate minimum height needed: base card height + offsets\n+  // Assume ~100px per card, plus 55% offsets\n+  const stackHeightPx = stackedCount > 0 ? 100 + (stackedCount - 1) * 55 : 0;\n+\n   return (\n     <BookPage side=\"right\">\n       <div className=\"voices-container\">\n-        <div className=\"voice-stack\">\n-          {stackedCards}\n-        </div>\n+        {stackedCount > 0 && (\n+          <div className=\"voice-stack\" style={{ minHeight: `${stackHeightPx}px` }}>\n+            {stackedCards}\n+          </div>\n+        )}\n         <div className=\"latest-card-container\">\n           {latestCard}\n         </div>"
+    }
+  ]
+}

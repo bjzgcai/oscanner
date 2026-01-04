@@ -1,0 +1,73 @@
+{
+  "sha": "2d472c31713e9f096816a2331c1627d41c3f89e8",
+  "node_id": "C_kwDOP2Zrm9oAKDJkNDcyYzMxNzEzZTlmMDk2ODE2YTIzMzFjMTYyN2Q0MWMzZjg5ZTg",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-06T11:03:55Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-06T11:03:55Z"
+    },
+    "message": "Reduce inspiration timer to 2 seconds and clean up verbose console logs\n\n- Changed inspiration trigger delay from 5 seconds to 2 seconds for faster feedback\n- Removed repetitive debug logs from module load, useEffect, and EditorEngine\n- Kept important backend API call log for debugging\n- Cleaned up logs that were repeating on every HMR reload and state change\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "707ce28ad1767d23a96f45376dc82d405aa6eb6f",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/707ce28ad1767d23a96f45376dc82d405aa6eb6f"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/2d472c31713e9f096816a2331c1627d41c3f89e8",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2d472c31713e9f096816a2331c1627d41c3f89e8",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2d472c31713e9f096816a2331c1627d41c3f89e8",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2d472c31713e9f096816a2331c1627d41c3f89e8/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "cb5c9121367bd4961d9dde2a0231f6a6bb9c4044",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cb5c9121367bd4961d9dde2a0231f6a6bb9c4044",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cb5c9121367bd4961d9dde2a0231f6a6bb9c4044"
+    }
+  ],
+  "stats": {
+    "total": 137,
+    "additions": 37,
+    "deletions": 100
+  },
+  "files": [
+    {
+      "sha": "3b0bc37d9a3a17598332035a24089efe937d433c",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 37,
+      "deletions": 98,
+      "changes": 135,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2d472c31713e9f096816a2331c1627d41c3f89e8/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2d472c31713e9f096816a2331c1627d41c3f89e8/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=2d472c31713e9f096816a2331c1627d41c3f89e8",
+      "patch": "@@ -28,9 +28,6 @@ import { CommentGroupCard } from './components/CommentCard';\n import { findNormalizedPhrase } from './utils/textNormalize';\n import { useAuth } from './contexts/AuthContext';\n import LoginForm from './components/Auth/LoginForm';\n-\n-// @@@ DEBUG: Verify new code is loaded\n-console.log('🚀🚀🚀 APP.TSX LOADED - NEW CODE WITH SUGGESTIONS 🚀🚀🚀');\n import RegisterForm from './components/Auth/RegisterForm';\n import { STORAGE_KEYS } from './constants/storageKeys';\n \n@@ -339,8 +336,6 @@ export default function App() {\n   // @@@ Update engine when voice configs change\n   useEffect(() => {\n     if (engineRef.current && Object.keys(voiceConfigs).length > 0) {\n-      console.log('📢 App: voiceConfigs changed, updating engine. Enabled:',\n-        Object.entries(voiceConfigs).filter(([_, v]) => v.enabled).map(([k]) => k));\n       engineRef.current.setVoiceConfigs(voiceConfigs);\n     }\n   }, [voiceConfigs]);\n@@ -364,7 +359,6 @@ export default function App() {\n \n         // If user has already completed first login, clear localStorage\n         if (preferences?.first_login_completed) {\n-          console.log('✅ Returning user, clearing localStorage');\n           // Clear all app data from localStorage (keep only auth token)\n           Object.values(STORAGE_KEYS).forEach(key => {\n             if (key !== STORAGE_KEYS.AUTH_TOKEN) {\n@@ -815,7 +809,6 @@ export default function App() {\n \n   // @@@ Per-cell text change handler\n   const handleTextChange = useCallback((cellId: string, newText: string) => {\n-    console.log('🔥🔥🔥 handleTextChange CALLED!', cellId, newText.length);\n     setLocalTexts(prev => {\n       const next = new Map(prev);\n       next.set(cellId, newText);\n@@ -851,21 +844,15 @@ export default function App() {\n       engineRef.current.updateTextCell(cellId, newText);\n     }\n \n-    // @@@ Start 5-second debounce timer for suggestions\n-    console.log('⏱️  Starting 5-second suggestion timer');\n+    // @@@ Start 2-second debounce timer for suggestions\n     suggestionTimerRef.current = setTimeout(async () => {\n-      console.log('⏰ Timer fired! Fetching suggestion...');\n-\n       // Get all text from all text cells\n       const allText = state?.cells\n         .filter(c => c.type === 'text')\n         .map(c => (c as TextCell).content)\n         .join('') || '';\n \n-      console.log(`📝 Text length: ${allText.length} chars`);\n-\n       if (allText.trim().length < 10) {\n-        console.log('❌ Text too short, skipping suggestion');\n         return;\n       }\n \n@@ -881,7 +868,6 @@ export default function App() {\n \n         console.log('🚀 Calling getSuggestion API...');\n         const suggestion = await getSuggestion(allText, metaPrompt, statePrompt);\n-        console.log('✅ Got suggestion:', suggestion);\n \n         // @@@ Validate text hasn't changed since request was sent\n         const currentCells = engineRef.current?.getState().cells;\n@@ -890,26 +876,13 @@ export default function App() {\n           .map(c => (c as TextCell).content)\n           .join('') || '';\n \n-        console.log('📊 Comparison:', {\n-          snapshotLength: snapshot.length,\n-          currentLength: currentText.length,\n-          matches: currentText === snapshot\n-        });\n-\n         if (suggestion && currentText === snapshot) {\n-          console.log('✨ Setting inspiration:', suggestion);\n           setCurrentInspiration(suggestion);\n-        } else {\n-          if (!suggestion) {\n-            console.log('⚠️  No inspiration returned from backend');\n-          } else {\n-            console.log('⚠️  Text changed, discarding inspiration');\n-          }\n         }\n       } catch (error) {\n-        console.error('❌ Failed to get inspiration:', error);\n+        console.error('Failed to get inspiration:', error);\n       }\n-    }, 5000);\n+    }, 2000);\n   }, [composingCells, dropdownVisible, dropdownTriggerCellId, state, selectedState, stateConfig]);\n \n   // @@@ Per-cell composition handlers\n@@ -2014,6 +1987,40 @@ export default function App() {\n                     }\n                     return null;\n                   })}\n+\n+                  {/* @@@ Inline Inspiration - appears after last text cell with icon and grey text */}\n+                  {currentInspiration && (\n+                    <div style={{\n+                      display: 'flex',\n+                      alignItems: 'center',\n+                      gap: '10px',\n+                      marginTop: '12px',\n+                      color: '#999',\n+                      fontSize: '16px',\n+                      fontStyle: 'italic',\n+                      cursor: 'pointer'\n+                    }}\n+                    onClick={() => setCurrentInspiration(null)}\n+                    >\n+                      {/* Voice Icon */}\n+                      <div style={{\n+                        fontSize: '24px',\n+                        flexShrink: 0,\n+                        color: '#666'\n+                      }}>\n+                        {React.createElement(iconMap[currentInspiration.icon as keyof typeof iconMap] || FaBrain)}\n+                      </div>\n+\n+                      {/* Inspiration Text */}\n+                      <div>\n+                        <span style={{ fontWeight: 'normal', color: '#888' }}>\n+                          {currentInspiration.voice}:\n+                        </span>\n+                        {' '}\n+                        {currentInspiration.inspiration}\n+                      </div>\n+                    </div>\n+                  )}\n                 </div>\n \n                 {/* Comments layer (absolute positioned) - hide on mobile */}\n@@ -2332,74 +2339,6 @@ export default function App() {\n         </div>\n       )}\n \n-      {/* @@@ Floating Inspiration Bubble - appears bottom-right when inspiration is available */}\n-      {currentInspiration && (\n-        <div\n-          style={{\n-            position: 'fixed',\n-            bottom: isMobile ? '60px' : '20px',\n-            right: isMobile ? '10px' : '20px',\n-            maxWidth: isMobile ? 'calc(100% - 20px)' : '400px',\n-            backgroundColor: '#fff',\n-            borderRadius: '12px',\n-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',\n-            padding: '16px',\n-            display: 'flex',\n-            gap: '12px',\n-            alignItems: 'start',\n-            zIndex: 1000,\n-            animation: 'slideIn 0.3s ease-out'\n-          }}\n-        >\n-          {/* Voice Icon */}\n-          <div\n-            style={{\n-              fontSize: '28px',\n-              flexShrink: 0\n-            }}\n-          >\n-            {React.createElement(iconMap[currentInspiration.icon as keyof typeof iconMap] || FaBrain)}\n-          </div>\n-\n-          {/* Inspiration Content */}\n-          <div style={{ flex: 1 }}>\n-            <div style={{\n-              fontWeight: 'bold',\n-              marginBottom: '6px',\n-              fontSize: '14px',\n-              color: '#555'\n-            }}>\n-              {currentInspiration.voice}\n-            </div>\n-            <div style={{\n-              fontSize: '15px',\n-              lineHeight: '1.5',\n-              color: '#333'\n-            }}>\n-              {currentInspiration.inspiration}\n-            </div>\n-          </div>\n-\n-          {/* Close button */}\n-          <button\n-            onClick={() => setCurrentInspiration(null)}\n-            style={{\n-              border: 'none',\n-              background: 'transparent',\n-              cursor: 'pointer',\n-              fontSize: '18px',\n-              color: '#999',\n-              padding: '0',\n-              width: '24px',\n-              height: '24px',\n-              flexShrink: 0\n-            }}\n-          >\n-            ×\n-          </button>\n-        </div>\n-      )}\n-\n       {/* Calendar Popup */}\n       {showCalendarPopup && (\n         <CalendarPopup"
+    },
+    {
+      "sha": "39880194e3090cb2bfcec24b890bbb626b5cfe3f",
+      "filename": "frontend/src/engine/EditorEngine.ts",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 2,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2d472c31713e9f096816a2331c1627d41c3f89e8/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2d472c31713e9f096816a2331c1627d41c3f89e8/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fengine%2FEditorEngine.ts?ref=2d472c31713e9f096816a2331c1627d41c3f89e8",
+      "patch": "@@ -137,8 +137,6 @@ export class EditorEngine {\n   // @@@ Update voice configurations from settings\n   setVoiceConfigs(configs: Record<string, any>) {\n     this.voiceConfigs = configs;\n-    console.log('📢 EditorEngine: voiceConfigs updated, enabled voices:',\n-      Object.entries(configs).filter(([_, v]) => v.enabled).map(([k]) => k));\n   }\n \n   // @@@ Update a specific text cell by ID"
+    }
+  ]
+}

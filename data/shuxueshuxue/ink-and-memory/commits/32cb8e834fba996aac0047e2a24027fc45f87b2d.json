@@ -1,0 +1,73 @@
+{
+  "sha": "32cb8e834fba996aac0047e2a24027fc45f87b2d",
+  "node_id": "C_kwDOP2Zrm9oAKDMyY2I4ZTgzNGZiYTk5NmFhYzAwNDdlMmEyNDAyN2ZjNDVmODdiMmQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-14T12:37:56Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-14T12:37:56Z"
+    },
+    "message": "Fix LLM loop bugs: show used personas and clarify phrase length\n\nThe LLM was getting stuck in loops due to two issues:\n\n1. Persona loop: LLM didn't know which personas were already used,\n   so it kept suggesting the same ones (which got filtered silently).\n   Fix: Show explicit \"ALREADY USED PERSONAS\" list in prompt.\n\n2. Sentence occupation confusion: LLM saw short trigger phrases but\n   didn't understand the entire sentence was off-limits, so it tried\n   to comment on different parts of occupied sentences.\n   Fix: Show full sentences with explanation of phrase vs. sentence.\n\n3. Phrase length issue: LLM was returning whole sentences as phrases,\n   making highlights too long and cluttered.\n   Fix: Add explicit guidance for SHORT phrases (2-6 words) with\n   examples and UI context (\"This will be HIGHLIGHTED\").\n\nChanges:\n- backend/stateful_analyzer.py: Add used persona tracking, full\n  sentence display with trigger phrase mapping, phrase-vs-sentence\n  distinction explanation, and SHORT phrase emphasis with examples\n- frontend/src/api/voiceApi.ts: Debug logging (from previous session)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "0857935f47faa41242e4e215d9bf558b007d50fb",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/0857935f47faa41242e4e215d9bf558b007d50fb"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/32cb8e834fba996aac0047e2a24027fc45f87b2d",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/32cb8e834fba996aac0047e2a24027fc45f87b2d",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/32cb8e834fba996aac0047e2a24027fc45f87b2d",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/32cb8e834fba996aac0047e2a24027fc45f87b2d/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e"
+    }
+  ],
+  "stats": {
+    "total": 83,
+    "additions": 78,
+    "deletions": 5
+  },
+  "files": [
+    {
+      "sha": "bcea6ae5aa166393657a2af9480820436ecc9690",
+      "filename": "backend/stateful_analyzer.py",
+      "status": "modified",
+      "additions": 68,
+      "deletions": 5,
+      "changes": 73,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/32cb8e834fba996aac0047e2a24027fc45f87b2d/backend%2Fstateful_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/32cb8e834fba996aac0047e2a24027fc45f87b2d/backend%2Fstateful_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateful_analyzer.py?ref=32cb8e834fba996aac0047e2a24027fc45f87b2d",
+      "patch": "@@ -169,11 +169,63 @@ def analyze(self, agent: PolyAgent, text: str) -> list[dict]:\n             for name, v in config.VOICE_ARCHETYPES.items()\n         ])\n \n+        # @@@ Build list of occupied sentences AND used personas to guide LLM\n         existing_summary = \"\"\n         if self.comments:\n-            existing_summary = \"\\n\\nEXISTING COMMENTS (do NOT repeat these):\\n\"\n+            # Get sentence boundaries\n+            sentences = self._get_sentences(text)\n+            sentence_positions = []\n+            pos = 0\n+            for sent in sentences:\n+                start = text.lower().find(sent.lower(), pos)\n+                if start != -1:\n+                    sentence_positions.append((start, start + len(sent), sent))\n+                    pos = start + len(sent)\n+\n+            # Find which sentences are occupied\n+            occupied_sentences = set()\n+            for comment in self.comments:\n+                phrase_pos = text.lower().find(comment[\"phrase\"].lower())\n+                if phrase_pos != -1:\n+                    for i, (start, end, sent) in enumerate(sentence_positions):\n+                        if start <= phrase_pos < end:\n+                            occupied_sentences.add(i)\n+                            break\n+\n+            # Build summary with used personas and occupied sentences\n+            used_personas = {c['voice'] for c in self.comments}\n+\n+            existing_summary = \"\\n\\n⚠️  ALREADY USED PERSONAS (DO NOT USE THESE AGAIN - each persona can only appear ONCE):\\n\"\n+            for persona in sorted(used_personas):\n+                existing_summary += f\"  - {persona}\\n\"\n+            existing_summary += \"👉 You MUST choose a persona that is NOT in the list above!\\n\"\n+\n+            existing_summary += \"\\n\\nEXISTING COMMENTS:\\n\"\n             for c in self.comments:\n-                existing_summary += f\"- {c['voice']} on \\\"{c['phrase']}\\\": {c['comment']}\\n\"\n+                existing_summary += f\"- {c['voice']} commented on phrase \\\"{c['phrase']}\\\": {c['comment']}\\n\"\n+\n+            if occupied_sentences:\n+                # @@@ phrase-vs-sentence - LLM must understand that even though only a phrase is highlighted,\n+                # the ENTIRE sentence containing that phrase is off-limits for new comments\n+                existing_summary += f\"\\n⚠️  OCCUPIED SENTENCES (already have comments, CANNOT comment anywhere in these sentences):\\n\"\n+                existing_summary += \"NOTE: Even though only a PHRASE is highlighted/commented, the rule is that the ENTIRE SENTENCE containing that phrase is now occupied.\\n\"\n+                existing_summary += \"You cannot add any new comment to any part of these full sentences:\\n\\n\"\n+                for i in sorted(occupied_sentences):\n+                    if i < len(sentence_positions):\n+                        full_sentence = sentence_positions[i][2]  # Show FULL sentence, no truncation\n+                        # Find which comment triggered this sentence\n+                        trigger_phrase = None\n+                        for c in self.comments:\n+                            phrase_pos = text.lower().find(c[\"phrase\"].lower())\n+                            if phrase_pos != -1:\n+                                start, end, _ = sentence_positions[i]\n+                                if start <= phrase_pos < end:\n+                                    trigger_phrase = c[\"phrase\"]\n+                                    break\n+\n+                        existing_summary += f\"  Sentence {i+1} (triggered by phrase \\\"{trigger_phrase}\\\"):\\n\"\n+                        existing_summary += f\"  \\\"{full_sentence}\\\"\\n\\n\"\n+                existing_summary += \"👉 Focus your analysis on NEW/UNCOMMENTED sentences only!\\n\"\n \n         prompt = f\"\"\"You are analyzing internal dialogue using the voice system from Disco Elysium.\n \n@@ -188,19 +240,30 @@ def analyze(self, agent: PolyAgent, text: str) -> list[dict]:\n {existing_summary}\n \n For each NEW voice you detect:\n-1. Extract the EXACT phrase that triggered it (word-for-word from the text)\n+1. Extract a SHORT phrase that triggered it (word-for-word from the text)\n+   - The phrase should be SMALL - typically 2-6 words, the most essential/striking part\n+   - This phrase will be HIGHLIGHTED in the UI - keep it concise!\n+   - ✅ Good examples: \"contemplative walk\", \"thinking about meaning\", \"life and death\"\n+   - ❌ Bad examples: (whole sentences, too long, not focused)\n 2. Choose the matching voice archetype\n 3. Write what this voice is saying (as if the voice itself is speaking)\n 4. Use the voice's designated icon and color\n \n+CRITICAL DISTINCTION:\n+- **Phrase** = SHORT essential words you return (what gets highlighted, 2-6 words ideal)\n+- **Sentence** = The occupation boundary (you can't comment anywhere else in that sentence)\n+- Even though your phrase is short, it occupies the ENTIRE sentence it appears in\n+\n IMPORTANT:\n - Maximum {config.MAX_VOICES} NEW voices\n-- Only identify clearly present voices\n-- Phrase must be verbatim from text\n+- **It's perfectly fine to return NO comment (null) if nothing is worth commenting on**\n+- Only identify clearly present voices - quality over quantity\n+- Phrase must be verbatim from text and KEEP IT SHORT (2-6 words typical)\n - Each voice should be distinct\n - DO NOT comment on parts that already have comments\n - Avoid commenting too close to existing comments\n - DO NOT comment on the last sentence if it appears incomplete (no ending punctuation like .!?。！？)\n+- **If all available sentences are already occupied or incomplete, return null**\n - Write comments in the SAME LANGUAGE as the text being analyzed (if text is Chinese, respond in Chinese; if English, respond in English)\n \"\"\"\n "
+    },
+    {
+      "sha": "c0a8ba3811bc902c2479b6684cb2fdbe1899491d",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 10,
+      "deletions": 0,
+      "changes": 10,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/32cb8e834fba996aac0047e2a24027fc45f87b2d/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/32cb8e834fba996aac0047e2a24027fc45f87b2d/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=32cb8e834fba996aac0047e2a24027fc45f87b2d",
+      "patch": "@@ -29,6 +29,7 @@ interface StatusResponse {\n  * Trigger voice analysis session\n  */\n export async function triggerAnalysis(text: string, sessionId: string): Promise<string> {\n+  console.log('📤 Sending trigger request...');\n   const response = await fetch(`${API_BASE}/api/trigger`, {\n     method: 'POST',\n     headers: { 'Content-Type': 'application/json' },\n@@ -38,11 +39,15 @@ export async function triggerAnalysis(text: string, sessionId: string): Promise<\n     })\n   });\n \n+  console.log('📥 Got response, status:', response.status);\n   const data: TriggerResponse = await response.json();\n+  console.log('📋 Parsed JSON:', data);\n+\n   if (!data.success) {\n     throw new Error('Failed to trigger analysis');\n   }\n \n+  console.log('✅ Exec ID:', data.exec_id);\n   return data.exec_id;\n }\n \n@@ -54,11 +59,16 @@ export async function getAnalysisResult(exec_id: string): Promise<StatusResponse\n   const maxAttempts = 60;\n   let attempts = 0;\n \n+  console.log('🔄 Starting to poll for exec_id:', exec_id);\n+\n   while (attempts < maxAttempts) {\n+    console.log(`📊 Polling attempt ${attempts + 1}/${maxAttempts}...`);\n     const response = await fetch(`${API_BASE}/api/status/${exec_id}`);\n     const data: StatusResponse = await response.json();\n+    console.log('📊 Status:', data.status);\n \n     if (data.status === 'completed') {\n+      console.log('✅ Analysis completed!', data.result);\n       return data.result;\n     }\n "
+    }
+  ]
+}

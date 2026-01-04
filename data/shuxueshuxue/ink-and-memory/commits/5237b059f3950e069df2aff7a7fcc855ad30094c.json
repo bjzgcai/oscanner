@@ -1,0 +1,85 @@
+{
+  "sha": "5237b059f3950e069df2aff7a7fcc855ad30094c",
+  "node_id": "C_kwDOP2Zrm9oAKDUyMzdiMDU5ZjM5NTBlMDY5ZGYyYWZmN2E3ZmNjODU1YWQzMDA5NGM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-18T06:35:04Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-18T06:35:04Z"
+    },
+    "message": "Add deck publishing backend (database + API)\n\nBackend infrastructure for deck store:\n- Database: Add published, author_name, install_count columns to decks\n- Database: Add publish/unpublish/increment_install_count functions\n- Database: Add get_published_decks() for community store\n- Server: Modify GET /api/decks to support ?published=true filter\n- Server: Add POST /api/decks/{id}/publish endpoint (toggle)\n- Server: Update fork endpoint to increment install_count\n- Frontend API: Update listDecks() to support published parameter\n- Frontend API: Add publishDeck() function\n\nPublishing design (Option 1):\n- When publishing, breaks parent_id chain (deck becomes standalone)\n- Prevents fork-of-fork attribution issues\n- Warning shown to user before publishing\n\nRemaining frontend UI changes in next commit.",
+    "tree": {
+      "sha": "3d9341a293020bce0ff888a7a20ac5008ce45bb9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/3d9341a293020bce0ff888a7a20ac5008ce45bb9"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/5237b059f3950e069df2aff7a7fcc855ad30094c",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5237b059f3950e069df2aff7a7fcc855ad30094c",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/5237b059f3950e069df2aff7a7fcc855ad30094c",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5237b059f3950e069df2aff7a7fcc855ad30094c/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "73a3187a708e5a9282fc0de3904f2aec4ac5347b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/73a3187a708e5a9282fc0de3904f2aec4ac5347b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/73a3187a708e5a9282fc0de3904f2aec4ac5347b"
+    }
+  ],
+  "stats": {
+    "total": 155,
+    "additions": 148,
+    "deletions": 7
+  },
+  "files": [
+    {
+      "sha": "1be2ea000af48ca6152285924aae44ead9449733",
+      "filename": "backend/database.py",
+      "status": "modified",
+      "additions": 89,
+      "deletions": 0,
+      "changes": 89,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5237b059f3950e069df2aff7a7fcc855ad30094c/backend%2Fdatabase.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5237b059f3950e069df2aff7a7fcc855ad30094c/backend%2Fdatabase.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdatabase.py?ref=5237b059f3950e069df2aff7a7fcc855ad30094c",
+      "patch": "@@ -146,6 +146,9 @@ def create_tables(db):\n       enabled BOOLEAN DEFAULT 1,\n       has_local_changes BOOLEAN DEFAULT 0,\n       order_index INTEGER,\n+      published BOOLEAN DEFAULT 0,\n+      author_name TEXT,\n+      install_count INTEGER DEFAULT 0,\n       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n       FOREIGN KEY (parent_id) REFERENCES decks(id),\n@@ -154,6 +157,20 @@ def create_tables(db):\n     \"\"\")\n     db.execute(\"CREATE INDEX IF NOT EXISTS idx_decks_owner ON decks(owner_id)\")\n \n+    # @@@ Migration: Add publishing columns to existing decks table\n+    try:\n+        db.execute(\"ALTER TABLE decks ADD COLUMN published BOOLEAN DEFAULT 0\")\n+    except:\n+        pass  # Column already exists\n+    try:\n+        db.execute(\"ALTER TABLE decks ADD COLUMN author_name TEXT\")\n+    except:\n+        pass\n+    try:\n+        db.execute(\"ALTER TABLE decks ADD COLUMN install_count INTEGER DEFAULT 0\")\n+    except:\n+        pass\n+\n     # @@@ Voices table - individual voice personas within decks\n     db.execute(\"\"\"\n     CREATE TABLE IF NOT EXISTS voices (\n@@ -312,6 +329,78 @@ def get_user_decks(user_id: int):\n     finally:\n         db.close()\n \n+def get_published_decks():\n+    \"\"\"\n+    Get all published decks (community deck store).\n+    Returns list of deck dicts with voice counts and author info.\n+    \"\"\"\n+    db = get_db()\n+    try:\n+        rows = db.execute(\"\"\"\n+        SELECT d.*, COUNT(v.id) as voice_count, u.display_name as author_display_name\n+        FROM decks d\n+        LEFT JOIN voices v ON d.id = v.deck_id AND v.enabled = 1\n+        LEFT JOIN users u ON d.owner_id = u.id\n+        WHERE d.published = 1\n+        GROUP BY d.id\n+        ORDER BY d.install_count DESC, d.created_at DESC\n+        \"\"\").fetchall()\n+        return [dict(row) for row in rows]\n+    finally:\n+        db.close()\n+\n+def publish_deck(deck_id: str, user_id: int):\n+    \"\"\"\n+    Publish a deck to community store.\n+    @@@ Breaks parent chain - published deck becomes standalone\n+    \"\"\"\n+    db = get_db()\n+    try:\n+        # Get user's display name for author_name\n+        user = db.execute(\"SELECT display_name FROM users WHERE id = ?\", (user_id,)).fetchone()\n+        author_name = user['display_name'] if user and user['display_name'] else f\"User {user_id}\"\n+\n+        db.execute(\"\"\"\n+        UPDATE decks\n+        SET published = 1,\n+            author_name = ?,\n+            parent_id = NULL\n+        WHERE id = ? AND owner_id = ?\n+        \"\"\", (author_name, deck_id, user_id))\n+        db.commit()\n+    finally:\n+        db.close()\n+\n+def unpublish_deck(deck_id: str, user_id: int):\n+    \"\"\"\n+    Unpublish a deck from community store.\n+    \"\"\"\n+    db = get_db()\n+    try:\n+        db.execute(\"\"\"\n+        UPDATE decks\n+        SET published = 0\n+        WHERE id = ? AND owner_id = ?\n+        \"\"\", (deck_id, user_id))\n+        db.commit()\n+    finally:\n+        db.close()\n+\n+def increment_deck_install_count(deck_id: str):\n+    \"\"\"\n+    Increment install counter when deck is forked from store.\n+    \"\"\"\n+    db = get_db()\n+    try:\n+        db.execute(\"\"\"\n+        UPDATE decks\n+        SET install_count = install_count + 1\n+        WHERE id = ?\n+        \"\"\", (deck_id,))\n+        db.commit()\n+    finally:\n+        db.close()\n+\n def get_deck_with_voices(user_id: int, deck_id: str):\n     \"\"\"\n     Get full deck details with all voices."
+    },
+    {
+      "sha": "fee0f43f8094c4490ee000dc146145afa0a2ec0b",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 35,
+      "deletions": 5,
+      "changes": 40,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5237b059f3950e069df2aff7a7fcc855ad30094c/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5237b059f3950e069df2aff7a7fcc855ad30094c/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=5237b059f3950e069df2aff7a7fcc855ad30094c",
+      "patch": "@@ -1328,10 +1328,15 @@ class VoiceForkRequest(BaseModel):\n     target_deck_id: str\n \n @app.get(\"/api/decks\")\n-def list_decks(current_user: dict = Depends(get_current_user)):\n-    \"\"\"Get all decks visible to user (system + user's own)\"\"\"\n-    user_id = current_user['user_id']\n-    decks = database.get_user_decks(user_id)\n+def list_decks(published: bool = False, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Get decks - either user's own or published community decks\"\"\"\n+    if published:\n+        # Get all published decks (community store)\n+        decks = database.get_published_decks()\n+    else:\n+        # Get user's own decks\n+        user_id = current_user['user_id']\n+        decks = database.get_user_decks(user_id)\n     return {\"decks\": decks}\n \n @app.get(\"/api/decks/{deck_id}\")\n@@ -1384,14 +1389,39 @@ def delete_deck(deck_id: str, current_user: dict = Depends(get_current_user)):\n \n @app.post(\"/api/decks/{deck_id}/fork\")\n def fork_deck(deck_id: str, current_user: dict = Depends(get_current_user)):\n-    \"\"\"Fork a deck (usually system deck) to create user's own copy\"\"\"\n+    \"\"\"Fork a deck (system or published community deck) to create user's own copy\"\"\"\n     user_id = current_user['user_id']\n     try:\n         new_deck_id = database.fork_deck(user_id, deck_id)\n+        # @@@ Increment install count if forking from published deck\n+        database.increment_deck_install_count(deck_id)\n         return {\"deck_id\": new_deck_id}\n     except ValueError as e:\n         raise HTTPException(status_code=404, detail=str(e))\n \n+@app.post(\"/api/decks/{deck_id}/publish\")\n+def publish_deck(deck_id: str, current_user: dict = Depends(get_current_user)):\n+    \"\"\"\n+    Publish/unpublish a deck to community store.\n+    @@@ Warning: Publishing breaks parent_id chain (deck becomes standalone)\n+    \"\"\"\n+    user_id = current_user['user_id']\n+    try:\n+        # Check if deck is currently published\n+        deck = database.get_deck_with_voices(user_id, deck_id)\n+        if not deck:\n+            raise HTTPException(status_code=404, detail=\"Deck not found or not owned by user\")\n+\n+        # Toggle published status\n+        if deck.get('published'):\n+            database.unpublish_deck(deck_id, user_id)\n+            return {\"success\": True, \"published\": False}\n+        else:\n+            database.publish_deck(deck_id, user_id)\n+            return {\"success\": True, \"published\": True}\n+    except Exception as e:\n+        raise HTTPException(status_code=500, detail=str(e))\n+\n @app.post(\"/api/decks/{deck_id}/sync\")\n def sync_deck(deck_id: str, current_user: dict = Depends(get_current_user)):\n     \"\"\"Sync user's forked deck with parent template (force overwrites local changes)\"\"\""
+    },
+    {
+      "sha": "fae5e9df12ecc4de8c7d9531ddd7971106a0bbde",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 24,
+      "deletions": 2,
+      "changes": 26,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5237b059f3950e069df2aff7a7fcc855ad30094c/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5237b059f3950e069df2aff7a7fcc855ad30094c/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=5237b059f3950e069df2aff7a7fcc855ad30094c",
+      "patch": "@@ -626,8 +626,12 @@ export async function markFirstLoginCompleted(): Promise<void> {\n /**\n  * List all decks (includes system decks + user's own decks)\n  */\n-export async function listDecks(): Promise<Deck[]> {\n-  const response = await fetch(`${API_BASE}/api/decks`, {\n+export async function listDecks(published?: boolean): Promise<Deck[]> {\n+  const url = published\n+    ? `${API_BASE}/api/decks?published=true`\n+    : `${API_BASE}/api/decks`;\n+\n+  const response = await fetch(url, {\n     headers: getAuthHeaders()\n   });\n \n@@ -759,6 +763,24 @@ export async function syncDeck(deckId: string): Promise<{ success: boolean; sync\n   return await response.json();\n }\n \n+/**\n+ * Publish/unpublish a deck to community store\n+ * @@@ Warning: Publishing breaks parent_id chain (deck becomes standalone)\n+ */\n+export async function publishDeck(deckId: string): Promise<{ success: boolean; published: boolean }> {\n+  const response = await fetch(`${API_BASE}/api/decks/${deckId}/publish`, {\n+    method: 'POST',\n+    headers: getAuthHeaders()\n+  });\n+\n+  if (!response.ok) {\n+    const error = await response.json();\n+    throw new Error(error.detail || 'Publish deck failed');\n+  }\n+\n+  return await response.json();\n+}\n+\n /**\n  * Create a new voice in a deck\n  */"
+    }
+  ]
+}

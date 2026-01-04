@@ -1,0 +1,133 @@
+{
+  "sha": "36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+  "node_id": "C_kwDOP2Zrm9oAKDM2NjI4YWJhZDY0M2I1MjFlNGIyOTMwOGFhNWQ2YjZkN2YyZWEyZWQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-21T14:41:04Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-21T14:41:04Z"
+    },
+    "message": "Add hover feedback and fix Use Default button bug\n\nFeatures:\n- Implement hover feedback between highlighted text and voice comments\n  - Hovering over highlighted text highlights corresponding comment\n  - Comment scales up, adds shadow, and changes border\n  - Smooth transitions for visual feedback\n- Add cursor pointer and hover effects to highlighted text\n\nBug Fixes:\n- Fix \"Use Default\" button not refreshing display immediately\n  - Root cause: defaultVoices prop was pointing to modified voiceConfigs\n  - Solution: Store original backend defaults in separate state\n  - Now clicking \"Use Default\" correctly resets to original defaults\n- Clear old voice triggers when voice config changes\n  - Ensures immediate visual feedback when switching configs\n\nTechnical Changes:\n- Add onPhraseHover callback to VoiceHighlight extension\n- Implement DOM event handlers (mouseover/mouseout) in ProseMirror plugin\n- Add hoveredPhrase state management in App.tsx\n- Pass isHovered prop to VoiceComment components\n- Separate defaultVoiceConfigs from voiceConfigs in App state\n- Add CSS hover effects for .voice-highlight elements\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "6ff4259d31716a12afca41073b558c0559b2651d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/6ff4259d31716a12afca41073b558c0559b2651d"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "07a5b76b303556afb5e8a13a33790167579d643c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/07a5b76b303556afb5e8a13a33790167579d643c",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/07a5b76b303556afb5e8a13a33790167579d643c"
+    }
+  ],
+  "stats": {
+    "total": 121,
+    "additions": 103,
+    "deletions": 18
+  },
+  "files": [
+    {
+      "sha": "d95e84492719d49b63476f9a30142f53874ed0b5",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 7,
+      "deletions": 0,
+      "changes": 7,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "patch": "@@ -235,6 +235,13 @@\n .voice-highlight {\n   margin: -2px -6px;\n   padding: 2px 6px;\n+  cursor: pointer;\n+  transition: all 0.2s ease;\n+}\n+\n+.voice-highlight:hover {\n+  transform: scale(1.05);\n+  filter: brightness(0.95);\n }\n \n .voice-highlight-yellow {"
+    },
+    {
+      "sha": "2cadb9f8b71decafba02625a038307ff684609bd",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 34,
+      "deletions": 11,
+      "changes": 45,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "patch": "@@ -60,6 +60,8 @@ function App() {\n           color: v.color   // Keep text name: \"blue\"\n         };\n       }\n+      // Store the original defaults separately (never modified)\n+      setDefaultVoiceConfigs(converted);\n       // Use localStorage if exists, otherwise use backend defaults\n       setVoiceConfigs(getVoices() || converted);\n     });\n@@ -69,10 +71,12 @@ function App() {\n   const [voices, setVoices] = useState<Voice[]>([]);\n   const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>([]);\n   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});\n+  const [defaultVoiceConfigs, setDefaultVoiceConfigs] = useState<Record<string, VoiceConfig>>({});\n   const [currentText, setCurrentText] = useState<string>('');\n   const [currentHTML, setCurrentHTML] = useState<string>('');\n   const [cursorPosition, setCursorPosition] = useState<number>(0);\n   const [focusedVoiceIndex, setFocusedVoiceIndex] = useState<number | undefined>(undefined);\n+  const [hoveredPhrase, setHoveredPhrase] = useState<string | null>(null);\n   const currentTextRef = useRef<string>('');\n   const isAnalyzingRef = useRef<boolean>(false);\n   const editorRef = useRef<EditableTextAreaRef>(null);\n@@ -236,6 +240,14 @@ function App() {\n     detectVoices(currentText, voiceTriggers);\n   }, [voiceTriggers]);\n \n+  // @@@ Clear old triggers when voice config changes (e.g., Use Default)\n+  // This forces immediate re-analysis with new config\n+  useEffect(() => {\n+    console.log('🔄 Voice config changed, clearing old triggers');\n+    setVoiceTriggers([]);\n+    setVoices([]);\n+  }, [voiceConfigs]);\n+\n   return (\n     <>\n       <LeftSidebar currentView={currentView} onViewChange={setCurrentView} />\n@@ -247,19 +259,30 @@ function App() {\n             onContentChange={handleContentChange}\n             triggers={voiceTriggers}\n             onCursorChange={setCursorPosition}\n+            onPhraseHover={setHoveredPhrase}\n             content={currentHTML}\n           />\n           <VoicesPanel focusedVoiceIndex={focusedVoiceIndex}>\n-            {voices.map((voice, index) => (\n-              <VoiceComment\n-                key={index}\n-                voice={voice.name}\n-                text={voice.text}\n-                icon={voice.icon}\n-                color={voice.color}\n-                onQuote={() => handleQuote(voice.name, voice.text)}\n-              />\n-            ))}\n+            {voices.map((voice, index) => {\n+              // @@@ Find the trigger phrase for this voice\n+              const trigger = voiceTriggers.find(t =>\n+                t.voice === voice.name && t.comment === voice.text\n+              );\n+              const isHovered = hoveredPhrase !== null && trigger !== undefined &&\n+                hoveredPhrase.toLowerCase() === trigger.phrase.toLowerCase();\n+\n+              return (\n+                <VoiceComment\n+                  key={index}\n+                  voice={voice.name}\n+                  text={voice.text}\n+                  icon={voice.icon}\n+                  color={voice.color}\n+                  onQuote={() => handleQuote(voice.name, voice.text)}\n+                  isHovered={isHovered}\n+                />\n+              );\n+            })}\n           </VoicesPanel>\n           <BinderRings />\n         </div>\n@@ -276,7 +299,7 @@ function App() {\n           overflow: 'hidden'\n         }}>\n           <VoiceSettings\n-            defaultVoices={voiceConfigs}\n+            defaultVoices={defaultVoiceConfigs}\n             onSave={setVoiceConfigs}\n           />\n         </div>"
+    },
+    {
+      "sha": "fdbdec5779662fdc1b8f6510cf143a98d7c5d0a8",
+      "filename": "frontend/src/components/EditableTextArea.tsx",
+      "status": "modified",
+      "additions": 17,
+      "deletions": 2,
+      "changes": 19,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx?ref=36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "patch": "@@ -9,6 +9,7 @@ interface EditableTextAreaProps {\n   onContentChange?: (html: string) => void;\n   triggers: VoiceTrigger[];\n   onCursorChange?: (position: number) => void;\n+  onPhraseHover?: (phrase: string | null) => void;\n   content?: string;\n }\n \n@@ -18,15 +19,18 @@ export interface EditableTextAreaRef {\n \n const EditableTextArea = forwardRef<EditableTextAreaRef, EditableTextAreaProps>(\n   (props, ref) => {\n-    const { onChange, onContentChange, triggers, onCursorChange, content } = props;\n+    const { onChange, onContentChange, triggers, onCursorChange, onPhraseHover, content } = props;\n \n     const editor = useEditor({\n       extensions: [\n         StarterKit,\n         Placeholder.configure({\n           placeholder: 'write here, I am listening...',\n         }),\n-        VoiceHighlight.configure({ triggers })\n+        VoiceHighlight.configure({\n+          triggers,\n+          onPhraseHover\n+        })\n       ],\n       content: content || '',\n       onUpdate: ({ editor }) => {\n@@ -50,6 +54,17 @@ const EditableTextArea = forwardRef<EditableTextAreaRef, EditableTextAreaProps>(\n       }\n     }, [triggers, editor]);\n \n+    // @@@ Update onPhraseHover callback when it changes\n+    useEffect(() => {\n+      if (editor) {\n+        editor.extensionManager.extensions.forEach((ext: any) => {\n+          if (ext.name === 'voiceHighlight' && ext.options) {\n+            ext.options.onPhraseHover = onPhraseHover;\n+          }\n+        });\n+      }\n+    }, [onPhraseHover, editor]);\n+\n     // Expose insertText method to parent component\n     useImperativeHandle(ref, () => ({\n       insertText: (text: string) => {"
+    },
+    {
+      "sha": "89692935944e2cd922bfe2e94bc18baeda85088d",
+      "filename": "frontend/src/components/VoiceComment.tsx",
+      "status": "modified",
+      "additions": 8,
+      "deletions": 3,
+      "changes": 11,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx?ref=36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "patch": "@@ -6,6 +6,7 @@ interface VoiceCommentProps {\n   icon: string;\n   color: string;\n   onQuote?: () => void;\n+  isHovered?: boolean;\n }\n \n const iconMap = {\n@@ -31,17 +32,21 @@ const colorMap: Record<string, { background: string; border: string }> = {\n   purple: { background: '#f3e6ff', border: '#b366ff' },\n };\n \n-export default function VoiceComment({ voice, text, icon, color, onQuote }: VoiceCommentProps) {\n+export default function VoiceComment({ voice, text, icon, color, onQuote, isHovered }: VoiceCommentProps) {\n   const Icon = iconMap[icon as keyof typeof iconMap];\n   const colors = colorMap[color] || { background: '#f0f0f0', border: '#ccc' };\n \n   return (\n     <div\n-      className=\"voice-comment\"\n+      className={`voice-comment ${isHovered ? 'hovered' : ''}`}\n       style={{\n         backgroundColor: colors.background,\n         borderColor: colors.border,\n-        position: 'relative'\n+        position: 'relative',\n+        transform: isHovered ? 'scale(1.02)' : 'scale(1)',\n+        boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',\n+        transition: 'all 0.2s ease',\n+        borderWidth: isHovered ? '2px' : '4px',\n       }}\n     >\n       <div className=\"voice-header\">"
+    },
+    {
+      "sha": "6c8875f71013fb1a6f533c5a45df4371db771c2d",
+      "filename": "frontend/src/components/VoiceSettings.tsx",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 0,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fcomponents%2FVoiceSettings.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fcomponents%2FVoiceSettings.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoiceSettings.tsx?ref=36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "patch": "@@ -42,9 +42,13 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {\n   };\n \n   const handleDefault = () => {\n+    console.log('🔄 Use Default clicked');\n+    console.log('Current voices:', voices);\n+    console.log('Default voices:', defaultVoices);\n     clearVoices();\n     // Deep copy to force React to re-render\n     const freshDefaults = JSON.parse(JSON.stringify(defaultVoices));\n+    console.log('Fresh defaults:', freshDefaults);\n     setVoices(freshDefaults);\n     onSave(freshDefaults);\n   };"
+    },
+    {
+      "sha": "3bfb79dce873474be6cdd67b107231226708f2b8",
+      "filename": "frontend/src/components/WritingArea.tsx",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 2,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx?ref=36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "patch": "@@ -8,13 +8,14 @@ interface WritingAreaProps {\n   onContentChange?: (html: string) => void;\n   triggers: VoiceTrigger[];\n   onCursorChange?: (position: number) => void;\n+  onPhraseHover?: (phrase: string | null) => void;\n   content?: string;\n }\n \n-const WritingArea = forwardRef<EditableTextAreaRef, WritingAreaProps>(({ onChange, onContentChange, triggers, onCursorChange, content }, ref) => {\n+const WritingArea = forwardRef<EditableTextAreaRef, WritingAreaProps>(({ onChange, onContentChange, triggers, onCursorChange, onPhraseHover, content }, ref) => {\n   return (\n     <BookPage side=\"left\">\n-      <EditableTextArea ref={ref} onChange={onChange} onContentChange={onContentChange} triggers={triggers} onCursorChange={onCursorChange} content={content} />\n+      <EditableTextArea ref={ref} onChange={onChange} onContentChange={onContentChange} triggers={triggers} onCursorChange={onCursorChange} onPhraseHover={onPhraseHover} content={content} />\n     </BookPage>\n   );\n });"
+    },
+    {
+      "sha": "0077fef08ee247b58bdd8504618c3893b497b479",
+      "filename": "frontend/src/extensions/VoiceHighlight.ts",
+      "status": "modified",
+      "additions": 30,
+      "deletions": 0,
+      "changes": 30,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/36628abad643b521e4b29308aa5d6b6d7f2ea2ed/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts?ref=36628abad643b521e4b29308aa5d6b6d7f2ea2ed",
+      "patch": "@@ -12,6 +12,7 @@ export interface VoiceTrigger {\n \n export interface VoiceHighlightOptions {\n   triggers: VoiceTrigger[];\n+  onPhraseHover?: (phrase: string | null) => void;\n }\n \n export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n@@ -20,11 +21,13 @@ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n   addOptions() {\n     return {\n       triggers: [],\n+      onPhraseHover: undefined,\n     };\n   },\n \n   addProseMirrorPlugins() {\n     let triggers = this.options.triggers;\n+    const onPhraseHover = this.options.onPhraseHover;\n \n     return [\n       new Plugin({\n@@ -60,6 +63,33 @@ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n           decorations(state) {\n             return this.getState(state)?.decorations;\n           },\n+\n+          // @@@ Hover detection - Find which phrase is being hovered\n+          handleDOMEvents: {\n+            mouseover(_view, event) {\n+              const target = event.target as HTMLElement;\n+\n+              // Check if hovering over a highlighted element\n+              if (target.classList.contains('voice-highlight')) {\n+                // Extract the text content\n+                const phrase = target.textContent || '';\n+                onPhraseHover?.(phrase);\n+                return false;\n+              }\n+              return false;\n+            },\n+\n+            mouseout(_view, event) {\n+              const target = event.target as HTMLElement;\n+\n+              // Check if leaving a highlighted element\n+              if (target.classList.contains('voice-highlight')) {\n+                onPhraseHover?.(null);\n+                return false;\n+              }\n+              return false;\n+            },\n+          },\n         },\n       }),\n     ];"
+    }
+  ]
+}

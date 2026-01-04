@@ -1,0 +1,61 @@
+{
+  "sha": "866b6922d615c87c39d6d589a32a18a1defcb9f4",
+  "node_id": "C_kwDOP2Zrm9oAKDg2NmI2OTIyZDYxNWM4N2MzOWQ2ZDU4OWEzMmExOGExZGVmY2I5ZjQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-22T06:53:37Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-22T06:53:37Z"
+    },
+    "message": "Fix session id reset when loading calendar entry",
+    "tree": {
+      "sha": "38a8c3c7646fbab08faa63d70620f118f1fb1c18",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/38a8c3c7646fbab08faa63d70620f118f1fb1c18"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/866b6922d615c87c39d6d589a32a18a1defcb9f4",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/866b6922d615c87c39d6d589a32a18a1defcb9f4",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/866b6922d615c87c39d6d589a32a18a1defcb9f4",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/866b6922d615c87c39d6d589a32a18a1defcb9f4/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "51e3f5403df116245fda168142f5c836f55fc01a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/51e3f5403df116245fda168142f5c836f55fc01a",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/51e3f5403df116245fda168142f5c836f55fc01a"
+    }
+  ],
+  "stats": {
+    "total": 30,
+    "additions": 13,
+    "deletions": 17
+  },
+  "files": [
+    {
+      "sha": "bd6c7c6f3ec71c742aa77a88fbfbb21bd9fca974",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 13,
+      "deletions": 17,
+      "changes": 30,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/866b6922d615c87c39d6d589a32a18a1defcb9f4/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/866b6922d615c87c39d6d589a32a18a1defcb9f4/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=866b6922d615c87c39d6d589a32a18a1defcb9f4",
+      "patch": "@@ -1374,27 +1374,23 @@ export default function App() {\n   }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);\n \n   const handleLoadEntry = useCallback((entry: CalendarEntry) => {\n-    if (engineRef.current) {\n-      engineRef.current.loadState(entry.state);\n-      // Set the current entry ID so subsequent saves will overwrite this entry\n-      engineRef.current.setCurrentEntryId(entry.id);\n-\n-      // @@@ Sync global selectedState with loaded session's state\n-      const loadedState = entry.state;\n-      if (loadedState.selectedState !== undefined) {\n-        setSelectedState(loadedState.selectedState);\n-      }\n+    if (!engineRef.current) return;\n \n-      if (!loadedState.createdAt) {\n-        loadedState.createdAt = new Date().toISOString();\n-        engineRef.current.loadState(loadedState);\n-      }\n+    const nextState: EditorState = {\n+      ...entry.state,\n+      currentEntryId: entry.id,\n+      createdAt: entry.state.createdAt ?? new Date().toISOString()\n+    };\n \n-      // @@@ Trigger textarea resize after loading entry\n-      setRefsReady(prev => prev + 1);\n+    engineRef.current.loadState(nextState);\n+    engineRef.current.setCurrentEntryId(entry.id);\n \n-      setShowCalendarPopup(false);\n+    if (nextState.selectedState !== undefined) {\n+      setSelectedState(nextState.selectedState);\n     }\n+\n+    setRefsReady(prev => prev + 1);\n+    setShowCalendarPopup(false);\n   }, []);\n \n   const handleViewFriendTimeline = useCallback((friendId: number, _friendName?: string) => {"
+    }
+  ]
+}

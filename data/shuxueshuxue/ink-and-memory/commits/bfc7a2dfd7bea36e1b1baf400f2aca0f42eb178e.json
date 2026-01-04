@@ -1,0 +1,97 @@
+{
+  "sha": "bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+  "node_id": "C_kwDOP2Zrm9oAKGJmYzdhMmRmZDdiZWEzNmUxYjFiYWY0MDBmMmFjYTBmNDJlYjE3OGU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-23T08:50:24Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-23T08:50:24Z"
+    },
+    "message": "Unify session identity and drop currentEntryId",
+    "tree": {
+      "sha": "672adca12d9279c13e65821e778b49a7e347148e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/672adca12d9279c13e65821e778b49a7e347148e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "9161d8b7fb4ea64ce46e884860f1ac7047c8fab3",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9161d8b7fb4ea64ce46e884860f1ac7047c8fab3",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9161d8b7fb4ea64ce46e884860f1ac7047c8fab3"
+    }
+  ],
+  "stats": {
+    "total": 128,
+    "additions": 73,
+    "deletions": 55
+  },
+  "files": [
+    {
+      "sha": "439366f2e7d47d4447a37995d0bb107d8e8c221c",
+      "filename": "backend/tools/session_inserter.py",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 2,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/backend%2Ftools%2Fsession_inserter.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/backend%2Ftools%2Fsession_inserter.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Ftools%2Fsession_inserter.py?ref=bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+      "patch": "@@ -63,8 +63,7 @@ def build_editor_state(session_id: str, text: str, created_at_iso: str) -> dict:\n         \"tasks\": [],\n         \"weightPath\": [],\n         \"overlappedPhrases\": [],\n-        \"sessionId\": session_id,\n-        \"currentEntryId\": session_id,\n+        \"id\": session_id,\n         \"selectedState\": None,\n         \"createdAt\": created_at_iso\n     }"
+    },
+    {
+      "sha": "c4f1f1c61256052e7f0c205edf36a6f21be6b19b",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 52,
+      "deletions": 37,
+      "changes": 89,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+      "patch": "@@ -14,7 +14,7 @@ import {\n import TopNavBar from './components/TopNavBar';\n import DeckManager from './components/DeckManager';\n import CalendarPopup from './components/CalendarPopup';\n-import { saveEntryToToday, type CalendarEntry } from './utils/calendarStorage';\n+import { type CalendarEntry } from './utils/calendarStorage';\n import CollectionsView from './components/CollectionsView';\n import AnalysisView from './components/AnalysisView';\n import AboutView from './components/AboutView';\n@@ -339,6 +339,10 @@ export default function App() {\n       return nextState;\n     }\n \n+    if (state && !state.id) {\n+      throw new Error('Editor state is missing id');\n+    }\n+\n     return state;\n   }, [state]);\n \n@@ -350,16 +354,13 @@ export default function App() {\n   const saveSessionToDatabase = useCallback(async (editorState: EditorState, firstLine?: string) => {\n     const line = firstLine ?? getFirstLineFromState(editorState);\n     const { saveSession } = await import('./api/voiceApi');\n-    const idToSave = editorState.currentEntryId || crypto.randomUUID();\n+    const idToSave = editorState.id || crypto.randomUUID();\n     await saveSession(idToSave, editorState, line);\n \n     if (engineRef.current) {\n-      const liveId = engineRef.current.getState().currentEntryId;\n-      const snapshotId = editorState.currentEntryId;\n-      const isSafeToUpdate =\n-        !liveId ||\n-        liveId === idToSave ||\n-        (snapshotId && liveId === snapshotId);\n+      const liveId = engineRef.current.getState().id;\n+      const snapshotId = editorState.id;\n+      const isSafeToUpdate = liveId === idToSave || liveId === snapshotId;\n \n       if (isSafeToUpdate) {\n         engineRef.current.setCurrentEntryId(idToSave);\n@@ -648,9 +649,11 @@ export default function App() {\n           }\n \n           if (sessionToLoad && loadedSessionId) {\n-            engine.loadState(sessionToLoad);\n-            // @@@ CRITICAL: Set currentEntryId to the loaded session ID\n-            engine.setCurrentEntryId(loadedSessionId);\n+            const normalizedState: EditorState = {\n+              ...sessionToLoad,\n+              id: sessionToLoad.id || (sessionToLoad as any)?.currentEntryId || (sessionToLoad as any)?.sessionId || loadedSessionId\n+            };\n+            engine.loadState(normalizedState);\n             setState(engine.getState());\n \n             // Initialize localTexts from loaded state\n@@ -807,16 +810,16 @@ export default function App() {\n       if (!stateSnapshot) return;\n \n       if (engineRef.current) {\n-        const liveId = engineRef.current.getState().currentEntryId;\n-        const snapshotId = stateSnapshot.currentEntryId;\n+        const liveId = engineRef.current.getState().id;\n+        const snapshotId = stateSnapshot.id;\n         if (liveId && snapshotId && liveId !== snapshotId) {\n           console.warn(`✋ Auto-save aborted: timer captured ${snapshotId} but editor is now on ${liveId}`);\n           return;\n         }\n       }\n \n-      if (!stateSnapshot.currentEntryId) {\n-        console.error('BUG: currentEntryId should always be defined after engine init');\n+      if (!stateSnapshot.id) {\n+        console.error('BUG: session id should always be defined after engine init');\n         return;\n       }\n \n@@ -1209,8 +1212,7 @@ export default function App() {\n       tasks: [],\n       weightPath: [],\n       overlappedPhrases: [],\n-      sessionId: newSessionId,\n-      currentEntryId: newSessionId,\n+      id: newSessionId,\n       selectedState: resolvedSelectedState ?? undefined,\n       createdAt: new Date().toISOString()\n     };\n@@ -1269,9 +1271,8 @@ export default function App() {\n           const firstTextCell = state.cells.find(c => c.type === 'text') as TextCell | undefined;\n           const firstLine = firstTextCell?.content.split('\\n')[0].trim() || 'Untitled';\n \n-          // @@@ Ensure we have a valid sessionId\n           const { saveSession } = await import('./api/voiceApi');\n-          const sessionId = state.currentEntryId || crypto.randomUUID();\n+          const sessionId = state.id || crypto.randomUUID();\n           console.log('📋 Saving session:', sessionId, 'with name:', firstLine);\n           await saveSession(sessionId, state, firstLine);\n           console.log('✅ Current session saved successfully');\n@@ -1318,7 +1319,7 @@ export default function App() {\n       // @@@ Save to database in background\n       try {\n         const { saveSession } = await import('./api/voiceApi');\n-        await saveSession(emptyState.currentEntryId!, emptyState);\n+        await saveSession(emptyState.id, emptyState);\n       } catch (error) {\n         console.error('Failed to save new session:', error);\n       }\n@@ -1331,24 +1332,40 @@ export default function App() {\n \n   const handleSaveToday = useCallback(async () => {\n     if (!engineRef.current) return;\n+    if (!isAuthenticated) {\n+      const toast = document.createElement('div');\n+      toast.textContent = 'Please sign in to save';\n+      toast.style.cssText = `\n+        position: fixed;\n+        top: 70px;\n+        right: 20px;\n+        background: #f44336;\n+        color: white;\n+        padding: 12px 20px;\n+        borderRadius: 6px;\n+        fontSize: 14px;\n+        fontFamily: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto;\n+        zIndex: 10000;\n+        boxShadow: 0 4px 12px rgba(0,0,0,0.15);\n+      `;\n+      document.body.appendChild(toast);\n+      setTimeout(() => {\n+        toast.style.opacity = '0';\n+        toast.style.transition = 'opacity 0.3s';\n+        setTimeout(() => document.body.removeChild(toast), 300);\n+      }, 2000);\n+      return;\n+    }\n     const currentState = ensureStateForPersistence();\n     if (!currentState) return;\n \n     try {\n-      const hadExistingId = Boolean(currentState.currentEntryId);\n-      let updatedFlag = hadExistingId;\n-\n-      if (isAuthenticated) {\n-        const firstLine = getFirstLineFromState(currentState);\n-        const savedSessionId = await saveSessionToDatabase(currentState, firstLine);\n-        engineRef.current.setCurrentEntryId(savedSessionId);\n-      } else {\n-        const entryId = saveEntryToToday(currentState);\n-        engineRef.current.setCurrentEntryId(entryId);\n-      }\n+      const firstLine = getFirstLineFromState(currentState);\n+      const savedSessionId = await saveSessionToDatabase(currentState, firstLine);\n+      engineRef.current.setCurrentEntryId(savedSessionId);\n \n       const toast = document.createElement('div');\n-      toast.textContent = updatedFlag ? 'Saved (updated)' : 'Saved';\n+      toast.textContent = 'Saved';\n       toast.style.cssText = `\n         position: fixed;\n         top: 70px;\n@@ -1400,13 +1417,11 @@ export default function App() {\n \n     const nextState: EditorState = {\n       ...entry.state,\n-      currentEntryId: entry.id,\n+      id: entry.id,\n       createdAt: entry.state.createdAt ?? new Date().toISOString()\n     };\n \n     engineRef.current.loadState(nextState);\n-    engineRef.current.setCurrentEntryId(entry.id);\n-\n     if (nextState.selectedState !== undefined) {\n       setSelectedState(nextState.selectedState);\n     }\n@@ -1426,7 +1441,7 @@ export default function App() {\n \n   const handleCalendarEntryDeleted = useCallback((entryId: string) => {\n     if (!entryId || !engineRef.current) return;\n-    const currentId = engineRef.current.getState().currentEntryId;\n+    const currentId = engineRef.current.getState().id;\n     if (currentId === entryId) {\n       startDetachedBlankSession();\n     }\n@@ -2771,7 +2786,7 @@ export default function App() {\n       {showCalendarPopup && (\n         <CalendarPopup\n           onLoadEntry={handleLoadEntry}\n-          currentEntryId={state?.currentEntryId}\n+          currentEntryId={state?.id}\n           onEntryDeleted={handleCalendarEntryDeleted}\n           onClose={() => setShowCalendarPopup(false)}\n           timezone={userTimezone}"
+    },
+    {
+      "sha": "e1f65460e5726bbd24b4b59951c6d4c9082ddf9a",
+      "filename": "frontend/src/engine/EditorEngine.ts",
+      "status": "modified",
+      "additions": 12,
+      "deletions": 10,
+      "changes": 22,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fengine%2FEditorEngine.ts?ref=bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+      "patch": "@@ -13,8 +13,7 @@ export interface EditorState {\n   tasks: Task[];\n   weightPath: WeightEntry[];\n   overlappedPhrases: string[];  // @@@ Phrases rejected due to overlap (feedback to backend)\n-  sessionId: string;\n-  currentEntryId?: string;  // Track which calendar entry is being edited (for overwrite on save)\n+  id: string;\n   selectedState?: string | null;  // @@@ Emotional state for this session (stored per-session)\n   createdAt?: string;  // @@@ ISO timestamp when session was created\n }\n@@ -132,8 +131,7 @@ export class EditorEngine {\n       tasks: [],\n       weightPath: [],\n       overlappedPhrases: [],\n-      sessionId,\n-      currentEntryId: sessionId  // @@@ Set currentEntryId synchronously to prevent duplicate UUIDs\n+      id: sessionId\n     };\n   }\n \n@@ -234,17 +232,17 @@ export class EditorEngine {\n \n   // @@@ Restore editor to pristine state while starting a fresh session\n   private resetEditorToBlank() {\n-    const { selectedState, sessionId, currentEntryId, createdAt } = this.state;\n+    const { selectedState, createdAt } = this.state;\n     const preservedTimestamp = createdAt ?? new Date().toISOString();\n+    const newSessionId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();\n \n     this.state = {\n       cells: [{ id: generateId(), type: 'text', content: '' }],\n       commentors: [],\n       tasks: [],\n       weightPath: [],\n       overlappedPhrases: [],\n-      sessionId,\n-      currentEntryId: currentEntryId ?? sessionId,\n+      id: newSessionId,\n       selectedState,\n       createdAt: preservedTimestamp\n     };\n@@ -433,7 +431,7 @@ export class EditorEngine {\n         ? stateConfig.states[selectedState].prompt\n         : '';\n \n-      const result = await analyzeText(text, this.state.sessionId, appliedCommentors, metaPrompt, statePrompt, this.state.overlappedPhrases);\n+      const result = await analyzeText(text, this.state.id, appliedCommentors, metaPrompt, statePrompt, this.state.overlappedPhrases);\n \n       // Backend returns at most ONE voice\n       if (result.voices.length > 0) {\n@@ -705,7 +703,10 @@ export class EditorEngine {\n \n   // @@@ Load state from storage\n   loadState(state: EditorState) {\n-    this.state = state;\n+    if (!state.id) {\n+      throw new Error('EditorState.id is required when loading');\n+    }\n+    this.state = { ...state };\n     // @@@ Ensure overlappedPhrases field exists (migration for old state)\n     if (!this.state.overlappedPhrases) {\n       this.state.overlappedPhrases = [];\n@@ -717,7 +718,8 @@ export class EditorEngine {\n \n   // @@@ Set current entry ID (for calendar overwrite tracking)\n   setCurrentEntryId(entryId: string | undefined) {\n-    this.state.currentEntryId = entryId;\n+    if (!entryId) return;\n+    this.state.id = entryId;\n     this.notifyChange();\n   }\n "
+    },
+    {
+      "sha": "713af39b0968e8a2d4829268cb21d661c36c6ca6",
+      "filename": "frontend/src/utils/calendarStorage.ts",
+      "status": "modified",
+      "additions": 8,
+      "deletions": 6,
+      "changes": 14,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/frontend%2Fsrc%2Futils%2FcalendarStorage.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/frontend%2Fsrc%2Futils%2FcalendarStorage.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Futils%2FcalendarStorage.ts?ref=bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+      "patch": "@@ -59,20 +59,20 @@ export function saveEntryToToday(state: EditorState): string {\n   const today = getTodayKey();\n \n   // @@@ Check if we're overwriting an existing entry\n-  if (state.currentEntryId) {\n+  if (state.id) {\n     // Find and update the existing entry across all dates\n     for (const dateKey of Object.keys(data)) {\n-      const entryIndex = data[dateKey].findIndex(e => e.id === state.currentEntryId);\n+      const entryIndex = data[dateKey].findIndex(e => e.id === state.id);\n       if (entryIndex !== -1) {\n         // Update existing entry\n         data[dateKey][entryIndex] = {\n-          id: state.currentEntryId,\n+          id: state.id,\n           timestamp: Date.now(),\n           state: state,\n           firstLine: extractFirstLine(state)\n         };\n         saveCalendarData(data);\n-        return state.currentEntryId;\n+        return state.id;\n       }\n     }\n   }\n@@ -82,8 +82,9 @@ export function saveEntryToToday(state: EditorState): string {\n     data[today] = [];\n   }\n \n+  const generatedId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;\n   const entry: CalendarEntry = {\n-    id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,\n+    id: generatedId,\n     timestamp: Date.now(),\n     state: state,\n     firstLine: extractFirstLine(state)\n@@ -92,7 +93,8 @@ export function saveEntryToToday(state: EditorState): string {\n   data[today].push(entry);\n   saveCalendarData(data);\n \n-  return entry.id;\n+  state.id = generatedId;\n+  return generatedId;\n }\n \n export function getEntriesForDate(dateKey: string): CalendarEntry[] {"
+    }
+  ]
+}

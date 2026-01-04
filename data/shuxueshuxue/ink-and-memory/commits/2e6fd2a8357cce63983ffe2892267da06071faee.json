@@ -1,0 +1,87 @@
+{
+  "sha": "2e6fd2a8357cce63983ffe2892267da06071faee",
+  "node_id": "C_kwDOP2Zrm9oAKDJlNmZkMmE4MzU3Y2NlNjM5ODNmZmUyODkyMjY3ZGEwNjA3MWZhZWU",
+  "commit": {
+    "author": {
+      "name": "zhuchenyu2008",
+      "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+      "date": "2025-12-28T13:06:42Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2025-12-28T13:06:42Z"
+    },
+    "message": "Merge pull request #9 from zhuchenyu2008/codex/add-manual-database-initialization-steps-to-readme\n\nAdd manual database initialization steps to README (EN/ZH)",
+    "tree": {
+      "sha": "5dbb8f52dfdc7deb9ad904690a512717d4c1d4a8",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/5dbb8f52dfdc7deb9ad904690a512717d4c1d4a8"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/2e6fd2a8357cce63983ffe2892267da06071faee",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpUStiCRC1aQ7uu5UhlAAAWycQAB7RKdDamodCrq+urLjJf5ml\nK6mpLyaWGDQ9NTcmOPHY+5rd482QdUjpYQNqqj8+pfcWtRZI+u56uXtwCiUYB6hl\nt+4OuSu8RTRKhTWe+gg4xKqHfkpWee/sobgQ1QN9plEV/T/jjA154Bjn04w46zKV\nxYvYWOrCUek1RUTUrc/74Cdl4tbPcjeaYVVJhDffKZ+fon//x8ci/ZdRZzRmosE/\n0k5vycVRytA5HExz4lOeQ/+QUXq6Wa0TqRIFcMx7afC2u7wCq6FF9jikZGJNZ6VL\nD4heWAYUPuf5b3fa33AHI6ETBOeYOwYjOhwXcEyhi2wYqmt2IRvxylpDocxcswzS\nrDMc0Ct2SRZPw1gO5DfBdWMsojisoGCtEnVlCK/nd9CF1pI5hBeu/k7FV05noaaA\nvrCtFjhRSfsJf7s4qfxWO7iwroiODd4+Cm4mdiZrd3QJBqI/Og3WqOhw4x5r08Vr\nmsLYgg1ODqHhuyTCHPlmEPdSl8BLZsSwhB1vcJoikmXqzwQyQgKIZ8+dlDTIl5tB\n9jW/nmT+63GXBwfZ2chZEbIUu13vgpVkCTzWSRQLTW8fFC3PVWrvToossS9uInHK\nB/zFEAbfNqFeOSxSm80V30btsaNUrfXNhQHvZw1VY+8V8k44J45Y4zYLg/EZSM2U\nOU5y9cULFYeiU4QWj5ZG\n=/XrB\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 5dbb8f52dfdc7deb9ad904690a512717d4c1d4a8\nparent dd81fd7e271183515eab9b4220c7b5602e0fcbe9\nparent 5ea65b79785a3a2b688020cee2d26333ff10da90\nauthor zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com> 1766927202 +0800\ncommitter GitHub <noreply@github.com> 1766927202 +0800\n\nMerge pull request #9 from zhuchenyu2008/codex/add-manual-database-initialization-steps-to-readme\n\nAdd manual database initialization steps to README (EN/ZH)",
+      "verified_at": "2025-12-28T13:06:43Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2e6fd2a8357cce63983ffe2892267da06071faee",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2e6fd2a8357cce63983ffe2892267da06071faee",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2e6fd2a8357cce63983ffe2892267da06071faee/comments",
+  "author": {
+    "login": "zhuchenyu2008",
+    "id": 132262479,
+    "node_id": "U_kgDOB-IqTw",
+    "avatar_url": "https://avatars.githubusercontent.com/u/132262479?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/zhuchenyu2008",
+    "html_url": "https://github.com/zhuchenyu2008",
+    "followers_url": "https://api.github.com/users/zhuchenyu2008/followers",
+    "following_url": "https://api.github.com/users/zhuchenyu2008/following{/other_user}",
+    "gists_url": "https://api.github.com/users/zhuchenyu2008/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/zhuchenyu2008/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/zhuchenyu2008/subscriptions",
+    "organizations_url": "https://api.github.com/users/zhuchenyu2008/orgs",
+    "repos_url": "https://api.github.com/users/zhuchenyu2008/repos",
+    "events_url": "https://api.github.com/users/zhuchenyu2008/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/zhuchenyu2008/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "dd81fd7e271183515eab9b4220c7b5602e0fcbe9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/dd81fd7e271183515eab9b4220c7b5602e0fcbe9",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/dd81fd7e271183515eab9b4220c7b5602e0fcbe9"
+    },
+    {
+      "sha": "5ea65b79785a3a2b688020cee2d26333ff10da90",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5ea65b79785a3a2b688020cee2d26333ff10da90",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/5ea65b79785a3a2b688020cee2d26333ff10da90"
+    }
+  ]
+}

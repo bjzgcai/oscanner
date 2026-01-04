@@ -1,0 +1,84 @@
+{
+  "sha": "000c695e755b03df45d727a7d206710891e6f8e9",
+  "node_id": "C_kwDOP2Zrm9oAKDAwMGM2OTVlNzU1YjAzZGY0NWQ3MjdhN2QyMDY3MTA4OTFlNmY4ZTk",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T08:48:06Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T08:48:06Z"
+    },
+    "message": "Fix migration logging and add calendar recovery endpoint\n\n- Add detailed logging in frontend migration (shows what's being sent)\n- Add detailed logging in backend migration (shows what's being parsed)\n- Remove silent error swallowing in current session import\n- Add /api/import-calendar-recovery endpoint for manual recovery\n- Backend now logs calendar parsing success/failure\n\nThis will help diagnose why calendar entries weren't imported",
+    "tree": {
+      "sha": "7b1dbb5a96dd6cf2a97f9f18301ce589b7d07def",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/7b1dbb5a96dd6cf2a97f9f18301ce589b7d07def"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/000c695e755b03df45d727a7d206710891e6f8e9",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/000c695e755b03df45d727a7d206710891e6f8e9",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/000c695e755b03df45d727a7d206710891e6f8e9",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/000c695e755b03df45d727a7d206710891e6f8e9/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "2dd9656a9e95e86d6e5f44fc1393192810a32298",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2dd9656a9e95e86d6e5f44fc1393192810a32298",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2dd9656a9e95e86d6e5f44fc1393192810a32298"
+    }
+  ],
+  "stats": {
+    "total": 75,
+    "additions": 71,
+    "deletions": 4
+  },
+  "files": [
+    {
+      "sha": "6de16bbd5734763adb2d387fc61126863c1b206a",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/000c695e755b03df45d727a7d206710891e6f8e9/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/000c695e755b03df45d727a7d206710891e6f8e9/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=000c695e755b03df45d727a7d206710891e6f8e9"
+    },
+    {
+      "sha": "51b3789554ce89daed224910a542158375409cf8",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 65,
+      "deletions": 4,
+      "changes": 69,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/000c695e755b03df45d727a7d206710891e6f8e9/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/000c695e755b03df45d727a7d206710891e6f8e9/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=000c695e755b03df45d727a7d206710891e6f8e9",
+      "patch": "@@ -602,6 +602,12 @@ def import_local_data(request: ImportDataRequest, current_user: dict = Depends(g\n \n     user_id = current_user['user_id']\n \n+    print(f\"\\n🔍 Migration request for user {user_id}:\")\n+    print(f\"  - currentSession: {len(request.currentSession) if request.currentSession else 0} chars\")\n+    print(f\"  - calendarEntries: {len(request.calendarEntries) if request.calendarEntries else 0} chars\")\n+    print(f\"  - dailyPictures: {len(request.dailyPictures) if request.dailyPictures else 0} chars\")\n+    print(f\"  - oldDocument: {len(request.oldDocument) if request.oldDocument else 0} chars\")\n+\n     # Extract sessions\n     sessions = []\n \n@@ -614,22 +620,28 @@ def import_local_data(request: ImportDataRequest, current_user: dict = Depends(g\n                 'name': 'Current Session',\n                 'editor_state': current\n             })\n-        except:\n-            pass\n+            print(f\"✅ Imported current session ({len(str(current))} chars)\")\n+        except Exception as e:\n+            print(f\"❌ Failed to parse current session: {e}\")\n+            # Don't silently fail - this is critical data!\n \n     # 2. Calendar entries\n     if request.calendarEntries:\n         try:\n             calendar = json.loads(request.calendarEntries)\n+            print(f\"📅 Parsed calendar with {len(calendar)} dates\")\n             for date, entries in calendar.items():\n+                print(f\"  - {date}: {len(entries)} entries\")\n                 for entry in entries:\n                     sessions.append({\n                         'id': entry['id'],\n                         'name': f\"{date} - {entry.get('firstLine', 'Untitled')}\",\n                         'editor_state': entry['state']\n                     })\n-        except:\n-            pass\n+        except Exception as e:\n+            print(f\"❌ Failed to parse calendar entries: {e}\")\n+            import traceback\n+            traceback.print_exc()\n \n     # 3. Old document (if exists)\n     if request.oldDocument:\n@@ -735,6 +747,55 @@ def save_session(\n \n     return {\"success\": True}\n \n+@app.post(\"/api/import-calendar-recovery\")\n+def import_calendar_recovery(\n+    request: dict,\n+    current_user: dict = Depends(get_current_user)\n+):\n+    \"\"\"\n+    Recovery endpoint to import calendar entries that were missed in initial migration.\n+\n+    Request body:\n+    {\n+        \"calendarEntries\": \"{\\\"2025-11-01\\\": [...]}\"  # JSON string\n+    }\n+    \"\"\"\n+    import json\n+\n+    user_id = current_user['user_id']\n+    calendar_json = request.get('calendarEntries')\n+\n+    if not calendar_json:\n+        raise HTTPException(status_code=400, detail=\"calendarEntries required\")\n+\n+    sessions = []\n+    try:\n+        calendar = json.loads(calendar_json)\n+        print(f\"📅 Recovery import: {len(calendar)} dates\")\n+        for date, entries in calendar.items():\n+            print(f\"  - {date}: {len(entries)} entries\")\n+            for entry in entries:\n+                sessions.append({\n+                    'id': entry['id'],\n+                    'name': f\"{date} - {entry.get('firstLine', 'Untitled')}\",\n+                    'editor_state': entry['state']\n+                })\n+    except Exception as e:\n+        print(f\"❌ Failed to parse calendar: {e}\")\n+        import traceback\n+        traceback.print_exc()\n+        raise HTTPException(status_code=400, detail=f\"Failed to parse calendar: {str(e)}\")\n+\n+    # Import to database\n+    database.import_user_data(user_id, sessions, [], {}, [])\n+\n+    return {\n+        \"success\": True,\n+        \"imported\": {\n+            \"sessions\": len(sessions)\n+        }\n+    }\n+\n @app.get(\"/api/sessions\")\n def list_sessions(current_user: dict = Depends(get_current_user)):\n     \"\"\""
+    },
+    {
+      "sha": "eb4a196dbcceefbd6f4f03847fbccfd57669dc99",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 0,
+      "changes": 6,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/000c695e755b03df45d727a7d206710891e6f8e9/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/000c695e755b03df45d727a7d206710891e6f8e9/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=000c695e755b03df45d727a7d206710891e6f8e9",
+      "patch": "@@ -1012,6 +1012,12 @@ export default function App() {\n         oldDocument: localStorage.getItem('document') ?? undefined\n       };\n \n+      // Log what we're about to send\n+      console.log('📦 Migration data being sent:');\n+      console.log('  - currentSession:', migrationData.currentSession ? `${migrationData.currentSession.length} chars` : 'null');\n+      console.log('  - calendarEntries:', migrationData.calendarEntries ? `${migrationData.calendarEntries.length} chars` : 'null');\n+      console.log('  - dailyPictures:', migrationData.dailyPictures ? `${migrationData.dailyPictures.length} chars` : 'null');\n+\n       // Call backend migration endpoint\n       const result = await importLocalData(migrationData);\n "
+    }
+  ]
+}

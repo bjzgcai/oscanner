@@ -1,0 +1,97 @@
+{
+  "sha": "a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40",
+  "node_id": "C_kwDOP2Zrm9oAKGE1Y2M0YjFhNTA0Y2U5MGU3ZmU1ZWU0OGQ4NjMxZTJlY2NjYzhiNDA",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-18T14:17:42Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-18T14:17:42Z"
+    },
+    "message": "clean up",
+    "tree": {
+      "sha": "c75f860347041c63a5d87fe5b1bc1cad4087cb5b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/c75f860347041c63a5d87fe5b1bc1cad4087cb5b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "80c31e558b589cdb3f8bdea804bc61d82c51b2d9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/80c31e558b589cdb3f8bdea804bc61d82c51b2d9",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/80c31e558b589cdb3f8bdea804bc61d82c51b2d9"
+    }
+  ],
+  "stats": {
+    "total": 72,
+    "additions": 13,
+    "deletions": 59
+  },
+  "files": [
+    {
+      "sha": "c1de62ab46f52578cdf270f82e3ade3b2bed78f7",
+      "filename": ".gitignore",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 0,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/.gitignore",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/.gitignore",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.gitignore?ref=a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40",
+      "patch": "@@ -1,4 +1,5 @@\n # Python\n+backup/\n backend/.venv/\n backend/models.json\n backend/.polycache/"
+    },
+    {
+      "sha": "c599b0aa6560c883609be8a2d7dce671e2747d15",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 37,
+      "changes": 41,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40",
+      "patch": "@@ -12,7 +12,6 @@ import {\n   FaAlignRight\n } from 'react-icons/fa';\n import TopNavBar from './components/TopNavBar';\n-import VoiceSettings from './components/VoiceSettings';\n import DeckManager from './components/DeckManager';\n import CalendarPopup from './components/CalendarPopup';\n import { saveEntryToToday, type CalendarEntry } from './utils/calendarStorage';\n@@ -22,8 +21,8 @@ import AboutView from './components/AboutView';\n import AgentDropdown from './components/AgentDropdown';\n import ChatWidgetUI from './components/ChatWidgetUI';\n import StateChooser from './components/StateChooser';\n-import type { VoiceConfig, StateConfig } from './api/voiceApi';\n-import { getVoices, getMetaPrompt, getStateConfig } from './utils/voiceStorage';\n+import type { VoiceConfig } from './api/voiceApi';\n+import { getVoices, getMetaPrompt, getStateConfig, saveMetaPrompt } from './utils/voiceStorage';\n import { getDefaultVoices, chatWithVoice, importLocalData, getSuggestion, loadVoicesFromDecks, type VoiceInspiration } from './api/voiceApi';\n import { useMobile } from './utils/mobileDetect';\n import { CommentGroupCard } from './components/CommentCard';\n@@ -251,9 +250,6 @@ export default function App() {\n   const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks'>('writing');\n   const [showCalendarPopup, setShowCalendarPopup] = useState(false);\n   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});\n-  const [metaPrompt, setMetaPrompt] = useState<string>('');\n-  const [loadedStateConfig, setLoadedStateConfig] = useState<StateConfig | null>(null);\n-  const [defaultVoiceConfigs, setDefaultVoiceConfigs] = useState<Record<string, VoiceConfig>>({});\n \n   const engineRef = useRef<EditorEngine | null>(null);\n   const [state, setState] = useState<EditorState | null>(null);\n@@ -386,7 +382,6 @@ export default function App() {\n           color: v.color\n         };\n       }\n-      setDefaultVoiceConfigs(converted);\n \n       // @@@ Try loading from deck system first, then localStorage, then defaults\n       const deckVoices = await loadVoicesFromDecks();\n@@ -554,10 +549,10 @@ export default function App() {\n               setVoiceConfigs(prefs.voice_configs);\n             }\n             if (prefs.meta_prompt) {\n-              setMetaPrompt(prefs.meta_prompt);\n+              saveMetaPrompt(prefs.meta_prompt);\n             }\n             if (prefs.state_config) {\n-              setLoadedStateConfig(prefs.state_config);\n+              setStateConfig(prefs.state_config);\n             }\n \n             // @@@ Load selectedState with daily reset check for authenticated users\n@@ -1246,34 +1241,6 @@ export default function App() {\n     }\n   }, [isAuthenticated]);\n \n-  const handleVoiceConfigsSave = useCallback(async (data: {\n-    voices: Record<string, VoiceConfig>;\n-    metaPrompt: string;\n-    stateConfig: StateConfig;\n-  }) => {\n-    console.log('App: handleVoiceConfigsSave called, isAuthenticated:', isAuthenticated);\n-    setVoiceConfigs(data.voices);\n-\n-    // @@@ Save to database if authenticated\n-    if (isAuthenticated) {\n-      try {\n-        console.log('App: Saving preferences to database...');\n-        const { savePreferences } = await import('./api/voiceApi');\n-        await savePreferences({\n-          voice_configs: data.voices,\n-          meta_prompt: data.metaPrompt,\n-          state_config: data.stateConfig\n-        });\n-        console.log('App: Preferences saved to database successfully');\n-      } catch (error) {\n-        console.error('App: Failed to save preferences to database:', error);\n-        throw error; // Propagate error to show alert\n-      }\n-    } else {\n-      console.log('App: Guest mode, skipping database save');\n-    }\n-  }, [isAuthenticated]);\n-\n   // @@@ Insert @ character at the end of last text cell\n   const handleInsertAgent = useCallback(() => {\n     if (!state || !engineRef.current) return;"
+    },
+    {
+      "sha": "ae29816c9329ddbc81d8178b4dd3dd488d2ac4e3",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 0,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40",
+      "patch": "@@ -60,6 +60,9 @@ export interface Deck {\n   voices?: Voice[];\n   created_at?: string;\n   updated_at?: string;\n+  published?: boolean;\n+  author_name?: string;\n+  install_count?: number;\n }\n \n // nginx proxies /ink-and-memory/api/* to backend (8765)"
+    },
+    {
+      "sha": "cd77089b38da822b96038119dd351f82ca5fe787",
+      "filename": "frontend/src/components/DeckManager.tsx",
+      "status": "modified",
+      "additions": 5,
+      "deletions": 22,
+      "changes": 27,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/frontend%2Fsrc%2Fcomponents%2FDeckManager.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40/frontend%2Fsrc%2Fcomponents%2FDeckManager.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FDeckManager.tsx?ref=a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40",
+      "patch": "@@ -11,7 +11,6 @@ import {\n   createVoice,\n   updateVoice,\n   deleteVoice,\n-  forkVoice,\n   publishDeck,\n   type Deck,\n   type Voice\n@@ -47,22 +46,6 @@ const iconMap = {\n   compass: FaCompass,\n };\n \n-// @@@ Icon labels for dropdown display\n-const ICON_LABELS = {\n-  'brain': '🧠 brain',\n-  'lightbulb': '💡 lightbulb',\n-  'masks': '🎭 masks',\n-  'cloud': '☁️ cloud',\n-  'shield': '🛡️ shield',\n-  'compass': '🧭 compass',\n-  'heart': '❤️ heart',\n-  'fist': '✊ fist',\n-  'fire': '🔥 fire',\n-  'wind': '💨 wind',\n-  'question': '❓ question',\n-  'eye': '👁️ eye'\n-};\n-\n interface Props {\n   onUpdate?: () => void;\n }\n@@ -243,7 +226,7 @@ export default function DeckManager({ onUpdate }: Props) {\n         color: 'blue'\n       });\n       await loadDecks(true);\n-      setExpandedDecks(prev => new Set([...prev, newDeck.id]));\n+      setExpandedDecks(prev => new Set([...prev, newDeck.deck_id]));\n       onUpdate?.();\n     } catch (err: any) {\n       alert(`Failed to create deck: ${err.message}`);\n@@ -273,13 +256,13 @@ export default function DeckManager({ onUpdate }: Props) {\n \n   async function handlePublishClick(deck: Deck) {\n     if (deck.published) {\n-      handlePublishToggle(deck.id, false);\n+      handlePublishToggle(deck.id);\n     } else {\n       setPublishWarning(deck.id);\n     }\n   }\n \n-  async function handlePublishToggle(deckId: string, shouldPublish: boolean) {\n+  async function handlePublishToggle(deckId: string) {\n     try {\n       const result = await publishDeck(deckId);\n       alert(result.published ? '✅ Deck published to community!' : '✅ Deck unpublished');\n@@ -332,7 +315,7 @@ export default function DeckManager({ onUpdate }: Props) {\n       }}>\n         <div style={{ fontSize: 18, color: '#e74c3c' }}>❌ {error}</div>\n         <button\n-          onClick={loadDecks}\n+          onClick={() => loadDecks()}\n           style={{\n             padding: '8px 16px',\n             background: '#2c2c2c',\n@@ -1212,7 +1195,7 @@ export default function DeckManager({ onUpdate }: Props) {\n                 Cancel\n               </button>\n               <button\n-                onClick={() => handlePublishToggle(publishWarning, true)}\n+                onClick={() => handlePublishToggle(publishWarning)}\n                 style={{\n                   padding: '8px 16px',\n                   background: '#9b59b6',"
+    }
+  ]
+}

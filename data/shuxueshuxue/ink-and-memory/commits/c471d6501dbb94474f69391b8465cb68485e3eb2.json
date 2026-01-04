@@ -1,0 +1,61 @@
+{
+  "sha": "c471d6501dbb94474f69391b8465cb68485e3eb2",
+  "node_id": "C_kwDOP2Zrm9oAKGM0NzFkNjUwMWRiYjk0NDc0ZjY5MzkxYjg0NjVjYjY4NDg1ZTNlYjI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-31T11:08:10Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-31T11:08:10Z"
+    },
+    "message": "clear legacy documents",
+    "tree": {
+      "sha": "d1989dbf450bf7ef2f4d9aa2afffd1099535352d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/d1989dbf450bf7ef2f4d9aa2afffd1099535352d"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/c471d6501dbb94474f69391b8465cb68485e3eb2",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c471d6501dbb94474f69391b8465cb68485e3eb2",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/c471d6501dbb94474f69391b8465cb68485e3eb2",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c471d6501dbb94474f69391b8465cb68485e3eb2/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "6776609d2716fbc4dd2d1c5efc1e716136bfe507",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6776609d2716fbc4dd2d1c5efc1e716136bfe507",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/6776609d2716fbc4dd2d1c5efc1e716136bfe507"
+    }
+  ],
+  "stats": {
+    "total": 134,
+    "additions": 0,
+    "deletions": 134
+  },
+  "files": [
+    {
+      "sha": "a891f133b7d89bb1e33bbf419a1a534d5574c99c",
+      "filename": "REFACTOR.md",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 134,
+      "changes": 134,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/6776609d2716fbc4dd2d1c5efc1e716136bfe507/REFACTOR.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/6776609d2716fbc4dd2d1c5efc1e716136bfe507/REFACTOR.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/REFACTOR.md?ref=6776609d2716fbc4dd2d1c5efc1e716136bfe507",
+      "patch": "@@ -1,134 +0,0 @@\n-# Ink & Memory - Simplified Architecture Refactor\n-\n-## Summary\n-\n-Refactored the codebase to use a clean trace-based energy model, removing significant complexity:\n-\n-### Before (415+ lines in App.tsx alone)\n-- Complex TipTap editor with custom NodeViews\n-- Hacky energy system with scattered refs\n-- Stateful backend with density enforcement\n-- Voice quote widgets with React components inside ProseMirror\n-- Multiple edge cases and workarounds\n-\n-### After (~300 lines total for core engine)\n-- Clean `EditorEngine` with trace-based energy model\n-- Simple textarea with CSS-based highlighting\n-- Stateless backend (just returns voices)\n-- Cells-based data model (like Jupyter)\n-- Clear separation of concerns\n-\n-## Key Changes\n-\n-### 1. New Data Model (`/frontend/src/engine/EditorEngine.ts`)\n-\n-```typescript\n-interface EditorState {\n-  cells: Cell[];              // Text cells + widget cells\n-  commentors: Commentor[];    // Applied comments\n-  tasks: Task[];              // Running tasks (e.g., \"analyzing...\")\n-  weightPath: WeightEntry[];  // Complete trace of weight changes\n-  sessionId: string;\n-}\n-```\n-\n-### 2. Trace-Based Energy Model\n-\n-Instead of polling and calculating diffs:\n-\n-```typescript\n-// OLD: Hacky refs and polling\n-const energyRef = useRef<number>(0);\n-const lastPollWeightRef = useRef<number>(0);\n-// ... complex polling logic\n-\n-// NEW: Clean trace\n-weightPath: [\n-  { timestamp: t1, text: T1, weight: w1, delta: δ1, energy: e1 },\n-  { timestamp: t2, text: T2, weight: w2, delta: δ2, energy: e2 },\n-  // ...\n-]\n-```\n-\n-### 3. Simplified Backend (`/backend/simple_analyzer.py`)\n-\n-- **Removed**: Stateful tracking, density enforcement, pruning, session management\n-- **Kept**: Basic LLM call to get voices\n-- **Result**: 100 lines instead of 375 lines\n-\n-### 4. Commentor Waitlist Pattern\n-\n-- Backend analysis results go to waitlist (stack)\n-- Applied when energy >= threshold\n-- Check text still matches snapshot before applying\n-- No complex density rules\n-\n-## How to Test\n-\n-### Original Version (complex)\n-```bash\n-# Frontend\n-npm run dev\n-# Open http://localhost:5173/ink-and-memory/\n-\n-# Backend\n-cd backend\n-python server.py\n-```\n-\n-### Simplified Version\n-```bash\n-# Frontend (same, but add #simple to URL)\n-npm run dev\n-# Open http://localhost:5173/ink-and-memory/#simple\n-\n-# Backend\n-cd backend\n-python server_simple.py\n-```\n-\n-## Code Reduction\n-\n-| Component | Before | After | Reduction |\n-|-----------|--------|-------|-----------|\n-| App.tsx | 415 lines | 0 (replaced) | -100% |\n-| AppSimplified.tsx | 0 | 250 lines | NEW |\n-| EditorEngine.ts | 0 | 200 lines | NEW |\n-| EditableTextArea.tsx | 162 lines | 0 (not needed) | -100% |\n-| VoiceQuote.tsx | 363 lines | 0 (not needed) | -100% |\n-| stateful_analyzer.py | 375 lines | 0 (replaced) | -100% |\n-| simple_analyzer.py | 0 | 100 lines | NEW |\n-| server.py | 189 lines | 0 (replaced) | -100% |\n-| server_simple.py | 0 | 120 lines | NEW |\n-\n-**Total Reduction**: ~1500 lines → ~670 lines (**55% less code**)\n-\n-## Benefits\n-\n-1. **Cleaner abstraction** - Energy model is now a pure function over a trace\n-2. **No edge cases** - No quote weight hack, view switching bug, serialization issues\n-3. **Easier to test** - Pure functions, clear data flow\n-4. **Better performance** - No TipTap overhead, simple textarea\n-5. **Maintainable** - Clear separation of concerns\n-\n-## Future Improvements\n-\n-Based on the spec, we can add:\n-\n-1. **Auto-complete** - Idle-based completion after 1.5s\n-2. **Color cycling** - Automatic color assignment for adjacent comments\n-3. **Highlight dimming** - Dim highlights when comment not visible\n-4. **Widget cells** - Greeting widget, chat widgets, etc.\n-5. **Cursor animation** - Smooth cursor movement\n-\n-## Migration Strategy\n-\n-1. Test simplified version thoroughly\n-2. Migrate existing localStorage data\n-3. Deploy simplified backend first (backwards compatible)\n-4. Deploy simplified frontend\n-5. Remove old code after verification\n-\n-## Conclusion\n-\n-By focusing on the core energy model abstraction (trace of text → weights → energy), we removed ~55% of the code while making the system more robust and maintainable. The simplified architecture follows the principle: **\"花费复杂度去买功能\"** - we should only pay complexity for features we actually need.\n\\ No newline at end of file"
+    }
+  ]
+}

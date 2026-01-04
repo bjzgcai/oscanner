@@ -1,0 +1,61 @@
+{
+  "sha": "1b0faee2911121e4a187aa5482288ef963399785",
+  "node_id": "C_kwDOP2Zrm9oAKDFiMGZhZWUyOTExMTIxZTRhMTg3YWE1NDgyMjg4ZWY5NjMzOTk3ODU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-29T16:26:32Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-29T16:26:32Z"
+    },
+    "message": "Fix send button color in expanded comment\n\nChange send button from voice-specific glow color to consistent blue (#4a90e2).\nImproves visual consistency and readability.\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "37fd0e71022862060f16940bdbcb57bf82bccaa4",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/37fd0e71022862060f16940bdbcb57bf82bccaa4"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/1b0faee2911121e4a187aa5482288ef963399785",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/1b0faee2911121e4a187aa5482288ef963399785",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/1b0faee2911121e4a187aa5482288ef963399785",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/1b0faee2911121e4a187aa5482288ef963399785/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "0b9e3b768ed5ff748535d29ebcf44fb924df86f2",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0b9e3b768ed5ff748535d29ebcf44fb924df86f2",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0b9e3b768ed5ff748535d29ebcf44fb924df86f2"
+    }
+  ],
+  "stats": {
+    "total": 3,
+    "additions": 1,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "74f17adaa9df4288404a3d6371542d352831c3c2",
+      "filename": "frontend/src/components/CommentCard.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 2,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/1b0faee2911121e4a187aa5482288ef963399785/frontend%2Fsrc%2Fcomponents%2FCommentCard.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/1b0faee2911121e4a187aa5482288ef963399785/frontend%2Fsrc%2Fcomponents%2FCommentCard.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCommentCard.tsx?ref=1b0faee2911121e4a187aa5482288ef963399785",
+      "patch": "@@ -440,12 +440,11 @@ export function CommentGroupCard({\n                 style={{\n                   padding: '6px 12px',\n                   fontSize: '12px',\n-                  background: colors.glow,\n+                  background: inputValue.trim() && !isChatProcessing ? '#4a90e2' : '#ccc',\n                   color: '#fff',\n                   border: 'none',\n                   borderRadius: '3px',\n                   cursor: inputValue.trim() && !isChatProcessing ? 'pointer' : 'not-allowed',\n-                  opacity: inputValue.trim() && !isChatProcessing ? 1 : 0.5,\n                   fontWeight: 600,\n                 }}\n               >"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "sha": "744cedb6c07d146ebfabaea3a5b53544493ac5d7",
+  "node_id": "C_kwDOP2Zrm9oAKDc0NGNlZGI2YzA3ZDE0NmViZmFiYWVhM2E1YjUzNTQ0NDkzYWM1ZDc",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:04:45Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:04:45Z"
+    },
+    "message": "Document timezone scheduler TODO",
+    "tree": {
+      "sha": "1d01794bdcda2df78231f2d6ed4caf9068e8345b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/1d01794bdcda2df78231f2d6ed4caf9068e8345b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/744cedb6c07d146ebfabaea3a5b53544493ac5d7",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/744cedb6c07d146ebfabaea3a5b53544493ac5d7",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/744cedb6c07d146ebfabaea3a5b53544493ac5d7",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/744cedb6c07d146ebfabaea3a5b53544493ac5d7/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "baaa7c48bbe4681ca47b0322800073d29e853e58",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/baaa7c48bbe4681ca47b0322800073d29e853e58",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/baaa7c48bbe4681ca47b0322800073d29e853e58"
+    }
+  ],
+  "stats": {
+    "total": 4,
+    "additions": 4,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "47cda7735616c6dda255d3a012846e914d90b7f5",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 0,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/744cedb6c07d146ebfabaea3a5b53544493ac5d7/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/744cedb6c07d146ebfabaea3a5b53544493ac5d7/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=744cedb6c07d146ebfabaea3a5b53544493ac5d7",
+      "patch": "@@ -161,6 +161,10 @@ useEffect(() => {\n re.split(r'[.!?。！？]+|\\n+', text)\n ```\n \n+## 🗺️ Roadmap / TODO\n+\n+- **Per-user timeline scheduling**: scheduler currently runs once per day using a single timezone. We now store each user's preferred timezone in `user_preferences`, but the cron job still needs to read that field and trigger generation at each user's local midnight.\n+\n ## 📁 Project Structure\n \n ```"
+    }
+  ]
+}

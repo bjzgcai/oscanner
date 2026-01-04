@@ -1,0 +1,42 @@
+{
+  "sha": "ce06d9ad8f252369441c1103b63c0b8dc6591a4f",
+  "node_id": "C_kwDOP2Zrm9oAKGNlMDZkOWFkOGYyNTIzNjk0NDFjMTEwM2I2M2MwYjhkYzY1OTFhNGY",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T19:57:10Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T19:57:10Z"
+    },
+    "message": "Strip dist path on frontend deploy and only remove stale subdir",
+    "tree": {
+      "sha": "44ccced40c103bd9adc7e8873118c2e53655c5e3",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/44ccced40c103bd9adc7e8873118c2e53655c5e3"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/ce06d9ad8f252369441c1103b63c0b8dc6591a4f",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ce06d9ad8f252369441c1103b63c0b8dc6591a4f",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ce06d9ad8f252369441c1103b63c0b8dc6591a4f",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ce06d9ad8f252369441c1103b63c0b8dc6591a4f/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "80c23a44343401ce4ca21417ec9627fb8aff5021",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/80c23a44343401ce4ca21417ec9627fb8aff5021",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/80c23a44343401ce4ca21417ec9627fb8aff5021"
+    }
+  ]
+}

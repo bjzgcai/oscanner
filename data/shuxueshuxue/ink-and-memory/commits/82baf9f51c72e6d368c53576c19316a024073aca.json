@@ -1,123 +1,87 @@
 {
-  "cached_at": "2025-12-22T16:46:46.139265",
-  "commit_sha": "82baf9f51c72e6d368c53576c19316a024073aca",
-  "repo": "shuxueshuxue/ink-and-memory",
-  "data": {
-    "sha": "82baf9f51c72e6d368c53576c19316a024073aca",
-    "node_id": "C_kwDOP2Zrm9oAKDgyYmFmOWY1MWM3MmU2ZDM2OGM1MzU3NmMxOTMxNmEwMjQwNzNhY2E",
-    "commit": {
-      "author": {
-        "name": "F2J",
-        "email": "98064968+shuxueshuxue@users.noreply.github.com",
-        "date": "2025-12-03T06:13:10Z"
-      },
-      "committer": {
-        "name": "GitHub",
-        "email": "noreply@github.com",
-        "date": "2025-12-03T06:13:10Z"
-      },
-      "message": "Merge pull request #20 from shuxueshuxue/test-ci-workflows\n\ntest CI workflow: 1",
-      "tree": {
-        "sha": "662d8c70b930fa82e61053514eed927d0c9d80e1",
-        "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/662d8c70b930fa82e61053514eed927d0c9d80e1"
-      },
-      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/82baf9f51c72e6d368c53576c19316a024073aca",
-      "comment_count": 0,
-      "verification": {
-        "verified": true,
-        "reason": "valid",
-        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpL9T2CRC1aQ7uu5UhlAAATzUQACsBBKKxIydYoRnDXCk3SRNZ\nUq714tVGegd7ZmiCnMXnUDgRTeokRHbZB8xyyTmVT4/zJNSv06mN81CFnqThL+kT\nMr8jkCwlX+KGc+3lCow/FQjVdN9HhmrE6kjS3Y87PMQu6nYKOtLOv1i0II4U048g\ni8W8m6NHAcPOHL0Y+4x6D2QXibPpwtCbF5QabF7yaEV0x/DWQQPVLpnE+E3oAzOI\nNg9i4W5d88t9NhGiKcjuHQ3CfdHWy5ERR1qk4IQa+1s3FTgOea2wmDBnGqaW6bZ9\nLp54P0aM2fY0CYdkpNXaYKvMK7c840tJgZq3HjR/dps0tl/rU9q8nUTEFCOUA0Ni\nQC19Ev9LGm39hbOxgOg3UmSXZv41F5dj0Ti1nj3PASvtSRLbHgiewfdsPCnMCGJ9\nPzA9ZI+vocxB5Jv6z2OiO8JlO82ZNSOlr3Ehy77ZB8iA+Vy63+7wwLYizhGfJXTh\nNYwL4NcLsBtigKdxDF3yASaCsYp92Bb4vM6Q3tqpRt8jqL7s8Eg+5awBqCPg+fXM\nOpiarpVQZ2ksbI659XC3RXujCFdwxGbA7pfER1lGYtZqtcNfQYLVjsiJ/REzVcmY\nze4z5jmY1QykZ5nRJzTvRiq+DnFyrOEWs7zYWDsReoc8iQ3wlyAuNdke44sBYf0a\nxVewkJ2tayUKXCaL0Ol2\n=W9gc\n-----END PGP SIGNATURE-----\n",
-        "payload": "tree 662d8c70b930fa82e61053514eed927d0c9d80e1\nparent cb9f63c65885cfaeb9615f89dee9706f8a455d7a\nparent 5c26a0422c3e87fd417704e1bf59e6cb09448b6b\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1764742390 +0800\ncommitter GitHub <noreply@github.com> 1764742390 +0800\n\nMerge pull request #20 from shuxueshuxue/test-ci-workflows\n\ntest CI workflow: 1",
-        "verified_at": "2025-12-03T06:13:11Z"
-      }
-    },
-    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/82baf9f51c72e6d368c53576c19316a024073aca",
-    "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/82baf9f51c72e6d368c53576c19316a024073aca",
-    "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/82baf9f51c72e6d368c53576c19316a024073aca/comments",
+  "sha": "82baf9f51c72e6d368c53576c19316a024073aca",
+  "node_id": "C_kwDOP2Zrm9oAKDgyYmFmOWY1MWM3MmU2ZDM2OGM1MzU3NmMxOTMxNmEwMjQwNzNhY2E",
+  "commit": {
     "author": {
-      "login": "shuxueshuxue",
-      "id": 98064968,
-      "node_id": "U_kgDOBdhaSA",
-      "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
-      "gravatar_id": "",
-      "url": "https://api.github.com/users/shuxueshuxue",
-      "html_url": "https://github.com/shuxueshuxue",
-      "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
-      "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
-      "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
-      "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
-      "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
-      "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
-      "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
-      "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
-      "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
-      "type": "User",
-      "user_view_type": "public",
-      "site_admin": false
+      "name": "F2J",
+      "email": "98064968+shuxueshuxue@users.noreply.github.com",
+      "date": "2025-12-03T06:13:10Z"
     },
     "committer": {
-      "login": "web-flow",
-      "id": 19864447,
-      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
-      "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
-      "gravatar_id": "",
-      "url": "https://api.github.com/users/web-flow",
-      "html_url": "https://github.com/web-flow",
-      "followers_url": "https://api.github.com/users/web-flow/followers",
-      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
-      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
-      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
-      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
-      "organizations_url": "https://api.github.com/users/web-flow/orgs",
-      "repos_url": "https://api.github.com/users/web-flow/repos",
-      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
-      "received_events_url": "https://api.github.com/users/web-flow/received_events",
-      "type": "User",
-      "user_view_type": "public",
-      "site_admin": false
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2025-12-03T06:13:10Z"
     },
-    "parents": [
-      {
-        "sha": "cb9f63c65885cfaeb9615f89dee9706f8a455d7a",
-        "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cb9f63c65885cfaeb9615f89dee9706f8a455d7a",
-        "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cb9f63c65885cfaeb9615f89dee9706f8a455d7a"
-      },
-      {
-        "sha": "5c26a0422c3e87fd417704e1bf59e6cb09448b6b",
-        "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5c26a0422c3e87fd417704e1bf59e6cb09448b6b",
-        "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/5c26a0422c3e87fd417704e1bf59e6cb09448b6b"
-      }
-    ],
-    "stats": {
-      "total": 67,
-      "additions": 66,
-      "deletions": 1
+    "message": "Merge pull request #20 from shuxueshuxue/test-ci-workflows\n\ntest CI workflow: 1",
+    "tree": {
+      "sha": "662d8c70b930fa82e61053514eed927d0c9d80e1",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/662d8c70b930fa82e61053514eed927d0c9d80e1"
     },
-    "files": [
-      {
-        "sha": "2acf796def20edd70972cf159a798164d33a88b6",
-        "filename": ".github/workflows/ci-backend.yml",
-        "status": "modified",
-        "additions": 6,
-        "deletions": 1,
-        "changes": 7,
-        "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/82baf9f51c72e6d368c53576c19316a024073aca/.github%2Fworkflows%2Fci-backend.yml",
-        "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/82baf9f51c72e6d368c53576c19316a024073aca/.github%2Fworkflows%2Fci-backend.yml",
-        "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.github%2Fworkflows%2Fci-backend.yml?ref=82baf9f51c72e6d368c53576c19316a024073aca",
-        "patch": "@@ -20,6 +20,11 @@ jobs:\n         run: |\n           docker buildx build \\\n             --platform linux/amd64 \\\n-            -t test-build \\\n+            -t ink-backend:ci \\\n             --load \\\n             backend\n+\n+      - name: Run backend smoke test (register, login, deck create)\n+        run: |\n+          chmod +x backend/tests/ci-smoke.sh\n+          backend/tests/ci-smoke.sh ink-backend:ci"
-      },
-      {
-        "sha": "4968a5dc570b02cb1f08ac8eb221115d6952100b",
-        "filename": "backend/tests/ci-smoke.sh",
-        "status": "added",
-        "additions": 60,
-        "deletions": 0,
-        "changes": 60,
-        "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/82baf9f51c72e6d368c53576c19316a024073aca/backend%2Ftests%2Fci-smoke.sh",
-        "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/82baf9f51c72e6d368c53576c19316a024073aca/backend%2Ftests%2Fci-smoke.sh",
-        "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Ftests%2Fci-smoke.sh?ref=82baf9f51c72e6d368c53576c19316a024073aca",
-        "patch": "@@ -0,0 +1,60 @@\n+#!/usr/bin/env bash\n+set -euo pipefail\n+\n+# Minimal backend smoke test for CI only.\n+# Requires: docker, jq, curl\n+\n+IMAGE=\"${1:-ink-backend:ci}\"\n+PORT=\"${PORT:-18765}\"\n+CONTAINER_NAME=\"ink-backend-smoke\"\n+DB_DIR=\"$(mktemp -d)\"\n+\n+cleanup() {\n+  docker rm -f \"${CONTAINER_NAME}\" >/dev/null 2>&1 || true\n+  rm -rf \"${DB_DIR}\"\n+}\n+trap cleanup EXIT\n+\n+echo \"🚀 Starting container ${IMAGE} on port ${PORT} with db at ${DB_DIR}\"\n+docker run -d --rm --name \"${CONTAINER_NAME}\" -p \"${PORT}:8765\" -v \"${DB_DIR}:/app/data\" \"${IMAGE}\" >/dev/null\n+\n+echo \"⏳ Waiting for server...\"\n+for i in $(seq 1 30); do\n+  if curl -fsS \"http://127.0.0.1:${PORT}/docs\" >/dev/null; then\n+    break\n+  fi\n+  sleep 1\n+done\n+\n+# Initialize database tables + seed system decks\n+docker exec \"${CONTAINER_NAME}\" python database.py >/dev/null\n+\n+API=\"http://127.0.0.1:${PORT}/api\"\n+\n+echo \"👤 Registering user...\"\n+REGISTER_RES=$(curl -s -X POST -H \"Content-Type: application/json\" \\\n+  -d '{\"email\":\"ci-smoke@example.com\",\"password\":\"test123\",\"display_name\":\"CI Smoke\"}' \\\n+  \"${API}/register\")\n+TOKEN=$(echo \"${REGISTER_RES}\" | jq -r '.token')\n+if [[ -z \"${TOKEN}\" || \"${TOKEN}\" == \"null\" ]]; then\n+  echo \"Register failed: ${REGISTER_RES}\"\n+  exit 1\n+fi\n+\n+echo \"🃏 Creating deck...\"\n+CREATE_RES=$(curl -s -X POST \\\n+  -H \"Authorization: Bearer ${TOKEN}\" \\\n+  -H \"Content-Type: application/json\" \\\n+  -d '{\"name\":\"Smoke Deck\",\"description\":\"CI deck\"}' \\\n+  \"${API}/decks\")\n+DECK_ID=$(echo \"${CREATE_RES}\" | jq -r '.deck_id')\n+if [[ -z \"${DECK_ID}\" || \"${DECK_ID}\" == \"null\" ]]; then\n+  echo \"Deck creation failed: ${CREATE_RES}\"\n+  exit 1\n+fi\n+\n+echo \"📋 Verifying deck exists...\"\n+LIST_RES=$(curl -s -H \"Authorization: Bearer ${TOKEN}\" \"${API}/decks\")\n+echo \"${LIST_RES}\" | jq -e --arg id \"${DECK_ID}\" '.decks | map(.id == $id) | any' >/dev/null\n+\n+echo \"✅ Smoke test passed\""
-      }
-    ]
-  }
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/82baf9f51c72e6d368c53576c19316a024073aca",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpL9T2CRC1aQ7uu5UhlAAATzUQACsBBKKxIydYoRnDXCk3SRNZ\nUq714tVGegd7ZmiCnMXnUDgRTeokRHbZB8xyyTmVT4/zJNSv06mN81CFnqThL+kT\nMr8jkCwlX+KGc+3lCow/FQjVdN9HhmrE6kjS3Y87PMQu6nYKOtLOv1i0II4U048g\ni8W8m6NHAcPOHL0Y+4x6D2QXibPpwtCbF5QabF7yaEV0x/DWQQPVLpnE+E3oAzOI\nNg9i4W5d88t9NhGiKcjuHQ3CfdHWy5ERR1qk4IQa+1s3FTgOea2wmDBnGqaW6bZ9\nLp54P0aM2fY0CYdkpNXaYKvMK7c840tJgZq3HjR/dps0tl/rU9q8nUTEFCOUA0Ni\nQC19Ev9LGm39hbOxgOg3UmSXZv41F5dj0Ti1nj3PASvtSRLbHgiewfdsPCnMCGJ9\nPzA9ZI+vocxB5Jv6z2OiO8JlO82ZNSOlr3Ehy77ZB8iA+Vy63+7wwLYizhGfJXTh\nNYwL4NcLsBtigKdxDF3yASaCsYp92Bb4vM6Q3tqpRt8jqL7s8Eg+5awBqCPg+fXM\nOpiarpVQZ2ksbI659XC3RXujCFdwxGbA7pfER1lGYtZqtcNfQYLVjsiJ/REzVcmY\nze4z5jmY1QykZ5nRJzTvRiq+DnFyrOEWs7zYWDsReoc8iQ3wlyAuNdke44sBYf0a\nxVewkJ2tayUKXCaL0Ol2\n=W9gc\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 662d8c70b930fa82e61053514eed927d0c9d80e1\nparent cb9f63c65885cfaeb9615f89dee9706f8a455d7a\nparent 5c26a0422c3e87fd417704e1bf59e6cb09448b6b\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1764742390 +0800\ncommitter GitHub <noreply@github.com> 1764742390 +0800\n\nMerge pull request #20 from shuxueshuxue/test-ci-workflows\n\ntest CI workflow: 1",
+      "verified_at": "2025-12-03T06:13:11Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/82baf9f51c72e6d368c53576c19316a024073aca",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/82baf9f51c72e6d368c53576c19316a024073aca",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/82baf9f51c72e6d368c53576c19316a024073aca/comments",
+  "author": {
+    "login": "shuxueshuxue",
+    "id": 98064968,
+    "node_id": "U_kgDOBdhaSA",
+    "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/shuxueshuxue",
+    "html_url": "https://github.com/shuxueshuxue",
+    "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+    "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+    "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+    "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+    "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+    "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "cb9f63c65885cfaeb9615f89dee9706f8a455d7a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cb9f63c65885cfaeb9615f89dee9706f8a455d7a",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cb9f63c65885cfaeb9615f89dee9706f8a455d7a"
+    },
+    {
+      "sha": "5c26a0422c3e87fd417704e1bf59e6cb09448b6b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5c26a0422c3e87fd417704e1bf59e6cb09448b6b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/5c26a0422c3e87fd417704e1bf59e6cb09448b6b"
+    }
+  ]
 }

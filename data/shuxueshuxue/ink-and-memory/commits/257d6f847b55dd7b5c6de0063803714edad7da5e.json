@@ -1,0 +1,85 @@
+{
+  "sha": "257d6f847b55dd7b5c6de0063803714edad7da5e",
+  "node_id": "C_kwDOP2Zrm9oAKDI1N2Q2Zjg0N2I1NWRkN2I1YzZkZTAwNjM4MDM3MTRlZGFkN2RhNWU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T02:13:35Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T02:13:35Z"
+    },
+    "message": "Fix architecture: use relative positioning with negative margins instead of absolute",
+    "tree": {
+      "sha": "6b7731df46213b1e7749b226472f81b7ddd2d744",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/6b7731df46213b1e7749b226472f81b7ddd2d744"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/257d6f847b55dd7b5c6de0063803714edad7da5e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/257d6f847b55dd7b5c6de0063803714edad7da5e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/257d6f847b55dd7b5c6de0063803714edad7da5e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/257d6f847b55dd7b5c6de0063803714edad7da5e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "42d62d0613731c002a5e56d7131d30bee5519a3d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/42d62d0613731c002a5e56d7131d30bee5519a3d",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/42d62d0613731c002a5e56d7131d30bee5519a3d"
+    }
+  ],
+  "stats": {
+    "total": 13,
+    "additions": 3,
+    "deletions": 10
+  },
+  "files": [
+    {
+      "sha": "a536901c3413e596319c32377cbfb8126324baec",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 4,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/257d6f847b55dd7b5c6de0063803714edad7da5e/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/257d6f847b55dd7b5c6de0063803714edad7da5e/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=257d6f847b55dd7b5c6de0063803714edad7da5e",
+      "patch": "@@ -110,10 +110,7 @@\n }\n \n .voice-comment {\n-  position: absolute;\n-  top: 0;\n-  left: 0;\n-  right: 0;\n+  position: relative;\n   padding: 1rem;\n   border-left: 4px solid;\n   border-radius: 4px;"
+    },
+    {
+      "sha": "6f8319ca4a5a7f40ded1d6a7ca5863bfc0789a66",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/257d6f847b55dd7b5c6de0063803714edad7da5e/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/257d6f847b55dd7b5c6de0063803714edad7da5e/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=257d6f847b55dd7b5c6de0063803714edad7da5e",
+      "patch": "@@ -107,7 +107,7 @@ function App() {\n             isTopCard={false}\n             style={{\n               zIndex: index + 1,\n-              transform: `translateY(${index * 55}%)`,\n+              marginTop: index === 0 ? 0 : '-45%',\n             }}\n           />\n         ))}"
+    },
+    {
+      "sha": "651f990e1a46f088b9666e6da2a0daba4836c941",
+      "filename": "frontend/src/components/VoicesPanel.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 5,
+      "changes": 6,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/257d6f847b55dd7b5c6de0063803714edad7da5e/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/257d6f847b55dd7b5c6de0063803714edad7da5e/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx?ref=257d6f847b55dd7b5c6de0063803714edad7da5e",
+      "patch": "@@ -8,15 +8,11 @@ interface VoicesPanelProps {\n }\n \n export default function VoicesPanel({ stackedCards, latestCard, stackedCount }: VoicesPanelProps) {\n-  // Calculate minimum height needed: base card height + offsets\n-  // Assume ~100px per card, plus 55% offsets\n-  const stackHeightPx = stackedCount > 0 ? 100 + (stackedCount - 1) * 55 : 0;\n-\n   return (\n     <BookPage side=\"right\">\n       <div className=\"voices-container\">\n         {stackedCount > 0 && (\n-          <div className=\"voice-stack\" style={{ minHeight: `${stackHeightPx}px` }}>\n+          <div className=\"voice-stack\">\n             {stackedCards}\n           </div>\n         )}"
+    }
+  ]
+}

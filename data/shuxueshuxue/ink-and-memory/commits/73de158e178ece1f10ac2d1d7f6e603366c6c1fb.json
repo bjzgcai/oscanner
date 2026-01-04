@@ -1,0 +1,85 @@
+{
+  "sha": "73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+  "node_id": "C_kwDOP2Zrm9oAKDczZGUxNThlMTc4ZWNlMWYxMGFjMmQxZDdmNmU2MDMzNjZjNmMxZmI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T12:51:30Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T12:51:30Z"
+    },
+    "message": "Add mobile-responsive view with cursor-based comment popups\n\nMobile-specific changes (viewport < 768px):\n- Hide global header (LeftSidebar) on mobile devices\n- Hide left toolbar with Start Fresh and @ buttons\n- Disable horizontal scrolling (overflowX: hidden, touchAction: pan-y)\n- Replace desktop side comments with bottom popup\n- Show comment only when cursor enters highlighted text area\n- Popup appears at bottom with smooth slide-in animation\n\nDesktop behavior unchanged:\n- All existing features work as before\n- Side comments remain visible and positioned correctly\n- Left sidebar and toolbar still accessible\n\nTechnical implementation:\n- Added useMobile() hook for responsive detection\n- Mobile detection based on viewport width (<768px) and user agent\n- Track mobileActiveComment state for cursor-based display\n- Modified cursor change handler to detect highlighted area entry\n- Added slideInFromBottom CSS animation for popup\n- Conditional rendering based on isMobile flag throughout\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "6bca9d1f0f22c8141263f129a904b9bc5a7b7ecb",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/6bca9d1f0f22c8141263f129a904b9bc5a7b7ecb"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/73de158e178ece1f10ac2d1d7f6e603366c6c1fb/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/7ac4a9f8d96df689c34a755f56f74c2f1520a933",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/7ac4a9f8d96df689c34a755f56f74c2f1520a933"
+    }
+  ],
+  "stats": {
+    "total": 185,
+    "additions": 152,
+    "deletions": 33
+  },
+  "files": [
+    {
+      "sha": "1161b0d7b22bd6772dbc7ab449f8722ff0784dba",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 0,
+      "changes": 11,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/73de158e178ece1f10ac2d1d7f6e603366c6c1fb/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/73de158e178ece1f10ac2d1d7f6e603366c6c1fb/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+      "patch": "@@ -202,6 +202,17 @@\n   }\n }\n \n+@keyframes slideInFromBottom {\n+  from {\n+    opacity: 0;\n+    transform: translateY(20px);\n+  }\n+  to {\n+    opacity: 1;\n+    transform: translateY(0);\n+  }\n+}\n+\n /* Binder rings */\n .binder-ring {\n   position: absolute;"
+    },
+    {
+      "sha": "612341993648b966a0e94086635a68e57aa15f9b",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 97,
+      "deletions": 33,
+      "changes": 130,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/73de158e178ece1f10ac2d1d7f6e603366c6c1fb/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/73de158e178ece1f10ac2d1d7f6e603366c6c1fb/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+      "patch": "@@ -20,6 +20,7 @@ import StateChooser from './components/StateChooser';\n import type { VoiceConfig } from './types/voice';\n import { getVoices, getMetaPrompt, getStateConfig } from './utils/voiceStorage';\n import { getDefaultVoices, chatWithVoice } from './api/voiceApi';\n+import { useMobile } from './utils/mobileDetect';\n \n // @@@ Left Toolbar Component - floating toolbelt within left margin\n function LeftToolbar({ onStartFresh, onInsertAgent }: { onStartFresh: () => void; onInsertAgent: () => void }) {\n@@ -243,6 +244,7 @@ function CommentGroupCard({\n \n // @@@ Main App Component\n export default function App() {\n+  const isMobile = useMobile();\n   const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'calendar' | 'analysis' | 'about'>('writing');\n   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});\n   const [defaultVoiceConfigs, setDefaultVoiceConfigs] = useState<Record<string, VoiceConfig>>({});\n@@ -256,6 +258,9 @@ export default function App() {\n   const [cursorPosition, setCursorPosition] = useState<number>(0);\n   const [cursorCellId, setCursorCellId] = useState<string | null>(null);\n \n+  // @@@ Mobile-specific: Track which comment is at cursor for popup display\n+  const [mobileActiveComment, setMobileActiveComment] = useState<Commentor | null>(null);\n+\n   // @@@ Chat widget state\n   const [dropdownVisible, setDropdownVisible] = useState(false);\n   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });\n@@ -552,7 +557,11 @@ export default function App() {\n \n     const cellText = (cell as TextCell).content;\n     const appliedComments = state.commentors.filter(c => c.appliedAt);\n-    if (appliedComments.length === 0) return;\n+    if (appliedComments.length === 0) {\n+      // Clear mobile comment if no comments exist\n+      if (isMobile) setMobileActiveComment(null);\n+      return;\n+    }\n \n     // Find comment at cursor position within this cell's text\n     let foundComment: Commentor | null = null;\n@@ -569,25 +578,32 @@ export default function App() {\n       }\n     }\n \n+    // @@@ Mobile: Set active comment for popup display\n+    if (isMobile) {\n+      setMobileActiveComment(foundComment);\n+    }\n+\n     if (!foundComment) return;\n \n-    // Find the group key for this cell and navigate to the comment\n-    commentGroups.forEach((group, groupKey) => {\n-      // Only update groups in the current cell\n-      if (group.cellId !== cursorCellId) return;\n-\n-      const commentIndex = group.comments.findIndex(c => c.id === foundComment!.id);\n-      if (commentIndex !== -1) {\n-        setGroupPages(prev => {\n-          const next = new Map(prev);\n-          if (next.get(groupKey) !== commentIndex) {\n-            next.set(groupKey, commentIndex);\n-          }\n-          return next;\n-        });\n-      }\n-    });\n-  }, [cursorPosition, cursorCellId, state, commentGroups]);\n+    // Desktop: Find the group key for this cell and navigate to the comment\n+    if (!isMobile) {\n+      commentGroups.forEach((group, groupKey) => {\n+        // Only update groups in the current cell\n+        if (group.cellId !== cursorCellId) return;\n+\n+        const commentIndex = group.comments.findIndex(c => c.id === foundComment!.id);\n+        if (commentIndex !== -1) {\n+          setGroupPages(prev => {\n+            const next = new Map(prev);\n+            if (next.get(groupKey) !== commentIndex) {\n+              next.set(groupKey, commentIndex);\n+            }\n+            return next;\n+          });\n+        }\n+      });\n+    }\n+  }, [cursorPosition, cursorCellId, state, commentGroups, isMobile]);\n \n   // @@@ Per-cell text change handler\n   const handleTextChange = useCallback((cellId: string, newText: string) => {\n@@ -923,31 +939,37 @@ export default function App() {\n \n   return (\n     <>\n-      <LeftSidebar currentView={currentView} onViewChange={setCurrentView} />\n+      {/* @@@ Hide sidebar on mobile */}\n+      {!isMobile && <LeftSidebar currentView={currentView} onViewChange={setCurrentView} />}\n+\n       {currentView === 'writing' && (\n         <div style={{\n           display: 'flex',\n           height: '100vh',\n-          paddingTop: '48px',\n+          paddingTop: isMobile ? '0' : '48px',\n           fontFamily: 'system-ui, -apple-system, sans-serif'\n         }}>\n-          {/* Left spacer for layout */}\n-          <div style={{\n-            width: '48px',\n-            backgroundColor: 'transparent',\n-            position: 'relative',\n-            flexShrink: 0,\n-            marginLeft: '12px'\n-          }}>\n-            <LeftToolbar onStartFresh={handleStartFresh} onInsertAgent={handleInsertAgent} />\n-          </div>\n+          {/* Left spacer for layout - hide on mobile */}\n+          {!isMobile && (\n+            <div style={{\n+              width: '48px',\n+              backgroundColor: 'transparent',\n+              position: 'relative',\n+              flexShrink: 0,\n+              marginLeft: '12px'\n+            }}>\n+              <LeftToolbar onStartFresh={handleStartFresh} onInsertAgent={handleInsertAgent} />\n+            </div>\n+          )}\n \n           <div\n             ref={containerRef}\n             style={{\n               flex: 1,\n               position: 'relative',\n-              overflow: 'hidden'\n+              overflow: 'hidden',\n+              // @@@ Disable horizontal scrolling on mobile\n+              ...(isMobile ? { overflowX: 'hidden', touchAction: 'pan-y' } : {})\n             }}\n           >\n             <div style={{\n@@ -1068,8 +1090,8 @@ export default function App() {\n                   })}\n                 </div>\n \n-                {/* Comments layer (absolute positioned) */}\n-                {Array.from(commentGroups.entries()).map(([groupKey, group]) => {\n+                {/* Comments layer (absolute positioned) - hide on mobile */}\n+                {!isMobile && Array.from(commentGroups.entries()).map(([groupKey, group]) => {\n                   const currentIndex = groupPages.get(groupKey) || 0;\n \n                   // @@@ Get the specific textarea for this group's cell\n@@ -1102,6 +1124,48 @@ export default function App() {\n                     />\n                   );\n                 })}\n+\n+                {/* @@@ Mobile comment popup - show when cursor is in highlighted area */}\n+                {isMobile && mobileActiveComment && (\n+                  <div style={{\n+                    position: 'fixed',\n+                    bottom: '20px',\n+                    left: '10px',\n+                    right: '10px',\n+                    background: '#fff',\n+                    border: '2px solid #ddd',\n+                    borderRadius: '12px',\n+                    padding: '16px',\n+                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',\n+                    zIndex: 100,\n+                    fontFamily: \"'Excalifont', 'Xiaolai', 'Georgia', serif\",\n+                    animation: 'slideInFromBottom 0.3s ease-out'\n+                  }}>\n+                    <div style={{\n+                      display: 'flex',\n+                      gap: '12px',\n+                      alignItems: 'flex-start'\n+                    }}>\n+                      {(() => {\n+                        const Icon = iconMap[mobileActiveComment.icon as keyof typeof iconMap] || FaBrain;\n+                        const colors = colorMap[mobileActiveComment.color] || colorMap.blue;\n+                        return (\n+                          <>\n+                            <Icon size={20} color={colors.text} style={{ marginTop: '2px', flexShrink: 0 }} />\n+                            <div style={{ flex: 1 }}>\n+                              <div style={{ fontWeight: 600, fontSize: '16px', color: colors.text, marginBottom: '8px' }}>\n+                                {mobileActiveComment.voice}\n+                              </div>\n+                              <div style={{ fontSize: '15px', lineHeight: '1.5', color: '#444' }}>\n+                                {mobileActiveComment.comment}\n+                              </div>\n+                            </div>\n+                          </>\n+                        );\n+                      })()}\n+                    </div>\n+                  </div>\n+                )}\n               </div>\n \n               {/* Debug stats bar at bottom */}"
+    },
+    {
+      "sha": "cace24b2cd9b0b57e26bb42b30b924cb3e029928",
+      "filename": "frontend/src/utils/mobileDetect.ts",
+      "status": "added",
+      "additions": 44,
+      "deletions": 0,
+      "changes": 44,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/73de158e178ece1f10ac2d1d7f6e603366c6c1fb/frontend%2Fsrc%2Futils%2FmobileDetect.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/73de158e178ece1f10ac2d1d7f6e603366c6c1fb/frontend%2Fsrc%2Futils%2FmobileDetect.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Futils%2FmobileDetect.ts?ref=73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+      "patch": "@@ -0,0 +1,44 @@\n+/**\n+ * Mobile detection utility\n+ */\n+import React from 'react';\n+\n+export function isMobile(): boolean {\n+  // Check if window exists (for SSR compatibility)\n+  if (typeof window === 'undefined') return false;\n+\n+  // Check viewport width (mobile typically < 768px)\n+  const width = window.innerWidth;\n+  if (width < 768) return true;\n+\n+  // Check user agent for mobile devices\n+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;\n+\n+  // Mobile device patterns\n+  const mobilePatterns = [\n+    /Android/i,\n+    /webOS/i,\n+    /iPhone/i,\n+    /iPad/i,\n+    /iPod/i,\n+    /BlackBerry/i,\n+    /Windows Phone/i\n+  ];\n+\n+  return mobilePatterns.some(pattern => pattern.test(userAgent));\n+}\n+\n+/**\n+ * Hook to track mobile state with window resize\n+ */\n+export function useMobile() {\n+  const [mobile, setMobile] = React.useState(isMobile);\n+\n+  React.useEffect(() => {\n+    const handleResize = () => setMobile(isMobile());\n+    window.addEventListener('resize', handleResize);\n+    return () => window.removeEventListener('resize', handleResize);\n+  }, []);\n+\n+  return mobile;\n+}"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "sha": "54e903953ffa7dcc6e49a5075c7239de500c9f75",
+  "node_id": "C_kwDOP2Zrm9oAKDU0ZTkwMzk1M2ZmYTdkY2M2ZTQ5YTUwNzVjNzIzOWRlNTAwYzlmNzU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T07:40:18Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T07:40:18Z"
+    },
+    "message": "Add disappearing animation to inspiration hint and make it unclickable\n\nChanges:\n- Made inspiration hint completely unclickable (pointerEvents: 'none')\n- Removed onClick handler and cursor pointer\n- Added smooth 'soaking into paper' animation on typing:\n  - Fade out (opacity 1 → 0)\n  - Slight shrink (scale 0.95)\n  - Gentle upward movement (translateY -3px)\n  - Blur effect (blur 2px)\n- 800ms duration with cubic-bezier easing for natural feel\n- State management for animation timing",
+    "tree": {
+      "sha": "dc5220521231a2ffd5cb7f54a3be7500fd32a90b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/dc5220521231a2ffd5cb7f54a3be7500fd32a90b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/54e903953ffa7dcc6e49a5075c7239de500c9f75",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/54e903953ffa7dcc6e49a5075c7239de500c9f75",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/54e903953ffa7dcc6e49a5075c7239de500c9f75",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/54e903953ffa7dcc6e49a5075c7239de500c9f75/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/71410d882eecdb57b7f8c5df55057d78c53ed3f0"
+    }
+  ],
+  "stats": {
+    "total": 34,
+    "additions": 29,
+    "deletions": 5
+  },
+  "files": [
+    {
+      "sha": "ae0bd25ff30eab974d4b3667708dcb79b4f4e9ba",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 29,
+      "deletions": 5,
+      "changes": 34,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/54e903953ffa7dcc6e49a5075c7239de500c9f75/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/54e903953ffa7dcc6e49a5075c7239de500c9f75/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=54e903953ffa7dcc6e49a5075c7239de500c9f75",
+      "patch": "@@ -286,6 +286,7 @@ export default function App() {\n \n   // @@@ Writing suggestion state\n   const [currentInspiration, setCurrentInspiration] = useState<VoiceInspiration | null>(null);\n+  const [inspirationDisappearing, setInspirationDisappearing] = useState(false);\n   const [_suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');  // Not used yet\n   const suggestionTimerRef = useRef<number | null>(null);\n \n@@ -327,6 +328,25 @@ export default function App() {\n     }\n   }, [selectedState]);\n \n+  // @@@ Handle inspiration disappearing animation\n+  useEffect(() => {\n+    if (inspirationDisappearing) {\n+      // Wait for animation to complete (800ms) then clear inspiration\n+      const timer = setTimeout(() => {\n+        setCurrentInspiration(null);\n+        setInspirationDisappearing(false);\n+      }, 800);\n+      return () => clearTimeout(timer);\n+    }\n+  }, [inspirationDisappearing]);\n+\n+  // @@@ Reset disappearing state when new inspiration arrives\n+  useEffect(() => {\n+    if (currentInspiration) {\n+      setInspirationDisappearing(false);\n+    }\n+  }, [currentInspiration]);\n+\n   // @@@ Fetch default voices from backend\n   useEffect(() => {\n     getDefaultVoices().then(backendVoices => {\n@@ -854,9 +874,10 @@ export default function App() {\n       return next;\n     });\n \n-    // @@@ Clear inspiration instantly on typing\n-    setCurrentInspiration(null);\n-    setSuggestionSnapshot('');\n+    // @@@ Trigger disappearing animation on typing (if inspiration exists)\n+    if (currentInspiration) {\n+      setInspirationDisappearing(true);\n+    }\n \n     // @@@ Clear existing suggestion timer\n     if (suggestionTimerRef.current) {\n@@ -2062,9 +2083,12 @@ export default function App() {\n                       color: '#999',\n                       fontSize: '16px',\n                       fontStyle: 'italic',\n-                      cursor: 'pointer'\n+                      pointerEvents: 'none',\n+                      transition: 'all 0.8s cubic-bezier(0.4, 0, 0.6, 1)',\n+                      opacity: inspirationDisappearing ? 0 : 1,\n+                      transform: inspirationDisappearing ? 'scale(0.95) translateY(-3px)' : 'scale(1) translateY(0)',\n+                      filter: inspirationDisappearing ? 'blur(2px)' : 'blur(0)',\n                     }}\n-                    onClick={() => setCurrentInspiration(null)}\n                     >\n                       {/* Voice Icon */}\n                       <div style={{"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "sha": "0f5de428ee88fea7dc7df350338c6a8a0e621944",
+  "node_id": "C_kwDOP2Zrm9oAKDBmNWRlNDI4ZWU4OGZlYTdkYzdkZjM1MDMzOGM2YThhMGU2MjE5NDQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:36:46Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:36:46Z"
+    },
+    "message": "Fix timing issue: force position recalc after StateChooser collapses\n\nPrevious fix wasn't enough - timing issue remained:\n1. selectedState changes\n2. commentGroups useMemo runs (wrong timing!)\n3. StateChooser's useEffect runs → collapses\n4. DOM updates but positions don't recalculate\n\nSolution: Add useEffect that triggers refsReady increment with 50ms delay\n- Ensures StateChooser has collapsed before recalculation\n- DOM has settled before measuring offsetTop\n- Console log added for debugging\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "fdc9d374465be878bb5f98b8adb16b9688b6e602",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/fdc9d374465be878bb5f98b8adb16b9688b6e602"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/0f5de428ee88fea7dc7df350338c6a8a0e621944",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0f5de428ee88fea7dc7df350338c6a8a0e621944",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0f5de428ee88fea7dc7df350338c6a8a0e621944",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0f5de428ee88fea7dc7df350338c6a8a0e621944/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "a0ff9d5110455169f31f42ede26bbab3ec57e012",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a0ff9d5110455169f31f42ede26bbab3ec57e012",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/a0ff9d5110455169f31f42ede26bbab3ec57e012"
+    }
+  ],
+  "stats": {
+    "total": 12,
+    "additions": 12,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "2caf075f8cd6c124ca10c58fe2a21853a45b2e70",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 12,
+      "deletions": 0,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/0f5de428ee88fea7dc7df350338c6a8a0e621944/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/0f5de428ee88fea7dc7df350338c6a8a0e621944/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=0f5de428ee88fea7dc7df350338c6a8a0e621944",
+      "patch": "@@ -318,6 +318,18 @@ export default function App() {\n     }\n   }, [currentView]);\n \n+  // @@@ Force recalculation when selectedState changes (StateChooser height changes)\n+  useEffect(() => {\n+    if (selectedState) {\n+      // Small delay to ensure StateChooser has collapsed and DOM has settled\n+      const timer = setTimeout(() => {\n+        setRefsReady(prev => prev + 1);\n+        console.log('📐 StateChooser collapsed, recalculating positions');\n+      }, 50);\n+      return () => clearTimeout(timer);\n+    }\n+  }, [selectedState]);\n+\n   // @@@ Fetch default voices from backend\n   useEffect(() => {\n     getDefaultVoices().then(backendVoices => {"
+    }
+  ]
+}

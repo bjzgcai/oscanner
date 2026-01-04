@@ -1,0 +1,85 @@
+{
+  "sha": "4991c28c4f2ddffba066a5808acef75774a26399",
+  "node_id": "C_kwDOP2Zrm9oAKDQ5OTFjMjhjNGYyZGRmZmJhMDY2YTU4MDhhY2VmNzU3NzRhMjYzOTk",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-18T15:27:43Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-18T15:27:43Z"
+    },
+    "message": "remove voice",
+    "tree": {
+      "sha": "de1a19b4a71cc8b929e18313268c8b98d827034e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/de1a19b4a71cc8b929e18313268c8b98d827034e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4991c28c4f2ddffba066a5808acef75774a26399",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4991c28c4f2ddffba066a5808acef75774a26399",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4991c28c4f2ddffba066a5808acef75774a26399",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4991c28c4f2ddffba066a5808acef75774a26399/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "f07573505d9c8612ece0046487d4bd01190671fe",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f07573505d9c8612ece0046487d4bd01190671fe",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f07573505d9c8612ece0046487d4bd01190671fe"
+    }
+  ],
+  "stats": {
+    "total": 252,
+    "additions": 2,
+    "deletions": 250
+  },
+  "files": [
+    {
+      "sha": "97b85a7e51540a77e213e68e092866363fa284cf",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 12,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4991c28c4f2ddffba066a5808acef75774a26399/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4991c28c4f2ddffba066a5808acef75774a26399/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=4991c28c4f2ddffba066a5808acef75774a26399",
+      "patch": "@@ -263,15 +263,3 @@\n .comments-panel::-webkit-scrollbar-thumb:hover {\n   background: #999;\n }\n-\n-/* @@@ Pulse animation for voice recording button */\n-@keyframes pulse {\n-  0%, 100% {\n-    opacity: 1;\n-    transform: scale(1);\n-  }\n-  50% {\n-    opacity: 0.8;\n-    transform: scale(1.05);\n-  }\n-}"
+    },
+    {
+      "sha": "c599b0aa6560c883609be8a2d7dce671e2747d15",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 100,
+      "changes": 102,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4991c28c4f2ddffba066a5808acef75774a26399/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4991c28c4f2ddffba066a5808acef75774a26399/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=4991c28c4f2ddffba066a5808acef75774a26399",
+      "patch": "@@ -9,8 +9,7 @@ import {\n   FaSync,\n   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,\n   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass,\n-  FaAlignRight,\n-  FaMicrophone\n+  FaAlignRight\n } from 'react-icons/fa';\n import TopNavBar from './components/TopNavBar';\n import DeckManager from './components/DeckManager';\n@@ -32,25 +31,20 @@ import { useAuth } from './contexts/AuthContext';\n import LoginForm from './components/Auth/LoginForm';\n import RegisterForm from './components/Auth/RegisterForm';\n import { STORAGE_KEYS } from './constants/storageKeys';\n-import { useSpeechRecognition } from './hooks/useSpeechRecognition';\n \n // @@@ Left Toolbar Component - floating toolbelt within left margin\n function LeftToolbar({\n   onInsertAgent,\n   onToggleAlign,\n   onShowCalendar,\n   onSaveToday,\n-  isAligned,\n-  onVoiceToggle,\n-  isListening\n+  isAligned\n }: {\n   onInsertAgent: () => void;\n   onToggleAlign: () => void;\n   onShowCalendar: () => void;\n   onSaveToday: () => void;\n   isAligned: boolean;\n-  onVoiceToggle: () => void;\n-  isListening: boolean;\n }) {\n   return (\n     <div style={{\n@@ -184,33 +178,6 @@ function LeftToolbar({\n       >\n         <FaAlignRight size={18} color={isAligned ? '#1976d2' : '#333'} />\n       </button>\n-\n-      {/* Voice Input button - fifth */}\n-      <button\n-        onClick={onVoiceToggle}\n-        title={isListening ? \"Stop Recording\" : \"Start Voice Input\"}\n-        style={{\n-          width: '36px',\n-          height: '36px',\n-          border: 'none',\n-          borderRadius: '4px',\n-          backgroundColor: isListening ? '#ffebee' : '#fff',\n-          cursor: 'pointer',\n-          display: 'flex',\n-          alignItems: 'center',\n-          justifyContent: 'center',\n-          transition: 'all 0.2s ease',\n-          animation: isListening ? 'pulse 1.5s ease-in-out infinite' : 'none'\n-        }}\n-        onMouseEnter={(e) => {\n-          e.currentTarget.style.backgroundColor = isListening ? '#ffcdd2' : '#f0f0f0';\n-        }}\n-        onMouseLeave={(e) => {\n-          e.currentTarget.style.backgroundColor = isListening ? '#ffebee' : '#fff';\n-        }}\n-      >\n-        <FaMicrophone size={18} color={isListening ? '#d32f2f' : '#333'} />\n-      </button>\n     </div>\n   );\n }\n@@ -302,17 +269,6 @@ export default function App() {\n   const [dropdownTriggerCellId, setDropdownTriggerCellId] = useState<string | null>(null);\n   const [chatProcessing, setChatProcessing] = useState<Set<string>>(new Set());\n \n-  // @@@ Voice input with speech recognition\n-  const speechLang = currentLanguage === 'zh' ? 'zh-CN' : 'en-US';\n-  const {\n-    isListening,\n-    transcript,\n-    startListening,\n-    stopListening,\n-    resetTranscript,\n-    isSupported\n-  } = useSpeechRecognition({ lang: speechLang, continuous: true, interimResults: true });\n-\n   // @@@ Warning dialog state\n   const [showWarning, setShowWarning] = useState(false);\n \n@@ -449,44 +405,6 @@ export default function App() {\n     }\n   }, [voiceConfigs]);\n \n-  // @@@ Insert transcribed text into the last text cell\n-  useEffect(() => {\n-    if (transcript) {\n-      const cells = engineRef.current?.getState().cells || [];\n-      const textCells = cells.filter(c => c.type === 'text') as TextCell[];\n-      if (textCells.length === 0) return;\n-\n-      const lastTextCell = textCells[textCells.length - 1];\n-      const textarea = textareaRefs.current.get(lastTextCell.id);\n-      if (!textarea) return;\n-\n-      // Insert transcript at cursor position or end of current text\n-      const currentText = textarea.value;\n-      const cursorPos = textarea.selectionStart || currentText.length;\n-      const newText = currentText.slice(0, cursorPos) + transcript + currentText.slice(cursorPos);\n-\n-      // Update local text first\n-      setLocalTexts(prev => {\n-        const next = new Map(prev);\n-        next.set(lastTextCell.id, newText);\n-        return next;\n-      });\n-\n-      // Update engine\n-      engineRef.current?.updateTextCell(lastTextCell.id, newText);\n-\n-      // Reset transcript after insertion\n-      resetTranscript();\n-\n-      // Update cursor position\n-      setTimeout(() => {\n-        const newCursorPos = cursorPos + transcript.length;\n-        textarea.setSelectionRange(newCursorPos, newCursorPos);\n-        textarea.focus();\n-      }, 0);\n-    }\n-  }, [transcript, resetTranscript]);\n-\n   // @@@ Reload state config when returning to writing view\n   useEffect(() => {\n     if (currentView === 'writing') {\n@@ -1367,20 +1285,6 @@ export default function App() {\n     setCommentsAligned(prev => !prev);\n   }, []);\n \n-  // @@@ Handle voice input toggle\n-  const handleVoiceToggle = useCallback(() => {\n-    if (!isSupported) {\n-      alert('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');\n-      return;\n-    }\n-\n-    if (isListening) {\n-      stopListening();\n-    } else {\n-      startListening();\n-    }\n-  }, [isListening, isSupported, startListening, stopListening]);\n-\n   // @@@ Handle localStorage migration\n   const handleMigrateData = useCallback(async () => {\n     setIsMigrating(true);\n@@ -1969,8 +1873,6 @@ export default function App() {\n                 onShowCalendar={() => setShowCalendarPopup(true)}\n                 onSaveToday={handleSaveToday}\n                 isAligned={commentsAligned}\n-                onVoiceToggle={handleVoiceToggle}\n-                isListening={isListening}\n               />\n             </div>\n           )}"
+    },
+    {
+      "sha": "364f7c1ee3b84986362a53a882cc5b2ce0212d3b",
+      "filename": "frontend/src/hooks/useSpeechRecognition.ts",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 138,
+      "changes": 138,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f07573505d9c8612ece0046487d4bd01190671fe/frontend%2Fsrc%2Fhooks%2FuseSpeechRecognition.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f07573505d9c8612ece0046487d4bd01190671fe/frontend%2Fsrc%2Fhooks%2FuseSpeechRecognition.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fhooks%2FuseSpeechRecognition.ts?ref=f07573505d9c8612ece0046487d4bd01190671fe",
+      "patch": "@@ -1,138 +0,0 @@\n-import { useState, useEffect, useRef } from 'react';\n-\n-interface SpeechRecognitionOptions {\n-  lang?: string;\n-  continuous?: boolean;\n-  interimResults?: boolean;\n-}\n-\n-interface UseSpeechRecognitionReturn {\n-  isListening: boolean;\n-  transcript: string;\n-  interimTranscript: string;\n-  startListening: () => void;\n-  stopListening: () => void;\n-  resetTranscript: () => void;\n-  isSupported: boolean;\n-  error: string | null;\n-}\n-\n-// @@@ Web Speech API types\n-interface SpeechRecognitionEvent extends Event {\n-  results: SpeechRecognitionResultList;\n-  resultIndex: number;\n-}\n-\n-interface SpeechRecognitionErrorEvent extends Event {\n-  error: string;\n-  message: string;\n-}\n-\n-export function useSpeechRecognition(\n-  options: SpeechRecognitionOptions = {}\n-): UseSpeechRecognitionReturn {\n-  const {\n-    lang = 'en-US',\n-    continuous = true,\n-    interimResults = true\n-  } = options;\n-\n-  const [isListening, setIsListening] = useState(false);\n-  const [transcript, setTranscript] = useState('');\n-  const [interimTranscript, setInterimTranscript] = useState('');\n-  const [error, setError] = useState<string | null>(null);\n-\n-  const recognitionRef = useRef<any>(null);\n-\n-  // Check browser support\n-  const isSupported = typeof window !== 'undefined' &&\n-    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);\n-\n-  useEffect(() => {\n-    if (!isSupported) return;\n-\n-    // @ts-ignore - SpeechRecognition is not in TS lib yet\n-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;\n-    const recognition = new SpeechRecognition();\n-\n-    recognition.continuous = continuous;\n-    recognition.interimResults = interimResults;\n-    recognition.lang = lang;\n-\n-    recognition.onresult = (event: SpeechRecognitionEvent) => {\n-      let finalTranscript = '';\n-      let interim = '';\n-\n-      for (let i = event.resultIndex; i < event.results.length; i++) {\n-        const result = event.results[i];\n-        const transcriptPiece = result[0].transcript;\n-\n-        if (result.isFinal) {\n-          finalTranscript += transcriptPiece + ' ';\n-        } else {\n-          interim += transcriptPiece;\n-        }\n-      }\n-\n-      if (finalTranscript) {\n-        setTranscript(prev => prev + finalTranscript);\n-      }\n-      setInterimTranscript(interim);\n-    };\n-\n-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {\n-      console.error('Speech recognition error:', event.error);\n-      setError(event.error);\n-      setIsListening(false);\n-    };\n-\n-    recognition.onend = () => {\n-      setIsListening(false);\n-      setInterimTranscript('');\n-    };\n-\n-    recognitionRef.current = recognition;\n-\n-    return () => {\n-      if (recognitionRef.current) {\n-        recognitionRef.current.abort();\n-      }\n-    };\n-  }, [lang, continuous, interimResults, isSupported]);\n-\n-  const startListening = () => {\n-    if (!isSupported) {\n-      setError('Speech recognition not supported in this browser');\n-      return;\n-    }\n-\n-    if (recognitionRef.current && !isListening) {\n-      setError(null);\n-      recognitionRef.current.start();\n-      setIsListening(true);\n-    }\n-  };\n-\n-  const stopListening = () => {\n-    if (recognitionRef.current && isListening) {\n-      recognitionRef.current.stop();\n-      setIsListening(false);\n-    }\n-  };\n-\n-  const resetTranscript = () => {\n-    setTranscript('');\n-    setInterimTranscript('');\n-  };\n-\n-  return {\n-    isListening,\n-    transcript,\n-    interimTranscript,\n-    startListening,\n-    stopListening,\n-    resetTranscript,\n-    isSupported,\n-    error\n-  };\n-}"
+    }
+  ]
+}

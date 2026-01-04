@@ -1,0 +1,97 @@
+{
+  "sha": "348fac22f83ca12deff43fea760a5cc7702cbc66",
+  "node_id": "C_kwDOP2Zrm9oAKDM0OGZhYzIyZjgzY2ExMmRlZmY0M2ZlYTc2MGE1Y2M3NzAyY2JjNjY",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T14:19:08Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T14:19:08Z"
+    },
+    "message": "Fix comment positioning and scroll UX issues\n\n- Switch comment positioning from getBoundingClientRect to offsetTop for scroll-independent coordinates\n- Prevent browser auto-scroll on focus to stop position shifts when clicking after scrolling\n- Add bottom padding (41px) to account for fixed stats bar, eliminating stuck scroll zones\n- Fine-tune comment vertical alignment with 0.7 lineHeight offset adjustment\n- Remove auto-focus on writing view to prevent unwanted scrolling\n- Add font preloading and font-display: swap to prevent FOIT\n- Implement highlight collision detection in EditorEngine\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "8dc69e2381b767379466af9fe0e14d84558e3dc2",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/8dc69e2381b767379466af9fe0e14d84558e3dc2"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/348fac22f83ca12deff43fea760a5cc7702cbc66",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/348fac22f83ca12deff43fea760a5cc7702cbc66",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/348fac22f83ca12deff43fea760a5cc7702cbc66",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/348fac22f83ca12deff43fea760a5cc7702cbc66/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "fe5df60313f830aebc01494ece05b074d6383dbe",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fe5df60313f830aebc01494ece05b074d6383dbe",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fe5df60313f830aebc01494ece05b074d6383dbe"
+    }
+  ],
+  "stats": {
+    "total": 117,
+    "additions": 80,
+    "deletions": 37
+  },
+  "files": [
+    {
+      "sha": "27dcf8d7abc14f1bcce6f62aaf66f1a15605ae30",
+      "filename": "frontend/index.html",
+      "status": "modified",
+      "additions": 5,
+      "deletions": 1,
+      "changes": 6,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/348fac22f83ca12deff43fea760a5cc7702cbc66/frontend%2Findex.html",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/348fac22f83ca12deff43fea760a5cc7702cbc66/frontend%2Findex.html",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Findex.html?ref=348fac22f83ca12deff43fea760a5cc7702cbc66",
+      "patch": "@@ -4,7 +4,11 @@\n     <meta charset=\"UTF-8\" />\n     <link rel=\"icon\" type=\"image/svg+xml\" href=\"/vite.svg\" />\n     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n-    <title>frontend</title>\n+    <title>Ink & Memory</title>\n+\n+    <!-- Preload critical fonts to prevent FOIT (Flash of Invisible Text) -->\n+    <link rel=\"preload\" href=\"/Excalifont-Regular.woff2\" as=\"font\" type=\"font/woff2\" crossorigin />\n+    <link rel=\"preload\" href=\"/Xiaolai-Regular.ttf\" as=\"font\" type=\"font/ttf\" crossorigin />\n   </head>\n   <body>\n     <div id=\"root\"></div>"
+    },
+    {
+      "sha": "584e39bae26dc10d787c82fb9872e2aec33d38b1",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 0,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/348fac22f83ca12deff43fea760a5cc7702cbc66/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/348fac22f83ca12deff43fea760a5cc7702cbc66/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=348fac22f83ca12deff43fea760a5cc7702cbc66",
+      "patch": "@@ -3,6 +3,7 @@\n   src: url('/Excalifont-Regular.woff2') format('woff2');\n   font-weight: normal;\n   font-style: normal;\n+  font-display: swap;\n   unicode-range: U+0000-00FF, U+0100-017F, U+0180-024F, U+1E00-1EFF, U+2000-206F, U+20A0-20CF, U+2100-214F;\n }\n \n@@ -11,6 +12,7 @@\n   src: url('/Xiaolai-Regular.ttf') format('truetype');\n   font-weight: normal;\n   font-style: normal;\n+  font-display: swap;\n   unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+F900-FAFF, U+3000-303F;\n }\n "
+    },
+    {
+      "sha": "fa505a8c1a78d4d059fc1b6c9f8870b980f856bc",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 32,
+      "deletions": 27,
+      "changes": 59,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/348fac22f83ca12deff43fea760a5cc7702cbc66/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/348fac22f83ca12deff43fea760a5cc7702cbc66/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=348fac22f83ca12deff43fea760a5cc7702cbc66",
+      "patch": "@@ -283,27 +283,12 @@ export default function App() {\n   const [refsReady, setRefsReady] = useState(0);\n   const refsReadyTriggered = useRef(false);\n \n-  // @@@ Reset refs ready flag when returning to writing view and focus last text cell\n+  // @@@ Reset refs ready flag when returning to writing view\n   useEffect(() => {\n     if (currentView === 'writing') {\n       refsReadyTriggered.current = false;\n-\n-      // Auto-focus last text cell after a short delay to ensure DOM is ready\n-      setTimeout(() => {\n-        if (!state) return;\n-        const lastTextCell = [...state.cells].reverse().find(c => c.type === 'text');\n-        if (!lastTextCell) return;\n-\n-        const textarea = textareaRefs.current.get(lastTextCell.id);\n-        if (textarea) {\n-          textarea.focus();\n-          // Move cursor to end\n-          textarea.selectionStart = textarea.value.length;\n-          textarea.selectionEnd = textarea.value.length;\n-        }\n-      }, 100);\n     }\n-  }, [currentView, state]);\n+  }, [currentView]);\n \n   // @@@ Fetch default voices from backend\n   useEffect(() => {\n@@ -947,7 +932,9 @@ export default function App() {\n           display: 'flex',\n           height: '100vh',\n           paddingTop: isMobile ? '0' : '48px',\n-          fontFamily: 'system-ui, -apple-system, sans-serif'\n+          paddingBottom: '41px',  // @@@ Space for fixed stats bar at bottom\n+          fontFamily: 'system-ui, -apple-system, sans-serif',\n+          boxSizing: 'border-box'\n         }}>\n           {/* Left spacer for layout - hide on mobile */}\n           {!isMobile && (\n@@ -1038,7 +1025,8 @@ export default function App() {\n                 flex: 1,\n                 position: 'relative',\n                 overflow: 'auto',\n-                padding: '20px'\n+                padding: '20px',\n+                paddingBottom: '80px'  // Extra space for smooth scrolling to bottom\n               }}>\n                 <div style={{\n                   position: 'relative',\n@@ -1105,6 +1093,11 @@ export default function App() {\n                             onClick={(e) => handleCursorChange(cell.id, e)}\n                             onKeyUp={(e) => handleCursorChange(cell.id, e)}\n                             onKeyDown={(e) => handleKeyDown(cell.id, e)}\n+                            onFocus={(e) => {\n+                              // @@@ Prevent browser from scrolling element into view on focus\n+                              // This stops the \"lift up\" effect when clicking after scrolling\n+                              e.preventDefault();\n+                            }}\n                             placeholder={idx === 0 ? \"Start writing...\" : \"Continue writing...\"}\n                             style={{\n                               width: '100%',\n@@ -1153,18 +1146,30 @@ export default function App() {\n                   const cellTextarea = textareaRefs.current.get(group.cellId);\n                   if (!cellTextarea) return null;\n \n-                  // Calculate position relative to this cell's textarea\n-                  const cellRect = cellTextarea.getBoundingClientRect();\n-                  const containerRect = containerRef.current?.getBoundingClientRect();\n-                  if (!containerRect) return null;\n+                  // @@@ Use offsetTop relative to the content container (with maxWidth: 600px)\n+                  // This div is at line 1031 with position: relative\n+                  const cellWrapper = cellTextarea.parentElement; // The div with position: relative\n+                  if (!cellWrapper) return null;\n+\n+                  const cellOffsetTop = cellWrapper.offsetTop;\n+\n+                  // @@@ Calculate line height from textarea styles\n+                  const computedStyle = window.getComputedStyle(cellTextarea);\n+                  const fontSize = parseFloat(computedStyle.fontSize) || 18;\n+                  const lineHeightRatio = parseFloat(computedStyle.lineHeight) / fontSize || 1.8;\n+                  const lineHeight = fontSize * lineHeightRatio;\n \n-                  const containerPadding = parseFloat(window.getComputedStyle(cellTextarea.parentElement || cellTextarea).paddingLeft) || 20;\n+                  const containerPadding = parseFloat(window.getComputedStyle(cellWrapper.parentElement || cellWrapper).paddingLeft) || 20;\n                   const gap = Math.max(30, window.innerWidth * 0.02);\n                   const leftPosition = containerPadding + group.maxLineWidth + gap;\n \n-                  // @@@ Position relative to cell's top, not global document\n-                  // centerY is already relative to cell's top, so just add cell offset\n-                  const topPosition = cellRect.top - containerRect.top + group.centerY;\n+                  // @@@ Position using offsetTop (scroll-independent)\n+                  // centerY is already relative to cell's top, so just add:\n+                  // - cellOffsetTop: position relative to content container\n+                  // - 20px: scroll container padding (line 1028)\n+                  // - 24px: StateChooser marginBottom (line 1036)\n+                  // - subtract 0.7 lineHeight: fine-tune vertical alignment\n+                  const topPosition = cellOffsetTop + group.centerY + 20 + 24 - (lineHeight * 0.7);\n \n                   return (\n                     <CommentGroupCard"
+    },
+    {
+      "sha": "0dbf57376b5286443c14f4cbf5f621f0c71b1f40",
+      "filename": "frontend/src/engine/EditorEngine.ts",
+      "status": "modified",
+      "additions": 41,
+      "deletions": 9,
+      "changes": 50,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/348fac22f83ca12deff43fea760a5cc7702cbc66/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/348fac22f83ca12deff43fea760a5cc7702cbc66/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fengine%2FEditorEngine.ts?ref=348fac22f83ca12deff43fea760a5cc7702cbc66",
+      "patch": "@@ -218,17 +218,49 @@ export class EditorEngine {\n       const commentor = this.commentorWaitlist.pop()!;\n \n       // Check if text still matches (current text starts with snapshot)\n-      if (text.startsWith(commentor.textSnapshot)) {\n-        // Apply commentor\n-        commentor.appliedAt = Date.now();\n-        this.state.commentors.push(commentor);\n-        this.usedEnergy += this.threshold;\n-        appliedAny = true;\n-        console.log(`✅ Applied commentor: ${commentor.voice} on \"${commentor.phrase}\"`);\n-        console.log(`   Energy: used ${this.usedEnergy}/${currentEnergy} (${currentEnergy - this.usedEnergy} remaining)`);\n-      } else {\n+      if (!text.startsWith(commentor.textSnapshot)) {\n         console.log(`⏭️ Skipped outdated commentor: ${commentor.voice}`);\n+        continue;\n+      }\n+\n+      // @@@ Check for overlap with existing highlights\n+      const phraseIndex = text.toLowerCase().indexOf(commentor.phrase.toLowerCase());\n+      if (phraseIndex === -1) {\n+        console.log(`⏭️ Skipped commentor (phrase not found): ${commentor.voice}`);\n+        continue;\n+      }\n+\n+      const phraseStart = phraseIndex;\n+      const phraseEnd = phraseIndex + commentor.phrase.length;\n+\n+      // Check overlap with all applied commentors\n+      let hasOverlap = false;\n+      for (const applied of this.state.commentors.filter(c => c.appliedAt)) {\n+        const appliedIndex = text.toLowerCase().indexOf(applied.phrase.toLowerCase());\n+        if (appliedIndex === -1) continue;\n+\n+        const appliedStart = appliedIndex;\n+        const appliedEnd = appliedIndex + applied.phrase.length;\n+\n+        // Check if ranges overlap: [phraseStart, phraseEnd) overlaps with [appliedStart, appliedEnd)\n+        if (phraseStart < appliedEnd && phraseEnd > appliedStart) {\n+          hasOverlap = true;\n+          console.log(`⚠️ Skipped overlapping commentor: \"${commentor.phrase}\" overlaps with \"${applied.phrase}\"`);\n+          break;\n+        }\n       }\n+\n+      if (hasOverlap) {\n+        continue;\n+      }\n+\n+      // Apply commentor\n+      commentor.appliedAt = Date.now();\n+      this.state.commentors.push(commentor);\n+      this.usedEnergy += this.threshold;\n+      appliedAny = true;\n+      console.log(`✅ Applied commentor: ${commentor.voice} on \"${commentor.phrase}\"`);\n+      console.log(`   Energy: used ${this.usedEnergy}/${currentEnergy} (${currentEnergy - this.usedEnergy} remaining)`);\n     }\n \n     if (appliedAny) {"
+    }
+  ]
+}

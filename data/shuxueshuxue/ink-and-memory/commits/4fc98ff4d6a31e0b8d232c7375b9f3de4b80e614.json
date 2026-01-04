@@ -1,0 +1,61 @@
+{
+  "sha": "4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614",
+  "node_id": "C_kwDOP2Zrm9oAKDRmYzk4ZmY0ZDZhMzFlMGI4ZDIzMmM3Mzc1YjlmM2RlNGI4MGU2MTQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:25:29Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:25:29Z"
+    },
+    "message": "Remove technical highlights from README",
+    "tree": {
+      "sha": "6f3b9aeeb3d473fa0b38c6ce6b458ac43a322e5e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/6f3b9aeeb3d473fa0b38c6ce6b458ac43a322e5e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "b79a9c58e4a5f259c0f315194b18aa340edb90a5",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b79a9c58e4a5f259c0f315194b18aa340edb90a5",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/b79a9c58e4a5f259c0f315194b18aa340edb90a5"
+    }
+  ],
+  "stats": {
+    "total": 33,
+    "additions": 0,
+    "deletions": 33
+  },
+  "files": [
+    {
+      "sha": "1b8efbd9ce76d31632ab9929206e8761847f9895",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 33,
+      "changes": 33,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614",
+      "patch": "@@ -117,39 +117,6 @@ This project was built using \"observe-code-observe-code\" rapid iteration:\n ## 🔧 Technical Highlights\n \n ### Stateful Commentary System\n-```python\n-class StatefulVoiceAnalyzer:\n-    def analyze(self, agent, text):\n-        # 1. Prune deleted comments\n-        self._prune_deleted_comments(text)\n-\n-        # 2. Only ask LLM for NEW comments\n-        # (shows existing comments to avoid repetition)\n-\n-        # 3. Enforce density rules\n-        # (1 per persona, 1 per sentence)\n-\n-        # 4. Return ALL comments (old + new)\n-```\n-\n-### Polling Strategy\n-```typescript\n-// Every 5 seconds, check if text changed >10 chars\n-useEffect(() => {\n-  const interval = setInterval(async () => {\n-    if (textDiff > 10 && !isAnalyzing) {\n-      const voices = await analyzeText(currentText);\n-      setVoiceTriggers(voices);\n-    }\n-  }, 5000);\n-  return () => clearInterval(interval);\n-}, []);\n-```\n-\n-### Sentence Splitting (Multilingual)\n-```python\n-# English: .!?  Chinese: 。！？  Also: newlines\n-re.split(r'[.!?。！？]+|\\n+', text)\n ```\n \n ## 🗺️ Roadmap / TODO"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "sha": "51e3f5403df116245fda168142f5c836f55fc01a",
+  "node_id": "C_kwDOP2Zrm9oAKDUxZTNmNTQwM2RmMTE2MjQ1ZmRhMTY4MTQyZjVjODM2ZjU1ZmMwMWE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-22T06:33:18Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-22T06:33:18Z"
+    },
+    "message": "Deduplicate blank session creation",
+    "tree": {
+      "sha": "e3d4d5b4c1c8999fc7bbca1dc8ad7f4849be56b0",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/e3d4d5b4c1c8999fc7bbca1dc8ad7f4849be56b0"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/51e3f5403df116245fda168142f5c836f55fc01a",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/51e3f5403df116245fda168142f5c836f55fc01a",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/51e3f5403df116245fda168142f5c836f55fc01a",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/51e3f5403df116245fda168142f5c836f55fc01a/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "48067d18ad6e3ec2fd14d9648fa79ca61404f3cb",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb"
+    }
+  ],
+  "stats": {
+    "total": 50,
+    "additions": 20,
+    "deletions": 30
+  },
+  "files": [
+    {
+      "sha": "078ea54c4009e15aa09ab809f81c13faac08475e",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 20,
+      "deletions": 30,
+      "changes": 50,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/51e3f5403df116245fda168142f5c836f55fc01a/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/51e3f5403df116245fda168142f5c836f55fc01a/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=51e3f5403df116245fda168142f5c836f55fc01a",
+      "patch": "@@ -1165,8 +1165,21 @@ export default function App() {\n     setShowWarning(true);\n   }, []);\n \n-  const buildBlankState = useCallback((): EditorState | null => {\n-    const preservedSelectedState = engineRef.current?.getState().selectedState ?? selectedState ?? null;\n+  interface BlankStateOptions {\n+    preserveSelectedState?: boolean;\n+    selectedStateOverride?: string | null;\n+  }\n+\n+  const buildBlankState = useCallback((options: BlankStateOptions = {}): EditorState => {\n+    const {\n+      preserveSelectedState = true,\n+      selectedStateOverride\n+    } = options;\n+    const resolvedSelectedState = selectedStateOverride !== undefined\n+      ? selectedStateOverride\n+      : (preserveSelectedState\n+        ? (engineRef.current?.getState().selectedState ?? selectedState ?? null)\n+        : null);\n     const newSessionId = createSessionId();\n     return {\n       cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],\n@@ -1176,15 +1189,14 @@ export default function App() {\n       overlappedPhrases: [],\n       sessionId: newSessionId,\n       currentEntryId: newSessionId,\n-      selectedState: preservedSelectedState,\n+      selectedState: resolvedSelectedState ?? undefined,\n       createdAt: new Date().toISOString()\n     };\n   }, [selectedState]);\n \n   const startDetachedBlankSession = useCallback((persistImmediately: boolean = false) => {\n     if (!engineRef.current) return;\n     const blankState = buildBlankState();\n-    if (!blankState) return;\n \n     engineRef.current.loadState(blankState);\n     setState(blankState);\n@@ -1251,18 +1263,7 @@ export default function App() {\n       console.log('⚠️ Not authenticated, skipping save');\n     }\n \n-    // @@@ Create empty state with NEW sessionId\n-    const newSessionId = createSessionId();\n-    const emptyState: EditorState = {\n-      cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],\n-      commentors: [],\n-      tasks: [],\n-      weightPath: [],\n-      overlappedPhrases: [],\n-      sessionId: newSessionId,\n-      currentEntryId: newSessionId,\n-      createdAt: new Date().toISOString()\n-    };\n+    const emptyState = buildBlankState({ preserveSelectedState: false });\n \n     // @@@ Load empty state directly into engine (immediate UI update)\n     engineRef.current.loadState(emptyState);\n@@ -1277,25 +1278,14 @@ export default function App() {\n       localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);\n     }\n     console.log('🆕 New session created (will be saved when you start typing)');\n-  }, [state, isAuthenticated]);\n+  }, [state, isAuthenticated, buildBlankState]);\n \n   const confirmStartFresh = useCallback(async () => {\n     setShowWarning(false);\n \n     if (!engineRef.current) return;\n \n-    // @@@ Create empty state with NEW sessionId\n-    const newSessionId = createSessionId();\n-    const emptyState: EditorState = {\n-      cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],\n-      commentors: [],\n-      tasks: [],\n-      weightPath: [],\n-      overlappedPhrases: [],\n-      sessionId: newSessionId,\n-      currentEntryId: newSessionId,  // @@@ Set currentEntryId to maintain invariant I5\n-      createdAt: new Date().toISOString()\n-    };\n+    const emptyState = buildBlankState({ preserveSelectedState: false });\n \n     // @@@ Load empty state directly into engine (immediate UI update)\n     engineRef.current.loadState(emptyState);\n@@ -1315,7 +1305,7 @@ export default function App() {\n       localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);\n       localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);\n     }\n-  }, [isAuthenticated]);\n+  }, [buildBlankState, isAuthenticated]);\n \n   const handleSaveToday = useCallback(async () => {\n     if (!engineRef.current) return;"
+    }
+  ]
+}

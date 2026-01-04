@@ -1,0 +1,97 @@
+{
+  "sha": "2753917f0955d243e35593e2553c80e57dda23e5",
+  "node_id": "C_kwDOP2Zrm9oAKDI3NTM5MTdmMDk1NWQyNDNlMzU1OTNlMjU1M2M4MGU1N2RkYTIzZTU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-04T01:37:43Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-04T01:37:43Z"
+    },
+    "message": "Make voice triggers dynamic and configurable\n\n- VoiceHighlight extension now accepts triggers as options\n- Triggers stored in React state, ready for backend integration\n- Added support for real-time trigger updates via ProseMirror meta\n- Clean separation between data (triggers) and UI (components)\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "954f718d5c9c93d7ce5c93981bea344c68f65828",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/954f718d5c9c93d7ce5c93981bea344c68f65828"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/2753917f0955d243e35593e2553c80e57dda23e5",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2753917f0955d243e35593e2553c80e57dda23e5",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2753917f0955d243e35593e2553c80e57dda23e5",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2753917f0955d243e35593e2553c80e57dda23e5/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "08af59a6cb82bd60a624abd7bcb4477470bc4232",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/08af59a6cb82bd60a624abd7bcb4477470bc4232",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/08af59a6cb82bd60a624abd7bcb4477470bc4232"
+    }
+  ],
+  "stats": {
+    "total": 81,
+    "additions": 66,
+    "deletions": 15
+  },
+  "files": [
+    {
+      "sha": "c86ba62f3faedbf1c7c29783a3ab3c1199e82a9c",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 16,
+      "deletions": 2,
+      "changes": 18,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2753917f0955d243e35593e2553c80e57dda23e5/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2753917f0955d243e35593e2553c80e57dda23e5/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=2753917f0955d243e35593e2553c80e57dda23e5",
+      "patch": "@@ -5,6 +5,7 @@ import VoicesPanel from './components/VoicesPanel'\n import VoiceComment from './components/VoiceComment'\n import BinderRings from './components/BinderRings'\n import { VOICE_TRIGGERS, MEMORY_VOICE } from './config/voices'\n+import type { VoiceTrigger } from './extensions/VoiceHighlight'\n \n interface Voice {\n   name: string;\n@@ -15,12 +16,13 @@ interface Voice {\n \n function App() {\n   const [voices, setVoices] = useState<Voice[]>([]);\n+  const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>(VOICE_TRIGGERS);\n \n   const handleTextChange = (newText: string) => {\n     const newVoices: Voice[] = [];\n     const lowerText = newText.toLowerCase();\n \n-    VOICE_TRIGGERS.forEach(({ phrase, voice, comment, icon }) => {\n+    voiceTriggers.forEach(({ phrase, voice, comment, icon }) => {\n       const index = lowerText.indexOf(phrase);\n       if (index !== -1) {\n         newVoices.push({ name: voice, text: comment, icon, position: index });\n@@ -37,9 +39,21 @@ function App() {\n     setVoices(newVoices);\n   };\n \n+  // Example: Add a new trigger dynamically\n+  const addCustomTrigger = () => {\n+    const newTrigger: VoiceTrigger = {\n+      phrase: 'remember when',\n+      voice: 'Nostalgia',\n+      comment: 'The past always seems brighter from here...',\n+      color: 'purple',\n+      icon: 'cloud',\n+    };\n+    setVoiceTriggers([...voiceTriggers, newTrigger]);\n+  };\n+\n   return (\n     <div className=\"book-interface\">\n-      <WritingArea onChange={handleTextChange} />\n+      <WritingArea onChange={handleTextChange} triggers={voiceTriggers} />\n       <VoicesPanel>\n         {voices.map((voice, index) => (\n           <VoiceComment key={index} voice={voice.name} text={voice.text} icon={voice.icon} />"
+    },
+    {
+      "sha": "14cdeb7c274ffabbc50c4b161308359f45d448b4",
+      "filename": "frontend/src/components/EditableTextArea.tsx",
+      "status": "modified",
+      "additions": 17,
+      "deletions": 3,
+      "changes": 20,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2753917f0955d243e35593e2553c80e57dda23e5/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2753917f0955d243e35593e2553c80e57dda23e5/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx?ref=2753917f0955d243e35593e2553c80e57dda23e5",
+      "patch": "@@ -1,17 +1,31 @@\n import { useEditor, EditorContent } from '@tiptap/react';\n+import { useEffect } from 'react';\n import StarterKit from '@tiptap/starter-kit';\n-import { VoiceHighlight } from '../extensions/VoiceHighlight';\n+import { VoiceHighlight, type VoiceTrigger } from '../extensions/VoiceHighlight';\n \n interface EditableTextAreaProps {\n   onChange: (text: string) => void;\n+  triggers: VoiceTrigger[];\n }\n \n-export default function EditableTextArea({ onChange }: EditableTextAreaProps) {\n+export default function EditableTextArea({ onChange, triggers }: EditableTextAreaProps) {\n   const editor = useEditor({\n-    extensions: [StarterKit, VoiceHighlight],\n+    extensions: [\n+      StarterKit,\n+      VoiceHighlight.configure({ triggers })\n+    ],\n     onUpdate: ({ editor }) => onChange(editor.getText()),\n     autofocus: true,\n   });\n \n+  // @@@ Dynamic trigger updates - Update highlights when triggers change\n+  useEffect(() => {\n+    if (editor && editor.isEditable) {\n+      editor.chain()\n+        .setMeta('voiceHighlight', { triggers })\n+        .run();\n+    }\n+  }, [triggers, editor]);\n+\n   return <div className=\"editable-text-area\"><EditorContent editor={editor} /></div>;\n }\n\\ No newline at end of file"
+    },
+    {
+      "sha": "f4fbe1a49e30a396960854662c1cbe928ff27389",
+      "filename": "frontend/src/components/WritingArea.tsx",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 2,
+      "changes": 6,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2753917f0955d243e35593e2553c80e57dda23e5/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2753917f0955d243e35593e2553c80e57dda23e5/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FWritingArea.tsx?ref=2753917f0955d243e35593e2553c80e57dda23e5",
+      "patch": "@@ -1,14 +1,16 @@\n import BookPage from './BookPage';\n import EditableTextArea from './EditableTextArea';\n+import type { VoiceTrigger } from '../extensions/VoiceHighlight';\n \n interface WritingAreaProps {\n   onChange: (text: string) => void;\n+  triggers: VoiceTrigger[];\n }\n \n-export default function WritingArea({ onChange }: WritingAreaProps) {\n+export default function WritingArea({ onChange, triggers }: WritingAreaProps) {\n   return (\n     <BookPage side=\"left\">\n-      <EditableTextArea onChange={onChange} />\n+      <EditableTextArea onChange={onChange} triggers={triggers} />\n     </BookPage>\n   );\n }\n\\ No newline at end of file"
+    },
+    {
+      "sha": "47f1d570ddde5d9fbb47cf0ff50ecd3120a29d6a",
+      "filename": "frontend/src/extensions/VoiceHighlight.ts",
+      "status": "modified",
+      "additions": 29,
+      "deletions": 8,
+      "changes": 37,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2753917f0955d243e35593e2553c80e57dda23e5/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2753917f0955d243e35593e2553c80e57dda23e5/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts?ref=2753917f0955d243e35593e2553c80e57dda23e5",
+      "patch": "@@ -1,25 +1,46 @@\n import { Extension } from '@tiptap/core';\n import { Plugin, PluginKey } from '@tiptap/pm/state';\n import { Decoration, DecorationSet } from '@tiptap/pm/view';\n-import { VOICE_TRIGGERS } from '../config/voices';\n \n-export const VoiceHighlight = Extension.create({\n+export interface VoiceTrigger {\n+  phrase: string;\n+  voice: string;\n+  comment: string;\n+  color: string;\n+  icon: string;\n+}\n+\n+export interface VoiceHighlightOptions {\n+  triggers: VoiceTrigger[];\n+}\n+\n+export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n   name: 'voiceHighlight',\n \n+  addOptions() {\n+    return {\n+      triggers: [],\n+    };\n+  },\n+\n   addProseMirrorPlugins() {\n+    const triggers = this.options.triggers;\n+\n     return [\n       new Plugin({\n         key: new PluginKey('voiceHighlight'),\n \n         state: {\n           init(_, { doc }) {\n-            return findHighlights(doc);\n+            return findHighlights(doc, triggers);\n           },\n \n           apply(tr, oldState) {\n-            // Only recalculate if document changed\n-            if (tr.docChanged) {\n-              return findHighlights(tr.doc);\n+            // @@@ Dynamic updates - Recalculate on doc change or meta change\n+            const metaChanged = tr.getMeta('voiceHighlight');\n+            if (tr.docChanged || metaChanged) {\n+              const newTriggers = metaChanged?.triggers || triggers;\n+              return findHighlights(tr.doc, newTriggers);\n             }\n             return oldState;\n           },\n@@ -35,11 +56,11 @@ export const VoiceHighlight = Extension.create({\n   },\n });\n \n-function findHighlights(doc: any): DecorationSet {\n+function findHighlights(doc: any, triggers: VoiceTrigger[]): DecorationSet {\n   const decorations: Decoration[] = [];\n   const text = doc.textContent.toLowerCase();\n \n-  VOICE_TRIGGERS.forEach(({ phrase, color }) => {\n+  triggers.forEach(({ phrase, color }) => {\n     const pos = text.indexOf(phrase);\n \n     if (pos !== -1) {"
+    }
+  ]
+}

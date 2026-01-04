@@ -1,0 +1,121 @@
+{
+  "sha": "08af59a6cb82bd60a624abd7bcb4477470bc4232",
+  "node_id": "C_kwDOP2Zrm9oAKDA4YWY1OWE2Y2I4MmJkNjBhNjI0YWJkN2JjYjQ0Nzc0NzBiYzQyMzI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-01T13:00:33Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-01T13:00:33Z"
+    },
+    "message": "Add icons and position-based ordering for voices\n\n- Installed react-icons package\n- Added Font Awesome icons for each voice (brain, heart, question, cloud)\n- Voices now ordered by position of trigger phrase in text\n- Updated VoiceComment component with icon display\n- Added CSS for icon and header layout\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "b9f2368f1e4fffd4e70d7bebda526b6abaf07416",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/b9f2368f1e4fffd4e70d7bebda526b6abaf07416"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/08af59a6cb82bd60a624abd7bcb4477470bc4232",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/08af59a6cb82bd60a624abd7bcb4477470bc4232",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/08af59a6cb82bd60a624abd7bcb4477470bc4232",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/08af59a6cb82bd60a624abd7bcb4477470bc4232/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba"
+    }
+  ],
+  "stats": {
+    "total": 73,
+    "additions": 61,
+    "deletions": 12
+  },
+  "files": [
+    {
+      "sha": "da6f6de82debd10f9b89010500b9bb931ced1fb2",
+      "filename": "frontend/package-lock.json",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 1,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fpackage-lock.json",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fpackage-lock.json",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fpackage-lock.json?ref=08af59a6cb82bd60a624abd7bcb4477470bc4232",
+      "patch": "@@ -12,7 +12,8 @@\n         \"@tiptap/react\": \"^3.6.2\",\n         \"@tiptap/starter-kit\": \"^3.6.2\",\n         \"react\": \"^19.1.1\",\n-        \"react-dom\": \"^19.1.1\"\n+        \"react-dom\": \"^19.1.1\",\n+        \"react-icons\": \"^5.5.0\"\n       },\n       \"devDependencies\": {\n         \"@eslint/js\": \"^9.36.0\",\n@@ -3683,6 +3684,15 @@\n         \"react\": \"^19.1.1\"\n       }\n     },\n+    \"node_modules/react-icons\": {\n+      \"version\": \"5.5.0\",\n+      \"resolved\": \"https://registry.npmjs.org/react-icons/-/react-icons-5.5.0.tgz\",\n+      \"integrity\": \"sha512-MEFcXdkP3dLo8uumGI5xN3lDFNsRtrjbOEKDLD7yv76v4wpnEq2Lt2qeHaQOr34I/wPN3s3+N08WkQ+CW37Xiw==\",\n+      \"license\": \"MIT\",\n+      \"peerDependencies\": {\n+        \"react\": \"*\"\n+      }\n+    },\n     \"node_modules/react-refresh\": {\n       \"version\": \"0.17.0\",\n       \"resolved\": \"https://registry.npmjs.org/react-refresh/-/react-refresh-0.17.0.tgz\","
+    },
+    {
+      "sha": "fb60463477db41860b55272313a528fb0e006cab",
+      "filename": "frontend/package.json",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 1,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fpackage.json",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fpackage.json",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fpackage.json?ref=08af59a6cb82bd60a624abd7bcb4477470bc4232",
+      "patch": "@@ -14,7 +14,8 @@\n     \"@tiptap/react\": \"^3.6.2\",\n     \"@tiptap/starter-kit\": \"^3.6.2\",\n     \"react\": \"^19.1.1\",\n-    \"react-dom\": \"^19.1.1\"\n+    \"react-dom\": \"^19.1.1\",\n+    \"react-icons\": \"^5.5.0\"\n   },\n   \"devDependencies\": {\n     \"@eslint/js\": \"^9.36.0\","
+    },
+    {
+      "sha": "5917d155c4935ca3315458d8e20279210b5bad13",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 15,
+      "deletions": 0,
+      "changes": 15,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=08af59a6cb82bd60a624abd7bcb4477470bc4232",
+      "patch": "@@ -97,6 +97,21 @@\n   animation: fadeIn 0.5s ease-in;\n }\n \n+.voice-header {\n+  display: flex;\n+  align-items: center;\n+  gap: 0.5rem;\n+  margin-bottom: 0.5rem;\n+}\n+\n+.voice-icon {\n+  font-size: 1.25rem;\n+}\n+\n+.voice-text {\n+  margin-left: 1.75rem;\n+}\n+\n .voice-comment-logic {\n   background-color: #e6f2ff;\n   border-color: #4d9fff;"
+    },
+    {
+      "sha": "dd509679200409dfc59feb5d6e9f795bd10d8c48",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 5,
+      "changes": 16,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=08af59a6cb82bd60a624abd7bcb4477470bc4232",
+      "patch": "@@ -9,6 +9,8 @@ import { VOICE_TRIGGERS, MEMORY_VOICE } from './config/voices'\n interface Voice {\n   name: string;\n   text: string;\n+  icon: string;\n+  position: number;\n }\n \n function App() {\n@@ -18,16 +20,20 @@ function App() {\n     const newVoices: Voice[] = [];\n     const lowerText = newText.toLowerCase();\n \n-    VOICE_TRIGGERS.forEach(({ phrase, voice, comment }) => {\n-      if (lowerText.includes(phrase)) {\n-        newVoices.push({ name: voice, text: comment });\n+    VOICE_TRIGGERS.forEach(({ phrase, voice, comment, icon }) => {\n+      const index = lowerText.indexOf(phrase);\n+      if (index !== -1) {\n+        newVoices.push({ name: voice, text: comment, icon, position: index });\n       }\n     });\n \n     if (newText.length > MEMORY_VOICE.minLength && !newVoices.find(v => v.name === MEMORY_VOICE.voice)) {\n-      newVoices.push({ name: MEMORY_VOICE.voice, text: MEMORY_VOICE.comment });\n+      newVoices.push({ name: MEMORY_VOICE.voice, text: MEMORY_VOICE.comment, icon: MEMORY_VOICE.icon, position: Infinity });\n     }\n \n+    // Sort by position in text\n+    newVoices.sort((a, b) => a.position - b.position);\n+\n     setVoices(newVoices);\n   };\n \n@@ -36,7 +42,7 @@ function App() {\n       <WritingArea onChange={handleTextChange} />\n       <VoicesPanel>\n         {voices.map((voice, index) => (\n-          <VoiceComment key={index} voice={voice.name} text={voice.text} />\n+          <VoiceComment key={index} voice={voice.name} text={voice.text} icon={voice.icon} />\n         ))}\n       </VoicesPanel>\n       <BinderRings />"
+    },
+    {
+      "sha": "991f4be13b057519aaf367d1e1d901f2fb2061b3",
+      "filename": "frontend/src/components/VoiceComment.tsx",
+      "status": "modified",
+      "additions": 18,
+      "deletions": 2,
+      "changes": 20,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx?ref=08af59a6cb82bd60a624abd7bcb4477470bc4232",
+      "patch": "@@ -1,12 +1,28 @@\n+import { FaBrain, FaHeart, FaQuestion, FaCloud } from 'react-icons/fa';\n+\n interface VoiceCommentProps {\n   voice: string;\n   text: string;\n+  icon: string;\n }\n \n-export default function VoiceComment({ voice, text }: VoiceCommentProps) {\n+const iconMap = {\n+  brain: FaBrain,\n+  heart: FaHeart,\n+  question: FaQuestion,\n+  cloud: FaCloud,\n+};\n+\n+export default function VoiceComment({ voice, text, icon }: VoiceCommentProps) {\n+  const Icon = iconMap[icon as keyof typeof iconMap];\n+\n   return (\n     <div className={`voice-comment voice-comment-${voice.toLowerCase()}`}>\n-      <strong>{voice}:</strong> {text}\n+      <div className=\"voice-header\">\n+        {Icon && <Icon className=\"voice-icon\" />}\n+        <strong>{voice}:</strong>\n+      </div>\n+      <div className=\"voice-text\">{text}</div>\n     </div>\n   );\n }\n\\ No newline at end of file"
+    },
+    {
+      "sha": "93a1fa1947a9730c48bb6bdeb5c4cc807407f6d1",
+      "filename": "frontend/src/config/voices.ts",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 3,
+      "changes": 7,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fsrc%2Fconfig%2Fvoices.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/08af59a6cb82bd60a624abd7bcb4477470bc4232/frontend%2Fsrc%2Fconfig%2Fvoices.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fconfig%2Fvoices.ts?ref=08af59a6cb82bd60a624abd7bcb4477470bc4232",
+      "patch": "@@ -1,12 +1,13 @@\n export const VOICE_TRIGGERS = [\n-  { phrase: 'i feel', voice: 'Logic', comment: 'Feelings are just chemical reactions.', color: 'blue' },\n-  { phrase: 'i think', voice: 'Emotion', comment: 'But what does your heart say?', color: 'pink' },\n-  { phrase: 'should i', voice: 'Doubt', comment: 'Are you sure you even want to know?', color: 'yellow' },\n+  { phrase: 'i feel', voice: 'Logic', comment: 'Feelings are just chemical reactions.', color: 'blue', icon: 'brain' },\n+  { phrase: 'i think', voice: 'Emotion', comment: 'But what does your heart say?', color: 'pink', icon: 'heart' },\n+  { phrase: 'should i', voice: 'Doubt', comment: 'Are you sure you even want to know?', color: 'yellow', icon: 'question' },\n ] as const;\n \n export const MEMORY_VOICE = {\n   voice: 'Memory',\n   comment: 'This reminds me of something you wrote before...',\n   color: 'green',\n+  icon: 'cloud',\n   minLength: 50,\n } as const;"
+    }
+  ]
+}

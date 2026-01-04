@@ -1,0 +1,61 @@
+{
+  "sha": "f54b56896312228f1d98854abffe03b6a4cdc197",
+  "node_id": "C_kwDOP2Zrm9oAKGY1NGI1Njg5NjMxMjIyOGYxZDk4ODU0YWJmZmUwM2I2YTRjZGMxOTc",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T18:31:20Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T18:31:20Z"
+    },
+    "message": "Run container detached and log via tmux",
+    "tree": {
+      "sha": "e7eff15c04ebf7722d61dbb1d86424e680ad5b43",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/e7eff15c04ebf7722d61dbb1d86424e680ad5b43"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/f54b56896312228f1d98854abffe03b6a4cdc197",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f54b56896312228f1d98854abffe03b6a4cdc197",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f54b56896312228f1d98854abffe03b6a4cdc197",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f54b56896312228f1d98854abffe03b6a4cdc197/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "3309ee5844811decb0ee2074e95bb447d48f54c0",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3309ee5844811decb0ee2074e95bb447d48f54c0",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/3309ee5844811decb0ee2074e95bb447d48f54c0"
+    }
+  ],
+  "stats": {
+    "total": 12,
+    "additions": 6,
+    "deletions": 6
+  },
+  "files": [
+    {
+      "sha": "bb88d6e09330970ded1f100913c2406673caf399",
+      "filename": ".github/workflows/deploy-backend.yml",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 6,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f54b56896312228f1d98854abffe03b6a4cdc197/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f54b56896312228f1d98854abffe03b6a4cdc197/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.github%2Fworkflows%2Fdeploy-backend.yml?ref=f54b56896312228f1d98854abffe03b6a4cdc197",
+      "patch": "@@ -63,10 +63,10 @@ jobs:\n             echo \"${{ secrets.GHCR_PAT }}\" | docker login ghcr.io -u shuxueshuxue --password-stdin >/dev/null\n             docker pull \"${IMAGE_TAG}\"\n             docker rm -f ink-backend || true\n+            docker run -d --name ink-backend --restart unless-stopped \\\n+              -p 127.0.0.1:8765:8765 \\\n+              -v /root/ink-and-memory/backend/data:/app/data \\\n+              -e BACKEND_VERSION=${IMAGE_TAG} \\\n+              ${IMAGE_TAG}\n             tmux kill-session -t ink-and-memory-docker || true\n-            tmux new -d -s ink-and-memory-docker \\\n-              \"docker run --name ink-backend --restart unless-stopped \\\n-                -p 127.0.0.1:8765:8765 \\\n-                -v /root/ink-and-memory/backend/data:/app/data \\\n-                -e BACKEND_VERSION=${IMAGE_TAG} \\\n-                ${IMAGE_TAG}\"\n+            tmux new -d -s ink-and-memory-docker \"docker logs -f --tail 200 ink-backend\""
+    }
+  ]
+}

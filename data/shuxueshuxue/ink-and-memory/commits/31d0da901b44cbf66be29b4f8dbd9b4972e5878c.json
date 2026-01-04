@@ -1,0 +1,72 @@
+{
+  "sha": "31d0da901b44cbf66be29b4f8dbd9b4972e5878c",
+  "node_id": "C_kwDOP2Zrm9oAKDMxZDBkYTkwMWI0NGNiZjY2YmUyOWI0ZjhkYmQ5YjQ5NzJlNTg3OGM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-06T03:47:24Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-06T03:47:24Z"
+    },
+    "message": "Add Chinese handwritten font support with Xiaolai\n\n- Integrate Xiaolai (小赖字体) for Chinese characters\n- Use unicode-range to separate English and Chinese fonts\n- Excalifont for English, Xiaolai for Chinese\n- Both fonts render in handwritten style seamlessly\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "3053bbf881ff69c149a4123f6b7c126c91b1445e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/3053bbf881ff69c149a4123f6b7c126c91b1445e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/31d0da901b44cbf66be29b4f8dbd9b4972e5878c",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/31d0da901b44cbf66be29b4f8dbd9b4972e5878c",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/31d0da901b44cbf66be29b4f8dbd9b4972e5878c",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/31d0da901b44cbf66be29b4f8dbd9b4972e5878c/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a"
+    }
+  ],
+  "stats": {
+    "total": 25,
+    "additions": 17,
+    "deletions": 8
+  },
+  "files": [
+    {
+      "sha": "c6aa339271d544428396f9dcadf6ad81046c3705",
+      "filename": "frontend/public/Xiaolai-Regular.ttf",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/31d0da901b44cbf66be29b4f8dbd9b4972e5878c/frontend%2Fpublic%2FXiaolai-Regular.ttf",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/31d0da901b44cbf66be29b4f8dbd9b4972e5878c/frontend%2Fpublic%2FXiaolai-Regular.ttf",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fpublic%2FXiaolai-Regular.ttf?ref=31d0da901b44cbf66be29b4f8dbd9b4972e5878c"
+    },
+    {
+      "sha": "67be25367b3c106669453d257119077ddc5bc269",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 17,
+      "deletions": 8,
+      "changes": 25,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/31d0da901b44cbf66be29b4f8dbd9b4972e5878c/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/31d0da901b44cbf66be29b4f8dbd9b4972e5878c/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=31d0da901b44cbf66be29b4f8dbd9b4972e5878c",
+      "patch": "@@ -3,6 +3,15 @@\n   src: url('/Excalifont-Regular.woff2') format('woff2');\n   font-weight: normal;\n   font-style: normal;\n+  unicode-range: U+0000-00FF, U+0100-017F, U+0180-024F, U+1E00-1EFF, U+2000-206F, U+20A0-20CF, U+2100-214F;\n+}\n+\n+@font-face {\n+  font-family: 'Xiaolai';\n+  src: url('/Xiaolai-Regular.ttf') format('truetype');\n+  font-weight: normal;\n+  font-style: normal;\n+  unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+F900-FAFF, U+3000-303F;\n }\n \n .book-interface {\n@@ -17,10 +26,10 @@\n   position: relative;\n \n   /* Binder ring configuration */\n-  --gap-size: 2rem;\n+  --gap-size: 1.5rem;\n   --hole-diameter: 30px;\n   --bar-width: 100px;\n-  --bar-height: 25px;\n+  --bar-height: 20px;\n }\n \n /* Book pages */\n@@ -71,7 +80,7 @@\n   padding-right: 4rem;\n   font-size: 1.2rem;\n   line-height: 1.8;\n-  font-family: 'Excalifont', 'Georgia', serif;\n+  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;\n   color: #333;\n   outline: none;\n   box-sizing: border-box;\n@@ -90,7 +99,7 @@\n   padding: 1rem;\n   border-left: 4px solid;\n   border-radius: 4px;\n-  font-family: 'Excalifont', 'Georgia', serif;\n+  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;\n   font-size: 1rem;\n   line-height: 1.6;\n   color: #333;\n@@ -151,7 +160,7 @@\n /* Binder rings */\n .binder-ring {\n   position: absolute;\n-  left: 2rem;\n+  left: 1rem;\n   right: 2rem;\n   height: 20px;\n   transform: translateY(-50%);\n@@ -171,11 +180,11 @@\n }\n \n .hole-left {\n-  left: calc(50% - var(--gap-size) - var(--bar-width) / 2 - var(--hole-diameter) / 2);\n+  left: calc(50% - var(--gap-size) - var(--bar-width) / 2 - var(--hole-diameter) / 3);\n }\n \n .hole-right {\n-  left: calc(50% - var(--gap-size) + var(--bar-width) / 2 - var(--hole-diameter) / 2);\n+  left: calc(50% - var(--gap-size) + var(--bar-width) / 2 - var(--hole-diameter) / 1.5);\n }\n \n .ring-bar {\n@@ -218,4 +227,4 @@\n \n .voice-highlight-purple {\n   background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-5&color=ddb3ff);\n-}\n\\ No newline at end of file\n+}"
+    }
+  ]
+}

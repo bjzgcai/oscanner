@@ -1,0 +1,73 @@
+{
+  "sha": "9b384932b9fe0f85a80c4373acdd33b60d418e3b",
+  "node_id": "C_kwDOP2Zrm9oAKDliMzg0OTMyYjlmZTBmODVhODBjNDM3M2FjZGQzM2I2MGQ0MThlM2I",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:03:02Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:03:02Z"
+    },
+    "message": "Add SINGLE_COMMENT_MODE with dedicated schema for gradual accumulation",
+    "tree": {
+      "sha": "c756b6f377826f6a7c7d25ab61a71d7885422190",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/c756b6f377826f6a7c7d25ab61a71d7885422190"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/9b384932b9fe0f85a80c4373acdd33b60d418e3b",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9b384932b9fe0f85a80c4373acdd33b60d418e3b",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9b384932b9fe0f85a80c4373acdd33b60d418e3b",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9b384932b9fe0f85a80c4373acdd33b60d418e3b/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "eb40ce2798f1a17221a32757517924ef8d5a839b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/eb40ce2798f1a17221a32757517924ef8d5a839b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/eb40ce2798f1a17221a32757517924ef8d5a839b"
+    }
+  ],
+  "stats": {
+    "total": 26,
+    "additions": 24,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "a7fde02e675ba7a24d334ee3e99d450aa4de77a0",
+      "filename": "backend/config.py",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 0,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9b384932b9fe0f85a80c4373acdd33b60d418e3b/backend%2Fconfig.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9b384932b9fe0f85a80c4373acdd33b60d418e3b/backend%2Fconfig.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fconfig.py?ref=9b384932b9fe0f85a80c4373acdd33b60d418e3b",
+      "patch": "@@ -6,6 +6,7 @@\n # @@@ Sparsity control\n MAX_VOICES = 5\n MIN_TEXT_LENGTH = 20\n+SINGLE_COMMENT_MODE = True  # If True, only add 1 comment per request (gradual accumulation)\n \n # Voice archetypes (Disco Elysium skills adapted for general writing)\n VOICE_ARCHETYPES = {"
+    },
+    {
+      "sha": "45eb560d6aa26cb9f5191850bd1901b1d63a1218",
+      "filename": "backend/stateful_analyzer.py",
+      "status": "modified",
+      "additions": 23,
+      "deletions": 2,
+      "changes": 25,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9b384932b9fe0f85a80c4373acdd33b60d418e3b/backend%2Fstateful_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9b384932b9fe0f85a80c4373acdd33b60d418e3b/backend%2Fstateful_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateful_analyzer.py?ref=9b384932b9fe0f85a80c4373acdd33b60d418e3b",
+      "patch": "@@ -18,6 +18,9 @@ class VoiceTrigger(BaseModel):\n class VoiceAnalysis(BaseModel):\n     voices: list[VoiceTrigger] = Field(description=\"Detected voice triggers\")\n \n+class SingleVoiceAnalysis(BaseModel):\n+    voice: VoiceTrigger | None = Field(description=\"Single voice trigger\", default=None)\n+\n class StatefulVoiceAnalyzer:\n     \"\"\"\n     Stateful analyzer that:\n@@ -201,19 +204,37 @@ def analyze(self, agent: PolyAgent, text: str) -> list[dict]:\n \"\"\"\n \n         print(\"🤖 Calling LLM for new comments...\")\n+\n+        # Choose schema based on config\n+        if config.SINGLE_COMMENT_MODE:\n+            schema_cls = SingleVoiceAnalysis\n+            max_voices_for_prompt = 1\n+        else:\n+            schema_cls = VoiceAnalysis\n+            max_voices_for_prompt = config.MAX_VOICES\n+\n+        # Update prompt with correct max_voices\n+        prompt = prompt.replace(f\"Maximum {config.MAX_VOICES} NEW voices\", f\"Maximum {max_voices_for_prompt} NEW voices\")\n+\n         result = agent.run(\n             prompt,\n             model=config.MODEL,\n             cli=\"no-tools\",\n-            schema_cls=VoiceAnalysis,\n+            schema_cls=schema_cls,\n             tracked=True\n         )\n \n         if not result.is_success or not result.has_data():\n             print(\"❌ LLM failed, returning existing comments\")\n             return self.comments\n \n-        new_voices = result.data.get(\"voices\", [])\n+        # Extract voices based on schema type\n+        if config.SINGLE_COMMENT_MODE:\n+            voice = result.data.get(\"voice\")\n+            new_voices = [voice] if voice else []\n+        else:\n+            new_voices = result.data.get(\"voices\", [])\n+\n         print(f\"✅ LLM returned {len(new_voices)} new comments\")\n \n         # Step 4: Enforce density rules"
+    }
+  ]
+}

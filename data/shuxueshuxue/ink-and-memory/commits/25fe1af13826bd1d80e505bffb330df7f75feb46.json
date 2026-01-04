@@ -1,0 +1,61 @@
+{
+  "sha": "25fe1af13826bd1d80e505bffb330df7f75feb46",
+  "node_id": "C_kwDOP2Zrm9oAKDI1ZmUxYWYxMzgyNmJkMWQ4MGU1MDViZmZiMzMwZGY3Zjc1ZmViNDY",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-13T10:12:48Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-13T10:12:48Z"
+    },
+    "message": "Add API endpoints for deck and voice management\n\n- GET /api/decks - list all visible decks (system + user's)\n- GET /api/decks/{id} - get deck with voices\n- POST /api/decks - create new user deck\n- PUT /api/decks/{id} - update deck (owner only)\n- DELETE /api/decks/{id} - delete deck (owner only, cascades)\n- POST /api/decks/{id}/fork - fork deck (usually system deck)\n- POST /api/voices - create voice in user deck\n- PUT /api/voices/{id} - update voice (owner only)\n- DELETE /api/voices/{id} - delete voice (owner only)\n- POST /api/voices/{id}/fork - fork voice to user deck\n\nAll endpoints require authentication via Bearer token.\nPydantic models for request validation.\nUpdated startup documentation to list new endpoints.",
+    "tree": {
+      "sha": "989bd18d22aa635cff9a40d0af5b704ed6585ecf",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/989bd18d22aa635cff9a40d0af5b704ed6585ecf"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/25fe1af13826bd1d80e505bffb330df7f75feb46",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/25fe1af13826bd1d80e505bffb330df7f75feb46",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/25fe1af13826bd1d80e505bffb330df7f75feb46",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/25fe1af13826bd1d80e505bffb330df7f75feb46/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "e463d86460ff4680f17f343b88a77dcb8bc71c6a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/e463d86460ff4680f17f343b88a77dcb8bc71c6a",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/e463d86460ff4680f17f343b88a77dcb8bc71c6a"
+    }
+  ],
+  "stats": {
+    "total": 173,
+    "additions": 173,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "06b1a614de695293b2f8f2c393c63bd19d9e86da",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 173,
+      "deletions": 0,
+      "changes": 173,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/25fe1af13826bd1d80e505bffb330df7f75feb46/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/25fe1af13826bd1d80e505bffb330df7f75feb46/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=25fe1af13826bd1d80e505bffb330df7f75feb46",
+      "patch": "@@ -1188,6 +1188,168 @@ def get_default_voices():\n     \"\"\"Get default voice configurations\"\"\"\n     return config.VOICE_ARCHETYPES\n \n+# ========== Deck & Voice Management ==========\n+\n+class DeckCreateRequest(BaseModel):\n+    name: str\n+    description: str = None\n+    name_zh: str = None\n+    name_en: str = None\n+    description_zh: str = None\n+    description_en: str = None\n+    icon: str = None\n+    color: str = None\n+\n+class DeckUpdateRequest(BaseModel):\n+    name: str = None\n+    description: str = None\n+    name_zh: str = None\n+    name_en: str = None\n+    description_zh: str = None\n+    description_en: str = None\n+    icon: str = None\n+    color: str = None\n+    enabled: bool = None\n+    order_index: int = None\n+\n+class VoiceCreateRequest(BaseModel):\n+    deck_id: str\n+    name: str\n+    system_prompt: str\n+    name_zh: str = None\n+    name_en: str = None\n+    icon: str = None\n+    color: str = None\n+\n+class VoiceUpdateRequest(BaseModel):\n+    name: str = None\n+    system_prompt: str = None\n+    name_zh: str = None\n+    name_en: str = None\n+    icon: str = None\n+    color: str = None\n+    enabled: bool = None\n+    order_index: int = None\n+\n+class VoiceForkRequest(BaseModel):\n+    target_deck_id: str\n+\n+@app.get(\"/api/decks\")\n+def list_decks(current_user: dict = Depends(get_current_user)):\n+    \"\"\"Get all decks visible to user (system + user's own)\"\"\"\n+    user_id = current_user['user_id']\n+    decks = database.get_user_decks(user_id)\n+    return {\"decks\": decks}\n+\n+@app.get(\"/api/decks/{deck_id}\")\n+def get_deck(deck_id: str, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Get deck with all voices\"\"\"\n+    user_id = current_user['user_id']\n+    deck = database.get_deck_with_voices(user_id, deck_id)\n+    if not deck:\n+        raise HTTPException(status_code=404, detail=\"Deck not found\")\n+    return deck\n+\n+@app.post(\"/api/decks\")\n+def create_deck(request: DeckCreateRequest, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Create a new user deck\"\"\"\n+    user_id = current_user['user_id']\n+    deck_id = database.create_deck(\n+        user_id,\n+        name=request.name,\n+        description=request.description,\n+        name_zh=request.name_zh,\n+        name_en=request.name_en,\n+        description_zh=request.description_zh,\n+        description_en=request.description_en,\n+        icon=request.icon,\n+        color=request.color\n+    )\n+    return {\"deck_id\": deck_id}\n+\n+@app.put(\"/api/decks/{deck_id}\")\n+def update_deck(deck_id: str, request: DeckUpdateRequest, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Update a user deck\"\"\"\n+    user_id = current_user['user_id']\n+\n+    # Convert request to dict, exclude None values\n+    updates = {k: v for k, v in request.dict().items() if v is not None}\n+\n+    success = database.update_deck(user_id, deck_id, updates)\n+    if not success:\n+        raise HTTPException(status_code=404, detail=\"Deck not found or permission denied\")\n+    return {\"success\": True}\n+\n+@app.delete(\"/api/decks/{deck_id}\")\n+def delete_deck(deck_id: str, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Delete a user deck (cascades to voices)\"\"\"\n+    user_id = current_user['user_id']\n+    success = database.delete_deck(user_id, deck_id)\n+    if not success:\n+        raise HTTPException(status_code=404, detail=\"Deck not found or permission denied\")\n+    return {\"success\": True}\n+\n+@app.post(\"/api/decks/{deck_id}/fork\")\n+def fork_deck(deck_id: str, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Fork a deck (usually system deck) to create user's own copy\"\"\"\n+    user_id = current_user['user_id']\n+    try:\n+        new_deck_id = database.fork_deck(user_id, deck_id)\n+        return {\"deck_id\": new_deck_id}\n+    except ValueError as e:\n+        raise HTTPException(status_code=404, detail=str(e))\n+\n+@app.post(\"/api/voices\")\n+def create_voice(request: VoiceCreateRequest, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Create a new voice in a user deck\"\"\"\n+    user_id = current_user['user_id']\n+    try:\n+        voice_id = database.create_voice(\n+            user_id,\n+            deck_id=request.deck_id,\n+            name=request.name,\n+            system_prompt=request.system_prompt,\n+            name_zh=request.name_zh,\n+            name_en=request.name_en,\n+            icon=request.icon,\n+            color=request.color\n+        )\n+        return {\"voice_id\": voice_id}\n+    except ValueError as e:\n+        raise HTTPException(status_code=400, detail=str(e))\n+\n+@app.put(\"/api/voices/{voice_id}\")\n+def update_voice(voice_id: str, request: VoiceUpdateRequest, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Update a user voice\"\"\"\n+    user_id = current_user['user_id']\n+\n+    # Convert request to dict, exclude None values\n+    updates = {k: v for k, v in request.dict().items() if v is not None}\n+\n+    success = database.update_voice(user_id, voice_id, updates)\n+    if not success:\n+        raise HTTPException(status_code=404, detail=\"Voice not found or permission denied\")\n+    return {\"success\": True}\n+\n+@app.delete(\"/api/voices/{voice_id}\")\n+def delete_voice(voice_id: str, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Delete a user voice\"\"\"\n+    user_id = current_user['user_id']\n+    success = database.delete_voice(user_id, voice_id)\n+    if not success:\n+        raise HTTPException(status_code=404, detail=\"Voice not found or permission denied\")\n+    return {\"success\": True}\n+\n+@app.post(\"/api/voices/{voice_id}/fork\")\n+def fork_voice(voice_id: str, request: VoiceForkRequest, current_user: dict = Depends(get_current_user)):\n+    \"\"\"Fork a voice to a user deck\"\"\"\n+    user_id = current_user['user_id']\n+    try:\n+        new_voice_id = database.fork_voice(user_id, voice_id, request.target_deck_id)\n+        return {\"voice_id\": new_voice_id}\n+    except ValueError as e:\n+        raise HTTPException(status_code=400, detail=str(e))\n+\n # @@@ Removed /api/analyze wrapper - frontend now calls /polycli/api/trigger-sync directly\n \n # @@@ Removed /api/chat wrapper - frontend now calls /polycli/api/trigger-sync directly\n@@ -1229,6 +1391,17 @@ def get_default_voices():\n     print(\"    POST /api/reports         - Save report\")\n     print(\"  Configuration:\")\n     print(\"    GET  /api/default-voices  - Get default voice configs\")\n+    print(\"  Deck & Voice Management:\")\n+    print(\"    GET  /api/decks           - List all decks\")\n+    print(\"    GET  /api/decks/{id}      - Get deck with voices\")\n+    print(\"    POST /api/decks           - Create deck\")\n+    print(\"    PUT  /api/decks/{id}      - Update deck\")\n+    print(\"    DELETE /api/decks/{id}    - Delete deck\")\n+    print(\"    POST /api/decks/{id}/fork - Fork deck\")\n+    print(\"    POST /api/voices          - Create voice\")\n+    print(\"    PUT  /api/voices/{id}     - Update voice\")\n+    print(\"    DELETE /api/voices/{id}   - Delete voice\")\n+    print(\"    POST /api/voices/{id}/fork - Fork voice\")\n     print(\"\\n  PolyCLI (AI Functions):\")\n     print(\"    /polycli                  - Control panel UI\")\n     print(\"    /polycli/api/trigger-sync - Direct sync API\")"
+    }
+  ]
+}

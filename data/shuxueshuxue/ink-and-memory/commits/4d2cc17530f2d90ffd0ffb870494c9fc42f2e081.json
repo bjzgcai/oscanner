@@ -1,0 +1,61 @@
+{
+  "sha": "4d2cc17530f2d90ffd0ffb870494c9fc42f2e081",
+  "node_id": "C_kwDOP2Zrm9oAKDRkMmNjMTc1MzBmMmQ5MGZmZDBmZmI4NzA0OTRjOWZjNDJmMmUwODE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T06:02:13Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T06:02:13Z"
+    },
+    "message": "Fix image generation and timeline centering for authenticated users\n\n- Make getAllNotesFromSessions() async and database-aware\n- Load notes from database for authenticated users\n- Fix timeline scroll centering by waiting for data load\n- Change useEffect dependency from [] to [initialLoading]\n- Use triple RAF for better timing guarantee",
+    "tree": {
+      "sha": "2a073e4187f95106fda1250db6ba0f2f7028779e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/2a073e4187f95106fda1250db6ba0f2f7028779e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4d2cc17530f2d90ffd0ffb870494c9fc42f2e081",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4d2cc17530f2d90ffd0ffb870494c9fc42f2e081",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4d2cc17530f2d90ffd0ffb870494c9fc42f2e081",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4d2cc17530f2d90ffd0ffb870494c9fc42f2e081/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "f76dac9f96494069d1c0fec2a8faf0db7e8624aa",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f76dac9f96494069d1c0fec2a8faf0db7e8624aa",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f76dac9f96494069d1c0fec2a8faf0db7e8624aa"
+    }
+  ],
+  "stats": {
+    "total": 99,
+    "additions": 66,
+    "deletions": 33
+  },
+  "files": [
+    {
+      "sha": "f7a907420648fe4d68303779c938a3e6f5637111",
+      "filename": "frontend/src/components/CollectionsView.tsx",
+      "status": "modified",
+      "additions": 66,
+      "deletions": 33,
+      "changes": 99,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4d2cc17530f2d90ffd0ffb870494c9fc42f2e081/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4d2cc17530f2d90ffd0ffb870494c9fc42f2e081/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx?ref=4d2cc17530f2d90ffd0ffb870494c9fc42f2e081",
+      "patch": "@@ -156,26 +156,54 @@ function getPlaceholderText(daysOffset: number): string {\n   return placeholders[daysOffset.toString()] || (daysOffset < 0 ? 'what was has passed' : 'yet to be written');\n }\n \n-// @@@ Get all notes from all sessions in localStorage\n-function getAllNotesFromSessions(): string {\n+// @@@ Get all notes from all sessions (localStorage for guest, database for authenticated)\n+async function getAllNotesFromSessions(isAuthenticated: boolean): Promise<string> {\n   const allText: string[] = [];\n-  const keys = Object.keys(localStorage);\n-\n-  for (const key of keys) {\n-    if (key === 'ink_memory_state' || key.startsWith('ink_memory_state_')) {\n-      try {\n-        const state = JSON.parse(localStorage.getItem(key) || '{}');\n-        if (state.cells) {\n-          const text = state.cells\n-            .filter((c: any) => c.type === 'text')\n-            .map((c: any) => c.content)\n-            .join('\\n\\n');\n-          if (text.trim()) {\n-            allText.push(text);\n+\n+  if (isAuthenticated) {\n+    // @@@ Load from database for authenticated users\n+    try {\n+      const { listSessions, getSession } = await import('../api/voiceApi');\n+      const sessions = await listSessions();\n+\n+      for (const session of sessions) {\n+        try {\n+          const fullSession = await getSession(session.id);\n+          if (fullSession.editor_state?.cells) {\n+            const text = fullSession.editor_state.cells\n+              .filter((c: any) => c.type === 'text')\n+              .map((c: any) => c.content)\n+              .join('\\n\\n');\n+            if (text.trim()) {\n+              allText.push(text);\n+            }\n+          }\n+        } catch (err) {\n+          console.error(`Failed to load session ${session.id}:`, err);\n+        }\n+      }\n+    } catch (error) {\n+      console.error('Failed to load sessions from database:', error);\n+    }\n+  } else {\n+    // @@@ Load from localStorage for guests\n+    const keys = Object.keys(localStorage);\n+    for (const key of keys) {\n+      if (key === 'ink_memory_state' || key.startsWith('ink_memory_state_')) {\n+        try {\n+          const state = JSON.parse(localStorage.getItem(key) || '{}');\n+          if (state.cells) {\n+            const text = state.cells\n+              .filter((c: any) => c.type === 'text')\n+              .map((c: any) => c.content)\n+              .join('\\n\\n');\n+            if (text.trim()) {\n+              allText.push(text);\n+            }\n           }\n+        } catch (e) {\n+          console.error('Failed to parse session:', key, e);\n         }\n-      } catch (e) {\n-        console.error('Failed to parse session:', key, e);\n       }\n     }\n   }\n@@ -270,25 +298,30 @@ function TimelinePage() {\n \n   // @@@ Set initial scroll position to center on today's card\n   useEffect(() => {\n-    // Double RAF to ensure layout is complete\n+    // @@@ Only center after data has loaded\n+    if (initialLoading) return;\n+\n+    // Triple RAF to ensure layout is complete AND data is rendered\n     requestAnimationFrame(() => {\n       requestAnimationFrame(() => {\n-        if (scrollContainerRef.current) {\n-          // Today is at index 7 (after 7 past days)\n-          // Each card is 500px + 4rem gap (64px) = 564px\n-          // Plus left padding of 4rem (64px)\n-          const cardWidth = 500 + 64;\n-          const todayIndex = 7;\n-          const leftPadding = 64;\n-          const containerWidth = scrollContainerRef.current.clientWidth;\n-\n-          // Center today's card\n-          const scrollLeft = leftPadding + (todayIndex * cardWidth) - (containerWidth / 2) + (250);\n-          scrollContainerRef.current.scrollLeft = scrollLeft;\n-        }\n+        requestAnimationFrame(() => {\n+          if (scrollContainerRef.current) {\n+            // Today is at index 7 (after 7 past days)\n+            // Each card is 500px + 4rem gap (64px) = 564px\n+            // Plus left padding of 4rem (64px)\n+            const cardWidth = 500 + 64;\n+            const todayIndex = 7;\n+            const leftPadding = 64;\n+            const containerWidth = scrollContainerRef.current.clientWidth;\n+\n+            // Center today's card\n+            const scrollLeft = leftPadding + (todayIndex * cardWidth) - (containerWidth / 2) + (250);\n+            scrollContainerRef.current.scrollLeft = scrollLeft;\n+          }\n+        });\n       });\n     });\n-  }, []);\n+  }, [initialLoading]);\n \n   const handleGenerateForDate = async (dateStr: string) => {\n     // @@@ Block image generation for guests\n@@ -300,7 +333,7 @@ function TimelinePage() {\n     setGeneratingForDate(dateStr);\n \n     try {\n-      const allNotes = getAllNotesFromSessions();\n+      const allNotes = await getAllNotesFromSessions(isAuthenticated);\n       if (!allNotes.trim()) {\n         alert('Write some notes first to generate an image!');\n         return;"
+    }
+  ]
+}

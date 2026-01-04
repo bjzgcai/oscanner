@@ -1,0 +1,85 @@
+{
+  "sha": "17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+  "node_id": "C_kwDOP2Zrm9oAKDE3ZDZlOWRmNGE0N2YyNDNmYjRhYWMwZWE3M2U3Nzc4YmUxYWY3MDQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T17:45:16Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T17:45:16Z"
+    },
+    "message": "Add backend deploy workflow",
+    "tree": {
+      "sha": "6715f6fbc859a028eb3f977d328519b76ff57454",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/6715f6fbc859a028eb3f977d328519b76ff57454"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/17d6e9df4a47f243fb4aac0ea73e7778be1af704/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "831431782d284e29ba1c6a4d78142ac8d643b2dc",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/831431782d284e29ba1c6a4d78142ac8d643b2dc",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/831431782d284e29ba1c6a4d78142ac8d643b2dc"
+    }
+  ],
+  "stats": {
+    "total": 99,
+    "additions": 99,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "21a4cdada1a7241f773377d40192931bd50d2dce",
+      "filename": ".github/workflows/deploy-backend.yml",
+      "status": "added",
+      "additions": 70,
+      "deletions": 0,
+      "changes": 70,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/17d6e9df4a47f243fb4aac0ea73e7778be1af704/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/17d6e9df4a47f243fb4aac0ea73e7778be1af704/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.github%2Fworkflows%2Fdeploy-backend.yml?ref=17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+      "patch": "@@ -0,0 +1,70 @@\n+name: Deploy Backend\n+\n+on:\n+  push:\n+    branches: [main]\n+    paths:\n+      - \"backend/**\"\n+      - \".github/workflows/deploy-backend.yml\"\n+  workflow_dispatch:\n+\n+env:\n+  IMAGE: ghcr.io/shuxueshuxue/ink-backend\n+\n+jobs:\n+  build-and-push:\n+    runs-on: ubuntu-latest\n+    permissions:\n+      contents: read\n+      packages: write\n+    outputs:\n+      image_tag: ${{ steps.meta.outputs.image_tag }}\n+    steps:\n+      - uses: actions/checkout@v4\n+\n+      - uses: docker/setup-buildx-action@v3\n+\n+      - name: Log in to GHCR\n+        uses: docker/login-action@v3\n+        with:\n+          registry: ghcr.io\n+          username: ${{ github.actor }}\n+          password: ${{ secrets.GITHUB_TOKEN }}\n+\n+      - name: Build and push image\n+        run: |\n+          docker buildx build \\\n+            --platform linux/amd64 \\\n+            -t $IMAGE:${GITHUB_SHA} \\\n+            -t $IMAGE:latest \\\n+            --push \\\n+            backend\n+\n+      - name: Export image tag\n+        id: meta\n+        run: echo \"image_tag=${IMAGE}:${GITHUB_SHA}\" >> \"$GITHUB_OUTPUT\"\n+\n+  deploy:\n+    needs: build-and-push\n+    runs-on: ubuntu-latest\n+    if: github.ref == 'refs/heads/main'\n+    steps:\n+      - name: Deploy to server over SSH\n+        uses: appleboy/ssh-action@v1.2.0\n+        with:\n+          host: 101.201.227.31\n+          username: root\n+          key: ${{ secrets.SERVER_SSH_KEY }}\n+          script: |\n+            set -e\n+            IMAGE_TAG=\"${{ needs.build-and-push.outputs.image_tag }}\"\n+            cd /root/ink-and-memory/backend\n+            mkdir -p /root/ink-and-memory/backend/data\n+            docker pull \"${IMAGE_TAG}\"\n+            docker rm -f ink-backend || true\n+            tmux kill-session -t ink-and-memory-docker || true\n+            tmux new -d -s ink-and-memory-docker \\\n+              \"docker run --name ink-backend --restart unless-stopped \\\n+                -p 127.0.0.1:8765:8765 \\\n+                -v /root/ink-and-memory/backend/data:/app/data \\\n+                ${IMAGE_TAG}\""
+    },
+    {
+      "sha": "dc9361a25c03ee4647adb3388424201eca0036e7",
+      "filename": ".gitignore",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 0,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/17d6e9df4a47f243fb4aac0ea73e7778be1af704/.gitignore",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/17d6e9df4a47f243fb4aac0ea73e7778be1af704/.gitignore",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.gitignore?ref=17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+      "patch": "@@ -27,6 +27,7 @@ frontend/node_modules/\n *.db-shm\n *.db-wal\n backend/data/\n+backend/ink-backend*.tar.gz\n \n # macOS system files\n .DS_Store"
+    },
+    {
+      "sha": "2768c96490a964c51643d81a2e970eb5faed735a",
+      "filename": "backend/Dockerfile",
+      "status": "added",
+      "additions": 28,
+      "deletions": 0,
+      "changes": 28,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/17d6e9df4a47f243fb4aac0ea73e7778be1af704/backend%2FDockerfile",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/17d6e9df4a47f243fb4aac0ea73e7778be1af704/backend%2FDockerfile",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2FDockerfile?ref=17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+      "patch": "@@ -0,0 +1,28 @@\n+# Ink & Memory backend (FastAPI) - Ubuntu-compatible, no nginx\n+FROM python:3.9-slim\n+\n+ENV PYTHONUNBUFFERED=1 \\\n+    PYTHONDONTWRITEBYTECODE=1 \\\n+    TZ=UTC\n+\n+WORKDIR /app\n+\n+# System deps for cryptography/pillow\n+RUN apt-get update && apt-get install -y --no-install-recommends \\\n+    gcc \\\n+    libffi-dev \\\n+    libssl-dev \\\n+    libjpeg62-turbo-dev \\\n+    zlib1g-dev \\\n+    && rm -rf /var/lib/apt/lists/*\n+\n+# Install Python deps (hashed requirements)\n+COPY requirements.txt .\n+RUN pip install --no-cache-dir --require-hashes -r requirements.txt\n+\n+# Copy application code\n+COPY . .\n+\n+EXPOSE 8765\n+\n+CMD [\"uvicorn\", \"server:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8765\"]"
+    }
+  ]
+}

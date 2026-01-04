@@ -1,0 +1,42 @@
+{
+  "sha": "071b7137b446696a9bb72134bee1b5e76d5a36d5",
+  "node_id": "C_kwDOP2Zrm9oAKDA3MWI3MTM3YjQ0NjY5NmE5YmI3MjEzNGJlZTFiNWU3NmQ1YTM2ZDU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T09:49:46Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T09:49:46Z"
+    },
+    "message": "change chosen day indicator in calendar popup",
+    "tree": {
+      "sha": "eec0376053040b24647551d6243e71c99fa466b6",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/eec0376053040b24647551d6243e71c99fa466b6"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/071b7137b446696a9bb72134bee1b5e76d5a36d5",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/071b7137b446696a9bb72134bee1b5e76d5a36d5",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/071b7137b446696a9bb72134bee1b5e76d5a36d5",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/071b7137b446696a9bb72134bee1b5e76d5a36d5/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "0ee7351021ad2d44de72fe7cf49b831a99f07f4a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0ee7351021ad2d44de72fe7cf49b831a99f07f4a",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0ee7351021ad2d44de72fe7cf49b831a99f07f4a"
+    }
+  ]
+}

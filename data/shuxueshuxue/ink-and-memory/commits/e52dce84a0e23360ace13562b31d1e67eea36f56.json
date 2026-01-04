@@ -1,0 +1,42 @@
+{
+  "sha": "e52dce84a0e23360ace13562b31d1e67eea36f56",
+  "node_id": "C_kwDOP2Zrm9oAKGU1MmRjZTg0YTBlMjMzNjBhY2UxMzU2MmIzMWQxZTY3ZWVhMzZmNTY",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T09:32:18Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T09:32:18Z"
+    },
+    "message": "new layout for deck manager",
+    "tree": {
+      "sha": "d1cd1b00ab70d22c95923477bdde971ac799f306",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/d1cd1b00ab70d22c95923477bdde971ac799f306"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/e52dce84a0e23360ace13562b31d1e67eea36f56",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/e52dce84a0e23360ace13562b31d1e67eea36f56",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/e52dce84a0e23360ace13562b31d1e67eea36f56",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/e52dce84a0e23360ace13562b31d1e67eea36f56/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "f803659ce6307c43c299013aa89674519a1428a3",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f803659ce6307c43c299013aa89674519a1428a3",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f803659ce6307c43c299013aa89674519a1428a3"
+    }
+  ]
+}

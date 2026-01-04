@@ -1,0 +1,61 @@
+{
+  "sha": "4a329010b16261df9e7118d5ded94f45c9543613",
+  "node_id": "C_kwDOP2Zrm9oAKDRhMzI5MDEwYjE2MjYxZGY5ZTcxMThkNWRlZDk0ZjQ1Yzk1NDM2MTM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T13:46:45Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T13:46:45Z"
+    },
+    "message": "Remove old analyzer.py, keep only stateful_analyzer.py",
+    "tree": {
+      "sha": "11f6677b34042a079a2573caa213278771e97c74",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/11f6677b34042a079a2573caa213278771e97c74"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4a329010b16261df9e7118d5ded94f45c9543613",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4a329010b16261df9e7118d5ded94f45c9543613",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4a329010b16261df9e7118d5ded94f45c9543613",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4a329010b16261df9e7118d5ded94f45c9543613/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "59b1c66edab73f5c47812da4b7cab48fe37e2944",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/59b1c66edab73f5c47812da4b7cab48fe37e2944",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/59b1c66edab73f5c47812da4b7cab48fe37e2944"
+    }
+  ],
+  "stats": {
+    "total": 59,
+    "additions": 0,
+    "deletions": 59
+  },
+  "files": [
+    {
+      "sha": "cbc7a94975bebda8ab9057cd773bb5c4c3051a46",
+      "filename": "backend/analyzer.py",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 59,
+      "changes": 59,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/59b1c66edab73f5c47812da4b7cab48fe37e2944/backend%2Fanalyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/59b1c66edab73f5c47812da4b7cab48fe37e2944/backend%2Fanalyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fanalyzer.py?ref=59b1c66edab73f5c47812da4b7cab48fe37e2944",
+      "patch": "@@ -1,59 +0,0 @@\n-#!/usr/bin/env python3\n-\"\"\"Voice detection analyzer using LLM-powered pattern matching.\"\"\"\n-\n-from pathlib import Path\n-from pydantic import BaseModel, Field\n-from polycli import PolyAgent\n-from polycli.orchestration import pattern\n-import config\n-\n-# Structured output schema\n-class VoiceTrigger(BaseModel):\n-    phrase: str = Field(description=\"Exact trigger phrase from text (verbatim)\")\n-    voice: str = Field(description=\"Voice archetype name from the available list\")\n-    comment: str = Field(description=\"What this voice is saying (as if speaking)\")\n-    icon: str = Field(description=\"Icon: brain, heart, question, cloud\")\n-    color: str = Field(description=\"Color: blue, pink, yellow, green, purple\")\n-\n-class VoiceAnalysis(BaseModel):\n-    voices: list[VoiceTrigger] = Field(description=\"Detected voice triggers\")\n-\n-@pattern\n-def analyze_voices(agent: PolyAgent, text: str) -> list[dict]:\n-    \"\"\"\n-    Analyze text and detect inner voice triggers.\n-\n-    Args:\n-        agent: PolyAgent instance\n-        text: Text to analyze\n-\n-    Returns:\n-        List of voice trigger dicts\n-    \"\"\"\n-    if len(text.strip()) < config.MIN_TEXT_LENGTH:\n-        return []\n-\n-    # Build voice list for prompt\n-    voice_list = \"\\n\".join([\n-        f\"- {name} ({v['icon']}, {v['color']}): {v['tagline']}\"\n-        for name, v in config.VOICE_ARCHETYPES.items()\n-    ])\n-\n-    prompt = config.ANALYSIS_PROMPT_TEMPLATE.format(\n-        text=text,\n-        voice_list=voice_list,\n-        max_voices=config.MAX_VOICES\n-    )\n-\n-    result = agent.run(\n-        prompt,\n-        model=config.MODEL,\n-        cli=\"no-tools\",\n-        schema_cls=VoiceAnalysis,\n-        tracked=True\n-    )\n-\n-    if not result.is_success or not result.has_data():\n-        return []\n-\n-    return result.data.get(\"voices\", [])"
+    }
+  ]
+}

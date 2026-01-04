@@ -1,0 +1,61 @@
+{
+  "sha": "f2315ab7b2cbe53fd497c40ed2b80180d4179f55",
+  "node_id": "C_kwDOP2Zrm9oAKGYyMzE1YWI3YjJjYmU1M2ZkNDk3YzQwZWQyYjgwMTgwZDQxNzlmNTU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:05:58Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:05:58Z"
+    },
+    "message": "Use HTML video tag for demo",
+    "tree": {
+      "sha": "d76e5fcb31e5ac5f269a67fb1da47df2e31f4b44",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/d76e5fcb31e5ac5f269a67fb1da47df2e31f4b44"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/f2315ab7b2cbe53fd497c40ed2b80180d4179f55",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f2315ab7b2cbe53fd497c40ed2b80180d4179f55",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f2315ab7b2cbe53fd497c40ed2b80180d4179f55",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f2315ab7b2cbe53fd497c40ed2b80180d4179f55/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1"
+    }
+  ],
+  "stats": {
+    "total": 2,
+    "additions": 1,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "e67416bfcc31c4055dc07eb88d3bd775a6650110",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f2315ab7b2cbe53fd497c40ed2b80180d4179f55/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f2315ab7b2cbe53fd497c40ed2b80180d4179f55/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=f2315ab7b2cbe53fd497c40ed2b80180d4179f55",
+      "patch": "@@ -2,7 +2,7 @@\n \n A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.\n \n-![Demo](assets/demo.mov)\n+<video src=\"https://github.com/user-attachments/assets/demo.mov\" width=\"100%\" controls></video>\n \n ## ✨ Features\n "
+    }
+  ]
+}

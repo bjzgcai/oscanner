@@ -1,0 +1,73 @@
+{
+  "sha": "93ca7345570de5d4ea75cbfb47999aefa508dda9",
+  "node_id": "C_kwDOP2Zrm9oAKDkzY2E3MzQ1NTcwZGU1ZDRlYTc1Y2JmYjQ3OTk5YWVmYTUwOGRkYTk",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T08:35:05Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T08:35:05Z"
+    },
+    "message": "inspiration animation fixed",
+    "tree": {
+      "sha": "e0777a1c21d1ea7a5c7aa323b3f5e5968303c5f2",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/e0777a1c21d1ea7a5c7aa323b3f5e5968303c5f2"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/93ca7345570de5d4ea75cbfb47999aefa508dda9",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/93ca7345570de5d4ea75cbfb47999aefa508dda9",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/93ca7345570de5d4ea75cbfb47999aefa508dda9",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/93ca7345570de5d4ea75cbfb47999aefa508dda9/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "54e903953ffa7dcc6e49a5075c7239de500c9f75",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/54e903953ffa7dcc6e49a5075c7239de500c9f75",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/54e903953ffa7dcc6e49a5075c7239de500c9f75"
+    }
+  ],
+  "stats": {
+    "total": 115,
+    "additions": 62,
+    "deletions": 53
+  },
+  "files": [
+    {
+      "sha": "44d72986be0055585de83e17692902ae0b8b838f",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 26,
+      "deletions": 4,
+      "changes": 30,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/93ca7345570de5d4ea75cbfb47999aefa508dda9/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/93ca7345570de5d4ea75cbfb47999aefa508dda9/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=93ca7345570de5d4ea75cbfb47999aefa508dda9",
+      "patch": "@@ -287,9 +287,16 @@ export default function App() {\n   // @@@ Writing suggestion state\n   const [currentInspiration, setCurrentInspiration] = useState<VoiceInspiration | null>(null);\n   const [inspirationDisappearing, setInspirationDisappearing] = useState(false);\n+  const prevInspirationRef = useRef<VoiceInspiration | null>(null);\n   const [_suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');  // Not used yet\n   const suggestionTimerRef = useRef<number | null>(null);\n \n+  // @@@ Detect if this is a new inspiration appearing (different from previous)\n+  // Only check appearing when NOT disappearing (to avoid conflict)\n+  const inspirationAppearing = !inspirationDisappearing &&\n+    currentInspiration !== null &&\n+    currentInspiration !== prevInspirationRef.current;\n+\n   // @@@ CRITICAL: Resize textareas then restore scroll position\n   // Order matters: resize first (changes content height), then restore scroll\n   // Triggers: on mount (refsReady) and when cells added/deleted (cells.length)\n@@ -340,10 +347,17 @@ export default function App() {\n     }\n   }, [inspirationDisappearing]);\n \n-  // @@@ Reset disappearing state when new inspiration arrives\n+  // @@@ Update prevInspiration ref after render to trigger appearing animation\n   useEffect(() => {\n     if (currentInspiration) {\n       setInspirationDisappearing(false);\n+\n+      // Wait for next frame to allow CSS transition to detect the change\n+      requestAnimationFrame(() => {\n+        prevInspirationRef.current = currentInspiration;\n+        // @@@ Force re-render to show the appeared state (opacity 1)\n+        setRefsReady(prev => prev + 1);\n+      });\n     }\n   }, [currentInspiration]);\n \n@@ -1178,6 +1192,9 @@ export default function App() {\n         setSelectedState(loadedState.selectedState);\n       }\n \n+      // @@@ Trigger textarea resize after loading entry\n+      setRefsReady(prev => prev + 1);\n+\n       setShowCalendarPopup(false);\n     }\n   }, []);\n@@ -2085,9 +2102,14 @@ export default function App() {\n                       fontStyle: 'italic',\n                       pointerEvents: 'none',\n                       transition: 'all 0.8s cubic-bezier(0.4, 0, 0.6, 1)',\n-                      opacity: inspirationDisappearing ? 0 : 1,\n-                      transform: inspirationDisappearing ? 'scale(0.95) translateY(-3px)' : 'scale(1) translateY(0)',\n-                      filter: inspirationDisappearing ? 'blur(2px)' : 'blur(0)',\n+                      // @@@ Appearing animation: reverse of disappearing (emerge from paper)\n+                      opacity: inspirationDisappearing ? 0 : (inspirationAppearing ? 0 : 1),\n+                      transform: inspirationDisappearing\n+                        ? 'scale(0.95) translateY(-3px)'\n+                        : (inspirationAppearing ? 'scale(0.95) translateY(-3px)' : 'scale(1) translateY(0)'),\n+                      filter: inspirationDisappearing\n+                        ? 'blur(2px)'\n+                        : (inspirationAppearing ? 'blur(2px)' : 'blur(0)'),\n                     }}\n                     >\n                       {/* Voice Icon */}"
+    },
+    {
+      "sha": "29006b027c6cc1c2f9877e5f6d71f0c67bdefa83",
+      "filename": "frontend/src/components/CommentCard.tsx",
+      "status": "modified",
+      "additions": 36,
+      "deletions": 49,
+      "changes": 85,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/93ca7345570de5d4ea75cbfb47999aefa508dda9/frontend%2Fsrc%2Fcomponents%2FCommentCard.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/93ca7345570de5d4ea75cbfb47999aefa508dda9/frontend%2Fsrc%2Fcomponents%2FCommentCard.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCommentCard.tsx?ref=93ca7345570de5d4ea75cbfb47999aefa508dda9",
+      "patch": "@@ -1,5 +1,5 @@\n import React from 'react';\n-import { FaStar, FaTrash, FaChevronLeft, FaChevronRight, FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye, FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass } from 'react-icons/fa';\n+import { FaStar, FaTrash, FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye, FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass } from 'react-icons/fa';\n import type { Commentor } from '../engine/EditorEngine';\n \n const iconMap = {\n@@ -140,19 +140,46 @@ export function CommentGroupCard({\n             justifyContent: 'space-between',\n             alignItems: 'center'\n           }}>\n+            {/* @@@ Tab navigation on left side */}\n             <div style={{\n-              fontSize: '10px',\n-              color: colors.text,\n-              opacity: 0.6,\n-              fontWeight: 600\n+              display: 'flex',\n+              gap: '4px',\n+              alignItems: 'center',\n             }}>\n-              {comments.length > 1 && (\n-                <span>\n-                  {safeIndex + 1}/{comments.length}\n-                </span>\n+              {comments.length > 1 ? (\n+                comments.map((_, idx) => (\n+                  <React.Fragment key={idx}>\n+                    <button\n+                      onClick={(e) => {\n+                        e.stopPropagation();\n+                        onNavigate(idx);\n+                      }}\n+                      style={{\n+                        background: idx === safeIndex ? colors.text : 'transparent',\n+                        color: idx === safeIndex ? '#fff' : colors.text,\n+                        border: 'none',\n+                        borderRadius: '3px',\n+                        padding: '2px 6px',\n+                        cursor: 'pointer',\n+                        fontSize: '10px',\n+                        fontWeight: 600,\n+                        opacity: idx === safeIndex ? 1 : 0.5,\n+                        transition: 'all 0.2s',\n+                      }}\n+                    >\n+                      {idx + 1}\n+                    </button>\n+                    {idx < comments.length - 1 && (\n+                      <span style={{ color: colors.text, opacity: 0.3, fontSize: '10px' }}>|</span>\n+                    )}\n+                  </React.Fragment>\n+                ))\n+              ) : (\n+                <div style={{ width: '1px' }} /> // Empty placeholder when single comment\n               )}\n             </div>\n \n+            {/* @@@ Action buttons on right side */}\n             <div style={{\n               display: 'flex',\n               gap: '4px',\n@@ -195,46 +222,6 @@ export function CommentGroupCard({\n               >\n                 <FaTrash size={10} color={currentComment.feedback === 'kill' ? '#fff' : colors.text} style={{ opacity: currentComment.feedback === 'kill' ? 1 : 0.5 }} />\n               </button>\n-              {comments.length > 1 && (\n-                <>\n-                  <button\n-                    onClick={(e) => {\n-                      e.stopPropagation();\n-                      onNavigate((safeIndex - 1 + comments.length) % comments.length);\n-                    }}\n-                    style={{\n-                      background: 'transparent',\n-                      border: 'none',\n-                      borderRadius: '3px',\n-                      padding: '3px 5px',\n-                      cursor: 'pointer',\n-                      display: 'flex',\n-                      alignItems: 'center',\n-                      justifyContent: 'center',\n-                    }}\n-                  >\n-                    <FaChevronLeft size={10} color={colors.text} style={{ opacity: 0.5 }} />\n-                  </button>\n-                  <button\n-                    onClick={(e) => {\n-                      e.stopPropagation();\n-                      onNavigate((safeIndex + 1) % comments.length);\n-                    }}\n-                    style={{\n-                      background: 'transparent',\n-                      border: 'none',\n-                      borderRadius: '3px',\n-                      padding: '3px 5px',\n-                      cursor: 'pointer',\n-                      display: 'flex',\n-                      alignItems: 'center',\n-                      justifyContent: 'center',\n-                    }}\n-                  >\n-                    <FaChevronRight size={10} color={colors.text} style={{ opacity: 0.5 }} />\n-                  </button>\n-                </>\n-              )}\n               <button\n                 onClick={(e) => {\n                   e.stopPropagation();"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "sha": "f22ba0c2caf239b5d52191ae1b80783731b1e4db",
+  "node_id": "C_kwDOP2Zrm9oAKGYyMmJhMGMyY2FmMjM5YjVkNTIxOTFhZTFiODA3ODM3MzFiMWU0ZGI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:15:53Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:15:53Z"
+    },
+    "message": "Remove video file, keep screenshots only",
+    "tree": {
+      "sha": "b41784b20c40efb40a738a3104ba8494a93d8eca",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/b41784b20c40efb40a738a3104ba8494a93d8eca"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/f22ba0c2caf239b5d52191ae1b80783731b1e4db",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f22ba0c2caf239b5d52191ae1b80783731b1e4db",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f22ba0c2caf239b5d52191ae1b80783731b1e4db",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f22ba0c2caf239b5d52191ae1b80783731b1e4db/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "e5dcc21a74434799d6c4c71c5282191ff6a2b39b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/e5dcc21a74434799d6c4c71c5282191ff6a2b39b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/e5dcc21a74434799d6c4c71c5282191ff6a2b39b"
+    }
+  ],
+  "stats": {
+    "total": 0,
+    "additions": 0,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "52748c7e6caefcf6edafd846b01d17f3637f8208",
+      "filename": "assets/demo.mov",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/e5dcc21a74434799d6c4c71c5282191ff6a2b39b/assets%2Fdemo.mov",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/e5dcc21a74434799d6c4c71c5282191ff6a2b39b/assets%2Fdemo.mov",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/assets%2Fdemo.mov?ref=e5dcc21a74434799d6c4c71c5282191ff6a2b39b"
+    }
+  ]
+}

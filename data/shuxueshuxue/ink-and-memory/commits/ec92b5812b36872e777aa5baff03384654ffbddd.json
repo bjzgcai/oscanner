@@ -1,0 +1,61 @@
+{
+  "sha": "ec92b5812b36872e777aa5baff03384654ffbddd",
+  "node_id": "C_kwDOP2Zrm9oAKGVjOTJiNTgxMmIzNjg3MmU3NzdhYTViYWZmMDMzODQ2NTRmZmJkZGQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T18:06:09Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T18:06:09Z"
+    },
+    "message": "Propagate image tag to BACKEND_VERSION env",
+    "tree": {
+      "sha": "36f8f37f16c2d53a2f80625fb047652a90ff22e9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/36f8f37f16c2d53a2f80625fb047652a90ff22e9"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/ec92b5812b36872e777aa5baff03384654ffbddd",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ec92b5812b36872e777aa5baff03384654ffbddd",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ec92b5812b36872e777aa5baff03384654ffbddd",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ec92b5812b36872e777aa5baff03384654ffbddd/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "ab163943717d0f61714c9118339fdf7219ff569c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ab163943717d0f61714c9118339fdf7219ff569c",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ab163943717d0f61714c9118339fdf7219ff569c"
+    }
+  ],
+  "stats": {
+    "total": 1,
+    "additions": 1,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "93a9764aa78c267378d862eb5dda00749c66b513",
+      "filename": ".github/workflows/deploy-backend.yml",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 0,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ec92b5812b36872e777aa5baff03384654ffbddd/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ec92b5812b36872e777aa5baff03384654ffbddd/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.github%2Fworkflows%2Fdeploy-backend.yml?ref=ec92b5812b36872e777aa5baff03384654ffbddd",
+      "patch": "@@ -67,4 +67,5 @@ jobs:\n               \"docker run --name ink-backend --restart unless-stopped \\\n                 -p 127.0.0.1:8765:8765 \\\n                 -v /root/ink-and-memory/backend/data:/app/data \\\n+                -e BACKEND_VERSION=${IMAGE_TAG} \\\n                 ${IMAGE_TAG}\""
+    }
+  ]
+}

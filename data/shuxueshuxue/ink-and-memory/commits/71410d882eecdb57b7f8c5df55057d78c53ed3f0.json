@@ -1,0 +1,61 @@
+{
+  "sha": "71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+  "node_id": "C_kwDOP2Zrm9oAKDcxNDEwZDg4MmVlY2RiNTdiN2Y4YzVkZjU1MDU3ZDc4YzUzZWQzZjA",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T07:32:12Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T07:32:12Z"
+    },
+    "message": "Combine effects for better ordering: resize then restore scroll\n\nMerged two useLayoutEffect hooks into one to guarantee execution order:\n1. Resize textareas first (updates content height)\n2. Restore scroll position second (using correct heights)\n\nBenefits:\n- No race conditions between effects\n- Cleaner code (21 lines -> 16 lines)\n- Single responsibility\n- Correct ordering guaranteed",
+    "tree": {
+      "sha": "8f8a28c1d986336b9c5168fbffe5fa339f8034ae",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/8f8a28c1d986336b9c5168fbffe5fa339f8034ae"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/71410d882eecdb57b7f8c5df55057d78c53ed3f0/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "09cad170ec4d3bc28dd497667ef2116fda46520d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/09cad170ec4d3bc28dd497667ef2116fda46520d",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/09cad170ec4d3bc28dd497667ef2116fda46520d"
+    }
+  ],
+  "stats": {
+    "total": 27,
+    "additions": 11,
+    "deletions": 16
+  },
+  "files": [
+    {
+      "sha": "22d318687391f0cb6262273a620f13aecf533527",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 16,
+      "changes": 27,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/71410d882eecdb57b7f8c5df55057d78c53ed3f0/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/71410d882eecdb57b7f8c5df55057d78c53ed3f0/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+      "patch": "@@ -289,28 +289,23 @@ export default function App() {\n   const [_suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');  // Not used yet\n   const suggestionTimerRef = useRef<number | null>(null);\n \n-  // @@@ CRITICAL: Preserve scroll position across NON-TYPING re-renders\n-  // useLayoutEffect runs synchronously after DOM mutations but BEFORE browser paint\n-  // This prevents visible scroll jumps when state updates trigger re-renders\n-  // Skip during typing to let browser naturally scroll to cursor\n+  // @@@ CRITICAL: Resize textareas then restore scroll position\n+  // Order matters: resize first (changes content height), then restore scroll\n+  // Triggers: on mount (refsReady) and when cells added/deleted (cells.length)\n   useLayoutEffect(() => {\n-    if (scrollContainerRef.current && savedScrollTop.current > 0) {\n-      // Only restore if we have a saved position and container exists\n-      scrollContainerRef.current.scrollTop = savedScrollTop.current;\n-    }\n-  }, [state]);  // Only run when engine state changes (not on typing)\n-\n-  // @@@ Initialize textarea heights on mount for saved content\n-  // This runs when refs are ready AND when cells are added/deleted\n-  // Prevents the issue where loaded notes require typing in each cell to expand\n-  useLayoutEffect(() => {\n-    if (refsReady > 0) {  // Only after refs are ready\n+    // 1. Resize textareas first (if refs are ready)\n+    if (refsReady > 0) {\n       textareaRefs.current.forEach((textarea) => {\n         textarea.style.height = 'auto';\n         textarea.style.height = textarea.scrollHeight + 'px';\n       });\n     }\n-  }, [refsReady, state?.cells.length]);  // Run when refs ready OR when cells added/deleted\n+\n+    // 2. Then restore scroll position (after heights are correct)\n+    if (scrollContainerRef.current && savedScrollTop.current > 0) {\n+      scrollContainerRef.current.scrollTop = savedScrollTop.current;\n+    }\n+  }, [refsReady, state?.cells.length]);\n \n   // @@@ Trigger re-render when returning to writing view to recalculate comment positions\n   useEffect(() => {"
+    }
+  ]
+}

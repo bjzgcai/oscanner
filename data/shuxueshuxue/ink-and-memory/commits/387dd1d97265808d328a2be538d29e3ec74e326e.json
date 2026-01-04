@@ -1,0 +1,85 @@
+{
+  "sha": "387dd1d97265808d328a2be538d29e3ec74e326e",
+  "node_id": "C_kwDOP2Zrm9oAKDM4N2RkMWQ5NzI2NTgwOGQzMjhhMmJlNTM4ZDI5ZTNlYzc0ZTMyNmU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:17:23Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:17:23Z"
+    },
+    "message": "Fix stacking order: latest card on top, only lower cards pop up on hover",
+    "tree": {
+      "sha": "312e49ca9c7dd862a748291fb7fd12301d6ed077",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/312e49ca9c7dd862a748291fb7fd12301d6ed077"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/387dd1d97265808d328a2be538d29e3ec74e326e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/387dd1d97265808d328a2be538d29e3ec74e326e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/387dd1d97265808d328a2be538d29e3ec74e326e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/387dd1d97265808d328a2be538d29e3ec74e326e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e"
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "additions": 13,
+    "deletions": 7
+  },
+  "files": [
+    {
+      "sha": "09debc2bcb11022c0a37407969e53a34fd0af46f",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 7,
+      "deletions": 3,
+      "changes": 10,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/387dd1d97265808d328a2be538d29e3ec74e326e/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/387dd1d97265808d328a2be538d29e3ec74e326e/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=387dd1d97265808d328a2be538d29e3ec74e326e",
+      "patch": "@@ -116,13 +116,17 @@\n   cursor: pointer;\n }\n \n-/* @@@ Stacking: each card offset by 30% of card height */\n-.voice-comment:hover {\n+/* @@@ Stacking: latest card on top, older cards stack below */\n+/* Only non-top cards can pop up on hover */\n+.voice-comment:not(.top-card):hover {\n   z-index: 1000 !important;\n-  transform: translateY(0) !important;\n   box-shadow: 0 8px 16px rgba(0,0,0,0.15);\n }\n \n+.top-card {\n+  cursor: default;\n+}\n+\n .voice-header {\n   display: flex;\n   align-items: center;"
+    },
+    {
+      "sha": "1bcda2c149baf6b76d344f5b8dac3f28a645af9d",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 2,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/387dd1d97265808d328a2be538d29e3ec74e326e/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/387dd1d97265808d328a2be538d29e3ec74e326e/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=387dd1d97265808d328a2be538d29e3ec74e326e",
+      "patch": "@@ -101,9 +101,10 @@ function App() {\n             text={voice.text}\n             icon={voice.icon}\n             color={voice.color}\n+            isTopCard={index === voices.length - 1}\n             style={{\n-              zIndex: voices.length - index,\n-              transform: `translateY(${index * 30}%)`,\n+              zIndex: index + 1,\n+              transform: `translateY(${(voices.length - 1 - index) * 30}%)`,\n             }}\n           />\n         ))}"
+    },
+    {
+      "sha": "70011d5a75052f8f2342e49a419951e4dbcc994f",
+      "filename": "frontend/src/components/VoiceComment.tsx",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 2,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/387dd1d97265808d328a2be538d29e3ec74e326e/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/387dd1d97265808d328a2be538d29e3ec74e326e/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx?ref=387dd1d97265808d328a2be538d29e3ec74e326e",
+      "patch": "@@ -6,6 +6,7 @@ interface VoiceCommentProps {\n   text: string;\n   icon: string;\n   color: string;\n+  isTopCard: boolean;\n   style?: CSSProperties;\n }\n \n@@ -24,13 +25,13 @@ const colorMap: Record<string, { background: string; border: string }> = {\n   purple: { background: '#f3e6ff', border: '#b366ff' },\n };\n \n-export default function VoiceComment({ voice, text, icon, color, style }: VoiceCommentProps) {\n+export default function VoiceComment({ voice, text, icon, color, isTopCard, style }: VoiceCommentProps) {\n   const Icon = iconMap[icon as keyof typeof iconMap];\n   const colors = colorMap[color] || { background: '#f0f0f0', border: '#ccc' };\n \n   return (\n     <div\n-      className=\"voice-comment\"\n+      className={`voice-comment ${isTopCard ? 'top-card' : ''}`}\n       style={{\n         backgroundColor: colors.background,\n         borderColor: colors.border,"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "sha": "ad35b36acdb5957964dcb99b941a07ca20504917",
+  "node_id": "C_kwDOP2Zrm9oAKGFkMzViMzZhY2RiNTk1Nzk2NGRjYjk5Yjk0MWEwN2NhMjA1MDQ5MTc",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:38:00Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:38:00Z"
+    },
+    "message": "Remove binder aesthetic bullet",
+    "tree": {
+      "sha": "864a03eb1b3154ddac1f843713a151c34ea3db0c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/864a03eb1b3154ddac1f843713a151c34ea3db0c"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/ad35b36acdb5957964dcb99b941a07ca20504917",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ad35b36acdb5957964dcb99b941a07ca20504917",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ad35b36acdb5957964dcb99b941a07ca20504917",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ad35b36acdb5957964dcb99b941a07ca20504917/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "3b98f7a91039bd8edfa6495b4275c13df15c30ab",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3b98f7a91039bd8edfa6495b4275c13df15c30ab",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/3b98f7a91039bd8edfa6495b4275c13df15c30ab"
+    }
+  ],
+  "stats": {
+    "total": 1,
+    "additions": 0,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "8c645043b73966df3185340d05eaf1c6584e8daa",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 1,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ad35b36acdb5957964dcb99b941a07ca20504917/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ad35b36acdb5957964dcb99b941a07ca20504917/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=ad35b36acdb5957964dcb99b941a07ca20504917",
+      "patch": "@@ -14,7 +14,6 @@ Ink & Memory is a Disco Elysium–inspired journaling studio where inner voices\n - **Review your days** – Calendar and timeline use the same grouped session data, so captions, pictures, and timestamps always match. Clicking a day reloads that precise session.\n - **Compare with friends** – Pin a friend’s timeline to the right edge, complete with hint cards when they have no entries for a range of days.\n - **See your time** – All timestamps are stored in UTC but displayed in your local timezone. We also record your preferred timezone for future per-user scheduling.\n-- **Enjoy the binder aesthetic** – Notebook rings, Excalifont handwriting, Xiaolai Chinese glyphs, and subtle textures keep the UI tactile.\n \n ---\n "
+    }
+  ]
+}

@@ -977,7 +977,7 @@
 
                 // Call evaluation API
                 const response = await fetch(
-                    `${API_SERVER_URL}${apiPrefix}/evaluate/${repoData.owner}/${repoData.repo}/${contributor.login}?limit=30${enterpriseParam}&use_cache=${useCache}`,
+                    `${API_SERVER_URL}${apiPrefix}/evaluate/${repoData.owner}/${repoData.repo}/${contributor.login}?use_cache=${useCache}${enterpriseParam}`,
                     { method: 'POST' }
                 );
 

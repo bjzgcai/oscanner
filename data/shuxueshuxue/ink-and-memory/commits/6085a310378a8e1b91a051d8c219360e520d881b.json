@@ -1,0 +1,73 @@
+{
+  "sha": "6085a310378a8e1b91a051d8c219360e520d881b",
+  "node_id": "C_kwDOP2Zrm9oAKDYwODVhMzEwMzc4YThlMWI5MWEwNTFkOGMyMTkzNjBlNTIwZDg4MWI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T03:46:48Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T03:46:48Z"
+    },
+    "message": "Improve daily picture generation and timeline display\n\nBackend changes:\n- Fix database access bug in generate_daily_picture (use database.get_db())\n- Simplify image generation prompt for minimal, single-object images\n- Add deduplication logic to avoid repetitive image themes\n- Update writing suggestion prompt to be conversational and gentle\n  - Max 15 words, forward-looking nudges\n  - Focus on \"what to write next\" not analysis\n  - Examples: \"What if you...\", \"Maybe explore...\"\n\nFrontend changes:\n- Display actual note text in timeline instead of hardcoded placeholders\n- Extract text from sessions grouped by createdAt date\n- Show first sentence or 60 char preview for days with notes\n- Keep placeholder text for empty days\n\nDatabase migration:\n- Add createdAt field to all existing sessions using created_at timestamp\n- Enables per-session date tracking for timeline display\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "9772263c5a6b540822d0fa050fb4940b2f3b7c75",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/9772263c5a6b540822d0fa050fb4940b2f3b7c75"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/6085a310378a8e1b91a051d8c219360e520d881b",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6085a310378a8e1b91a051d8c219360e520d881b",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/6085a310378a8e1b91a051d8c219360e520d881b",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6085a310378a8e1b91a051d8c219360e520d881b/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "d3883af4ccff3c00b50b7d002fe55c9fda3b7e3a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/d3883af4ccff3c00b50b7d002fe55c9fda3b7e3a",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/d3883af4ccff3c00b50b7d002fe55c9fda3b7e3a"
+    }
+  ],
+  "stats": {
+    "total": 148,
+    "additions": 127,
+    "deletions": 21
+  },
+  "files": [
+    {
+      "sha": "aa21c0f6a232eb408aa3b3ac1cf9be696c76a7ed",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 77,
+      "deletions": 20,
+      "changes": 97,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/6085a310378a8e1b91a051d8c219360e520d881b/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/6085a310378a8e1b91a051d8c219360e520d881b/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=6085a310378a8e1b91a051d8c219360e520d881b",
+      "patch": "@@ -55,21 +55,41 @@ def get_writing_suggestion(text: str, user_id: int, meta_prompt: str = \"\", state\n     system_prompt = f\"\"\"You are {voice_info['name']}, an inner voice persona.\n Your role: {voice_info.get('systemPrompt', '')}\n \n-Read the user's writing and offer a brief, inspiring comment to help them continue.\n-Be encouraging, insightful, or thought-provoking (1-2 sentences).\n-Speak in the voice's characteristic style.\"\"\"\n+Read what the user just wrote and offer a VERY SHORT, gentle nudge about what to write next.\n+\n+IMPORTANT STYLE:\n+- Keep it EXTREMELY brief (1 short sentence, max 15 words)\n+- Be warm, conversational, and friendly\n+- Focus on inspiration and possibility, not criticism\n+- Suggest what to explore next, don't analyze what was written\n+- Use casual, everyday language\n+- Think: \"What if you...\" or \"Maybe explore...\" or \"How about...\"\n+\n+DO NOT:\n+- Analyze or critique their writing\n+- Summarize what they wrote\n+- Give formal feedback\n+- Be verbose or explanatory\n+\n+Examples of GOOD suggestions:\n+- \"What if you describe how that made you feel?\"\n+- \"Maybe explore what happened next?\"\n+- \"I'm curious about the details...\"\n+- \"How did that moment change things?\"\n+\n+Speak in {voice_info['name']}'s characteristic style, but keep it brief and inspiring.\"\"\"\n \n     if state_prompt:\n-        system_prompt += f\"\\n\\nContext: {state_prompt}\"\n+        system_prompt += f\"\\n\\nEmotional context: {state_prompt}\"\n \n     if meta_prompt:\n-        system_prompt += f\"\\n\\nStyle guide: {meta_prompt}\"\n+        system_prompt += f\"\\n\\nWriter's style: {meta_prompt}\"\n \n-    user_prompt = f\"\"\"The user wrote:\n+    user_prompt = f\"\"\"The user just wrote:\n \n {text}\n \n-Offer a brief, inspiring comment to help them continue writing (1-2 sentences).\"\"\"\n+Give them ONE very short, gentle nudge about what to write next (max 15 words).\"\"\"\n \n     # Generate inspiration\n     print(f\"📤 Calling agent.run() with model='claude-haiku-4.5'...\")\n@@ -415,25 +435,62 @@ def generate_daily_picture(all_notes: str, user_id: int):\n \n     import requests\n \n+    # @@@ Fetch recent prompts to avoid duplication\n+    recent_prompts_text = \"\"\n+    try:\n+        db = database.get_db()\n+        recent_prompts = db.execute(\n+            \"SELECT prompt FROM daily_pictures WHERE user_id = ? ORDER BY date DESC LIMIT 5\",\n+            (user_id,)\n+        ).fetchall()\n+        db.close()\n+\n+        if recent_prompts:\n+            recent_prompts_list = [p[0] for p in recent_prompts if p[0]]\n+            if recent_prompts_list:\n+                recent_prompts_text = \"\\n\\nPREVIOUS IMAGE DESCRIPTIONS (do NOT repeat these themes/settings/objects):\\n\"\n+                for i, prompt in enumerate(recent_prompts_list, 1):\n+                    recent_prompts_text += f\"{i}. {prompt}\\n\"\n+                recent_prompts_text += \"\\n⚠️ IMPORTANT: Create something COMPLETELY DIFFERENT from all previous descriptions above!\\n\"\n+                recent_prompts_text += \"⚠️ Use different: setting, objects, style, mood, time of day, colors, composition.\\n\"\n+                recent_prompts_text += \"⚠️ Be creative and avoid repetition!\\n\"\n+                print(f\"📋 Found {len(recent_prompts_list)} recent prompts to avoid duplication\")\n+    except Exception as e:\n+        print(f\"⚠️ Could not fetch recent prompts: {e}\")\n+\n     # Step 1: Convert notes to artistic image description using Claude Haiku\n-    description_prompt = f\"\"\"Read these personal notes and create a warm, gentle image description that captures the emotional essence.\n+    description_prompt = f\"\"\"Read these personal notes and create a MINIMAL, SIMPLE image description.\n \n Notes:\n ---\n {all_notes}\n ---\n-\n-Create a simple, heartfelt image description (2-3 sentences) that:\n-- Captures the emotional warmth and human feeling\n-- Uses natural, everyday imagery (avoid abstract or technical concepts)\n-- Specifies style: oil painting, photograph, or vintage stamp art\n-- Describes soft colors, natural lighting, simple composition\n-\n-Be warm and minimal. Focus on human emotion and simple beauty.\n-Avoid: technical terms, complex metaphors, digital aesthetics.\n-Favor: warmth, intimacy, natural scenes, gentle moments.\n-\n-Return ONLY the image description, no other text.\"\"\"\n+{recent_prompts_text}\n+Create an EXTREMELY SIMPLE image description (1-2 sentences):\n+- ONE single object or element only (e.g., \"a bird\", \"edge of a house\", \"a leaf\")\n+- Clean white or simple solid color background\n+- Simple lines, minimal details\n+- Soft, gentle colors\n+- Style: simple line drawing, watercolor, or minimalist illustration\n+\n+IMPORTANT RULES:\n+- Maximum 1-2 objects in the entire image\n+- No complex scenes, no multiple elements\n+- No detailed backgrounds\n+- Think: \"one bird on white background\" or \"corner of a window, white space\"\n+- Embrace empty space and simplicity\n+\n+Examples of GOOD descriptions:\n+- \"A single sparrow perched, simple brushstrokes, white background\"\n+- \"Corner of a window frame, soft blue, minimal details\"\n+- \"One maple leaf, watercolor, pale background\"\n+\n+Examples of BAD descriptions (TOO COMPLEX):\n+- \"A desk with notebook, tea cup, lamp, and books\" ❌\n+- \"A room with furniture and decorations\" ❌\n+- \"Multiple objects or detailed scene\" ❌\n+\n+Return ONLY the minimal image description, no other text.\"\"\"\n \n     print(\"🧠 Creating image description from notes with Claude Haiku...\")\n "
+    },
+    {
+      "sha": "ae3c93ab81398e67b4ee754969f2ead090033bb8",
+      "filename": "frontend/src/components/CollectionsView.tsx",
+      "status": "modified",
+      "additions": 50,
+      "deletions": 1,
+      "changes": 51,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/6085a310378a8e1b91a051d8c219360e520d881b/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/6085a310378a8e1b91a051d8c219360e520d881b/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx?ref=6085a310378a8e1b91a051d8c219360e520d881b",
+      "patch": "@@ -168,6 +168,34 @@ function getPlaceholderText(daysOffset: number): string {\n   return placeholders[daysOffset.toString()] || (daysOffset < 0 ? 'what was has passed' : 'yet to be written');\n }\n \n+// @@@ Extract and truncate beginning of text for timeline preview\n+function getTextPreview(text: string, maxLength: number = 60): string {\n+  if (!text || text.trim().length === 0) return '';\n+\n+  // Remove extra whitespace\n+  const cleaned = text.trim().replace(/\\s+/g, ' ');\n+\n+  // Find first sentence ending\n+  const sentenceEndings = /[.!?。！？]/;\n+  const match = cleaned.match(sentenceEndings);\n+\n+  let preview = '';\n+  if (match && match.index !== undefined && match.index < maxLength * 1.5) {\n+    // Use first sentence if it's not too long\n+    preview = cleaned.substring(0, match.index + 1);\n+  } else {\n+    // Otherwise use first N characters\n+    preview = cleaned.substring(0, maxLength);\n+  }\n+\n+  // Truncate if still too long\n+  if (preview.length > maxLength) {\n+    preview = preview.substring(0, maxLength).trim() + '...';\n+  }\n+\n+  return preview;\n+}\n+\n // @@@ Get all notes from all sessions (localStorage for guest, database for authenticated)\n async function getAllNotesFromSessions(isAuthenticated: boolean): Promise<string> {\n   const allText: string[] = [];\n@@ -228,6 +256,7 @@ function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceCo\n   const { isAuthenticated } = useAuth();\n   const [starredComments, setStarredComments] = useState<Commentor[]>([]);\n   const [allCommentsByDate, setAllCommentsByDate] = useState<Map<string, Commentor[]>>(new Map());\n+  const [textByDate, setTextByDate] = useState<Map<string, string>>(new Map());\n   const [pictures, setPictures] = useState<Array<{ date: string; base64: string; full_base64?: string; prompt: string }>>([]);\n   const [generatingForDate, setGeneratingForDate] = useState<string | null>(null);\n   const [viewingImage, setViewingImage] = useState<{ base64: string; full_base64?: string; prompt: string; date: string } | null>(null);\n@@ -244,6 +273,7 @@ function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceCo\n           const sessions = await listSessions();\n           const allStarred: Commentor[] = [];\n           const commentsByDate = new Map<string, Commentor[]>();\n+          const textByDateMap = new Map<string, string>();\n \n           for (const session of sessions) {\n             try {\n@@ -264,13 +294,30 @@ function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceCo\n                 }\n                 commentsByDate.get(date)!.push(comment);\n               });\n+\n+              // @@@ Extract text from session and group by creation date\n+              if (fullSession.editor_state?.createdAt && fullSession.editor_state?.cells) {\n+                const sessionDate = fullSession.editor_state.createdAt; // Already in YYYY-MM-DD format\n+                const text = fullSession.editor_state.cells\n+                  .filter((c: any) => c.type === 'text')\n+                  .map((c: any) => c.content)\n+                  .join(' ')\n+                  .trim();\n+\n+                if (text) {\n+                  // Append text for this date (sessions can have multiple entries per day)\n+                  const existingText = textByDateMap.get(sessionDate) || '';\n+                  textByDateMap.set(sessionDate, existingText ? `${existingText} ${text}` : text);\n+                }\n+              }\n             } catch (err) {\n               console.error(`Failed to load session ${session.id}:`, err);\n             }\n           }\n \n           setStarredComments(allStarred);\n           setAllCommentsByDate(commentsByDate);\n+          setTextByDate(textByDateMap);\n         } catch (error) {\n           console.error('Failed to load comments from database:', error);\n         }\n@@ -699,9 +746,11 @@ function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceCo\n                   <div style={{\n                     fontSize: '13px',\n                     color: '#888',\n-                    fontStyle: 'italic'\n+                    fontStyle: textByDate.get(day.date) ? 'normal' : 'italic'\n                   }}>\n                     {isGenerating ? 'Generating...' :\n+                     textByDate.get(day.date) ?\n+                       getTextPreview(textByDate.get(day.date)!) :\n                      dayData?.comments?.length ?\n                        `${dayData.comments.length} ${dayData.comments.length === 1 ? 'entry' : 'entries'}` :\n                        getPlaceholderText(day.daysOffset)}"
+    }
+  ]
+}

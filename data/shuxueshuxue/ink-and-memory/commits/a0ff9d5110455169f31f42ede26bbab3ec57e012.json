@@ -1,0 +1,61 @@
+{
+  "sha": "a0ff9d5110455169f31f42ede26bbab3ec57e012",
+  "node_id": "C_kwDOP2Zrm9oAKGEwZmY5ZDUxMTA0NTUxNjlmMzFmNDJlZGUyNmJiYWIzZWM1N2UwMTI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:32:56Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:32:56Z"
+    },
+    "message": "Fix comment positioning bug on page refresh\n\nRoot cause: StateChooser height changes when state loads\n- On initial render: no selection → expanded (tall)\n- After state loads from storage: collapsed (short)\n- Height difference (~40-60px) caused layout shift\n- Comments positioned based on initial tall layout\n- After collapse, content shifts up but positions don't update\n- Clicking textarea triggered re-render → positions fixed\n\nSolution: Add selectedState to commentGroups dependency array\n- Positions now recalculate when StateChooser collapses\n- Fixes misalignment on page refresh without click\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "05c84021558783d00a1249be98b1064180788e41",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/05c84021558783d00a1249be98b1064180788e41"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/a0ff9d5110455169f31f42ede26bbab3ec57e012",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a0ff9d5110455169f31f42ede26bbab3ec57e012",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/a0ff9d5110455169f31f42ede26bbab3ec57e012",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a0ff9d5110455169f31f42ede26bbab3ec57e012/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "83ef7a4dd0f647a1d068e941e0bb006342a9942f",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/83ef7a4dd0f647a1d068e941e0bb006342a9942f",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/83ef7a4dd0f647a1d068e941e0bb006342a9942f"
+    }
+  ],
+  "stats": {
+    "total": 15,
+    "additions": 2,
+    "deletions": 13
+  },
+  "files": [
+    {
+      "sha": "817ae616d80d2b7c7c123003a135778ef8075bad",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 13,
+      "changes": 15,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/a0ff9d5110455169f31f42ede26bbab3ec57e012/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/a0ff9d5110455169f31f42ede26bbab3ec57e012/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=a0ff9d5110455169f31f42ede26bbab3ec57e012",
+      "patch": "@@ -1,4 +1,4 @@\n-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';\n+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';\n import { EditorEngine } from './engine/EditorEngine';\n import type { EditorState, Commentor, TextCell } from './engine/EditorEngine';\n import { ChatWidget } from './engine/ChatWidget';\n@@ -301,7 +301,6 @@ export default function App() {\n   // @@@ Force re-render when refs are ready\n   const [refsReady, setRefsReady] = useState(0);\n   const refsReadyTriggered = useRef(false);\n-  const layoutStableTriggered = useRef(false);\n \n   // @@@ Comment alignment state\n   const [commentsAligned, setCommentsAligned] = useState(false);\n@@ -310,16 +309,6 @@ export default function App() {\n   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);\n   const [commentChatProcessing, setCommentChatProcessing] = useState<Set<string>>(new Set());\n \n-  // @@@ Force position recalculation after layout settles (fixes refresh bug)\n-  useLayoutEffect(() => {\n-    if (refsReady > 0 && !layoutStableTriggered.current) {\n-      layoutStableTriggered.current = true;\n-      // Trigger another increment after layout completes\n-      // This ensures positions are calculated AFTER all textarea heights are adjusted\n-      setRefsReady(prev => prev + 1);\n-    }\n-  }, [refsReady]);\n-\n   // @@@ Trigger re-render when returning to writing view to recalculate comment positions\n   useEffect(() => {\n     if (currentView === 'writing') {\n@@ -642,7 +631,7 @@ export default function App() {\n     });\n \n     return groups;\n-  }, [state?.commentors, state, refsReady]);\n+  }, [state?.commentors, state, refsReady, selectedState]);\n \n   useEffect(() => {\n     if (!commentGroups) return;"
+    }
+  ]
+}

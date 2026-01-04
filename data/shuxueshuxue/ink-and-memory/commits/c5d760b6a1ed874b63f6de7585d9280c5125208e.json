@@ -1,0 +1,157 @@
+{
+  "sha": "c5d760b6a1ed874b63f6de7585d9280c5125208e",
+  "node_id": "C_kwDOP2Zrm9oAKGM1ZDc2MGI2YTFlZDg3NGI2M2Y2ZGU3NTg1ZDkyODBjNTEyNTIwOGU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-30T02:41:21Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-30T02:41:21Z"
+    },
+    "message": "Fix critical Unicode normalization bug in phrase matching\n\nThe phrase matching was failing silently due to curly quote character\nmismatch. Editor uses curly apostrophes (U+2019) while backend returns\nstraight quotes (U+0027). Regex had corrupted characters (two straight\nquotes instead of curly quotes), causing normalization to be a no-op.\n\nKey changes:\n- Replace character literals with Unicode escapes in textNormalize.ts\n- Add debugLogger infrastructure for structured logging\n- Update energy threshold from 40 to 50\n- Integrate normalized matching across all phrase lookups\n- Add backend prompt rules to avoid highlighting quoted content\n- Clean up debug console.logs from VoiceSettings\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "d73c42f2408ebc4d137dfcb8d7d1a424c7ef8c42",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/d73c42f2408ebc4d137dfcb8d7d1a424c7ef8c42"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/c5d760b6a1ed874b63f6de7585d9280c5125208e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c5d760b6a1ed874b63f6de7585d9280c5125208e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/c5d760b6a1ed874b63f6de7585d9280c5125208e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c5d760b6a1ed874b63f6de7585d9280c5125208e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "62ab025479cd7c39442d80a1b62feebfe3d34620",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/62ab025479cd7c39442d80a1b62feebfe3d34620",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/62ab025479cd7c39442d80a1b62feebfe3d34620"
+    }
+  ],
+  "stats": {
+    "total": 333,
+    "additions": 291,
+    "deletions": 42
+  },
+  "files": [
+    {
+      "sha": "67ab3aadf7a3cd591d9f0c654c6df45379956547",
+      "filename": "backend/stateless_analyzer.py",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 4,
+      "changes": 13,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c5d760b6a1ed874b63f6de7585d9280c5125208e/backend%2Fstateless_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c5d760b6a1ed874b63f6de7585d9280c5125208e/backend%2Fstateless_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateless_analyzer.py?ref=c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "patch": "@@ -7,7 +7,7 @@\n import config\n \n class VoiceTrigger(BaseModel):\n-    phrase: str = Field(description=\"Exact trigger phrase from text (verbatim, 2-6 words)\")\n+    phrase: str = Field(description=\"Exact trigger phrase from text (verbatim, 2-4 words, avoid punctuation)\")\n     voice: str = Field(description=\"Voice archetype name from the available list\")\n     comment: str = Field(description=\"What this voice is saying (as if speaking)\")\n     icon: str = Field(description=\"Icon identifier\")\n@@ -69,19 +69,24 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],\n {existing_summary}\n \n Find ONE NEW voice to comment:\n-1. Extract a SHORT phrase (2-6 words) that triggered it - MUST be EXACT text from above\n+1. Extract a SHORT phrase (2-4 words) that triggered it - MUST be EXACT text from above\n 2. Choose a voice persona from the available list\n 3. Write what this voice is saying (1-2 sentences)\n \n-RULES:\n+CRITICAL RULES:\n - Return ONLY ONE comment\n - DO NOT repeat any applied comments\n - DO NOT choose phrases that overlap or intersect with already highlighted phrases\n - Your chosen phrase must be completely separate from existing highlights\n - DO NOT CREATE NEW VOICE NAMES - Only use from the available list\n - Return null if nothing is worth commenting on\n-- Phrase MUST be EXACT substring from text\n+- Phrase MUST be EXACT substring from text - verify by checking character-by-character\n+- IGNORE text inside quotation marks (\"...\" or '...') - only highlight the author's own words\n+- DO NOT extract phrases from quoted responses, references, or examples\n+- Only comment on what the AUTHOR wrote, not what they are quoting or citing\n - Only comment on complete sentences (ending with .!?。！？)\n+- Prefer SHORT highlights without punctuation (e.g., \"feel anxious\" not \"I feel anxious.\")\n+- Keep highlights tight and focused - avoid including sentence endings\n - Write in the SAME LANGUAGE as the text\"\"\"\n \n     # @@@ Add meta prompt if available"
+    },
+    {
+      "sha": "7b88a0fbef579c9f35241c5568ad2acceef04a36",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 5,
+      "changes": 14,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "patch": "@@ -25,6 +25,7 @@ import { getVoices, getMetaPrompt, getStateConfig } from './utils/voiceStorage';\n import { getDefaultVoices, chatWithVoice } from './api/voiceApi';\n import { useMobile } from './utils/mobileDetect';\n import { CommentGroupCard } from './components/CommentCard';\n+import { findNormalizedPhrase } from './utils/textNormalize';\n \n // @@@ Left Toolbar Component - floating toolbelt within left margin\n function LeftToolbar({\n@@ -461,7 +462,7 @@ export default function App() {\n       state.commentors\n         .filter(c => c.appliedAt)\n         .forEach(commentor => {\n-          const index = text.toLowerCase().indexOf(commentor.phrase.toLowerCase());\n+          const index = findNormalizedPhrase(text, commentor.phrase);\n           if (index === -1) return;\n \n           const visualLineNumber = charToVisualLine[index] || 0;\n@@ -578,7 +579,7 @@ export default function App() {\n     // Find comment at cursor position within this cell's text\n     let foundComment: Commentor | null = null;\n     for (const comment of appliedComments) {\n-      const index = cellText.toLowerCase().indexOf(comment.phrase.toLowerCase());\n+      const index = findNormalizedPhrase(cellText, comment.phrase);\n       if (index !== -1) {\n         const start = index;\n         const end = index + comment.phrase.length;\n@@ -674,8 +675,11 @@ export default function App() {\n   }, []);\n \n   const handlePaste = useCallback((cellId: string, e: React.ClipboardEvent<HTMLTextAreaElement>) => {\n+    // @@@ Store element reference (not value!) - browser inserts paste AFTER this handler\n+    const textarea = e.currentTarget;\n     setTimeout(() => {\n-      const newText = e.currentTarget.value;\n+      // @@@ Now read value - paste has been inserted by browser\n+      const newText = textarea.value;\n       setLocalTexts(prev => {\n         const next = new Map(prev);\n         next.set(cellId, newText);\n@@ -1009,7 +1013,7 @@ export default function App() {\n     // Find highlights in this specific text\n     const highlights: Array<{ start: number; end: number; comment: Commentor }> = [];\n     appliedComments.forEach(comment => {\n-      const index = text.toLowerCase().indexOf(comment.phrase.toLowerCase());\n+      const index = findNormalizedPhrase(text, comment.phrase);\n       if (index !== -1) {\n         highlights.push({\n           start: index,\n@@ -1069,7 +1073,7 @@ export default function App() {\n \n   const lastEntry = state.weightPath[state.weightPath.length - 1];\n   const currentEnergy = lastEntry?.energy || 0;\n-  const usedEnergy = state.commentors.filter(c => c.appliedAt).length * 40;\n+  const usedEnergy = state.commentors.filter(c => c.appliedAt).length * 50;\n   const unusedEnergy = currentEnergy - usedEnergy;\n   const appliedComments = state.commentors.filter(c => c.appliedAt);\n "
+    },
+    {
+      "sha": "a2cb2c457b35d43971ec93d9f4175329e3da5843",
+      "filename": "frontend/src/components/CollectionsView.tsx",
+      "status": "modified",
+      "additions": 35,
+      "deletions": 1,
+      "changes": 36,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx?ref=c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "patch": "@@ -1,5 +1,6 @@\n import { useState, useEffect, useRef } from 'react';\n import type { Commentor } from '../engine/EditorEngine';\n+import { findNormalizedPhrase } from '../utils/textNormalize';\n \n // @@@ TypeScript interfaces\n interface TimelineDay {\n@@ -25,6 +26,39 @@ export default function CollectionsView() {\n   );\n }\n \n+// @@@ Extract complete sentence containing a phrase\n+function extractCompleteSentence(text: string, phrase: string): string {\n+  // Find phrase position (with normalization)\n+  const phraseIndex = findNormalizedPhrase(text, phrase);\n+  if (phraseIndex === -1) {\n+    return phrase; // Fallback if phrase not found\n+  }\n+\n+  // Sentence ending markers\n+  const sentenceEndings = '.!?。！？\\n';\n+\n+  // Find sentence start - go backwards to find previous sentence ending or start of text\n+  let sentenceStart = 0;\n+  for (let i = phraseIndex - 1; i >= 0; i--) {\n+    if (sentenceEndings.includes(text[i])) {\n+      sentenceStart = i + 1;\n+      break;\n+    }\n+  }\n+\n+  // Find sentence end - go forwards to find next sentence ending\n+  let sentenceEnd = text.length;\n+  for (let i = phraseIndex + phrase.length; i < text.length; i++) {\n+    if (sentenceEndings.includes(text[i])) {\n+      sentenceEnd = i + 1;\n+      break;\n+    }\n+  }\n+\n+  // Extract sentence and trim whitespace\n+  return text.slice(sentenceStart, sentenceEnd).trim();\n+}\n+\n // @@@ Helper to get icon emoji\n function getIconForVoice(icon: string): string {\n   const iconMap: Record<string, string> = {\n@@ -686,7 +720,7 @@ function TimelinePage() {\n                               overflowWrap: 'anywhere',\n                               minWidth: 0\n                             }}>\n-                              \"{comment.phrase}\"\n+                              \"{extractCompleteSentence(comment.textSnapshot || '', comment.phrase)}\"\n                             </div>\n                             <div style={{\n                               fontSize: '13px',"
+    },
+    {
+      "sha": "02123e37fdc271cf28926c4e00793a39ef352a15",
+      "filename": "frontend/src/components/VoiceSettings.tsx",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 4,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Fcomponents%2FVoiceSettings.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Fcomponents%2FVoiceSettings.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoiceSettings.tsx?ref=c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "patch": "@@ -82,15 +82,11 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {\n   };\n \n   const handleDefault = () => {\n-    console.log('🔄 Use Default clicked');\n-    console.log('Current voices:', voices);\n-    console.log('Default voices:', defaultVoices);\n     clearVoices();\n     localStorage.removeItem('meta-prompt');\n     localStorage.removeItem('state-config');\n     // Deep copy to force React to re-render\n     const freshDefaults = JSON.parse(JSON.stringify(defaultVoices));\n-    console.log('Fresh defaults:', freshDefaults);\n     setVoices(freshDefaults);\n     setMetaPrompt(getMetaPrompt());\n     setStateConfig(getStateConfig());"
+    },
+    {
+      "sha": "93a1fa1947a9730c48bb6bdeb5c4cc807407f6d1",
+      "filename": "frontend/src/config/voices.ts",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 13,
+      "changes": 13,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/62ab025479cd7c39442d80a1b62feebfe3d34620/frontend%2Fsrc%2Fconfig%2Fvoices.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/62ab025479cd7c39442d80a1b62feebfe3d34620/frontend%2Fsrc%2Fconfig%2Fvoices.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fconfig%2Fvoices.ts?ref=62ab025479cd7c39442d80a1b62feebfe3d34620",
+      "patch": "@@ -1,13 +0,0 @@\n-export const VOICE_TRIGGERS = [\n-  { phrase: 'i feel', voice: 'Logic', comment: 'Feelings are just chemical reactions.', color: 'blue', icon: 'brain' },\n-  { phrase: 'i think', voice: 'Emotion', comment: 'But what does your heart say?', color: 'pink', icon: 'heart' },\n-  { phrase: 'should i', voice: 'Doubt', comment: 'Are you sure you even want to know?', color: 'yellow', icon: 'question' },\n-] as const;\n-\n-export const MEMORY_VOICE = {\n-  voice: 'Memory',\n-  comment: 'This reminds me of something you wrote before...',\n-  color: 'green',\n-  icon: 'cloud',\n-  minLength: 50,\n-} as const;"
+    },
+    {
+      "sha": "d2103d9807a07044544e1811079f0117ab9d4992",
+      "filename": "frontend/src/engine/EditorEngine.ts",
+      "status": "modified",
+      "additions": 60,
+      "deletions": 13,
+      "changes": 73,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fengine%2FEditorEngine.ts?ref=c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "patch": "@@ -2,6 +2,9 @@\n  * Clean editor engine based on trace-based energy model\n  */\n \n+import { findNormalizedPhrase } from '../utils/textNormalize';\n+import { debugLogger } from '../utils/debugLogger';\n+\n // @@@ Core data model - cells + commentors + tasks + WeightPath\n export interface EditorState {\n   cells: Cell[];\n@@ -110,7 +113,7 @@ export function getCompletedSentences(text: string): string {\n export class EditorEngine {\n   private state: EditorState;\n   private usedEnergy: number = 0;\n-  private threshold: number = 40;\n+  private threshold: number = 50;\n   private commentorWaitlist: Commentor[] = [];\n   private sentCache: Map<string, string> = new Map(); // Track sent sentences -> commentor hash\n   private onStateChange?: (state: EditorState) => void;\n@@ -170,7 +173,9 @@ export class EditorEngine {\n \n     // @@@ If comments were skipped, invalidate cache to allow fresh request\n     if (result.skippedAny && !result.appliedAny) {\n-      console.log(`🔄 Comments were skipped, invalidating cache to allow fresh request`);\n+      debugLogger.log('skip', 'Comments were skipped, invalidating cache to allow fresh request', {\n+        waitlistLength: this.commentorWaitlist.length\n+      });\n       const completedSentences = getCompletedSentences(combinedText);\n       if (completedSentences) {\n         this.sentCache.delete(completedSentences);\n@@ -238,15 +243,32 @@ export class EditorEngine {\n \n       // Check if text still matches (current text starts with snapshot)\n       if (!text.startsWith(commentor.textSnapshot)) {\n-        console.log(`⏭️ Skipped outdated commentor: ${commentor.voice}`);\n+        debugLogger.log('skip', `Skipped outdated commentor: ${commentor.voice}`, {\n+          voice: commentor.voice,\n+          phrase: commentor.phrase,\n+          reason: 'text snapshot mismatch'\n+        });\n         skippedAny = true;\n         continue;\n       }\n \n-      // @@@ Check for overlap with existing highlights\n-      const phraseIndex = text.toLowerCase().indexOf(commentor.phrase.toLowerCase());\n+      // @@@ Check for overlap with existing highlights (with normalized matching)\n+      const phraseIndex = findNormalizedPhrase(text, commentor.phrase);\n       if (phraseIndex === -1) {\n-        console.log(`⏭️ Skipped commentor (phrase not found): ${commentor.voice}`);\n+        // @@@ Deep debugging - show character codes\n+        const phraseChars = Array.from(commentor.phrase.slice(0, 30)).map(c => `${c}(${c.charCodeAt(0)})`).join(' ');\n+        const textSnippet = text.includes('transcend') ? text.substring(text.indexOf('transcend'), text.indexOf('transcend') + 50) : '';\n+        const textChars = textSnippet ? Array.from(textSnippet.slice(0, 30)).map(c => `${c}(${c.charCodeAt(0)})`).join(' ') : '';\n+\n+        debugLogger.log('phrase_not_found', `Skipped commentor (phrase not found): ${commentor.voice}`, {\n+          voice: commentor.voice,\n+          phrase: commentor.phrase,\n+          phraseCharCodes: phraseChars,\n+          textLength: text.length,\n+          fullText: text,\n+          textSnippet: textSnippet,\n+          textCharCodes: textChars\n+        });\n         skippedAny = true;\n         continue;\n       }\n@@ -257,7 +279,7 @@ export class EditorEngine {\n       // Check overlap with all applied commentors\n       let hasOverlap = false;\n       for (const applied of this.state.commentors.filter(c => c.appliedAt)) {\n-        const appliedIndex = text.toLowerCase().indexOf(applied.phrase.toLowerCase());\n+        const appliedIndex = findNormalizedPhrase(text, applied.phrase);\n         if (appliedIndex === -1) continue;\n \n         const appliedStart = appliedIndex;\n@@ -266,7 +288,14 @@ export class EditorEngine {\n         // Check if ranges overlap: [phraseStart, phraseEnd) overlaps with [appliedStart, appliedEnd)\n         if (phraseStart < appliedEnd && phraseEnd > appliedStart) {\n           hasOverlap = true;\n-          console.log(`⚠️ Skipped overlapping commentor: \"${commentor.phrase}\" overlaps with \"${applied.phrase}\"`);\n+          debugLogger.log('overlap', `Skipped overlapping commentor: \"${commentor.phrase}\" overlaps with \"${applied.phrase}\"`, {\n+            newVoice: commentor.voice,\n+            newPhrase: commentor.phrase,\n+            newRange: [phraseStart, phraseEnd],\n+            existingVoice: applied.voice,\n+            existingPhrase: applied.phrase,\n+            existingRange: [appliedStart, appliedEnd]\n+          });\n           break;\n         }\n       }\n@@ -281,8 +310,15 @@ export class EditorEngine {\n       this.state.commentors.push(commentor);\n       this.usedEnergy += this.threshold;\n       appliedAny = true;\n-      console.log(`✅ Applied commentor: ${commentor.voice} on \"${commentor.phrase}\"`);\n-      console.log(`   Energy: used ${this.usedEnergy}/${currentEnergy} (${currentEnergy - this.usedEnergy} remaining)`);\n+      debugLogger.log('apply', `Applied commentor: ${commentor.voice} on \"${commentor.phrase}\"`, {\n+        voice: commentor.voice,\n+        phrase: commentor.phrase,\n+        comment: commentor.comment,\n+        usedEnergy: this.usedEnergy,\n+        totalEnergy: currentEnergy,\n+        remainingEnergy: currentEnergy - this.usedEnergy,\n+        waitlistRemaining: this.commentorWaitlist.length\n+      });\n     }\n \n     if (appliedAny) {\n@@ -356,11 +392,19 @@ export class EditorEngine {\n           textSnapshot: text\n         };\n         this.commentorWaitlist.push(commentor);\n-        console.log(`📥 Added 1 commentor to waitlist: ${commentor.voice}`);\n+        debugLogger.log('waitlist', `Added 1 commentor to waitlist: ${commentor.voice}`, {\n+          voice: commentor.voice,\n+          phrase: commentor.phrase,\n+          comment: commentor.comment,\n+          waitlistLength: this.commentorWaitlist.length\n+        });\n       } else {\n-        console.log(`📭 No new commentor from backend`);\n+        debugLogger.log('request', 'No new commentor from backend', {\n+          appliedCount: this.state.commentors.filter(c => c.appliedAt).length\n+        });\n       }\n     } catch (error) {\n+      debugLogger.log('request', 'Analysis failed', { error: String(error) });\n       console.error('Analysis failed:', error);\n     } finally {\n       this.isRequesting = false;\n@@ -393,7 +437,10 @@ export class EditorEngine {\n \n     // @@@ If comments were skipped but not applied, invalidate cache\n     if (result.skippedAny && !result.appliedAny) {\n-      console.log(`🔄 All pending comments were skipped, invalidating cache`);\n+      debugLogger.log('skip', 'All pending comments were skipped, invalidating cache', {\n+        waitlistLength: this.commentorWaitlist.length,\n+        willRetry: true\n+      });\n       const completedSentences = getCompletedSentences(text);\n       if (completedSentences) {\n         this.sentCache.delete(completedSentences);"
+    },
+    {
+      "sha": "e0abfbf6ea443c2ec2e9a61883b9ce2a10053f31",
+      "filename": "frontend/src/extensions/VoiceHighlight.ts",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 2,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts?ref=c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "patch": "@@ -1,6 +1,7 @@\n import { Extension } from '@tiptap/core';\n import { Plugin, PluginKey } from '@tiptap/pm/state';\n import { Decoration, DecorationSet } from '@tiptap/pm/view';\n+import { findNormalizedPhrase } from '../utils/textNormalize';\n \n export interface VoiceTrigger {\n   phrase: string;\n@@ -98,10 +99,10 @@ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n \n function findHighlights(doc: any, triggers: VoiceTrigger[]): DecorationSet {\n   const decorations: Decoration[] = [];\n-  const text = doc.textContent.toLowerCase();\n+  const text = doc.textContent;\n \n   triggers.forEach(({ phrase, color }) => {\n-    const pos = text.indexOf(phrase.toLowerCase());\n+    const pos = findNormalizedPhrase(text, phrase);\n \n     if (pos !== -1) {\n       // Convert text position to document position"
+    },
+    {
+      "sha": "2ac3bc5a333a50a5dec6e96b5505ccfc62a3abab",
+      "filename": "frontend/src/utils/debugLogger.ts",
+      "status": "added",
+      "additions": 148,
+      "deletions": 0,
+      "changes": 148,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Futils%2FdebugLogger.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Futils%2FdebugLogger.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Futils%2FdebugLogger.ts?ref=c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "patch": "@@ -0,0 +1,148 @@\n+/**\n+ * Centralized debug logger for highlight application\n+ * Collects all events in a structured format for easy debugging\n+ */\n+\n+interface LogEntry {\n+  timestamp: number;\n+  category: 'waitlist' | 'skip' | 'overlap' | 'apply' | 'phrase_not_found' | 'energy' | 'collision' | 'request';\n+  message: string;\n+  data?: any;\n+}\n+\n+class DebugLogger {\n+  private logs: LogEntry[] = [];\n+  private maxLogs: number = 200;\n+  private enabled: boolean = true;\n+\n+  log(category: LogEntry['category'], message: string, data?: any) {\n+    if (!this.enabled) return;\n+\n+    this.logs.push({\n+      timestamp: Date.now(),\n+      category,\n+      message,\n+      data\n+    });\n+\n+    // Keep only last N logs\n+    if (this.logs.length > this.maxLogs) {\n+      this.logs = this.logs.slice(-this.maxLogs);\n+    }\n+  }\n+\n+  // @@@ Main export function - get formatted debug string\n+  getDebugString(): string {\n+    const startTime = this.logs[0]?.timestamp || Date.now();\n+\n+    let output = '='.repeat(80) + '\\n';\n+    output += 'HIGHLIGHT APPLICATION DEBUG LOG\\n';\n+    output += `Total entries: ${this.logs.length}\\n`;\n+    output += `Time range: ${new Date(startTime).toLocaleTimeString()} - ${new Date(this.logs[this.logs.length - 1]?.timestamp || Date.now()).toLocaleTimeString()}\\n`;\n+    output += '='.repeat(80) + '\\n\\n';\n+\n+    // Group by category\n+    const byCategory = this.logs.reduce((acc, log) => {\n+      if (!acc[log.category]) acc[log.category] = [];\n+      acc[log.category].push(log);\n+      return acc;\n+    }, {} as Record<string, LogEntry[]>);\n+\n+    // Category icons\n+    const icons = {\n+      request: '📤',\n+      waitlist: '⏳',\n+      skip: '⏭️',\n+      overlap: '⚠️',\n+      apply: '✅',\n+      phrase_not_found: '❌',\n+      energy: '⚡',\n+      collision: '💥'\n+    };\n+\n+    // Print by category\n+    for (const [category, entries] of Object.entries(byCategory)) {\n+      const icon = icons[category as keyof typeof icons] || '📝';\n+      output += `\\n${icon} ${category.toUpperCase()} (${entries.length} entries)\\n`;\n+      output += '-'.repeat(80) + '\\n';\n+\n+      entries.forEach((entry, idx) => {\n+        const relativeTime = ((entry.timestamp - startTime) / 1000).toFixed(2);\n+        output += `[+${relativeTime}s] ${entry.message}\\n`;\n+\n+        if (entry.data) {\n+          const dataStr = typeof entry.data === 'string'\n+            ? entry.data\n+            : JSON.stringify(entry.data, null, 2);\n+          output += `  Data: ${dataStr}\\n`;\n+        }\n+\n+        if (idx < entries.length - 1) output += '\\n';\n+      });\n+    }\n+\n+    output += '\\n' + '='.repeat(80) + '\\n';\n+    output += 'END DEBUG LOG\\n';\n+    output += '='.repeat(80) + '\\n';\n+\n+    return output;\n+  }\n+\n+  // Print to console\n+  dump() {\n+    console.log(this.getDebugString());\n+  }\n+\n+  // Copy to clipboard (if available)\n+  async copyToClipboard() {\n+    const text = this.getDebugString();\n+    try {\n+      await navigator.clipboard.writeText(text);\n+      console.log('✅ Debug log copied to clipboard!');\n+      return true;\n+    } catch (err) {\n+      console.error('Failed to copy to clipboard:', err);\n+      console.log('Debug log:');\n+      this.dump();\n+      return false;\n+    }\n+  }\n+\n+  clear() {\n+    this.logs = [];\n+    console.log('🗑️ Debug log cleared');\n+  }\n+\n+  enable() {\n+    this.enabled = true;\n+  }\n+\n+  disable() {\n+    this.enabled = false;\n+  }\n+\n+  getStats() {\n+    const byCategory = this.logs.reduce((acc, log) => {\n+      acc[log.category] = (acc[log.category] || 0) + 1;\n+      return acc;\n+    }, {} as Record<string, number>);\n+\n+    return {\n+      total: this.logs.length,\n+      byCategory,\n+      enabled: this.enabled\n+    };\n+  }\n+}\n+\n+// Global singleton\n+export const debugLogger = new DebugLogger();\n+\n+// Expose to window for easy console access\n+if (typeof window !== 'undefined') {\n+  (window as any).debugLogger = debugLogger;\n+  (window as any).dumpLogs = () => debugLogger.dump();\n+  (window as any).copyLogs = () => debugLogger.copyToClipboard();\n+  (window as any).clearLogs = () => debugLogger.clear();\n+  (window as any).logStats = () => console.table(debugLogger.getStats());\n+}"
+    },
+    {
+      "sha": "fcb8c0436458615b8c2e233502144ec1783360bd",
+      "filename": "frontend/src/utils/textNormalize.ts",
+      "status": "added",
+      "additions": 27,
+      "deletions": 0,
+      "changes": 27,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Futils%2FtextNormalize.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c5d760b6a1ed874b63f6de7585d9280c5125208e/frontend%2Fsrc%2Futils%2FtextNormalize.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Futils%2FtextNormalize.ts?ref=c5d760b6a1ed874b63f6de7585d9280c5125208e",
+      "patch": "@@ -0,0 +1,27 @@\n+/**\n+ * Normalize text for matching - handles punctuation variations\n+ * Converts smart quotes, em-dashes, etc. to standard ASCII equivalents\n+ */\n+export function normalizeForMatching(text: string): string {\n+  return text\n+    .toLowerCase()\n+    // Smart quotes to straight quotes\n+    .replace(/[\\u201C\\u201D]/g, '\"')    // Smart double quotes (U+201C, U+201D) → straight double quote\n+    .replace(/[\\u2018\\u2019]/g, \"'\")    // Smart single quotes (U+2018, U+2019) → straight single quote\n+    // Dashes to hyphen\n+    .replace(/[\\u2014\\u2013]/g, '-')    // Em-dash (U+2014), en-dash (U+2013) → hyphen\n+    // Ellipsis to three dots\n+    .replace(/\\u2026/g, '...');          // Ellipsis (U+2026) → three dots\n+}\n+\n+/**\n+ * Find phrase in text with normalization\n+ * Returns the index in the original text, or -1 if not found\n+ */\n+export function findNormalizedPhrase(text: string, phrase: string): number {\n+  const normalizedText = normalizeForMatching(text);\n+  const normalizedPhrase = normalizeForMatching(phrase);\n+\n+  const index = normalizedText.indexOf(normalizedPhrase);\n+  return index;\n+}"
+    }
+  ]
+}

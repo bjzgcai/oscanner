@@ -1,0 +1,42 @@
+{
+  "sha": "80c23a44343401ce4ca21417ec9627fb8aff5021",
+  "node_id": "C_kwDOP2Zrm9oAKDgwYzIzYTQ0MzQzNDAxY2U0Y2EyMTQxN2VjOTYyN2ZiOGFmZjUwMjE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T19:50:03Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T19:50:03Z"
+    },
+    "message": "Clean stale frontend dir before deploy",
+    "tree": {
+      "sha": "33b6be20b4092501b766d37cbed3eb8f82f355b1",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/33b6be20b4092501b766d37cbed3eb8f82f355b1"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/80c23a44343401ce4ca21417ec9627fb8aff5021",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/80c23a44343401ce4ca21417ec9627fb8aff5021",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/80c23a44343401ce4ca21417ec9627fb8aff5021",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/80c23a44343401ce4ca21417ec9627fb8aff5021/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "6c40b39ecf3e9ee480646fcd0501acd99f29e2ca",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6c40b39ecf3e9ee480646fcd0501acd99f29e2ca",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/6c40b39ecf3e9ee480646fcd0501acd99f29e2ca"
+    }
+  ]
+}

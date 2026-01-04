@@ -1,0 +1,61 @@
+{
+  "sha": "200a93c2aa475a059eb4bd07db346c1d0e05ec8e",
+  "node_id": "C_kwDOP2Zrm9oAKDIwMGE5M2MyYWE0NzVhMDU5ZWI0YmQwN2RiMzQ2YzFkMGUwNWVjOGU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-01T15:55:50Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-01T15:55:50Z"
+    },
+    "message": "fix comment",
+    "tree": {
+      "sha": "1ea134bd85759375b5bd289b3767d16cc2b673db",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/1ea134bd85759375b5bd289b3767d16cc2b673db"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/200a93c2aa475a059eb4bd07db346c1d0e05ec8e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/200a93c2aa475a059eb4bd07db346c1d0e05ec8e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/200a93c2aa475a059eb4bd07db346c1d0e05ec8e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/200a93c2aa475a059eb4bd07db346c1d0e05ec8e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "c471d6501dbb94474f69391b8465cb68485e3eb2",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c471d6501dbb94474f69391b8465cb68485e3eb2",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/c471d6501dbb94474f69391b8465cb68485e3eb2"
+    }
+  ],
+  "stats": {
+    "total": 5,
+    "additions": 1,
+    "deletions": 4
+  },
+  "files": [
+    {
+      "sha": "b5bf07b1fcfc3cb2579c4289ee182d5a68a65664",
+      "filename": "backend/stateless_analyzer.py",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 4,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/200a93c2aa475a059eb4bd07db346c1d0e05ec8e/backend%2Fstateless_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/200a93c2aa475a059eb4bd07db346c1d0e05ec8e/backend%2Fstateless_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateless_analyzer.py?ref=200a93c2aa475a059eb4bd07db346c1d0e05ec8e",
+      "patch": "@@ -112,9 +112,6 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],\n - DO NOT suggest any rejected phrases: {overlapped_phrases}\n - DO NOT CREATE NEW VOICE NAMES - Only use from the available list\n - Return null if nothing is worth commenting on\n-- IGNORE text inside quotation marks (\"...\" or '...') - only highlight the author's own words\n-- Only comment on complete sentences (ending with .!?。！？)\n-- Prefer SHORT highlights without punctuation (e.g., \"feel anxious\" not \"I feel anxious.\")\n - Write in the SAME LANGUAGE as the text\"\"\"\n \n     # @@@ Add meta prompt if available\n@@ -167,4 +164,4 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],\n         return {\"voices\": [voice], \"new_voices_added\": 1}\n     else:\n         print(\"📭 No new comment\")\n-        return {\"voices\": [], \"new_voices_added\": 0}\n\\ No newline at end of file\n+        return {\"voices\": [], \"new_voices_added\": 0}"
+    }
+  ]
+}

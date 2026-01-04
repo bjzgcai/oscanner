@@ -1,0 +1,95 @@
+{
+  "sha": "01fbaae9ad3932467081725a4c16ad0de3b12678",
+  "node_id": "C_kwDOP2Zrm9oAKDAxZmJhYWU5YWQzOTMyNDY3MDgxNzI1YTRjMTZhZDBkZTNiMTI2Nzg",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T09:36:18Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T09:36:18Z"
+    },
+    "message": "Convert Xiaolai font from TTF to WOFF2 for better compression\n\nChanges:\n- Converted Xiaolai-Regular.ttf (21 MB) to Xiaolai-Regular.woff2 (11 MB)\n- Updated App.css to reference .woff2 format\n- Updated index.html preload to use .woff2\n- 48% size reduction, but still need nginx caching for optimal performance\n\nNote: Font still too large (11 MB), but caching will prevent re-downloads\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "3f463e7b7792d2399daf361795325c9d3d0ccb10",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/3f463e7b7792d2399daf361795325c9d3d0ccb10"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/01fbaae9ad3932467081725a4c16ad0de3b12678",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/01fbaae9ad3932467081725a4c16ad0de3b12678",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/01fbaae9ad3932467081725a4c16ad0de3b12678",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/01fbaae9ad3932467081725a4c16ad0de3b12678/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "48b3de20c251c07f4ba51e91746203bbcc5d047c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/48b3de20c251c07f4ba51e91746203bbcc5d047c",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/48b3de20c251c07f4ba51e91746203bbcc5d047c"
+    }
+  ],
+  "stats": {
+    "total": 4,
+    "additions": 2,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "5529c57aa63303acace6752a5d18b87c03a57969",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/01fbaae9ad3932467081725a4c16ad0de3b12678/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/01fbaae9ad3932467081725a4c16ad0de3b12678/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=01fbaae9ad3932467081725a4c16ad0de3b12678"
+    },
+    {
+      "sha": "fa0bbdbbd739d22d82168a97a26a9943b1762615",
+      "filename": "frontend/index.html",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/01fbaae9ad3932467081725a4c16ad0de3b12678/frontend%2Findex.html",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/01fbaae9ad3932467081725a4c16ad0de3b12678/frontend%2Findex.html",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Findex.html?ref=01fbaae9ad3932467081725a4c16ad0de3b12678",
+      "patch": "@@ -8,7 +8,7 @@\n \n     <!-- Preload critical fonts to prevent FOIT (Flash of Invisible Text) -->\n     <link rel=\"preload\" href=\"/Excalifont-Regular.woff2\" as=\"font\" type=\"font/woff2\" crossorigin />\n-    <link rel=\"preload\" href=\"/Xiaolai-Regular.ttf\" as=\"font\" type=\"font/ttf\" crossorigin />\n+    <link rel=\"preload\" href=\"/Xiaolai-Regular.woff2\" as=\"font\" type=\"font/woff2\" crossorigin />\n   </head>\n   <body>\n     <div id=\"root\"></div>"
+    },
+    {
+      "sha": "08a1f9c03c5d6b8c83efa81139a5828c35d32017",
+      "filename": "frontend/public/Xiaolai-Regular.woff2",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/01fbaae9ad3932467081725a4c16ad0de3b12678/frontend%2Fpublic%2FXiaolai-Regular.woff2",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/01fbaae9ad3932467081725a4c16ad0de3b12678/frontend%2Fpublic%2FXiaolai-Regular.woff2",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fpublic%2FXiaolai-Regular.woff2?ref=01fbaae9ad3932467081725a4c16ad0de3b12678"
+    },
+    {
+      "sha": "adca2c86befd80de810af767e0f775ea786ff0d0",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/01fbaae9ad3932467081725a4c16ad0de3b12678/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/01fbaae9ad3932467081725a4c16ad0de3b12678/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=01fbaae9ad3932467081725a4c16ad0de3b12678",
+      "patch": "@@ -9,7 +9,7 @@\n \n @font-face {\n   font-family: 'Xiaolai';\n-  src: url('/Xiaolai-Regular.ttf') format('truetype');\n+  src: url('/Xiaolai-Regular.woff2') format('woff2');\n   font-weight: normal;\n   font-style: normal;\n   font-display: swap;"
+    }
+  ]
+}

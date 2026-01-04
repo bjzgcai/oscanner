@@ -1,0 +1,61 @@
+{
+  "sha": "09cad170ec4d3bc28dd497667ef2116fda46520d",
+  "node_id": "C_kwDOP2Zrm9oAKDA5Y2FkMTcwZWM0ZDNiYzI4ZGQ0OTc2NjdlZjIxMTZmZGE0NjUyMGQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T07:27:59Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T07:27:59Z"
+    },
+    "message": "Fix auto-scroll issue with scroll preservation and textarea initialization\n\n- Preserve scroll position on state changes (not during typing)\n- Auto-size textareas on mount and when cells added/deleted\n- Remove conflicting useLayoutEffect that sized all textareas\n- Rely on existing targeted resize in handleTextChange for typing\n\nNote: Has effect ordering issue - scroll restoration runs before\ntextarea resize, will be fixed in next commit.",
+    "tree": {
+      "sha": "846eece169ca6473b50e37708c7b59e80fa5ff1b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/846eece169ca6473b50e37708c7b59e80fa5ff1b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/09cad170ec4d3bc28dd497667ef2116fda46520d",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/09cad170ec4d3bc28dd497667ef2116fda46520d",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/09cad170ec4d3bc28dd497667ef2116fda46520d",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/09cad170ec4d3bc28dd497667ef2116fda46520d/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "3dde78482d9521bae17077570e7f0e5a92483568",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3dde78482d9521bae17077570e7f0e5a92483568",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/3dde78482d9521bae17077570e7f0e5a92483568"
+    }
+  ],
+  "stats": {
+    "total": 63,
+    "additions": 43,
+    "deletions": 20
+  },
+  "files": [
+    {
+      "sha": "70c60f0b636481aee813733dbc5d391ef19acaa3",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 43,
+      "deletions": 20,
+      "changes": 63,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/09cad170ec4d3bc28dd497667ef2116fda46520d/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/09cad170ec4d3bc28dd497667ef2116fda46520d/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=09cad170ec4d3bc28dd497667ef2116fda46520d",
+      "patch": "@@ -1,4 +1,4 @@\n-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';\n+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';\n import { EditorEngine } from './engine/EditorEngine';\n import type { EditorState, Commentor, TextCell } from './engine/EditorEngine';\n import { ChatWidget } from './engine/ChatWidget';\n@@ -271,7 +271,8 @@ export default function App() {\n \n   // @@@ Per-cell textarea refs for positioning and style calculations\n   const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());\n-  const containerRef = useRef<HTMLDivElement>(null);\n+  const scrollContainerRef = useRef<HTMLDivElement>(null);  // @@@ Track scroll container for position preservation\n+  const savedScrollTop = useRef<number>(0);  // @@@ Save scroll position across re-renders\n   // @@@ Force re-render when refs are ready\n   const [refsReady, setRefsReady] = useState(0);\n   const refsReadyTriggered = useRef(false);\n@@ -288,6 +289,29 @@ export default function App() {\n   const [_suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');  // Not used yet\n   const suggestionTimerRef = useRef<number | null>(null);\n \n+  // @@@ CRITICAL: Preserve scroll position across NON-TYPING re-renders\n+  // useLayoutEffect runs synchronously after DOM mutations but BEFORE browser paint\n+  // This prevents visible scroll jumps when state updates trigger re-renders\n+  // Skip during typing to let browser naturally scroll to cursor\n+  useLayoutEffect(() => {\n+    if (scrollContainerRef.current && savedScrollTop.current > 0) {\n+      // Only restore if we have a saved position and container exists\n+      scrollContainerRef.current.scrollTop = savedScrollTop.current;\n+    }\n+  }, [state]);  // Only run when engine state changes (not on typing)\n+\n+  // @@@ Initialize textarea heights on mount for saved content\n+  // This runs when refs are ready AND when cells are added/deleted\n+  // Prevents the issue where loaded notes require typing in each cell to expand\n+  useLayoutEffect(() => {\n+    if (refsReady > 0) {  // Only after refs are ready\n+      textareaRefs.current.forEach((textarea) => {\n+        textarea.style.height = 'auto';\n+        textarea.style.height = textarea.scrollHeight + 'px';\n+      });\n+    }\n+  }, [refsReady, state?.cells.length]);  // Run when refs ready OR when cells added/deleted\n+\n   // @@@ Trigger re-render when returning to writing view to recalculate comment positions\n   useEffect(() => {\n     if (currentView === 'writing') {\n@@ -1892,7 +1916,6 @@ export default function App() {\n           )}\n \n           <div\n-            ref={containerRef}\n             style={{\n               flex: 1,\n               position: 'relative',\n@@ -1908,15 +1931,23 @@ export default function App() {\n               width: '100%',\n               margin: '0 auto'\n             }}>\n-              <div className=\"notebook-lines\" style={{\n-                flex: 1,\n-                position: 'relative',\n-                overflow: 'auto',\n-                padding: '20px',\n-                paddingLeft: isMobile ? '20px' : '80px',  // @@@ Extra left padding for floating toolbar\n-                paddingBottom: '80px',  // Extra space for smooth scrolling to bottom\n-                backgroundColor: '#fffef9'  // @@@ Cream paper background for notebook lines\n-              }}>\n+              <div\n+                ref={scrollContainerRef}  // @@@ Track scroll container for position preservation\n+                className=\"notebook-lines\"\n+                onScroll={(e) => {\n+                  // @@@ Save scroll position whenever user scrolls manually\n+                  const target = e.currentTarget;\n+                  savedScrollTop.current = target.scrollTop;\n+                }}\n+                style={{\n+                  flex: 1,\n+                  position: 'relative',\n+                  overflow: 'auto',\n+                  padding: '20px',\n+                  paddingLeft: isMobile ? '20px' : '80px',  // @@@ Extra left padding for floating toolbar\n+                  paddingBottom: '80px',  // Extra space for smooth scrolling to bottom\n+                  backgroundColor: '#fffef9'  // @@@ Cream paper background for notebook lines\n+                }}>\n                 <div style={{\n                   position: 'relative',\n                   maxWidth: '600px'\n@@ -1973,9 +2004,6 @@ export default function App() {\n                                   refsReadyTriggered.current = true;\n                                   setRefsReady(prev => prev + 1);\n                                 }\n-                                // @@@ Force height to match scrollHeight to prevent internal scrolling\n-                                el.style.height = 'auto';\n-                                el.style.height = el.scrollHeight + 'px';\n                               } else {\n                                 textareaRefs.current.delete(cell.id);\n                               }\n@@ -1989,11 +2017,6 @@ export default function App() {\n                             onClick={(e) => handleCursorChange(cell.id, e)}\n                             onKeyUp={(e) => handleCursorChange(cell.id, e)}\n                             onKeyDown={(e) => handleKeyDown(cell.id, e)}\n-                            onFocus={(e) => {\n-                              // @@@ Prevent browser from scrolling element into view on focus\n-                              // This stops the \"lift up\" effect when clicking after scrolling\n-                              e.preventDefault();\n-                            }}\n                             placeholder={idx === 0 ? \"Start writing...\" : \"Continue writing...\"}\n                             style={{\n                               width: '100%',"
+    }
+  ]
+}

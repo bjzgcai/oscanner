@@ -1,0 +1,61 @@
+{
+  "sha": "743c81c888ff15f334c9de4d247ace1eac9e4a68",
+  "node_id": "C_kwDOP2Zrm9oAKDc0M2M4MWM4ODhmZjE1ZjMzNGM5ZGU0ZDI0N2FjZTFlYWM5ZTRhNjg",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-05T08:31:27Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-05T08:31:27Z"
+    },
+    "message": "Implement daily reset for state selection using database timestamp\n\n- Use database updated_at field instead of localStorage for authenticated users\n- State selection now expires each day at midnight\n- Cube pops out for daily emotional check-in when date changes\n- Removed localStorage date handling for authenticated users (database is single source of truth)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "058d487d07d26b6bc4bb8fa893707f9e1cb3177d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/058d487d07d26b6bc4bb8fa893707f9e1cb3177d"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/743c81c888ff15f334c9de4d247ace1eac9e4a68",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/743c81c888ff15f334c9de4d247ace1eac9e4a68",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/743c81c888ff15f334c9de4d247ace1eac9e4a68",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/743c81c888ff15f334c9de4d247ace1eac9e4a68/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "0a63646077ce0bd2f1841cdee5afd20bed81d916",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0a63646077ce0bd2f1841cdee5afd20bed81d916",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0a63646077ce0bd2f1841cdee5afd20bed81d916"
+    }
+  ],
+  "stats": {
+    "total": 19,
+    "additions": 16,
+    "deletions": 3
+  },
+  "files": [
+    {
+      "sha": "885ac2c3e23c2f8552c5e453634a16468b45f1dc",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 16,
+      "deletions": 3,
+      "changes": 19,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/743c81c888ff15f334c9de4d247ace1eac9e4a68/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/743c81c888ff15f334c9de4d247ace1eac9e4a68/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=743c81c888ff15f334c9de4d247ace1eac9e4a68",
+      "patch": "@@ -467,8 +467,22 @@ export default function App() {\n             if (prefs.state_config) {\n               setLoadedStateConfig(prefs.state_config);\n             }\n+\n+            // @@@ Load selectedState with daily reset check for authenticated users\n             if (prefs.selected_state !== undefined && prefs.selected_state !== null) {\n-              setSelectedState(prefs.selected_state);\n+              const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD\n+\n+              // Extract date from database's updated_at timestamp (format: \"YYYY-MM-DD HH:MM:SS\")\n+              const updatedAtDate = prefs.updated_at ? prefs.updated_at.split(' ')[0] : null;\n+\n+              // Check if state was updated today\n+              if (updatedAtDate === today) {\n+                // Same day - load the state\n+                setSelectedState(prefs.selected_state);\n+              } else {\n+                // Different day or no timestamp - show cube for daily check-in\n+                setSelectedState(null);\n+              }\n             }\n           } catch (err) {\n             console.log('No preferences found, using defaults');\n@@ -1058,8 +1072,7 @@ export default function App() {\n       try {\n         const { savePreferences } = await import('./api/voiceApi');\n         await savePreferences({ selected_state: stateId });\n-        // Also save date to localStorage for daily reset check\n-        localStorage.setItem('selected-state-date', today);\n+        // Database updated_at will be used for daily reset check\n       } catch (error) {\n         console.error('Failed to save state to database:', error);\n       }"
+    }
+  ]
+}

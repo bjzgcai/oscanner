@@ -1,0 +1,61 @@
+{
+  "sha": "ab163943717d0f61714c9118339fdf7219ff569c",
+  "node_id": "C_kwDOP2Zrm9oAKGFiMTYzOTQzNzE3ZDBmNjE3MTRjOTExODMzOWZkZjcyMTlmZjU2OWM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T18:03:13Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-02T18:03:13Z"
+    },
+    "message": "Log backend version at startup",
+    "tree": {
+      "sha": "ddfb02621b5169965bbbb4f5153451a9e704f0bc",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/ddfb02621b5169965bbbb4f5153451a9e704f0bc"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/ab163943717d0f61714c9118339fdf7219ff569c",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ab163943717d0f61714c9118339fdf7219ff569c",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ab163943717d0f61714c9118339fdf7219ff569c",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ab163943717d0f61714c9118339fdf7219ff569c/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/17d6e9df4a47f243fb4aac0ea73e7778be1af704",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/17d6e9df4a47f243fb4aac0ea73e7778be1af704"
+    }
+  ],
+  "stats": {
+    "total": 2,
+    "additions": 2,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "164635ba34550caf31a2abe867afd9ccbb0d0439",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 0,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ab163943717d0f61714c9118339fdf7219ff569c/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ab163943717d0f61714c9118339fdf7219ff569c/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=ab163943717d0f61714c9118339fdf7219ff569c",
+      "patch": "@@ -27,6 +27,7 @@\n \n SUPPORTED_LANGUAGES = {\"en\", \"zh\"}\n DEFAULT_LANGUAGE = \"en\"\n+BACKEND_VERSION = os.environ.get(\"BACKEND_VERSION\", \"unknown\")\n \n \n def normalize_language_code(language: Optional[str]) -> str:\n@@ -1832,6 +1833,7 @@ async def speech_recognition(websocket: WebSocket):\n \n     print(\"\\n\" + \"=\" * 60)\n     print(\"🎭 Ink & Memory FastAPI Server\")\n+    print(f\"🧾 Version: {BACKEND_VERSION}\")\n     print(\"=\" * 60)\n     print(\"\\n📚 API Endpoints:\")\n     print(\"  Auth & User:\")"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "sha": "e5dcc21a74434799d6c4c71c5282191ff6a2b39b",
+  "node_id": "C_kwDOP2Zrm9oAKGU1ZGNjMjFhNzQ0MzQ3OTlkNmM0YzcxYzUyODIxOTFmZjZhMmIzOWI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:13:51Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-07T14:13:51Z"
+    },
+    "message": "Add demo screenshot and showcase original UI design",
+    "tree": {
+      "sha": "24206cb1ff0b93570da46c090a5db02dad2b23d4",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/24206cb1ff0b93570da46c090a5db02dad2b23d4"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/e5dcc21a74434799d6c4c71c5282191ff6a2b39b",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/e5dcc21a74434799d6c4c71c5282191ff6a2b39b",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/e5dcc21a74434799d6c4c71c5282191ff6a2b39b",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/e5dcc21a74434799d6c4c71c5282191ff6a2b39b/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "f2315ab7b2cbe53fd497c40ed2b80180d4179f55",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f2315ab7b2cbe53fd497c40ed2b80180d4179f55",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f2315ab7b2cbe53fd497c40ed2b80180d4179f55"
+    }
+  ],
+  "stats": {
+    "total": 7,
+    "additions": 6,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "40dd5ed2dc5e819a2352a8c9460c652b5031b624",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 1,
+      "changes": 7,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/e5dcc21a74434799d6c4c71c5282191ff6a2b39b/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/e5dcc21a74434799d6c4c71c5282191ff6a2b39b/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=e5dcc21a74434799d6c4c71c5282191ff6a2b39b",
+      "patch": "@@ -2,7 +2,10 @@\n \n A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.\n \n-<video src=\"https://github.com/user-attachments/assets/demo.mov\" width=\"100%\" controls></video>\n+![Demo Screenshot](assets/demo-screenshot.png)\n+\n+*Original UI Design Concept:*\n+![Book UI Design](assets/book-ui-design.png)\n \n ## ✨ Features\n \n@@ -163,6 +166,8 @@ re.split(r'[.!?。！？]+|\\n+', text)\n ```\n ink-and-memory/\n ├── assets/\n+│   ├── demo-screenshot.png    # Demo screenshot\n+│   ├── book-ui-design.png     # Original UI design\n │   └── demo.mov               # Demo video\n ├── backend/\n │   ├── server.py              # PolyCLI Session Registry server"
+    },
+    {
+      "sha": "546e381a280cd5b8b2ac5969c46559b8042fc0f4",
+      "filename": "assets/demo-screenshot.png",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/e5dcc21a74434799d6c4c71c5282191ff6a2b39b/assets%2Fdemo-screenshot.png",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/e5dcc21a74434799d6c4c71c5282191ff6a2b39b/assets%2Fdemo-screenshot.png",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/assets%2Fdemo-screenshot.png?ref=e5dcc21a74434799d6c4c71c5282191ff6a2b39b"
+    }
+  ]
+}

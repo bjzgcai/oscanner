@@ -1,0 +1,61 @@
+{
+  "sha": "7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee",
+  "node_id": "C_kwDOP2Zrm9oAKDdlOTdkMWU2ZDZjYzNkM2QwNDRiYzliMmM1YzRjNjU5NmU4YjEwZWU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:38:57Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-08T01:38:57Z"
+    },
+    "message": "Proper stacking: old cards stack at top, latest card with margin below",
+    "tree": {
+      "sha": "126bdb83023abc78d7bbdcd79e215d605ce2f4d1",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/126bdb83023abc78d7bbdcd79e215d605ce2f4d1"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "a60c5f167bd45b370587777140213104bc35b285",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a60c5f167bd45b370587777140213104bc35b285",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/a60c5f167bd45b370587777140213104bc35b285"
+    }
+  ],
+  "stats": {
+    "total": 4,
+    "additions": 3,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "7f6a54ea65a058ae69ce583d0211962b8f0a8c47",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 1,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=7e97d1e6d6cc3d3d044bc9b2c5c4c6596e8b10ee",
+      "patch": "@@ -104,7 +104,9 @@ function App() {\n             isTopCard={index === voices.length - 1}\n             style={{\n               zIndex: index + 1,\n-              transform: `translateY(${(voices.length - 1 - index) * 30}%)`,\n+              transform: index === voices.length - 1\n+                ? `translateY(${Math.max(0, (voices.length - 2) * 50 + 100)}%)`\n+                : `translateY(${index * 50}%)`,\n             }}\n           />\n         ))}"
+    }
+  ]
+}

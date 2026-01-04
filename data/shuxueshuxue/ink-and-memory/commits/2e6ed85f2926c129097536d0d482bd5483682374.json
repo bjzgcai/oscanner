@@ -1,0 +1,42 @@
+{
+  "sha": "2e6ed85f2926c129097536d0d482bd5483682374",
+  "node_id": "C_kwDOP2Zrm9oAKDJlNmVkODVmMjkyNmMxMjkwOTc1MzZkMGQ0ODJiZDU0ODM2ODIzNzQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T09:50:49Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T09:50:49Z"
+    },
+    "message": "force model to use id in backend analysis",
+    "tree": {
+      "sha": "4a96b82e4de8b833bc9b77cd4075b9b64310b105",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/4a96b82e4de8b833bc9b77cd4075b9b64310b105"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/2e6ed85f2926c129097536d0d482bd5483682374",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2e6ed85f2926c129097536d0d482bd5483682374",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2e6ed85f2926c129097536d0d482bd5483682374",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2e6ed85f2926c129097536d0d482bd5483682374/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "0386af9af8ff3f2708263fe7d7e47ae63b5cba41",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/0386af9af8ff3f2708263fe7d7e47ae63b5cba41",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/0386af9af8ff3f2708263fe7d7e47ae63b5cba41"
+    }
+  ]
+}

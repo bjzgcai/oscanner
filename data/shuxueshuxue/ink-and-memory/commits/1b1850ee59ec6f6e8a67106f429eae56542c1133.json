@@ -1,0 +1,72 @@
+{
+  "sha": "1b1850ee59ec6f6e8a67106f429eae56542c1133",
+  "node_id": "C_kwDOP2Zrm9oAKDFiMTg1MGVlNTllYzZmNmU4YTY3MTA2ZjQyOWVhZTU2NTQyYzExMzM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T10:34:22Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T10:34:22Z"
+    },
+    "message": "Fix AnalysisView to load from database when authenticated\n\nChanges:\n- AnalysisView now loads calendar entries from database (not localStorage)\n- Falls back to localStorage for guest mode\n- Fixes \"No notes found\" issue after migration\n- Same pattern as CalendarPopup fix\n\nThis completes the migration fix trilogy:\n1. CalendarPopup - DONE\n2. AnalysisView - DONE\n3. (Any other views that use calendar data)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "b4572f935c1f69c6564946a65bb759e8f52992cd",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/b4572f935c1f69c6564946a65bb759e8f52992cd"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/1b1850ee59ec6f6e8a67106f429eae56542c1133",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/1b1850ee59ec6f6e8a67106f429eae56542c1133",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/1b1850ee59ec6f6e8a67106f429eae56542c1133",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/1b1850ee59ec6f6e8a67106f429eae56542c1133/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "01fbaae9ad3932467081725a4c16ad0de3b12678",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/01fbaae9ad3932467081725a4c16ad0de3b12678",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/01fbaae9ad3932467081725a4c16ad0de3b12678"
+    }
+  ],
+  "stats": {
+    "total": 90,
+    "additions": 65,
+    "deletions": 25
+  },
+  "files": [
+    {
+      "sha": "b18a8a5fc533a3be66b645cc4f6d9944e6f52c5e",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/1b1850ee59ec6f6e8a67106f429eae56542c1133/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/1b1850ee59ec6f6e8a67106f429eae56542c1133/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=1b1850ee59ec6f6e8a67106f429eae56542c1133"
+    },
+    {
+      "sha": "a318d880832d61e8564725880b607bf52106e179",
+      "filename": "frontend/src/components/AnalysisView.tsx",
+      "status": "modified",
+      "additions": 65,
+      "deletions": 25,
+      "changes": 90,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/1b1850ee59ec6f6e8a67106f429eae56542c1133/frontend%2Fsrc%2Fcomponents%2FAnalysisView.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/1b1850ee59ec6f6e8a67106f429eae56542c1133/frontend%2Fsrc%2Fcomponents%2FAnalysisView.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FAnalysisView.tsx?ref=1b1850ee59ec6f6e8a67106f429eae56542c1133",
+      "patch": "@@ -89,35 +89,75 @@ export default function AnalysisView() {\n \n   // Collect all notes when component mounts\n   useEffect(() => {\n-    const calendarData = getCalendarData();\n-    const notes: string[] = [];\n-    let entryCount = 0;\n-    const uniqueDays = new Set<string>();\n-\n-    // Collect all text from all entries\n-    Object.keys(calendarData).forEach(dateKey => {\n-      uniqueDays.add(dateKey);\n-      calendarData[dateKey].forEach(entry => {\n-        entryCount++;\n-        entry.state.cells\n-          .filter(cell => cell.type === 'text')\n-          .forEach(cell => {\n-            const content = (cell as TextCell).content.trim();\n-            if (content) {\n-              notes.push(content);\n+    const loadNotesData = async () => {\n+      let calendarData: Record<string, any[]> = {};\n+\n+      // @@@ Load from database if authenticated, localStorage if guest\n+      if (isAuthenticated) {\n+        try {\n+          const { listSessions, getSession } = await import('../api/voiceApi');\n+          const sessions = await listSessions();\n+\n+          // Group sessions by date\n+          const grouped: Record<string, any[]> = {};\n+          for (const session of sessions) {\n+            const fullSession = await getSession(session.id);\n+            let dateKey = session.created_at?.split('T')[0];\n+            if (session.name && /^\\d{4}-\\d{2}-\\d{2}/.test(session.name)) {\n+              dateKey = session.name.split(' - ')[0];\n+            }\n+            if (!dateKey) continue;\n+\n+            if (!grouped[dateKey]) {\n+              grouped[dateKey] = [];\n             }\n-          });\n+            grouped[dateKey].push({\n+              id: session.id,\n+              timestamp: new Date(session.created_at || Date.now()).getTime(),\n+              state: fullSession.editor_state,\n+              firstLine: session.name || 'Untitled'\n+            });\n+          }\n+          calendarData = grouped;\n+        } catch (error) {\n+          console.error('Failed to load from database:', error);\n+          calendarData = getCalendarData(); // Fallback\n+        }\n+      } else {\n+        calendarData = getCalendarData();\n+      }\n+\n+      const notes: string[] = [];\n+      let entryCount = 0;\n+      const uniqueDays = new Set<string>();\n+\n+      // Collect all text from all entries\n+      Object.keys(calendarData).forEach(dateKey => {\n+        uniqueDays.add(dateKey);\n+        calendarData[dateKey].forEach(entry => {\n+          entryCount++;\n+          entry.state.cells\n+            .filter((cell: any) => cell.type === 'text')\n+            .forEach((cell: any) => {\n+              const content = (cell as TextCell).content.trim();\n+              if (content) {\n+                notes.push(content);\n+              }\n+            });\n+        });\n       });\n-    });\n \n-    const allText = notes.join('\\n\\n');\n+      const allText = notes.join('\\n\\n');\n \n-    setAllNotes(allText);\n-    setStats({\n-      totalDays: uniqueDays.size,\n-      totalWords: countWords(allText),\n-      totalEntries: entryCount\n-    });\n+      setAllNotes(allText);\n+      setStats({\n+        totalDays: uniqueDays.size,\n+        totalWords: countWords(allText),\n+        totalEntries: entryCount\n+      });\n+    };\n+\n+    loadNotesData();\n \n     // @@@ Load saved reports history from database if authenticated, localStorage if guest\n     const loadReports = async () => {"
+    }
+  ]
+}

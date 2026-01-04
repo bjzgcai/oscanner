@@ -1,0 +1,61 @@
+{
+  "sha": "fe5df60313f830aebc01494ece05b074d6383dbe",
+  "node_id": "C_kwDOP2Zrm9oAKGZlNWRmNjAzMTNmODMwYWViYzAxNDk0ZWNlMDViMDc0ZDYzODNkYmU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T12:53:03Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T12:53:03Z"
+    },
+    "message": "Add mobile floating toolbar with Start Fresh and @ buttons\n\n- Add circular floating buttons in top-right corner on mobile\n- Buttons have white background with shadow for visibility\n- Larger tap targets (44x44px) for mobile usability\n- Same functionality as desktop left toolbar\n- z-index: 1000 to stay above content",
+    "tree": {
+      "sha": "1bf3d7f24f2458dfbf0502cbcf07971323dc3f2a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/1bf3d7f24f2458dfbf0502cbcf07971323dc3f2a"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/fe5df60313f830aebc01494ece05b074d6383dbe",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fe5df60313f830aebc01494ece05b074d6383dbe",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fe5df60313f830aebc01494ece05b074d6383dbe",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fe5df60313f830aebc01494ece05b074d6383dbe/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/73de158e178ece1f10ac2d1d7f6e603366c6c1fb"
+    }
+  ],
+  "stats": {
+    "total": 55,
+    "additions": 55,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "a9a03d31b34307776807848e711ad89956df0bd9",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 55,
+      "deletions": 0,
+      "changes": 55,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fe5df60313f830aebc01494ece05b074d6383dbe/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fe5df60313f830aebc01494ece05b074d6383dbe/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=fe5df60313f830aebc01494ece05b074d6383dbe",
+      "patch": "@@ -962,6 +962,61 @@ export default function App() {\n             </div>\n           )}\n \n+          {/* @@@ Mobile floating toolbar - top right corner */}\n+          {isMobile && (\n+            <div style={{\n+              position: 'fixed',\n+              top: '10px',\n+              right: '10px',\n+              display: 'flex',\n+              gap: '8px',\n+              zIndex: 1000\n+            }}>\n+              <button\n+                onClick={handleStartFresh}\n+                title=\"Start Fresh\"\n+                style={{\n+                  width: '44px',\n+                  height: '44px',\n+                  border: 'none',\n+                  borderRadius: '50%',\n+                  backgroundColor: '#fff',\n+                  cursor: 'pointer',\n+                  display: 'flex',\n+                  alignItems: 'center',\n+                  justifyContent: 'center',\n+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',\n+                  transition: 'all 0.2s ease'\n+                }}\n+              >\n+                <FaSync size={20} color=\"#333\" />\n+              </button>\n+              <button\n+                onClick={handleInsertAgent}\n+                title=\"Insert Agent Chat\"\n+                style={{\n+                  width: '44px',\n+                  height: '44px',\n+                  border: 'none',\n+                  borderRadius: '50%',\n+                  backgroundColor: '#fff',\n+                  cursor: 'pointer',\n+                  display: 'flex',\n+                  alignItems: 'center',\n+                  justifyContent: 'center',\n+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',\n+                  transition: 'all 0.2s ease',\n+                  fontSize: '24px',\n+                  fontWeight: 600,\n+                  color: '#333',\n+                  fontFamily: 'monospace'\n+                }}\n+              >\n+                @\n+              </button>\n+            </div>\n+          )}\n+\n           <div\n             ref={containerRef}\n             style={{"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "sha": "30342e323a3836d3f87753b06b83ec5c7b6e5bf2",
+  "node_id": "C_kwDOP2Zrm9oAKDMwMzQyZTMyM2EzODM2ZDNmODc3NTNiMDZiODNlYzVjN2I2ZTViZjI",
+  "commit": {
+    "author": {
+      "name": "zhuchenyu2008",
+      "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+      "date": "2026-01-01T04:40:11Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-01-01T04:40:11Z"
+    },
+    "message": "Switch to control the energy bar display.\n\n  - \u5728 frontend/src/App.tsx \u65b0\u589e showEnergyBar \u72b6\u6001\u5e76\u6301\u4e45\u5316\u5230 localStorage\uff08\u9ed8\u8ba4\r\n    \u5f00\u542f\uff09\u3002\r\n  - \u8bbe\u7f6e\u9875\u7684\u8bed\u8a00\u5361\u7247\u91cc\u8ffd\u52a0 \u201cEnergy Bar / \u80fd\u91cf\u6761\u201d \u5f00\u5173\uff08\u540c\u4e00\u5957\u5b57\u4f53/\u8fb9\u6846/\u914d\u8272\uff09\u3002\r\n  - \u5e95\u90e8 debug stats \u7684\u80fd\u91cf\u6761\u7528 showEnergyBar \u63a7\u5236\u663e\u793a\u3002",
+    "tree": {
+      "sha": "d761d551de0c55eec63588a741b4c6880dbf6947",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/d761d551de0c55eec63588a741b4c6880dbf6947"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/30342e323a3836d3f87753b06b83ec5c7b6e5bf2",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpVfqrCRC1aQ7uu5UhlAAA93AQAF8tFcSHmA2OCv2QU2IZth13\n57e+Q49OMHW176x/doAuP/uBLLFS2++5cs6VSuKbKJQTtjLO6Elq5JS/8n4723LM\nMDonNCR3ieohe/lSuWI1ufmZSFe2rzGh8MSEH9ok8azpSGQRKwLzWggRpdgFvGfK\nq7QcvHNvkJrQbFOLX7R0FGtgKbSDo4f0RF7aYZx+/AICQ3hpC2U8lkdnAjfuHBgN\nFBQk/Qr+cOA3hfxoAd/wgYgOBLUzad5qb71Wj1I6RHGs7Q7I4e8GIR0KblKGe191\nDpW18VDQbNwRAnbeqNW07ygm93dziARTEd5buI+dFCjNMzgQarbu1kpG/JxSaaJT\nTw3XyMyMbh9A6KeJCHs90cpnbxqO8nuGMQ6vi/4yCrQtW4i+NPOy4m8iPc4E836X\nK7i4pa6HgzMgorPgR8ZRYn8G7y93XdDrlPBzg3aLrwn5z69WZeIaJocJv2DvE9Em\nl9NOxnO4lD/ixDX2IMW1RE8W+bpoovi0Kx1GAKGoo+diic1HpmTXJNrejBW9SC5E\ncYqxkzdYbbQGSkCEZfsYxOOZsnAGus9uFUSc402GMnGwHu5bLWoz94z6LLZi+xo3\nl1eSHHH8gOkbob+UxG+j8edwA13dexjpBdpzeGKt+6mdsm7qoSATSSgW/sjVnysa\nhA2A+3aPk+K7YCD12MGh\n=Z1ld\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree d761d551de0c55eec63588a741b4c6880dbf6947\nparent df8483970531b42de442b60843852fd6882cf381\nauthor zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com> 1767242411 +0800\ncommitter GitHub <noreply@github.com> 1767242411 +0800\n\nSwitch to control the energy bar display.\n\n  - \u5728 frontend/src/App.tsx \u65b0\u589e showEnergyBar \u72b6\u6001\u5e76\u6301\u4e45\u5316\u5230 localStorage\uff08\u9ed8\u8ba4\r\n    \u5f00\u542f\uff09\u3002\r\n  - \u8bbe\u7f6e\u9875\u7684\u8bed\u8a00\u5361\u7247\u91cc\u8ffd\u52a0 \u201cEnergy Bar / \u80fd\u91cf\u6761\u201d \u5f00\u5173\uff08\u540c\u4e00\u5957\u5b57\u4f53/\u8fb9\u6846/\u914d\u8272\uff09\u3002\r\n  - \u5e95\u90e8 debug stats \u7684\u80fd\u91cf\u6761\u7528 showEnergyBar \u63a7\u5236\u663e\u793a\u3002",
+      "verified_at": "2026-01-01T04:40:12Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/30342e323a3836d3f87753b06b83ec5c7b6e5bf2",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/30342e323a3836d3f87753b06b83ec5c7b6e5bf2",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/30342e323a3836d3f87753b06b83ec5c7b6e5bf2/comments",
+  "author": {
+    "login": "zhuchenyu2008",
+    "id": 132262479,
+    "node_id": "U_kgDOB-IqTw",
+    "avatar_url": "https://avatars.githubusercontent.com/u/132262479?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/zhuchenyu2008",
+    "html_url": "https://github.com/zhuchenyu2008",
+    "followers_url": "https://api.github.com/users/zhuchenyu2008/followers",
+    "following_url": "https://api.github.com/users/zhuchenyu2008/following{/other_user}",
+    "gists_url": "https://api.github.com/users/zhuchenyu2008/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/zhuchenyu2008/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/zhuchenyu2008/subscriptions",
+    "organizations_url": "https://api.github.com/users/zhuchenyu2008/orgs",
+    "repos_url": "https://api.github.com/users/zhuchenyu2008/repos",
+    "events_url": "https://api.github.com/users/zhuchenyu2008/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/zhuchenyu2008/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "df8483970531b42de442b60843852fd6882cf381",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/df8483970531b42de442b60843852fd6882cf381",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/df8483970531b42de442b60843852fd6882cf381"
+    }
+  ]
+}

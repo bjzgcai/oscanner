@@ -1,0 +1,61 @@
+{
+  "sha": "3dde78482d9521bae17077570e7f0e5a92483568",
+  "node_id": "C_kwDOP2Zrm9oAKDNkZGU3ODQ4MmQ5NTIxYmFlMTcwNzc1NzBlN2YwZTVhOTI0ODM1Njg",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T06:33:29Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-07T06:33:29Z"
+    },
+    "message": "temp",
+    "tree": {
+      "sha": "a18c1391a23dea76ffeefc6ab56bfe73af0b4db9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/a18c1391a23dea76ffeefc6ab56bfe73af0b4db9"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/3dde78482d9521bae17077570e7f0e5a92483568",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3dde78482d9521bae17077570e7f0e5a92483568",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/3dde78482d9521bae17077570e7f0e5a92483568",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3dde78482d9521bae17077570e7f0e5a92483568/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "6085a310378a8e1b91a051d8c219360e520d881b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6085a310378a8e1b91a051d8c219360e520d881b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/6085a310378a8e1b91a051d8c219360e520d881b"
+    }
+  ],
+  "stats": {
+    "total": 23,
+    "additions": 16,
+    "deletions": 7
+  },
+  "files": [
+    {
+      "sha": "38e5f8e9f138f6616af80d13305e7f9a833e40a3",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 16,
+      "deletions": 7,
+      "changes": 23,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3dde78482d9521bae17077570e7f0e5a92483568/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3dde78482d9521bae17077570e7f0e5a92483568/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=3dde78482d9521bae17077570e7f0e5a92483568",
+      "patch": "@@ -316,7 +316,7 @@ export default function App() {\n         const v = data as any;\n         converted[name] = {\n           name,\n-          systemPrompt: v.tagline,\n+          systemPrompt: v.systemPrompt,  // @@@ Fixed: was v.tagline (wrong field name)\n           enabled: true,\n           icon: v.icon,\n           color: v.color\n@@ -1412,21 +1412,30 @@ export default function App() {\n       const textarea = e.currentTarget;\n       setTimeout(() => {\n         if (textarea) {\n-          // Get cursor position in textarea\n+          // @@@ Use exact caret coordinates for dropdown positioning\n           const cursorPos = textarea.selectionStart;\n           const textBeforeCursor = textarea.value.substring(0, cursorPos);\n \n-          // Count lines before cursor\n-          const linesBefore = textBeforeCursor.split('\\n').length - 1;\n+          // Count lines and get current line text for horizontal position\n+          const lines = textBeforeCursor.split('\\n');\n+          const linesBefore = lines.length - 1;\n+          const currentLineText = lines[lines.length - 1];\n \n-          // Calculate approximate cursor position\n+          // Get computed styles\n           const computedStyle = window.getComputedStyle(textarea);\n           const lineHeight = parseFloat(computedStyle.lineHeight) || 32;\n+          const fontSize = parseFloat(computedStyle.fontSize) || 18;\n           const rect = textarea.getBoundingClientRect();\n+          const padding = parseFloat(computedStyle.paddingLeft) || 0;\n \n-          // Position dropdown at cursor (with small offset)\n+          // Approximate horizontal position based on character width\n+          // Using 0.6 * fontSize as average character width (monospace-like estimation)\n+          const charWidth = fontSize * 0.6;\n+          const horizontalOffset = padding + (currentLineText.length * charWidth);\n+\n+          // Position dropdown at caret\n           setDropdownPosition({\n-            x: rect.left + 10,\n+            x: rect.left + horizontalOffset,\n             y: rect.top + (linesBefore * lineHeight) + lineHeight + 5\n           });\n           setDropdownTriggerCellId(cellId);"
+    }
+  ]
+}

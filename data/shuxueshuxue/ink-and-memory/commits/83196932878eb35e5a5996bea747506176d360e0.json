@@ -1,0 +1,61 @@
+{
+  "sha": "83196932878eb35e5a5996bea747506176d360e0",
+  "node_id": "C_kwDOP2Zrm9oAKDgzMTk2OTMyODc4ZWIzNWU1YTU5OTZiZWE3NDc1MDYxNzZkMzYwZTA",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T15:28:21Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-26T15:28:21Z"
+    },
+    "message": "Add explicit overlap avoidance instructions to LLM prompt\n\n- Show list of already highlighted phrases to the LLM\n- Add explicit rules to avoid choosing overlapping phrases\n- Instruct LLM to choose phrases completely separate from existing highlights\n- Reduce reliance on post-processing collision detection\n\nThis makes the LLM aware upfront that overlapping is not allowed,\nimproving comment quality and reducing conflicts.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "c2ba24dbd809f4219b51a77c9b17670fcb0b8e6e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/c2ba24dbd809f4219b51a77c9b17670fcb0b8e6e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/83196932878eb35e5a5996bea747506176d360e0",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/83196932878eb35e5a5996bea747506176d360e0",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/83196932878eb35e5a5996bea747506176d360e0",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/83196932878eb35e5a5996bea747506176d360e0/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "348fac22f83ca12deff43fea760a5cc7702cbc66",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/348fac22f83ca12deff43fea760a5cc7702cbc66",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/348fac22f83ca12deff43fea760a5cc7702cbc66"
+    }
+  ],
+  "stats": {
+    "total": 14,
+    "additions": 10,
+    "deletions": 4
+  },
+  "files": [
+    {
+      "sha": "cf3c4a88097f6c44659737a3bac88be10d4193fc",
+      "filename": "backend/stateless_analyzer.py",
+      "status": "modified",
+      "additions": 10,
+      "deletions": 4,
+      "changes": 14,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/83196932878eb35e5a5996bea747506176d360e0/backend%2Fstateless_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/83196932878eb35e5a5996bea747506176d360e0/backend%2Fstateless_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateless_analyzer.py?ref=83196932878eb35e5a5996bea747506176d360e0",
+      "patch": "@@ -46,13 +46,17 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],\n         for name, v in voice_archetypes.items()\n     ])\n \n-    # Build list of applied comments\n+    # Build list of applied comments with their phrases\n     existing_summary = \"\"\n+    highlighted_phrases = []\n     if applied_comments:\n-        existing_summary = \"\\n\\nALREADY APPLIED COMMENTS (do not repeat these):\\n\"\n+        existing_summary = \"\\n\\nALREADY APPLIED COMMENTS (do not repeat or overlap with these):\\n\"\n         for c in applied_comments:\n-            existing_summary += f\"- {c.get('voice', 'Unknown')} on \\\"{c.get('phrase', '')}\\\": {c.get('comment', '')}\\n\"\n-        existing_summary += \"\\n👉 Find something NEW to comment on!\\n\"\n+            phrase = c.get('phrase', '')\n+            highlighted_phrases.append(phrase)\n+            existing_summary += f\"- {c.get('voice', 'Unknown')} on \\\"{phrase}\\\": {c.get('comment', '')}\\n\"\n+        existing_summary += f\"\\n👉 These phrases are already highlighted: {highlighted_phrases}\\n\"\n+        existing_summary += \"👉 Choose a DIFFERENT phrase that does NOT overlap with any of these!\\n\"\n \n     prompt = f\"\"\"You are analyzing internal dialogue as distinct inner voice personas.\n \n@@ -72,6 +76,8 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],\n RULES:\n - Return ONLY ONE comment\n - DO NOT repeat any applied comments\n+- DO NOT choose phrases that overlap or intersect with already highlighted phrases\n+- Your chosen phrase must be completely separate from existing highlights\n - DO NOT CREATE NEW VOICE NAMES - Only use from the available list\n - Return null if nothing is worth commenting on\n - Phrase MUST be EXACT substring from text"
+    }
+  ]
+}

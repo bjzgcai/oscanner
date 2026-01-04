@@ -1,0 +1,85 @@
+{
+  "sha": "ad29eb9976d519094a72142f177df031013950a6",
+  "node_id": "C_kwDOP2Zrm9oAKGFkMjllYjk5NzZkNTE5MDk0YTcyMTQyZjE3N2RmMDMxMDEzOTUwYTY",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-05T09:18:51Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-05T09:18:51Z"
+    },
+    "message": "Remove greeting comment feature\n\nRemove the automatic greeting comment that appeared when users selected\ntheir daily emotional state. This simplifies the UX and reduces noise.\n\nChanges:\n- Remove greeting field from UserState interface\n- Remove greeting text from default state configs\n- Remove greeting comment creation logic in handleStateChoose\n- Remove greeting comment rendering at top of editor\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "058d487d07d26b6bc4bb8fa893707f9e1cb3177d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/058d487d07d26b6bc4bb8fa893707f9e1cb3177d"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/ad29eb9976d519094a72142f177df031013950a6",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ad29eb9976d519094a72142f177df031013950a6",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ad29eb9976d519094a72142f177df031013950a6",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ad29eb9976d519094a72142f177df031013950a6/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "681162b0353f059197c4c3057d35306cbd3f5bf4",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/681162b0353f059197c4c3057d35306cbd3f5bf4",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/681162b0353f059197c4c3057d35306cbd3f5bf4"
+    }
+  ],
+  "stats": {
+    "total": 75,
+    "additions": 4,
+    "deletions": 71
+  },
+  "files": [
+    {
+      "sha": "885ac2c3e23c2f8552c5e453634a16468b45f1dc",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 64,
+      "changes": 65,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ad29eb9976d519094a72142f177df031013950a6/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ad29eb9976d519094a72142f177df031013950a6/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=ad29eb9976d519094a72142f177df031013950a6",
+      "patch": "@@ -1080,28 +1080,7 @@ export default function App() {\n       localStorage.setItem(STORAGE_KEYS.SELECTED_STATE, stateId);\n       localStorage.setItem('selected-state-date', today);\n     }\n-\n-    // @@@ Add greeting comment for first daily state selection\n-    if (engineRef.current && stateConfig.states[stateId]) {\n-      const greetingText = stateConfig.states[stateId].greeting;\n-      const firstVoice = Object.keys(voiceConfigs)[0]; // Use first voice for greeting\n-\n-      if (greetingText && firstVoice) {\n-        const greetingComment: Commentor = {\n-          id: `greeting-${Date.now()}`,\n-          phrase: '', // Empty phrase marks this as a greeting comment\n-          voice: voiceConfigs[firstVoice].name,\n-          comment: greetingText,\n-          appliedAt: Date.now(),\n-          icon: voiceConfigs[firstVoice].icon,\n-          color: voiceConfigs[firstVoice].color\n-        };\n-\n-        engineRef.current.addCommentToState(greetingComment);\n-        setState(engineRef.current.getState());\n-      }\n-    }\n-  }, [isAuthenticated, stateConfig, voiceConfigs, engineRef]);\n+  }, [isAuthenticated]);\n \n   const handleVoiceConfigsSave = useCallback(async (data: {\n     voices: Record<string, VoiceConfig>;\n@@ -1857,48 +1836,6 @@ export default function App() {\n                     />\n                   </div>\n \n-                  {/* @@@ Greeting comments (phrase === '') - rendered at top */}\n-                  {state.commentors\n-                    .filter(c => c.appliedAt && c.phrase === '')\n-                    .map((greetingComment) => (\n-                      <div\n-                        key={greetingComment.id}\n-                        style={{\n-                          marginBottom: '20px',\n-                          padding: '12px 16px',\n-                          background: 'rgba(255, 255, 255, 0.95)',\n-                          border: '1px solid rgba(0,0,0,0.1)',\n-                          borderRadius: '8px',\n-                          boxShadow: '0 2px 6px rgba(0,0,0,0.08)',\n-                          fontFamily: \"'Excalifont', 'Xiaolai', 'Georgia', serif\"\n-                        }}\n-                      >\n-                        <div style={{\n-                          display: 'flex',\n-                          alignItems: 'flex-start',\n-                          gap: '8px'\n-                        }}>\n-                          <span style={{ fontSize: '18px' }}>\n-                            {greetingComment.icon}\n-                          </span>\n-                          <div style={{ flex: 1 }}>\n-                            <strong style={{\n-                              color: greetingComment.color === 'blue' ? '#4A90E2' :\n-                                     greetingComment.color === 'pink' ? '#E91E63' :\n-                                     greetingComment.color === 'yellow' ? '#FFC107' :\n-                                     greetingComment.color === 'green' ? '#4CAF50' :\n-                                     greetingComment.color === 'purple' ? '#9C27B0' : '#333'\n-                            }}>\n-                              {greetingComment.voice}:\n-                            </strong>{' '}\n-                            <span style={{ color: '#333' }}>\n-                              {greetingComment.comment}\n-                            </span>\n-                          </div>\n-                        </div>\n-                      </div>\n-                    ))}\n-\n                   {/* Render cells sequentially with per-cell highlights */}\n                   {state.cells.map((cell, idx) => {\n                     if (cell.type === 'text') {"
+    },
+    {
+      "sha": "cee2487df923571f58e94c73a7c34b871cd4f2b2",
+      "filename": "frontend/src/types/voice.ts",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 1,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ad29eb9976d519094a72142f177df031013950a6/frontend%2Fsrc%2Ftypes%2Fvoice.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ad29eb9976d519094a72142f177df031013950a6/frontend%2Fsrc%2Ftypes%2Fvoice.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Ftypes%2Fvoice.ts?ref=ad29eb9976d519094a72142f177df031013950a6",
+      "patch": "@@ -9,7 +9,6 @@ export interface VoiceConfig {\n export interface UserState {\n   name: string;\n   prompt: string;\n-  greeting: string;\n }\n \n export interface StateConfig {"
+    },
+    {
+      "sha": "e1480e90d1c5f4fb68ed071de6f039236045480b",
+      "filename": "frontend/src/utils/voiceStorage.ts",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 6,
+      "changes": 9,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ad29eb9976d519094a72142f177df031013950a6/frontend%2Fsrc%2Futils%2FvoiceStorage.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ad29eb9976d519094a72142f177df031013950a6/frontend%2Fsrc%2Futils%2FvoiceStorage.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Futils%2FvoiceStorage.ts?ref=ad29eb9976d519094a72142f177df031013950a6",
+      "patch": "@@ -10,18 +10,15 @@ const DEFAULT_STATE_CONFIG: StateConfig = {\n   states: {\n     happy: {\n       name: \"Happy\",\n-      prompt: \"The user is feeling positive and energized. Encourage creative exploration and bold ideas.\",\n-      greeting: \"Great to see you in high spirits! Let's capture this energy.\"\n+      prompt: \"The user is feeling positive and energized. Encourage creative exploration and bold ideas.\"\n     },\n     ok: {\n       name: \"OK\",\n-      prompt: \"The user is feeling neutral. Provide balanced, steady guidance.\",\n-      greeting: \"Steady and ready. Let's see what today brings.\"\n+      prompt: \"The user is feeling neutral. Provide balanced, steady guidance.\"\n     },\n     unhappy: {\n       name: \"Unhappy\",\n-      prompt: \"The user is feeling down. Be gentle, supportive, and focus on small wins.\",\n-      greeting: \"I'm here with you. Sometimes writing helps make sense of things.\"\n+      prompt: \"The user is feeling down. Be gentle, supportive, and focus on small wins.\"\n     }\n   }\n };"
+    }
+  ]
+}

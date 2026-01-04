@@ -1,0 +1,61 @@
+{
+  "sha": "fff1153a5765dbf818987a9a0bb6ff59cdce8e0b",
+  "node_id": "C_kwDOP2Zrm9oAKGZmZjExNTNhNTc2NWRiZjgxODk4N2E5YTBiYjZmZjU5Y2RjZThlMGI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:52:03Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T07:52:03Z"
+    },
+    "message": "Remove orphaned TipTap/ProseMirror CSS classes",
+    "tree": {
+      "sha": "924c8355a6da7755d6f3064494fbdf5f3f798a0c",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/924c8355a6da7755d6f3064494fbdf5f3f798a0c"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/fff1153a5765dbf818987a9a0bb6ff59cdce8e0b",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fff1153a5765dbf818987a9a0bb6ff59cdce8e0b",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fff1153a5765dbf818987a9a0bb6ff59cdce8e0b",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fff1153a5765dbf818987a9a0bb6ff59cdce8e0b/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "4f16b989f963c91e1aef4ac34d2b21b5cec10ef4",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4f16b989f963c91e1aef4ac34d2b21b5cec10ef4",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4f16b989f963c91e1aef4ac34d2b21b5cec10ef4"
+    }
+  ],
+  "stats": {
+    "total": 16,
+    "additions": 0,
+    "deletions": 16
+  },
+  "files": [
+    {
+      "sha": "cf55dd724fb5163fb772f31eaebb80ef8cb02dc3",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 16,
+      "changes": 16,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fff1153a5765dbf818987a9a0bb6ff59cdce8e0b/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fff1153a5765dbf818987a9a0bb6ff59cdce8e0b/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=fff1153a5765dbf818987a9a0bb6ff59cdce8e0b",
+      "patch": "@@ -78,22 +78,6 @@\n   overflow: hidden;\n }\n \n-.editable-text-area > div {\n-  flex: 1;\n-  display: flex;\n-  flex-direction: column;\n-  min-height: 0;\n-  overflow: hidden;\n-}\n-\n-.editable-text-area .tiptap {\n-  flex: 1;\n-  display: flex;\n-  flex-direction: column;\n-  min-height: 0;\n-  overflow: hidden;\n-}\n-\n .editable-text-area .ProseMirror {\n   flex: 1;\n   width: 100%;"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "sha": "14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+  "node_id": "C_kwDOP2Zrm9oAKDE0YTE3YTVmM2I2NmJhNjcyYWU1MDVhZGE3YWU2OTg0ZTJiOTRlOGU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-13T05:27:53Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-13T05:27:53Z"
+    },
+    "message": "Add deployment support: UUID fallback and server IP configuration\n\n- Add UUID fallback for non-secure contexts (crypto.randomUUID not available)\n- Update API base URL to server IP (101.201.227.31:8765)\n- Configure backend to listen on 0.0.0.0 for external access\n\nReady for pilot test deployment",
+    "tree": {
+      "sha": "f4b7bc9fd581533a7d7e009773ddc7efe50d1088",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/f4b7bc9fd581533a7d7e009773ddc7efe50d1088"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "478699f649305881d00688d818150862c4582208",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/478699f649305881d00688d818150862c4582208",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/478699f649305881d00688d818150862c4582208"
+    }
+  ],
+  "stats": {
+    "total": 17,
+    "additions": 15,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "1e7238f0e8bcaaa1ca1fe578b29256d915cc2859",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 14,
+      "deletions": 1,
+      "changes": 15,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+      "patch": "@@ -15,9 +15,22 @@ interface Voice {\n   position: number;\n }\n \n+// @@@ UUID fallback for non-secure contexts\n+function generateUUID() {\n+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n+    const r = Math.random() * 16 | 0;\n+    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n+    return v.toString(16);\n+  });\n+}\n+\n function App() {\n   // @@@ Multi-user support - Generate unique session ID on mount\n-  const sessionId = useRef(crypto.randomUUID()).current;\n+  const sessionId = useRef(\n+    typeof crypto !== 'undefined' && crypto.randomUUID\n+      ? crypto.randomUUID()\n+      : generateUUID()\n+  ).current;\n \n   const [voices, setVoices] = useState<Voice[]>([]);\n   const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>([]);"
+    },
+    {
+      "sha": "4df8a7c08e8ce675ff79c40cef9a97d48fbbe945",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/14a17a5f3b66ba672ae505ada7ae6984e2b94e8e/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+      "patch": "@@ -2,7 +2,7 @@\n  * API client for voice analysis backend\n  */\n \n-const API_BASE = 'http://localhost:8765';\n+const API_BASE = 'http://101.201.227.31:8765';\n \n interface TriggerResponse {\n   success: boolean;"
+    }
+  ]
+}

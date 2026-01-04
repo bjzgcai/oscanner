@@ -1,0 +1,97 @@
+{
+  "sha": "c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+  "node_id": "C_kwDOP2Zrm9oAKGMzYzY0ZGU1ZDU5ZGMzZTFhYTFjNGFiMTZmOGVlNmYxYTJhZWEwM2U",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-04T01:59:57Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-04T01:59:57Z"
+    },
+    "message": "Fix dynamic trigger synchronization issues\n\n- Store current text to re-detect voices when triggers change\n- Properly update ProseMirror state with triggers in plugin\n- Add purple highlight CSS for new Nostalgia voice\n- Force editor transaction dispatch for trigger updates\n- Comments and highlights now stay in sync when adding/removing triggers\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "adf08990af6e3d6965b0ed7f41218678fd72daa7",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/adf08990af6e3d6965b0ed7f41218678fd72daa7"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "2753917f0955d243e35593e2553c80e57dda23e5",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2753917f0955d243e35593e2553c80e57dda23e5",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2753917f0955d243e35593e2553c80e57dda23e5"
+    }
+  ],
+  "stats": {
+    "total": 114,
+    "additions": 90,
+    "deletions": 24
+  },
+  "files": [
+    {
+      "sha": "145230639b46840b5bdcd569bc723d089eb8b3e9",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 0,
+      "changes": 9,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+      "patch": "@@ -132,6 +132,11 @@\n   border-color: #66ff66;\n }\n \n+.voice-comment-nostalgia {\n+  background-color: #f3e6ff;\n+  border-color: #b366ff;\n+}\n+\n @keyframes fadeIn {\n   from {\n     opacity: 0;\n@@ -209,4 +214,8 @@\n \n .voice-highlight-green {\n   background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-6&color=b3ffb3);\n+}\n+\n+.voice-highlight-purple {\n+  background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-5&color=ddb3ff);\n }\n\\ No newline at end of file"
+    },
+    {
+      "sha": "7e546350a01fdeddee37b2b97efbb9c028fd90cf",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 61,
+      "deletions": 15,
+      "changes": 76,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+      "patch": "@@ -1,4 +1,4 @@\n-import { useState } from 'react'\n+import { useState, useEffect } from 'react'\n import './App.css'\n import WritingArea from './components/WritingArea'\n import VoicesPanel from './components/VoicesPanel'\n@@ -17,19 +17,20 @@ interface Voice {\n function App() {\n   const [voices, setVoices] = useState<Voice[]>([]);\n   const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>(VOICE_TRIGGERS);\n+  const [currentText, setCurrentText] = useState<string>('');\n \n-  const handleTextChange = (newText: string) => {\n+  const detectVoices = (text: string, triggers: VoiceTrigger[]) => {\n     const newVoices: Voice[] = [];\n-    const lowerText = newText.toLowerCase();\n+    const lowerText = text.toLowerCase();\n \n-    voiceTriggers.forEach(({ phrase, voice, comment, icon }) => {\n+    triggers.forEach(({ phrase, voice, comment, icon }) => {\n       const index = lowerText.indexOf(phrase);\n       if (index !== -1) {\n         newVoices.push({ name: voice, text: comment, icon, position: index });\n       }\n     });\n \n-    if (newText.length > MEMORY_VOICE.minLength && !newVoices.find(v => v.name === MEMORY_VOICE.voice)) {\n+    if (text.length > MEMORY_VOICE.minLength && !newVoices.find(v => v.name === MEMORY_VOICE.voice)) {\n       newVoices.push({ name: MEMORY_VOICE.voice, text: MEMORY_VOICE.comment, icon: MEMORY_VOICE.icon, position: Infinity });\n     }\n \n@@ -39,18 +40,63 @@ function App() {\n     setVoices(newVoices);\n   };\n \n-  // Example: Add a new trigger dynamically\n-  const addCustomTrigger = () => {\n-    const newTrigger: VoiceTrigger = {\n-      phrase: 'remember when',\n-      voice: 'Nostalgia',\n-      comment: 'The past always seems brighter from here...',\n-      color: 'purple',\n-      icon: 'cloud',\n-    };\n-    setVoiceTriggers([...voiceTriggers, newTrigger]);\n+  const handleTextChange = (newText: string) => {\n+    setCurrentText(newText);\n+    detectVoices(newText, voiceTriggers);\n+  };\n+\n+  // @@@ Re-detect voices when triggers change\n+  useEffect(() => {\n+    detectVoices(currentText, voiceTriggers);\n+  }, [voiceTriggers]);\n+\n+  // @@@ Trigger management methods - ready for backend integration\n+\n+  // Add a new trigger\n+  const addTrigger = (trigger: VoiceTrigger) => {\n+    setVoiceTriggers([...voiceTriggers, trigger]);\n+  };\n+\n+  // Remove a trigger by phrase\n+  const removeTrigger = (phrase: string) => {\n+    setVoiceTriggers(voiceTriggers.filter(t => t.phrase !== phrase));\n+  };\n+\n+  // Update an existing trigger\n+  const updateTrigger = (phrase: string, updates: Partial<VoiceTrigger>) => {\n+    setVoiceTriggers(voiceTriggers.map(t =>\n+      t.phrase === phrase ? { ...t, ...updates } : t\n+    ));\n+  };\n+\n+  // Replace all triggers (e.g., from API)\n+  const setAllTriggers = (newTriggers: VoiceTrigger[]) => {\n+    setVoiceTriggers(newTriggers);\n   };\n \n+  // Example usage (uncomment to test):\n+  // setTimeout(() => {\n+  //   addTrigger({\n+  //     phrase: 'remember when',\n+  //     voice: 'Nostalgia',\n+  //     comment: 'The past always seems brighter from here...',\n+  //     color: 'purple',\n+  //     icon: 'cloud',\n+  //   });\n+  // }, 3000);\n+\n+  // Expose methods to window for testing in console\n+  useEffect(() => {\n+    (window as any).voiceControls = {\n+      addTrigger,\n+      removeTrigger,\n+      updateTrigger,\n+      setAllTriggers,\n+      getCurrentTriggers: () => voiceTriggers,\n+    };\n+    console.log('Voice controls available! Try: window.voiceControls.addTrigger({...})');\n+  }, [voiceTriggers]);\n+\n   return (\n     <div className=\"book-interface\">\n       <WritingArea onChange={handleTextChange} triggers={voiceTriggers} />"
+    },
+    {
+      "sha": "c5b8cdb75e712eeaaf2d2e84fe65d9e03a94f958",
+      "filename": "frontend/src/components/EditableTextArea.tsx",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 3,
+      "changes": 7,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx?ref=c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+      "patch": "@@ -21,9 +21,10 @@ export default function EditableTextArea({ onChange, triggers }: EditableTextAre\n   // @@@ Dynamic trigger updates - Update highlights when triggers change\n   useEffect(() => {\n     if (editor && editor.isEditable) {\n-      editor.chain()\n-        .setMeta('voiceHighlight', { triggers })\n-        .run();\n+      // Force recalculation by triggering a transaction with meta\n+      const { tr } = editor.state;\n+      tr.setMeta('voiceHighlight', { triggers });\n+      editor.view.dispatch(tr);\n     }\n   }, [triggers, editor]);\n "
+    },
+    {
+      "sha": "ffdc5a7bbfe70267e2102baeaa8b6e3ffcc00d1a",
+      "filename": "frontend/src/extensions/VoiceHighlight.ts",
+      "status": "modified",
+      "additions": 16,
+      "deletions": 6,
+      "changes": 22,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts?ref=c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+      "patch": "@@ -14,6 +14,7 @@ export interface VoiceHighlightOptions {\n   triggers: VoiceTrigger[];\n }\n \n+// Dynamic voice highlighting with real-time updates\n export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n   name: 'voiceHighlight',\n \n@@ -24,31 +25,40 @@ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n   },\n \n   addProseMirrorPlugins() {\n-    const triggers = this.options.triggers;\n+    let triggers = this.options.triggers;\n \n     return [\n       new Plugin({\n         key: new PluginKey('voiceHighlight'),\n \n         state: {\n           init(_, { doc }) {\n-            return findHighlights(doc, triggers);\n+            return { decorations: findHighlights(doc, triggers), triggers };\n           },\n \n           apply(tr, oldState) {\n             // @@@ Dynamic updates - Recalculate on doc change or meta change\n             const metaChanged = tr.getMeta('voiceHighlight');\n-            if (tr.docChanged || metaChanged) {\n-              const newTriggers = metaChanged?.triggers || triggers;\n-              return findHighlights(tr.doc, newTriggers);\n+            if (metaChanged?.triggers) {\n+              triggers = metaChanged.triggers;\n+              return {\n+                decorations: findHighlights(tr.doc, triggers),\n+                triggers\n+              };\n+            }\n+            if (tr.docChanged) {\n+              return {\n+                decorations: findHighlights(tr.doc, oldState.triggers || triggers),\n+                triggers: oldState.triggers || triggers\n+              };\n             }\n             return oldState;\n           },\n         },\n \n         props: {\n           decorations(state) {\n-            return this.getState(state);\n+            return this.getState(state)?.decorations;\n           },\n         },\n       }),"
+    }
+  ]
+}

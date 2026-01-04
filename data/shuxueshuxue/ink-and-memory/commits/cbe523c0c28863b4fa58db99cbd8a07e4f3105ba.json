@@ -1,0 +1,73 @@
+{
+  "sha": "cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+  "node_id": "C_kwDOP2Zrm9oAKGNiZTUyM2MwYzI4ODYzYjRmYTU4ZGI5OWNiZDhhMDdlNGYzMTA1YmE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-01T12:39:01Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-01T12:39:01Z"
+    },
+    "message": "Add color coding to voice comments\n\nEach voice now has its own color scheme:\n- Logic: blue\n- Emotion: pink\n- Doubt: yellow\n- Memory: green\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "8f1b6de9da4aa34eda75a7b57065f7412052f85f",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/8f1b6de9da4aa34eda75a7b57065f7412052f85f"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "dfb265c42068bc56793eae66a3c26cd661de4ee4",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/dfb265c42068bc56793eae66a3c26cd661de4ee4",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/dfb265c42068bc56793eae66a3c26cd661de4ee4"
+    }
+  ],
+  "stats": {
+    "total": 25,
+    "additions": 22,
+    "deletions": 3
+  },
+  "files": [
+    {
+      "sha": "57a79916fe9acf60d6558f45ff27250fac787917",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 21,
+      "deletions": 2,
+      "changes": 23,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+      "patch": "@@ -88,8 +88,7 @@\n \n .voice-comment {\n   padding: 1rem;\n-  background-color: #fff5e6;\n-  border-left: 4px solid #ff9800;\n+  border-left: 4px solid;\n   border-radius: 4px;\n   font-family: 'Excalifont', 'Georgia', serif;\n   font-size: 1rem;\n@@ -98,6 +97,26 @@\n   animation: fadeIn 0.5s ease-in;\n }\n \n+.voice-comment-logic {\n+  background-color: #e6f2ff;\n+  border-color: #4d9fff;\n+}\n+\n+.voice-comment-emotion {\n+  background-color: #ffe6f2;\n+  border-color: #ff66b3;\n+}\n+\n+.voice-comment-doubt {\n+  background-color: #fffbe6;\n+  border-color: #ffdd33;\n+}\n+\n+.voice-comment-memory {\n+  background-color: #e6ffe6;\n+  border-color: #66ff66;\n+}\n+\n @keyframes fadeIn {\n   from {\n     opacity: 0;"
+    },
+    {
+      "sha": "74c004d8dd59d3ec6702e706ae60d79c040da75d",
+      "filename": "frontend/src/components/VoiceComment.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cbe523c0c28863b4fa58db99cbd8a07e4f3105ba/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoiceComment.tsx?ref=cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+      "patch": "@@ -5,7 +5,7 @@ interface VoiceCommentProps {\n \n export default function VoiceComment({ voice, text }: VoiceCommentProps) {\n   return (\n-    <div className=\"voice-comment\">\n+    <div className={`voice-comment voice-comment-${voice.toLowerCase()}`}>\n       <strong>{voice}:</strong> {text}\n     </div>\n   );"
+    }
+  ]
+}

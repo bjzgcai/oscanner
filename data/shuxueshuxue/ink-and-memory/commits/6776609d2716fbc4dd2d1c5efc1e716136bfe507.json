@@ -1,0 +1,61 @@
+{
+  "sha": "6776609d2716fbc4dd2d1c5efc1e716136bfe507",
+  "node_id": "C_kwDOP2Zrm9oAKDY3NzY2MDlkMjcxNmZiYzRkZDJkMWM1ZWZjMWU3MTYxMzZiZmU1MDc",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-30T03:21:24Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-30T03:21:24Z"
+    },
+    "message": "Restructure prompt to prevent LLM from extracting phrases from comments\n\nProblem: LLM was extracting phrases like \"adorning it with transcendence\"\nfrom existing comment text instead of from the user's original text,\ncausing 25 PHRASE_NOT_FOUND errors.\n\nSolution: Restructure prompt with clear visual sections:\n- \"TEXT TO ANALYZE\" - explicitly marked as phrase source\n- \"EXISTING CONVERSATION\" - full comments for context, but with warning\n- \"REJECTED PHRASES\" - explicit list of overlapped phrases\n- \"YOUR TASK\" - step-by-step instructions\n\nKey changes:\n- Added visual separators (════════) between sections\n- Multiple explicit warnings: \"Do NOT extract from conversation\"\n- Comments still visible for context (so agents see what others said)\n- Instructions repeatedly emphasize extraction from TEXT ONLY\n\nThis preserves conversational context while preventing confusion\nabout where to extract phrases from.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "ce2ff74d1087fe90c3fb7936c97accc9fe96eef5",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/ce2ff74d1087fe90c3fb7936c97accc9fe96eef5"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/6776609d2716fbc4dd2d1c5efc1e716136bfe507",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6776609d2716fbc4dd2d1c5efc1e716136bfe507",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/6776609d2716fbc4dd2d1c5efc1e716136bfe507",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6776609d2716fbc4dd2d1c5efc1e716136bfe507/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "2138b508bd6aa039659a6211ff0ae411ab82f86a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2138b508bd6aa039659a6211ff0ae411ab82f86a",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2138b508bd6aa039659a6211ff0ae411ab82f86a"
+    }
+  ],
+  "stats": {
+    "total": 60,
+    "additions": 39,
+    "deletions": 21
+  },
+  "files": [
+    {
+      "sha": "5b43f3825b3d0a1c10fa862fda2270c7b6c6bc05",
+      "filename": "backend/stateless_analyzer.py",
+      "status": "modified",
+      "additions": 39,
+      "deletions": 21,
+      "changes": 60,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/6776609d2716fbc4dd2d1c5efc1e716136bfe507/backend%2Fstateless_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/6776609d2716fbc4dd2d1c5efc1e716136bfe507/backend%2Fstateless_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateless_analyzer.py?ref=6776609d2716fbc4dd2d1c5efc1e716136bfe507",
+      "patch": "@@ -48,55 +48,73 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],\n         for name, v in voice_archetypes.items()\n     ])\n \n-    # Build list of applied comments with their phrases\n-    existing_summary = \"\"\n+    # Build existing conversation context\n+    conversation_context = \"\"\n     highlighted_phrases = []\n     if applied_comments:\n-        existing_summary = \"\\n\\nALREADY APPLIED COMMENTS (do not repeat or overlap with these):\\n\"\n+        conversation_context = \"\\n\\n════════════════════════════════════════════════════════════════\\n\"\n+        conversation_context += \"EXISTING CONVERSATION (for context - do NOT extract phrases from here):\\n\"\n+        conversation_context += \"════════════════════════════════════════════════════════════════\\n\"\n         for c in applied_comments:\n             phrase = c.get('phrase', '')\n             highlighted_phrases.append(phrase)\n-            existing_summary += f\"- {c.get('voice', 'Unknown')} on \\\"{phrase}\\\": {c.get('comment', '')}\\n\"\n-        existing_summary += f\"\\n👉 These phrases are already highlighted: {highlighted_phrases}\\n\"\n-        existing_summary += \"👉 Choose a DIFFERENT phrase that does NOT overlap with any of these!\\n\"\n+            conversation_context += f\"\\n{c.get('voice', 'Unknown')} commented on \\\"{phrase}\\\":\\n\"\n+            conversation_context += f\"  → {c.get('comment', '')}\\n\"\n+\n+        conversation_context += f\"\\n⚠️ Already highlighted phrases (do NOT overlap): {highlighted_phrases}\\n\"\n \n     # @@@ Add overlapped phrases feedback (phrases that were rejected due to overlap)\n+    rejected_section = \"\"\n     if overlapped_phrases:\n-        existing_summary += f\"\\n\\nREJECTED PHRASES (these overlapped with existing highlights):\\n\"\n+        rejected_section = \"\\n\\n════════════════════════════════════════════════════════════════\\n\"\n+        rejected_section += \"REJECTED PHRASES (these were tried but overlapped):\\n\"\n+        rejected_section += \"════════════════════════════════════════════════════════════════\\n\"\n         for phrase in overlapped_phrases:\n-            existing_summary += f\"- \\\"{phrase}\\\" (REJECTED - do NOT suggest this again)\\n\"\n-        existing_summary += f\"\\n⚠️ AVOID these phrases: {overlapped_phrases}\\n\"\n-        existing_summary += \"⚠️ The system already tried these and rejected them - choose something completely different!\\n\"\n+            rejected_section += f\"  ✗ \\\"{phrase}\\\" - REJECTED, do NOT suggest again\\n\"\n+        rejected_section += f\"\\n⚠️ Do NOT suggest any variation of these phrases!\\n\"\n \n     prompt = f\"\"\"You are analyzing internal dialogue as distinct inner voice personas.\n \n-Analyze this text and identify ONE NEW voice that wants to comment:\n+════════════════════════════════════════════════════════════════\n+TEXT TO ANALYZE (extract your phrase from THIS text ONLY):\n+════════════════════════════════════════════════════════════════\n \n \"{text}\"\n \n-Available voice personas (ONLY use these):\n+════════════════════════════════════════════════════════════════\n+AVAILABLE VOICE PERSONAS (choose ONE from this list):\n+════════════════════════════════════════════════════════════════\n+\n {voice_list}\n-{existing_summary}\n+{conversation_context}\n+{rejected_section}\n+\n+════════════════════════════════════════════════════════════════\n+YOUR TASK:\n+════════════════════════════════════════════════════════════════\n \n Find ONE NEW voice to comment:\n-1. Extract a SHORT phrase (2-4 words) that triggered it - MUST be EXACT text from above\n+\n+1. Extract a SHORT phrase (2-4 words) from the \"TEXT TO ANALYZE\" section above\n+   - MUST be EXACT substring from the quoted text\n+   - Do NOT extract from the conversation context or rejected phrases\n+   - Verify character-by-character that your phrase exists in the text\n+\n 2. Choose a voice persona from the available list\n+\n 3. Write what this voice is saying (1-2 sentences)\n \n CRITICAL RULES:\n - Return ONLY ONE comment\n-- DO NOT repeat any applied comments\n-- DO NOT choose phrases that overlap or intersect with already highlighted phrases\n-- Your chosen phrase must be completely separate from existing highlights\n+- Phrase MUST come from \"TEXT TO ANALYZE\" section ONLY\n+- DO NOT extract phrases from the \"EXISTING CONVERSATION\" section\n+- DO NOT overlap with already highlighted phrases: {highlighted_phrases}\n+- DO NOT suggest any rejected phrases: {overlapped_phrases}\n - DO NOT CREATE NEW VOICE NAMES - Only use from the available list\n - Return null if nothing is worth commenting on\n-- Phrase MUST be EXACT substring from text - verify by checking character-by-character\n - IGNORE text inside quotation marks (\"...\" or '...') - only highlight the author's own words\n-- DO NOT extract phrases from quoted responses, references, or examples\n-- Only comment on what the AUTHOR wrote, not what they are quoting or citing\n - Only comment on complete sentences (ending with .!?。！？)\n - Prefer SHORT highlights without punctuation (e.g., \"feel anxious\" not \"I feel anxious.\")\n-- Keep highlights tight and focused - avoid including sentence endings\n - Write in the SAME LANGUAGE as the text\"\"\"\n \n     # @@@ Add meta prompt if available"
+    }
+  ]
+}

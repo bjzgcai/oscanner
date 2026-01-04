@@ -1,0 +1,85 @@
+{
+  "sha": "cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+  "node_id": "C_kwDOP2Zrm9oAKGNiZWFlMWFlYjdkZDkyMWU1Y2Y2ZTQxN2IzNWEwNjJkOWUxMmU5NmE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-04T02:17:52Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-04T02:17:52Z"
+    },
+    "message": "Clean up code after fixing dynamic triggers\n\n- Remove all debug console.log statements\n- Remove commented example code\n- Keep only the working solution for dynamic trigger updates\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "ad16436ffff49fd8e77316234fd37456041537b2",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/ad16436ffff49fd8e77316234fd37456041537b2"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/c3c64de5d59dc3e1aa1c4ab16f8ee6f1a2aea03e"
+    }
+  ],
+  "stats": {
+    "total": 28,
+    "additions": 8,
+    "deletions": 20
+  },
+  "files": [
+    {
+      "sha": "a787be298557d969690be87d320883b13824bb3b",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 12,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+      "patch": "@@ -74,17 +74,6 @@ function App() {\n     setVoiceTriggers(newTriggers);\n   };\n \n-  // Example usage (uncomment to test):\n-  // setTimeout(() => {\n-  //   addTrigger({\n-  //     phrase: 'remember when',\n-  //     voice: 'Nostalgia',\n-  //     comment: 'The past always seems brighter from here...',\n-  //     color: 'purple',\n-  //     icon: 'cloud',\n-  //   });\n-  // }, 3000);\n-\n   // Expose methods to window for testing in console\n   useEffect(() => {\n     (window as any).voiceControls = {\n@@ -94,7 +83,6 @@ function App() {\n       setAllTriggers,\n       getCurrentTriggers: () => voiceTriggers,\n     };\n-    console.log('Voice controls available! Try: window.voiceControls.addTrigger({...})');\n   }, [voiceTriggers]);\n \n   return ("
+    },
+    {
+      "sha": "c7a9cc7aed9bbae6372f172ec8294d513f3b1f86",
+      "filename": "frontend/src/components/EditableTextArea.tsx",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 2,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FEditableTextArea.tsx?ref=cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+      "patch": "@@ -21,8 +21,8 @@ export default function EditableTextArea({ onChange, triggers }: EditableTextAre\n   // @@@ Dynamic trigger updates - Update highlights when triggers change\n   useEffect(() => {\n     if (editor && editor.isEditable) {\n-      // Force recalculation by triggering a transaction with meta\n-      const { tr } = editor.state;\n+      // Force recalculation by creating a new transaction with meta\n+      const tr = editor.state.tr;\n       tr.setMeta('voiceHighlight', { triggers });\n       editor.view.dispatch(tr);\n     }"
+    },
+    {
+      "sha": "88a0f19a0f975b4cc0d352fde7f97280ea024663",
+      "filename": "frontend/src/extensions/VoiceHighlight.ts",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 6,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fextensions%2FVoiceHighlight.ts?ref=cbeae1aeb7dd921e5cf6e417b35a062d9e12e96a",
+      "patch": "@@ -14,7 +14,6 @@ export interface VoiceHighlightOptions {\n   triggers: VoiceTrigger[];\n }\n \n-// Dynamic voice highlighting with real-time updates\n export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n   name: 'voiceHighlight',\n \n@@ -40,16 +39,17 @@ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({\n             // @@@ Dynamic updates - Recalculate on doc change or meta change\n             const metaChanged = tr.getMeta('voiceHighlight');\n             if (metaChanged?.triggers) {\n-              triggers = metaChanged.triggers;\n+              const newTriggers = metaChanged.triggers;\n               return {\n-                decorations: findHighlights(tr.doc, triggers),\n-                triggers\n+                decorations: findHighlights(tr.doc, newTriggers),\n+                triggers: newTriggers\n               };\n             }\n             if (tr.docChanged) {\n+              const currentTriggers = oldState.triggers || triggers;\n               return {\n-                decorations: findHighlights(tr.doc, oldState.triggers || triggers),\n-                triggers: oldState.triggers || triggers\n+                decorations: findHighlights(tr.doc, currentTriggers),\n+                triggers: currentTriggers\n               };\n             }\n             return oldState;"
+    }
+  ]
+}

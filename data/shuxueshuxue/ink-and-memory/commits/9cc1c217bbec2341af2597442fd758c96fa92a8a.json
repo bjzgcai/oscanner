@@ -1,0 +1,72 @@
+{
+  "sha": "9cc1c217bbec2341af2597442fd758c96fa92a8a",
+  "node_id": "C_kwDOP2Zrm9oAKDljYzFjMjE3YmJlYzIzNDFhZjI1OTc0NDJmZDc1OGM5NmZhOTJhOGE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-03T07:06:10Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-03T07:06:10Z"
+    },
+    "message": "Remove database file from git tracking and add to gitignore\n\n- Remove backend/data/ink-and-memory.db from git history\n- Add *.db, *.db-shm, *.db-wal to .gitignore\n- Database files should never be committed (contain user data)",
+    "tree": {
+      "sha": "6e0943eaaa8e993e9c89575cf5e72b6fc1697b5b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/6e0943eaaa8e993e9c89575cf5e72b6fc1697b5b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/9cc1c217bbec2341af2597442fd758c96fa92a8a",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9cc1c217bbec2341af2597442fd758c96fa92a8a",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9cc1c217bbec2341af2597442fd758c96fa92a8a",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9cc1c217bbec2341af2597442fd758c96fa92a8a/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0"
+    }
+  ],
+  "stats": {
+    "total": 5,
+    "additions": 5,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "46e45de825dc1b830c8c16b8ab500b49594da563",
+      "filename": ".gitignore",
+      "status": "modified",
+      "additions": 5,
+      "deletions": 0,
+      "changes": 5,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/9cc1c217bbec2341af2597442fd758c96fa92a8a/.gitignore",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/9cc1c217bbec2341af2597442fd758c96fa92a8a/.gitignore",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.gitignore?ref=9cc1c217bbec2341af2597442fd758c96fa92a8a",
+      "patch": "@@ -13,3 +13,8 @@ frontend/node_modules/\n # IDE\n .vscode/\n .idea/\n+\n+# Database files\n+*.db\n+*.db-shm\n+*.db-wal"
+    },
+    {
+      "sha": "dc246f847090b20042c0752f30a0c7a33e0ec8d4",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3f17ec5d1849309bf8a0d8e8400e385b17ae45b0/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=3f17ec5d1849309bf8a0d8e8400e385b17ae45b0"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "sha": "478699f649305881d00688d818150862c4582208",
+  "node_id": "C_kwDOP2Zrm9oAKDQ3ODY5OWY2NDkzMDU4ODFkMDA2ODhkODE4MTUwODYyYzQ1ODIyMDg",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-13T04:09:02Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-10-13T04:09:02Z"
+    },
+    "message": "Fix TypeScript type-only imports for production build",
+    "tree": {
+      "sha": "f1e6ca6df23b0dfc0d1fbccd1fbae20bb3eb1aa7",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/f1e6ca6df23b0dfc0d1fbccd1fbae20bb3eb1aa7"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/478699f649305881d00688d818150862c4582208",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/478699f649305881d00688d818150862c4582208",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/478699f649305881d00688d818150862c4582208",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/478699f649305881d00688d818150862c4582208/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5f3ec4a902b5399f2eedb1160903048361e1d299",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/5f3ec4a902b5399f2eedb1160903048361e1d299"
+    }
+  ],
+  "stats": {
+    "total": 4,
+    "additions": 2,
+    "deletions": 2
+  },
+  "files": [
+    {
+      "sha": "71f42ce2e3899ff822c26768dd08ae7c95d42f31",
+      "filename": "frontend/src/components/BookPage.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/478699f649305881d00688d818150862c4582208/frontend%2Fsrc%2Fcomponents%2FBookPage.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/478699f649305881d00688d818150862c4582208/frontend%2Fsrc%2Fcomponents%2FBookPage.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FBookPage.tsx?ref=478699f649305881d00688d818150862c4582208",
+      "patch": "@@ -1,4 +1,4 @@\n-import { ReactNode, forwardRef } from 'react';\n+import { type ReactNode, forwardRef } from 'react';\n \n interface BookPageProps {\n   children?: ReactNode;"
+    },
+    {
+      "sha": "96ad26d593b4dd1ebbaa3f66cd4f5b0b476659a1",
+      "filename": "frontend/src/components/VoicesPanel.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/478699f649305881d00688d818150862c4582208/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/478699f649305881d00688d818150862c4582208/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FVoicesPanel.tsx?ref=478699f649305881d00688d818150862c4582208",
+      "patch": "@@ -1,4 +1,4 @@\n-import { ReactNode, useRef, useEffect } from 'react';\n+import { type ReactNode, useRef, useEffect } from 'react';\n import BookPage from './BookPage';\n \n interface VoicesPanelProps {"
+    }
+  ]
+}

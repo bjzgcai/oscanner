@@ -1,0 +1,61 @@
+{
+  "sha": "b79a9c58e4a5f259c0f315194b18aa340edb90a5",
+  "node_id": "C_kwDOP2Zrm9oAKGI3OWE5YzU4ZTRhNWYyNTljMGYzMTUxOTRiMThhYTM0MGVkYjkwYTU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:17:49Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:17:49Z"
+    },
+    "message": "Refresh project structure section",
+    "tree": {
+      "sha": "39381a0a34bdc62fcd6fe89abc662621b0ee61ae",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/39381a0a34bdc62fcd6fe89abc662621b0ee61ae"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/b79a9c58e4a5f259c0f315194b18aa340edb90a5",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b79a9c58e4a5f259c0f315194b18aa340edb90a5",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/b79a9c58e4a5f259c0f315194b18aa340edb90a5",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b79a9c58e4a5f259c0f315194b18aa340edb90a5/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "80d782232582d333234d59acbb89874c40420722",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/80d782232582d333234d59acbb89874c40420722",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/80d782232582d333234d59acbb89874c40420722"
+    }
+  ],
+  "stats": {
+    "total": 28,
+    "additions": 14,
+    "deletions": 14
+  },
+  "files": [
+    {
+      "sha": "c09c323a5d79ead64fc6a7a1d3c345fc50fa2107",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 14,
+      "deletions": 14,
+      "changes": 28,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/b79a9c58e4a5f259c0f315194b18aa340edb90a5/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/b79a9c58e4a5f259c0f315194b18aa340edb90a5/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=b79a9c58e4a5f259c0f315194b18aa340edb90a5",
+      "patch": "@@ -162,20 +162,20 @@ re.split(r'[.!?。！？]+|\\n+', text)\n \n ```\n ink-and-memory/\n-├── assets/\n-│   ├── demo-screenshot.png    # Demo screenshot\n-│   └── book-ui-design.png     # Original UI design\n-├── backend/\n-│   ├── server.py              # PolyCLI Session Registry server\n-│   ├── stateful_analyzer.py   # Core voice detection logic\n-│   ├── config.py              # Voice archetypes & prompts\n-│   └── archive/               # Learning examples\n-└── frontend/\n-    ├── src/\n-    │   ├── components/        # React components\n-    │   ├── extensions/        # TipTap voice highlighting\n-    │   └── api/               # Backend API client\n-    └── public/                # Fonts & assets\n+├── assets/                         # README screenshots, fonts, art\n+│   └── writing-area.png            # Current product shot\n+├── backend/                        # FastAPI + PolyCLI server\n+│   ├── server.py                   # Main API entrypoint (UTC enforced)\n+│   ├── scheduler.py                # Timeline image cron\n+│   ├── database.py                 # SQLite schema + helpers (user_sessions, prefs)\n+│   ├── config.py / prompts/        # Voice archetypes + system prompts\n+│   └── archive/                    # Research + vibe coding notes\n+└── frontend/                       # React + TipTap client\n+    ├── src/App.tsx                 # Notebook, auto-save, timezone sync\n+    ├── src/components/             # Calendar, timeline, friends, decks, etc.\n+    ├── src/utils/sessionGrouping.ts# Shared calendar/timeline grouping helper\n+    ├── src/api/voiceApi.ts         # REST client for backend\n+    └── public/                     # Fonts, favicon, static assets\n ```\n \n ## 🤝 Contributing"
+    }
+  ]
+}

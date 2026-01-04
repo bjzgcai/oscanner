@@ -1,0 +1,72 @@
+{
+  "sha": "48b3de20c251c07f4ba51e91746203bbcc5d047c",
+  "node_id": "C_kwDOP2Zrm9oAKDQ4YjNkZTIwYzI1MWMwN2Y0YmE1MWU5MTc0NjIwM2JiY2M1ZDA0N2M",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T09:21:02Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-02T09:21:02Z"
+    },
+    "message": "Fix migration dialog not showing immediately after clearing flag\n\nChanges:\n- Migration check now properly shows dialog after clearing MIGRATION_COMPLETED flag\n- Previously: flag was cleared but old value was still checked\n- Now: immediately set shouldShowDialog when clearing flag\n\nThis ensures the migration dialog appears without requiring a page refresh.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "tree": {
+      "sha": "9f81b24d51d926d8491c3cdb9e0183a5db86771e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/9f81b24d51d926d8491c3cdb9e0183a5db86771e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/48b3de20c251c07f4ba51e91746203bbcc5d047c",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/48b3de20c251c07f4ba51e91746203bbcc5d047c",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/48b3de20c251c07f4ba51e91746203bbcc5d047c",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/48b3de20c251c07f4ba51e91746203bbcc5d047c/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "cc76de28cf588e463628f9b8b1fff5389c5bbfb8",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cc76de28cf588e463628f9b8b1fff5389c5bbfb8",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cc76de28cf588e463628f9b8b1fff5389c5bbfb8"
+    }
+  ],
+  "stats": {
+    "total": 8,
+    "additions": 7,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "b10ef0d042262f88b49acc82c169f73daa9deba2",
+      "filename": "backend/data/ink-and-memory.db",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/48b3de20c251c07f4ba51e91746203bbcc5d047c/backend%2Fdata%2Fink-and-memory.db",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/48b3de20c251c07f4ba51e91746203bbcc5d047c/backend%2Fdata%2Fink-and-memory.db",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdata%2Fink-and-memory.db?ref=48b3de20c251c07f4ba51e91746203bbcc5d047c"
+    },
+    {
+      "sha": "e28949c2df2b51a95b68383e94309666987869d5",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 7,
+      "deletions": 1,
+      "changes": 8,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/48b3de20c251c07f4ba51e91746203bbcc5d047c/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/48b3de20c251c07f4ba51e91746203bbcc5d047c/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=48b3de20c251c07f4ba51e91746203bbcc5d047c",
+      "patch": "@@ -398,12 +398,18 @@ export default function App() {\n       // @@@ TEMPORARY: Force re-migration if calendar entries exist but weren't imported\n       // Check if calendar entries exist but no sessions in database (migration failed)\n       const hasCalendar = !!localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES);\n+      let shouldShowDialog = false;\n+\n       if (hasCalendar && migrationDone) {\n         console.warn('⚠️ Found calendar entries but migration was marked done - forcing re-migration');\n         localStorage.removeItem(STORAGE_KEYS.MIGRATION_COMPLETED);\n+        // Re-check immediately after clearing flag\n+        shouldShowDialog = !!hasLocalData; // Migration is now not done\n+      } else {\n+        shouldShowDialog = !!hasLocalData && !migrationDone;\n       }\n \n-      if (hasLocalData && !migrationDone) {\n+      if (shouldShowDialog) {\n         console.log('✅ Showing migration dialog');\n         setShowMigrationDialog(true);\n       }"
+    }
+  ]
+}

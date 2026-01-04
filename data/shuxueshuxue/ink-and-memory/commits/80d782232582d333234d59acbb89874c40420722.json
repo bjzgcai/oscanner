@@ -1,0 +1,61 @@
+{
+  "sha": "80d782232582d333234d59acbb89874c40420722",
+  "node_id": "C_kwDOP2Zrm9oAKDgwZDc4MjIzMjU4MmQzMzMyMzRkNTlhY2JiODk4NzRjNDA0MjA3MjI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:15:22Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-11-21T10:15:22Z"
+    },
+    "message": "Rewrite README with full capability overview",
+    "tree": {
+      "sha": "350728d547bb2fd51b318ce0144c53a6e7b15f60",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/350728d547bb2fd51b318ce0144c53a6e7b15f60"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/80d782232582d333234d59acbb89874c40420722",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/80d782232582d333234d59acbb89874c40420722",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/80d782232582d333234d59acbb89874c40420722",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/80d782232582d333234d59acbb89874c40420722/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0"
+    }
+  ],
+  "stats": {
+    "total": 70,
+    "additions": 33,
+    "deletions": 37
+  },
+  "files": [
+    {
+      "sha": "a1eba51a197cf180cdbd9ca0cfa076d1ec9cad3c",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 33,
+      "deletions": 37,
+      "changes": 70,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/80d782232582d333234d59acbb89874c40420722/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/80d782232582d333234d59acbb89874c40420722/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=80d782232582d333234d59acbb89874c40420722",
+      "patch": "@@ -1,45 +1,39 @@\n # Ink and Memory\n \n-A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write—supporting both English and Chinese from the first keystroke.\n+Ink & Memory is a Disco Elysium–inspired journaling environment where your inner voices respond to every sentence. The product has graduated from a quick concept to a multi-surface workspace with auto-save, calendar/timeline review, friend timelines, and per-user timezone awareness. We now treat English and Chinese as first-class citizens: voices, state prompts, and every UI label support both languages out of the box.\n \n ![Writing Area Screenshot](assets/writing-area.png)\n \n-## ✨ Features\n+## ✨ Product Capabilities\n \n-- **Living Commentary**: As you write, distinct inner voices (Logic, Empathy, Volition, etc.) spontaneously comment on your thoughts\n-- **Dynamic Highlighting**: Voice-triggered phrases are highlighted with watercolor-style brushstrokes\n-- **Stateful Analysis**: LLM-powered backend remembers past comments and avoids repetition\n-- **Multilingual**: Supports both English and Chinese text with matching commentary language\n-- **Binder Aesthetic**: Beautiful notebook-style UI with ring binders and handwritten fonts\n+- **Living Commentary** — Thirteen Disco-style voices (Logic, Empathy, Volition, etc.) watch your text and deliver contextual comments, each with unique color/highlight styling.\n+- **Dynamic Highlighting** — Trigger phrases are painted directly on the notebook, pairing each voice’s comment with the exact text that summoned it.\n+- **Stateful Engine** — The backend remembers prior comments, prevents duplicates, enforces per-voice density, and honors the current emotional state/cube selection.\n+- **English + Chinese Support** — The editor, calendar/timeline, and all voices can operate seamlessly in either language. Calendar titles, timeline captions, and first-line extraction work with both scripts.\n+- **Auto-Save = Save** — Manual “Save today” and silent auto-save now share identical logic, guaranteeing every session writes `editor_state.createdAt`. Nothing gets lost, and the timeline/calendar stay synchronized.\n+- **Calendar + Timeline Unification** — Both surfaces consume the same grouped session data, so captions/timezones always match. Clicking a day loads the exact session with full comments.\n+- **Timezone-Aware Timeline** — Timestamps are stored in UTC but rendered in the viewer’s local timezone. We also capture each user’s preferred timezone to support future per-user scheduling.\n+- **Friend Timelines** — Select friends to compare their daily pictures/comments side-by-side, with gentle hint cards when no friend data exists.\n+- **Binder Aesthetic** — The UI is intentionally tactile with ring binders, Excalifont handwriting, and Xiaolai Chinese glyphs.\n \n-## 🎭 The Voices\n+# 🎭 The Voices\n \n-13 Disco Elysium-inspired archetypes provide commentary:\n-\n-- **Logic**: Wield raw intellectual power\n-- **Empathy**: Work your mirror neurons\n-- **Volition**: Keep your morale up\n-- **Inland Empire**: Hunches and gut feelings\n-- **Drama**: Detect lies and perform\n-- **Authority**: Assert yourself\n-- **Half Light**: Fight or flight\n-- **Shivers**: Tune in to the city\n-- **Composure**: Keep your poker face\n-- *...and more*\n+All thirteen voices from Disco Elysium ship with the app: Logic, Empathy, Inland Empire, Volition, Drama, Authority, Half Light, Shivers, Composure, Encyclopedia, Conceptualization, Suggestion, and Electrochemistry. Each voice stores its history, applies its own highlight gradient, and responds in English or Chinese depending on your writing language.\n \n ## 🏗️ Architecture\n \n ### Frontend (React + TypeScript)\n-- TipTap editor with custom voice highlighting extension\n-- 5-second polling with >10 character change threshold\n-- Instant phrase detection and highlighting\n-- Excalifont + Xiaolai fonts for handwritten aesthetic\n-\n-### Backend (Python + PolyCLI)\n-- **Stateful Analyzer**: Tracks existing comments, prunes deleted phrases\n-- **Density Control**: Max 1 voice per persona, 1 comment per sentence\n-- **LLM Integration**: GPT-4 via free API proxy\n-- **Session Registry**: Web control panel for monitoring\n+- TipTap editor with custom highlight/brush renderers\n+- Auto-save every 3 seconds (shared logic with manual save)\n+- Calendar/timeline share the same grouping helper (`utils/sessionGrouping.ts`)\n+- Friend timeline picker + hint cards\n+- Browser timezone detection -> sent to backend preferences\n+\n+### Backend (FastAPI + PolyCLI)\n+- Stateful analyzer enforcing density, deduplication, and history\n+- PolyCLI session registry + control panel for debugging\n+- Timeline scheduler capable of per-date generation (future: per-user timezone cadence)\n+- SQLite persistence with UTC timestamps (TZ forced at process start)\n \n ## 🚀 Setup\n \n@@ -101,12 +95,12 @@ App runs at `http://localhost:5173`\n \n ## 📖 Usage\n \n-1. Start both backend and frontend servers\n-2. Open `http://localhost:5173` in your browser\n-3. Start writing your thoughts\n-4. Every 5 seconds (if you've written >10 new characters), voices will comment\n-5. Delete text to remove its associated comments\n-6. Highlights show which phrases triggered each voice\n+1. Run backend + frontend\n+2. Compose in English or Chinese — voices respond immediately\n+3. Auto-save keeps every keystroke; manual “Save today” is only for calendar tagging\n+4. Calendar view lets you jump to any saved day, timeline shows daily pictures + captions\n+5. Friend timelines appear on the right, with hint cards when no data exists\n+6. Export/import your calendar via the built-in API endpoints\n \n ## 🎨 Design Philosophy\n \n@@ -160,7 +154,9 @@ re.split(r'[.!?。！？]+|\\n+', text)\n \n ## 🗺️ Roadmap / TODO\n \n-- **Per-user timeline scheduling**: scheduler currently runs once per day using a single timezone. We now store each user's preferred timezone in `user_preferences`, but the cron job still needs to read that field and trigger generation at each user's local midnight.\n+- **Per-user timeline scheduling** — Scheduler still triggers in a single timezone. Now that each user preference stores `timezone`, we need to update the cron job + DB helpers to run at each user’s local midnight.\n+- **Friend timezone awareness** — When we implement per-user scheduling, we should also adjust friend views to clarify which timezone each timeline reflects.\n+- **Open-source polish** — Document control-plane endpoints, linting scripts, and provide sample data/migrations for new deployments.\n \n ## 📁 Project Structure\n "
+    }
+  ]
+}
