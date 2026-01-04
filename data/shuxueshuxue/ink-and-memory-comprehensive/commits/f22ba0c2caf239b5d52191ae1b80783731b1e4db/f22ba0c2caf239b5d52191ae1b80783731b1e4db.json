@@ -1,0 +1,14 @@
+{
+  "hash": "f22ba0c2caf239b5d52191ae1b80783731b1e4db",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Oct 7 22:15:53 2025 +0800",
+  "subject": "Remove video file, keep screenshots only",
+  "files": [
+    "assets/demo.mov"
+  ],
+  "diff": "commits/f22ba0c2caf239b5d52191ae1b80783731b1e4db/f22ba0c2caf239b5d52191ae1b80783731b1e4db.diff",
+  "related_files": {
+    "assets/demo.mov": []
+  }
+}

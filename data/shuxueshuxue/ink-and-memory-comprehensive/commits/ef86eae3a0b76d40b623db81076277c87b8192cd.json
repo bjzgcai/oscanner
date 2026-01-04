@@ -1,0 +1,73 @@
+{
+  "sha": "ef86eae3a0b76d40b623db81076277c87b8192cd",
+  "node_id": "C_kwDOP2Zrm9oAKGVmODZlYWUzYTBiNzZkNDBiNjIzZGI4MTA3NjI3N2M4N2I4MTkyY2Q",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-26T09:09:00Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-26T09:09:00Z"
+    },
+    "message": "Fix state chooser to refresh session before saving",
+    "tree": {
+      "sha": "7c7d3ed24ddcefeb8f220563e4a8231a4a734c7b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/7c7d3ed24ddcefeb8f220563e4a8231a4a734c7b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/ef86eae3a0b76d40b623db81076277c87b8192cd",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ef86eae3a0b76d40b623db81076277c87b8192cd",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/ef86eae3a0b76d40b623db81076277c87b8192cd",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/ef86eae3a0b76d40b623db81076277c87b8192cd/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "86bddd0c3efa51e0e7600a68b2cc682a2683bb71",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/86bddd0c3efa51e0e7600a68b2cc682a2683bb71",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/86bddd0c3efa51e0e7600a68b2cc682a2683bb71"
+    }
+  ],
+  "stats": {
+    "total": 65,
+    "additions": 37,
+    "deletions": 28
+  },
+  "files": [
+    {
+      "sha": "6e30fcc9054cc387c22edcb1126020c779d882a5",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 35,
+      "deletions": 26,
+      "changes": 61,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ef86eae3a0b76d40b623db81076277c87b8192cd/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ef86eae3a0b76d40b623db81076277c87b8192cd/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=ef86eae3a0b76d40b623db81076277c87b8192cd",
+      "patch": "@@ -509,35 +509,44 @@ export default function App() {\n     }\n   }, [startDetachedBlankSession]);\n \n-  const handleStateChoose = useCallback(async (stateId: string) => {\n-    setSelectedState(stateId);\n-    const todayKey = getTodayKeyInTimezone(userTimezone);\n-\n-    // @@@ NEW: Save to EditorState (per-session storage)\n-    if (engineRef.current) {\n-      const currentState = engineRef.current.getState();\n-      currentState.selectedState = stateId;\n-      // Set createdAt only if not already set\n-      if (!currentState.createdAt) {\n-        currentState.createdAt = new Date().toISOString();\n+    const handleStateChoose = useCallback(async (stateId: string) => {\n+      const todayKey = getTodayKeyInTimezone(userTimezone);\n+\n+      if (engineRef.current) {\n+        const currentState = engineRef.current.getState();\n+        const sessionDate = currentState.createdAt\n+          ? getLocalDayKey(currentState.createdAt, userTimezone)\n+          : null;\n+\n+        if (sessionDate && sessionDate !== todayKey) {\n+          console.log(`\ud83d\udcc5 State chosen for old session (${sessionDate}). Starting fresh for ${todayKey}.`);\n+          await startDetachedBlankSession(true);\n+        }\n+\n+        const stateToUpdate = engineRef.current.getState();\n+        stateToUpdate.selectedState = stateId;\n+        if (!stateToUpdate.createdAt) {\n+          stateToUpdate.createdAt = new Date().toISOString();\n+        }\n+        setState(stateToUpdate);\n       }\n-      setState(currentState);\n-    }\n \n-    // @@@ KEEP: Also save to global preferences for daily reset check\n-    if (isAuthenticated) {\n-      try {\n-        const { savePreferences } = await import('./api/voiceApi');\n-        await savePreferences({ selected_state: stateId });\n-        // Database updated_at will be used for daily reset check\n-      } catch (error) {\n-        console.error('Failed to save state to database:', error);\n+      setSelectedState(stateId);\n+\n+      // @@@ KEEP: Also save to global preferences for daily reset check\n+      if (isAuthenticated) {\n+        try {\n+          const { savePreferences } = await import('./api/voiceApi');\n+          await savePreferences({ selected_state: stateId });\n+          // Database updated_at will be used for daily reset check\n+        } catch (error) {\n+          console.error('Failed to save state to database:', error);\n+        }\n+      } else {\n+        localStorage.setItem(STORAGE_KEYS.SELECTED_STATE, stateId);\n+        localStorage.setItem('selected-state-date', todayKey);\n       }\n-    } else {\n-      localStorage.setItem(STORAGE_KEYS.SELECTED_STATE, stateId);\n-      localStorage.setItem('selected-state-date', todayKey);\n-    }\n-  }, [isAuthenticated, userTimezone]);\n+    }, [isAuthenticated, startDetachedBlankSession, userTimezone]);\n \n   // @@@ Insert @ character at the end of last text cell\n   const handleInsertAgent = useCallback(() => {"
+    },
+    {
+      "sha": "0b87207bc6a6a8218df9101f460c9e4b15006173",
+      "filename": "frontend/src/hooks/useSessionLifecycle.ts",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 2,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/ef86eae3a0b76d40b623db81076277c87b8192cd/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/ef86eae3a0b76d40b623db81076277c87b8192cd/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts?ref=ef86eae3a0b76d40b623db81076277c87b8192cd",
+      "patch": "@@ -116,7 +116,7 @@ export function useSessionLifecycle({\n     };\n   }, [selectedState]);\n \n-  const startDetachedBlankSession = useCallback((persistImmediately: boolean = false) => {\n+  const startDetachedBlankSession = useCallback(async (persistImmediately: boolean = false) => {\n     if (!engineRef.current) return;\n     const blankState = buildBlankState();\n \n@@ -127,7 +127,7 @@ export function useSessionLifecycle({\n     if (!isAuthenticated) {\n       localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(blankState));\n     } else if (persistImmediately) {\n-      persistSessionImmediately(blankState);\n+      await persistSessionImmediately(blankState);\n     }\n   }, [buildBlankState, isAuthenticated, persistSessionImmediately]);\n "
+    }
+  ]
+}

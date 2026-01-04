@@ -1,0 +1,23 @@
+{
+  "sha": "0b9c8a4a9e4d7a28ebc12af8e9f6ac0ffbe1ba3c",
+  "message": "Implement auto-fork system for deck templates\n\n- Add has_local_changes field to track fork modifications\n- Users now automatically get forked copies of system decks on signup/login\n- Remove system deck visibility - users only see their own forked copies\n- Update functions mark content changes (name, description, prompts) as local_changes\n- Preference changes (enabled, order) don't trigger has_local_changes flag\n- Fix database deadlock in auto_fork_system_decks\n- Add deck/voice enable/disable toggle UI\n- Update App.tsx to reload voices after deck/voice updates\n\nBreaking change: Users no longer see system decks directly\nPrepares for future deck store with upstream sync mechanism",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-17T03:20:38Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-17T03:20:38Z"
+  },
+  "stats": {
+    "total": 207,
+    "additions": 173,
+    "deletions": 34
+  },
+  "files_count": 4,
+  "parents": [
+    "dca7234449c4c380dcf332ea6cc9677016a65888"
+  ]
+}

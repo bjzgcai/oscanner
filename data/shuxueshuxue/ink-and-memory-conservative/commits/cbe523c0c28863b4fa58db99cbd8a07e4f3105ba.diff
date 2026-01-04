@@ -1,0 +1,49 @@
+*** MODIFIED: frontend/src/App.css (+21/-2) ***
+@@ -88,8 +88,7 @@
+ 
+ .voice-comment {
+   padding: 1rem;
+-  background-color: #fff5e6;
+-  border-left: 4px solid #ff9800;
++  border-left: 4px solid;
+   border-radius: 4px;
+   font-family: 'Excalifont', 'Georgia', serif;
+   font-size: 1rem;
+@@ -98,6 +97,26 @@
+   animation: fadeIn 0.5s ease-in;
+ }
+ 
++.voice-comment-logic {
++  background-color: #e6f2ff;
++  border-color: #4d9fff;
++}
++
++.voice-comment-emotion {
++  background-color: #ffe6f2;
++  border-color: #ff66b3;
++}
++
++.voice-comment-doubt {
++  background-color: #fffbe6;
++  border-color: #ffdd33;
++}
++
++.voice-comment-memory {
++  background-color: #e6ffe6;
++  border-color: #66ff66;
++}
++
+ @keyframes fadeIn {
+   from {
+     opacity: 0;
+
+*** MODIFIED: frontend/src/components/VoiceComment.tsx (+1/-1) ***
+@@ -5,7 +5,7 @@ interface VoiceCommentProps {
+ 
+ export default function VoiceComment({ voice, text }: VoiceCommentProps) {
+   return (
+-    <div className="voice-comment">
++    <div className={`voice-comment voice-comment-${voice.toLowerCase()}`}>
+       <strong>{voice}:</strong> {text}
+     </div>
+   );

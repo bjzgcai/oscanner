@@ -1,0 +1,23 @@
+{
+  "sha": "524938eba470678817c2bca4aefa18d8625b7b4b",
+  "message": "已移除未使用的 handleStartFresh，解决 TS6133\n\n已移除未使用的 handleStartFresh，解决 TS6133",
+  "author": {
+    "name": "zhuchenyu2008",
+    "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+    "date": "2026-01-03T04:11:22Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2026-01-03T04:11:22Z"
+  },
+  "stats": {
+    "total": 4,
+    "additions": 0,
+    "deletions": 4
+  },
+  "files_count": 1,
+  "parents": [
+    "adb714ae95ee4fa51c07fd30135713a7904f89d8"
+  ]
+}

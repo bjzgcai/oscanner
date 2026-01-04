@@ -1,0 +1,14 @@
+{
+  "hash": "25fe1af13826bd1d80e505bffb330df7f75feb46",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Thu Nov 13 18:12:48 2025 +0800",
+  "subject": "Add API endpoints for deck and voice management",
+  "files": [
+    "backend/server.py"
+  ],
+  "diff": "commits/25fe1af13826bd1d80e505bffb330df7f75feb46/25fe1af13826bd1d80e505bffb330df7f75feb46.diff",
+  "related_files": {
+    "backend/server.py": []
+  }
+}

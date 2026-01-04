@@ -1,0 +1,94 @@
+*** FILE: frontend/src/components/CalendarPopup.tsx ***
+@@ -129,19 +129,26 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+           const grouped: Record<string, CalendarEntry[]> = {};
+ 
+           for (const session of sessions) {
++            // @@@ Skip unnamed sessions (same check as initial load)
++            if (!session.name) continue;
++
+             const fullSession = await getSession(session.id);
+-            let dateKey = session.created_at?.split('T')[0] || getTodayKey();
++            // @@@ Extract date from created_at timestamp (format: "2025-11-02 10:42:17")
++            let dateKey = session.created_at?.substring(0, 10) || getTodayKey();
++
++            // Legacy: if name starts with YYYY-MM-DD format, use that
+             if (session.name && /^\d{4}-\d{2}-\d{2}/.test(session.name)) {
+               dateKey = session.name.split(' - ')[0];
+             }
++
+             if (!grouped[dateKey]) {
+               grouped[dateKey] = [];
+             }
+             grouped[dateKey].push({
+               id: session.id,
+               timestamp: new Date(session.created_at || Date.now()).getTime(),
+               state: fullSession.editor_state,
+-              firstLine: session.name || 'Untitled'
++              firstLine: session.name
+             });
+           }
+           setCalendarData(grouped);
+
+*** FILE: frontend/src/components/StateChooser.tsx ***
+@@ -35,7 +35,7 @@ export default function StateChooser({ stateConfig, selectedState, onChoose }: P
+   };
+ 
+   // @@@ Mini icon generator for collapsed state (24px version)
+-  const getMiniStateIcon = (stateId: string): JSX.Element => {
++  const getMiniStateIcon = (stateId: string) => {
+     const iconProps = { width: 24, height: 24, viewBox: "0 0 100 100" };
+ 
+     switch(stateId.toLowerCase()) {
+@@ -121,7 +121,7 @@ export default function StateChooser({ stateConfig, selectedState, onChoose }: P
+           >
+             {/* Shrunken state icon */}
+             <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+-              {getMiniStateIcon(selectedState)}
++              {selectedState && getMiniStateIcon(selectedState)}
+             </div>
+ 
+             <span style={{
+
+*** FILE: frontend/src/components/StateCube.tsx ***
+@@ -17,12 +17,17 @@ interface CubeFace {
+ 
+ // @@@ Quaternion class for smooth 3D rotation
+ class Quaternion {
+-  constructor(
+-    public w: number,
+-    public x: number,
+-    public y: number,
+-    public z: number
+-  ) {}
++  w: number;
++  x: number;
++  y: number;
++  z: number;
++
++  constructor(w: number, x: number, y: number, z: number) {
++    this.w = w;
++    this.x = x;
++    this.y = y;
++    this.z = z;
++  }
+ 
+   static identity(): Quaternion {
+     return new Quaternion(1, 0, 0, 0);
+@@ -392,7 +397,7 @@ export function StateCube({ onStateSelect, stateConfig }: StateCubeProps) {
+   }, []);
+ 
+   // @@@ Simple SVG icon generator for each state
+-  const getStateIcon = (stateId: string): JSX.Element => {
++  const getStateIcon = (stateId: string) => {
+     const iconProps = { width: 40, height: 40, viewBox: "0 0 100 100", style: { margin: '0 auto' } };
+ 
+     switch(stateId.toLowerCase()) {
+@@ -455,7 +460,7 @@ export function StateCube({ onStateSelect, stateConfig }: StateCubeProps) {
+           gap: '8px'
+         }}
+       >
+-        {face.states.map((state, idx) => {
++        {face.states.map((state) => {
+           const isClicked = clickedState === state.id;
+           return (
+             <div

@@ -1,0 +1,10 @@
+*** FILE: .gitignore ***
+@@ -13,3 +13,8 @@ frontend/node_modules/
+ # IDE
+ .vscode/
+ .idea/
++
++# Database files
++*.db
++*.db-shm
++*.db-wal

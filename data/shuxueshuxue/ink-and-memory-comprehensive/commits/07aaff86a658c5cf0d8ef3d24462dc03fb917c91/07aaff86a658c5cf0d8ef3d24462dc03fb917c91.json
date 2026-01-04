@@ -1,0 +1,27 @@
+{
+  "hash": "07aaff86a658c5cf0d8ef3d24462dc03fb917c91",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Nov 12 08:59:32 2025 +0800",
+  "subject": "Stop tracking .DS_Store and CLAUDE.md",
+  "files": [
+    ".DS_Store",
+    ".gitignore",
+    "CLAUDE.md"
+  ],
+  "diff": "commits/07aaff86a658c5cf0d8ef3d24462dc03fb917c91/07aaff86a658c5cf0d8ef3d24462dc03fb917c91.diff",
+  "related_files": {
+    ".DS_Store": [
+      ".gitignore",
+      "CLAUDE.md"
+    ],
+    ".gitignore": [
+      ".DS_Store",
+      "CLAUDE.md"
+    ],
+    "CLAUDE.md": [
+      ".DS_Store",
+      ".gitignore"
+    ]
+  }
+}

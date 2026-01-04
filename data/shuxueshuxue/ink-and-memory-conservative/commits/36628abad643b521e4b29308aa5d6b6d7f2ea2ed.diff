@@ -1,0 +1,281 @@
+*** MODIFIED: frontend/src/App.css (+7/-0) ***
+@@ -235,6 +235,13 @@
+ .voice-highlight {
+   margin: -2px -6px;
+   padding: 2px 6px;
++  cursor: pointer;
++  transition: all 0.2s ease;
++}
++
++.voice-highlight:hover {
++  transform: scale(1.05);
++  filter: brightness(0.95);
+ }
+ 
+ .voice-highlight-yellow {
+
+*** MODIFIED: frontend/src/App.tsx (+34/-11) ***
+@@ -60,6 +60,8 @@ function App() {
+           color: v.color   // Keep text name: "blue"
+         };
+       }
++      // Store the original defaults separately (never modified)
++      setDefaultVoiceConfigs(converted);
+       // Use localStorage if exists, otherwise use backend defaults
+       setVoiceConfigs(getVoices() || converted);
+     });
+@@ -69,10 +71,12 @@ function App() {
+   const [voices, setVoices] = useState<Voice[]>([]);
+   const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>([]);
+   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
++  const [defaultVoiceConfigs, setDefaultVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+   const [currentText, setCurrentText] = useState<string>('');
+   const [currentHTML, setCurrentHTML] = useState<string>('');
+   const [cursorPosition, setCursorPosition] = useState<number>(0);
+   const [focusedVoiceIndex, setFocusedVoiceIndex] = useState<number | undefined>(undefined);
++  const [hoveredPhrase, setHoveredPhrase] = useState<string | null>(null);
+   const currentTextRef = useRef<string>('');
+   const isAnalyzingRef = useRef<boolean>(false);
+   const editorRef = useRef<EditableTextAreaRef>(null);
+@@ -236,6 +240,14 @@ function App() {
+     detectVoices(currentText, voiceTriggers);
+   }, [voiceTriggers]);
+ 
++  // @@@ Clear old triggers when voice config changes (e.g., Use Default)
++  // This forces immediate re-analysis with new config
++  useEffect(() => {
++    console.log('🔄 Voice config changed, clearing old triggers');
++    setVoiceTriggers([]);
++    setVoices([]);
++  }, [voiceConfigs]);
++
+   return (
+     <>
+       <LeftSidebar currentView={currentView} onViewChange={setCurrentView} />
+@@ -247,19 +259,30 @@ function App() {
+             onContentChange={handleContentChange}
+             triggers={voiceTriggers}
+             onCursorChange={setCursorPosition}
++            onPhraseHover={setHoveredPhrase}
+             content={currentHTML}
+           />
+           <VoicesPanel focusedVoiceIndex={focusedVoiceIndex}>
+-            {voices.map((voice, index) => (
+-              <VoiceComment
+-                key={index}
+-                voice={voice.name}
+-                text={voice.text}
+-                icon={voice.icon}
+-                color={voice.color}
+-                onQuote={() => handleQuote(voice.name, voice.text)}
+-              />
+-            ))}
++            {voices.map((voice, index) => {
++              // @@@ Find the trigger phrase for this voice
++              const trigger = voiceTriggers.find(t =>
++                t.voice === voice.name && t.comment === voice.text
++              );
++              const isHovered = hoveredPhrase !== null && trigger !== undefined &&
++                hoveredPhrase.toLowerCase() === trigger.phrase.toLowerCase();
++
++              return (
++                <VoiceComment
++                  key={index}
++                  voice={voice.name}
++                  text={voice.text}
++                  icon={voice.icon}
++                  color={voice.color}
++                  onQuote={() => handleQuote(voice.name, voice.text)}
++                  isHovered={isHovered}
++                />
++              );
++            })}
+           </VoicesPanel>
+           <BinderRings />
+         </div>
+@@ -276,7 +299,7 @@ function App() {
+           overflow: 'hidden'
+         }}>
+           <VoiceSettings
+-            defaultVoices={voiceConfigs}
++            defaultVoices={defaultVoiceConfigs}
+             onSave={setVoiceConfigs}
+           />
+         </div>
+
+*** MODIFIED: frontend/src/components/EditableTextArea.tsx (+17/-2) ***
+@@ -9,6 +9,7 @@ interface EditableTextAreaProps {
+   onContentChange?: (html: string) => void;
+   triggers: VoiceTrigger[];
+   onCursorChange?: (position: number) => void;
++  onPhraseHover?: (phrase: string | null) => void;
+   content?: string;
+ }
+ 
+@@ -18,15 +19,18 @@ export interface EditableTextAreaRef {
+ 
+ const EditableTextArea = forwardRef<EditableTextAreaRef, EditableTextAreaProps>(
+   (props, ref) => {
+-    const { onChange, onContentChange, triggers, onCursorChange, content } = props;
++    const { onChange, onContentChange, triggers, onCursorChange, onPhraseHover, content } = props;
+ 
+     const editor = useEditor({
+       extensions: [
+         StarterKit,
+         Placeholder.configure({
+           placeholder: 'write here, I am listening...',
+         }),
+-        VoiceHighlight.configure({ triggers })
++        VoiceHighlight.configure({
++          triggers,
++          onPhraseHover
++        })
+       ],
+       content: content || '',
+       onUpdate: ({ editor }) => {
+@@ -50,6 +54,17 @@ const EditableTextArea = forwardRef<EditableTextAreaRef, EditableTextAreaProps>(
+       }
+     }, [triggers, editor]);
+ 
++    // @@@ Update onPhraseHover callback when it changes
++    useEffect(() => {
++      if (editor) {
++        editor.extensionManager.extensions.forEach((ext: any) => {
++          if (ext.name === 'voiceHighlight' && ext.options) {
++            ext.options.onPhraseHover = onPhraseHover;
++          }
++        });
++      }
++    }, [onPhraseHover, editor]);
++
+     // Expose insertText method to parent component
+     useImperativeHandle(ref, () => ({
+       insertText: (text: string) => {
+
+*** MODIFIED: frontend/src/components/VoiceComment.tsx (+8/-3) ***
+@@ -6,6 +6,7 @@ interface VoiceCommentProps {
+   icon: string;
+   color: string;
+   onQuote?: () => void;
++  isHovered?: boolean;
+ }
+ 
+ const iconMap = {
+@@ -31,17 +32,21 @@ const colorMap: Record<string, { background: string; border: string }> = {
+   purple: { background: '#f3e6ff', border: '#b366ff' },
+ };
+ 
+-export default function VoiceComment({ voice, text, icon, color, onQuote }: VoiceCommentProps) {
++export default function VoiceComment({ voice, text, icon, color, onQuote, isHovered }: VoiceCommentProps) {
+   const Icon = iconMap[icon as keyof typeof iconMap];
+   const colors = colorMap[color] || { background: '#f0f0f0', border: '#ccc' };
+ 
+   return (
+     <div
+-      className="voice-comment"
++      className={`voice-comment ${isHovered ? 'hovered' : ''}`}
+       style={{
+         backgroundColor: colors.background,
+         borderColor: colors.border,
+-        position: 'relative'
++        position: 'relative',
++        transform: isHovered ? 'scale(1.02)' : 'scale(1)',
++        boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
++        transition: 'all 0.2s ease',
++        borderWidth: isHovered ? '2px' : '4px',
+       }}
+     >
+       <div className="voice-header">
+
+*** MODIFIED: frontend/src/components/VoiceSettings.tsx (+4/-0) ***
+@@ -42,9 +42,13 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+   };
+ 
+   const handleDefault = () => {
++    console.log('🔄 Use Default clicked');
++    console.log('Current voices:', voices);
++    console.log('Default voices:', defaultVoices);
+     clearVoices();
+     // Deep copy to force React to re-render
+     const freshDefaults = JSON.parse(JSON.stringify(defaultVoices));
++    console.log('Fresh defaults:', freshDefaults);
+     setVoices(freshDefaults);
+     onSave(freshDefaults);
+   };
+
+*** MODIFIED: frontend/src/components/WritingArea.tsx (+3/-2) ***
+@@ -8,13 +8,14 @@ interface WritingAreaProps {
+   onContentChange?: (html: string) => void;
+   triggers: VoiceTrigger[];
+   onCursorChange?: (position: number) => void;
++  onPhraseHover?: (phrase: string | null) => void;
+   content?: string;
+ }
+ 
+-const WritingArea = forwardRef<EditableTextAreaRef, WritingAreaProps>(({ onChange, onContentChange, triggers, onCursorChange, content }, ref) => {
++const WritingArea = forwardRef<EditableTextAreaRef, WritingAreaProps>(({ onChange, onContentChange, triggers, onCursorChange, onPhraseHover, content }, ref) => {
+   return (
+     <BookPage side="left">
+-      <EditableTextArea ref={ref} onChange={onChange} onContentChange={onContentChange} triggers={triggers} onCursorChange={onCursorChange} content={content} />
++      <EditableTextArea ref={ref} onChange={onChange} onContentChange={onContentChange} triggers={triggers} onCursorChange={onCursorChange} onPhraseHover={onPhraseHover} content={content} />
+     </BookPage>
+   );
+ });
+
+*** MODIFIED: frontend/src/extensions/VoiceHighlight.ts (+30/-0) ***
+@@ -12,6 +12,7 @@ export interface VoiceTrigger {
+ 
+ export interface VoiceHighlightOptions {
+   triggers: VoiceTrigger[];
++  onPhraseHover?: (phrase: string | null) => void;
+ }
+ 
+ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({
+@@ -20,11 +21,13 @@ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({
+   addOptions() {
+     return {
+       triggers: [],
++      onPhraseHover: undefined,
+     };
+   },
+ 
+   addProseMirrorPlugins() {
+     let triggers = this.options.triggers;
++    const onPhraseHover = this.options.onPhraseHover;
+ 
+     return [
+       new Plugin({
+@@ -60,6 +63,33 @@ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({
+           decorations(state) {
+             return this.getState(state)?.decorations;
+           },
++
++          // @@@ Hover detection - Find which phrase is being hovered
++          handleDOMEvents: {
++            mouseover(_view, event) {
++              const target = event.target as HTMLElement;
++
++              // Check if hovering over a highlighted element
++              if (target.classList.contains('voice-highlight')) {
++                // Extract the text content
++                const phrase = target.textContent || '';
++                onPhraseHover?.(phrase);
++                return false;
++              }
++              return false;
++            },
++
++            mouseout(_view, event) {
++              const target = event.target as HTMLElement;
++
++              // Check if leaving a highlighted element
++              if (target.classList.contains('voice-highlight')) {
++                onPhraseHover?.(null);
++                return false;
++              }
++              return false;
++            },
++          },
+         },
+       }),
+     ];

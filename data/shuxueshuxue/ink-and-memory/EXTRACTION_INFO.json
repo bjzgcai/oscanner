@@ -1,0 +1,21 @@
+{
+  "repository": "shuxueshuxue/ink-and-memory",
+  "url": "https://github.com/shuxueshuxue/ink-and-memory",
+  "extraction_type": "moderate",
+  "description": "Diffs + File Context",
+  "stats": {
+    "total_commits": 263,
+    "unique_files_mentioned": 151,
+    "file_contents_fetched": 48,
+    "repository_info": "included",
+    "repository_tree": "included"
+  },
+  "structure": {
+    "commits/": "263 commits with JSON metadata and diffs",
+    "files/": "48 current file contents",
+    "commits_index.json": "Index of all commits",
+    "commits_list.json": "API commits list",
+    "repo_info.json": "Repository metadata",
+    "repo_tree.json": "Repository file tree"
+  }
+}

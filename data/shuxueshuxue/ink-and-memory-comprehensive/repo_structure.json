@@ -1,0 +1,394 @@
+[
+  {
+    "path": "",
+    "dirs": [
+      ".git",
+      ".github",
+      "assets",
+      "backend",
+      "docs",
+      "frontend"
+    ],
+    "files": [
+      ".gitignore",
+      "LICENSE",
+      "README.md",
+      "README.zh.md"
+    ]
+  },
+  {
+    "path": "assets",
+    "dirs": [],
+    "files": [
+      "banner.png",
+      "book-ui-design.png",
+      "writing-area.png"
+    ]
+  },
+  {
+    "path": "backend",
+    "dirs": [
+      "prompts",
+      "tests",
+      "tools"
+    ],
+    "files": [
+      ".gitignore",
+      "API.md",
+      "Dockerfile",
+      "auth.py",
+      "config.py",
+      "database.py",
+      "docker-compose.yml",
+      "models.json.example",
+      "pyproject.toml",
+      "requirements.txt",
+      "scheduler.py",
+      "server.py",
+      "speech_recognition.py",
+      "stateless_analyzer.py",
+      "uv.lock"
+    ]
+  },
+  {
+    "path": "backend/prompts",
+    "dirs": [],
+    "files": [
+      "absurdist.md",
+      "holder.md",
+      "mirror.md",
+      "starter.md",
+      "unpacker.md",
+      "weaver.md"
+    ]
+  },
+  {
+    "path": "backend/tools",
+    "dirs": [],
+    "files": [
+      "session_inserter.py",
+      "session_inspector.py"
+    ]
+  },
+  {
+    "path": "backend/tests",
+    "dirs": [],
+    "files": [
+      "README.md",
+      "__init__.py",
+      "ci-smoke.sh",
+      "picture_dry_run.py",
+      "test_api_endpoints.py",
+      "test_database.py"
+    ]
+  },
+  {
+    "path": ".git",
+    "dirs": [
+      "branches",
+      "hooks",
+      "info",
+      "logs",
+      "objects",
+      "refs"
+    ],
+    "files": [
+      "HEAD",
+      "config",
+      "description",
+      "index",
+      "packed-refs"
+    ]
+  },
+  {
+    "path": ".git/logs",
+    "dirs": [
+      "refs"
+    ],
+    "files": [
+      "HEAD"
+    ]
+  },
+  {
+    "path": ".git/logs/refs",
+    "dirs": [
+      "heads",
+      "remotes"
+    ],
+    "files": []
+  },
+  {
+    "path": ".git/logs/refs/heads",
+    "dirs": [],
+    "files": [
+      "main"
+    ]
+  },
+  {
+    "path": ".git/logs/refs/remotes",
+    "dirs": [
+      "origin"
+    ],
+    "files": []
+  },
+  {
+    "path": ".git/logs/refs/remotes/origin",
+    "dirs": [],
+    "files": [
+      "HEAD"
+    ]
+  },
+  {
+    "path": ".git/info",
+    "dirs": [],
+    "files": [
+      "exclude"
+    ]
+  },
+  {
+    "path": ".git/hooks",
+    "dirs": [],
+    "files": [
+      "applypatch-msg.sample",
+      "commit-msg.sample",
+      "fsmonitor-watchman.sample",
+      "post-update.sample",
+      "pre-applypatch.sample",
+      "pre-commit.sample",
+      "pre-merge-commit.sample",
+      "pre-push.sample",
+      "pre-rebase.sample",
+      "pre-receive.sample",
+      "prepare-commit-msg.sample",
+      "push-to-checkout.sample",
+      "sendemail-validate.sample",
+      "update.sample"
+    ]
+  },
+  {
+    "path": ".git/objects",
+    "dirs": [
+      "info",
+      "pack"
+    ],
+    "files": []
+  },
+  {
+    "path": ".git/objects/info",
+    "dirs": [],
+    "files": []
+  },
+  {
+    "path": ".git/objects/pack",
+    "dirs": [],
+    "files": [
+      "pack-2d3a25e28c2962e2fd882f494d26bc3a1bd09e56.idx",
+      "pack-2d3a25e28c2962e2fd882f494d26bc3a1bd09e56.pack",
+      "pack-2d3a25e28c2962e2fd882f494d26bc3a1bd09e56.rev"
+    ]
+  },
+  {
+    "path": ".git/branches",
+    "dirs": [],
+    "files": []
+  },
+  {
+    "path": ".git/refs",
+    "dirs": [
+      "heads",
+      "remotes",
+      "tags"
+    ],
+    "files": []
+  },
+  {
+    "path": ".git/refs/heads",
+    "dirs": [],
+    "files": [
+      "main"
+    ]
+  },
+  {
+    "path": ".git/refs/tags",
+    "dirs": [],
+    "files": []
+  },
+  {
+    "path": ".git/refs/remotes",
+    "dirs": [
+      "origin"
+    ],
+    "files": []
+  },
+  {
+    "path": ".git/refs/remotes/origin",
+    "dirs": [],
+    "files": [
+      "HEAD"
+    ]
+  },
+  {
+    "path": ".github",
+    "dirs": [
+      "workflows"
+    ],
+    "files": []
+  },
+  {
+    "path": ".github/workflows",
+    "dirs": [],
+    "files": [
+      "ci-backend.yml",
+      "ci-frontend.yml",
+      "deploy-backend.yml",
+      "deploy-frontend.yml"
+    ]
+  },
+  {
+    "path": "docs",
+    "dirs": [],
+    "files": [
+      "voice-customization.md"
+    ]
+  },
+  {
+    "path": "frontend",
+    "dirs": [
+      "public",
+      "src"
+    ],
+    "files": [
+      ".gitignore",
+      "eslint.config.js",
+      "index.html",
+      "package-lock.json",
+      "package.json",
+      "tsconfig.app.json",
+      "tsconfig.json",
+      "tsconfig.node.json",
+      "vite.config.ts"
+    ]
+  },
+  {
+    "path": "frontend/public",
+    "dirs": [],
+    "files": [
+      "Excalifont-Regular.woff2",
+      "Xiaolai-Regular.ttf",
+      "Xiaolai-Regular.woff2",
+      "login-banner.jpg",
+      "placeholder-memory.png"
+    ]
+  },
+  {
+    "path": "frontend/src",
+    "dirs": [
+      "api",
+      "components",
+      "constants",
+      "contexts",
+      "engine",
+      "hooks",
+      "utils"
+    ],
+    "files": [
+      "App.css",
+      "App.tsx",
+      "i18n.ts",
+      "index.css",
+      "main.tsx"
+    ]
+  },
+  {
+    "path": "frontend/src/contexts",
+    "dirs": [],
+    "files": [
+      "AuthContext.tsx"
+    ]
+  },
+  {
+    "path": "frontend/src/api",
+    "dirs": [],
+    "files": [
+      "voiceApi.ts"
+    ]
+  },
+  {
+    "path": "frontend/src/components",
+    "dirs": [
+      "Auth",
+      "Editor"
+    ],
+    "files": [
+      "AboutView.tsx",
+      "AgentDropdown.tsx",
+      "AnalysisView.tsx",
+      "CalendarPopup.tsx",
+      "ChatWidgetUI.tsx",
+      "CollectionsView.tsx",
+      "CommentCard.tsx",
+      "DeckEditorModal.tsx",
+      "DeckManager.tsx",
+      "FriendsView.tsx",
+      "LeftToolbar.tsx",
+      "StateChooser.tsx",
+      "StateCube.tsx",
+      "TopNavBar.tsx",
+      "deckVisuals.ts"
+    ]
+  },
+  {
+    "path": "frontend/src/components/Auth",
+    "dirs": [],
+    "files": [
+      "LoginForm.tsx",
+      "RegisterForm.tsx"
+    ]
+  },
+  {
+    "path": "frontend/src/components/Editor",
+    "dirs": [],
+    "files": [
+      "InspirationHint.tsx"
+    ]
+  },
+  {
+    "path": "frontend/src/constants",
+    "dirs": [],
+    "files": [
+      "storageKeys.ts"
+    ]
+  },
+  {
+    "path": "frontend/src/engine",
+    "dirs": [],
+    "files": [
+      "ChatWidget.ts",
+      "EditorEngine.ts"
+    ]
+  },
+  {
+    "path": "frontend/src/utils",
+    "dirs": [],
+    "files": [
+      "calendarStorage.ts",
+      "debugLogger.ts",
+      "mobileDetect.ts",
+      "textNormalize.ts",
+      "timezone.ts",
+      "voiceStorage.ts"
+    ]
+  },
+  {
+    "path": "frontend/src/hooks",
+    "dirs": [],
+    "files": [
+      "index.ts",
+      "useComments.ts",
+      "useInspiration.ts",
+      "useSessionLifecycle.ts",
+      "useTextCells.ts",
+      "useVoiceInput.ts"
+    ]
+  }
+]

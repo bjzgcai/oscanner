@@ -1,0 +1,23 @@
+{
+  "sha": "4991c28c4f2ddffba066a5808acef75774a26399",
+  "message": "remove voice",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-18T15:27:43Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-18T15:27:43Z"
+  },
+  "stats": {
+    "total": 252,
+    "additions": 2,
+    "deletions": 250
+  },
+  "files_count": 3,
+  "parents": [
+    "f07573505d9c8612ece0046487d4bd01190671fe"
+  ]
+}

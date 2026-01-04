@@ -1,0 +1,23 @@
+{
+  "sha": "122acba10c95a88f701823cf5a55d6f1a078edd7",
+  "message": "Update README.zh.md",
+  "author": {
+    "name": "F2J",
+    "email": "98064968+shuxueshuxue@users.noreply.github.com",
+    "date": "2025-12-03T14:42:35Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2025-12-03T14:42:35Z"
+  },
+  "stats": {
+    "total": 2,
+    "additions": 1,
+    "deletions": 1
+  },
+  "files_count": 1,
+  "parents": [
+    "fcdae5acf7f9b3dbc26ba5d0d7384051c1e8f506"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "sha": "b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+  "message": "fix comment group not display latest comment issue",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-18T15:51:15Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-18T15:51:15Z"
+  },
+  "stats": {
+    "total": 26,
+    "additions": 18,
+    "deletions": 8
+  },
+  "files_count": 1,
+  "parents": [
+    "fc203bf679b5bcd3430162815da289cb78719d35"
+  ]
+}

@@ -1,0 +1,53 @@
+commit f583f2364e946ff93425b74ff59ff862c92621fa
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Dec 9 12:03:14 2025 +0800
+
+    remove proxy
+
+diff --git a/backend/proxy_config.py b/backend/proxy_config.py
+deleted file mode 100644
+index 2456524..0000000
+--- a/backend/proxy_config.py
++++ /dev/null
+@@ -1,28 +0,0 @@
+-"""Proxy configuration for API calls that need GFW bypass."""
+-import os
+-
+-def get_image_api_proxies():
+-    """
+-    Get proxy configuration for image generation API calls.
+-    
+-    Returns dict for requests.post(proxies=...) or None if no proxy configured.
+-    
+-    Configuration priority:
+-    1. Environment variable IMAGE_API_PROXY (e.g., "socks5://localhost:7890")
+-    2. Return None (no proxy)
+-    
+-    Usage in server.py:
+-        proxies = get_image_api_proxies()
+-        response = requests.post(url, proxies=proxies, ...)  # None is valid
+-    """
+-    proxy_url = os.getenv('IMAGE_API_PROXY')
+-    
+-    if proxy_url:
+-        print(f"[Proxy Config] Using proxy for image API: {proxy_url}")
+-        return {
+-            'http': proxy_url,
+-            'https': proxy_url
+-        }
+-    else:
+-        print("[Proxy Config] No proxy configured for image API")
+-        return None
+diff --git a/backend/pyproject.toml b/backend/pyproject.toml
+index add2da1..7e7b77e 100644
+--- a/backend/pyproject.toml
++++ b/backend/pyproject.toml
+@@ -8,7 +8,7 @@ version = "0.1.0"
+ description = "Ink & Memory backend API"
+ requires-python = ">=3.9,<3.10"
+ dependencies = [
+-  "polyagent",               # PolyCLI package on PyPI
++  "polyagent", # PolyCLI package on PyPI
+   "fastapi>=0.110,<1",
+   "uvicorn>=0.22,<1",
+   "httpx[socks]>=0.28,<0.29",

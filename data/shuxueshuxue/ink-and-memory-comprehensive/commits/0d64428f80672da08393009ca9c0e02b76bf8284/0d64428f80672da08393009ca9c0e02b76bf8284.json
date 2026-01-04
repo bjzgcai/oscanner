@@ -1,0 +1,36 @@
+{
+  "hash": "0d64428f80672da08393009ca9c0e02b76bf8284",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Oct 19 23:27:13 2025 +0800",
+  "subject": "Add deployment support and voice customization design",
+  "files": [
+    "docs/voice-customization.md",
+    "frontend/src/App.tsx",
+    "frontend/src/api/voiceApi.ts",
+    "frontend/vite.config.ts"
+  ],
+  "diff": "commits/0d64428f80672da08393009ca9c0e02b76bf8284/0d64428f80672da08393009ca9c0e02b76bf8284.diff",
+  "related_files": {
+    "docs/voice-customization.md": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/vite.config.ts"
+    ],
+    "frontend/src/App.tsx": [
+      "docs/voice-customization.md",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/vite.config.ts"
+    ],
+    "frontend/src/api/voiceApi.ts": [
+      "docs/voice-customization.md",
+      "frontend/src/App.tsx",
+      "frontend/vite.config.ts"
+    ],
+    "frontend/vite.config.ts": [
+      "docs/voice-customization.md",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts"
+    ]
+  }
+}

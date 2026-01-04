@@ -1,0 +1,35 @@
+commit e5dcc21a74434799d6c4c71c5282191ff6a2b39b
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Oct 7 22:13:51 2025 +0800
+
+    Add demo screenshot and showcase original UI design
+
+diff --git a/README.md b/README.md
+index e67416b..40dd5ed 100644
+--- a/README.md
++++ b/README.md
+@@ -2,7 +2,10 @@
+ 
+ A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.
+ 
+-<video src="https://github.com/user-attachments/assets/demo.mov" width="100%" controls></video>
++![Demo Screenshot](assets/demo-screenshot.png)
++
++*Original UI Design Concept:*
++![Book UI Design](assets/book-ui-design.png)
+ 
+ ## ✨ Features
+ 
+@@ -163,6 +166,8 @@ re.split(r'[.!?。！？]+|\n+', text)
+ ```
+ ink-and-memory/
+ ├── assets/
++│   ├── demo-screenshot.png    # Demo screenshot
++│   ├── book-ui-design.png     # Original UI design
+ │   └── demo.mov               # Demo video
+ ├── backend/
+ │   ├── server.py              # PolyCLI Session Registry server
+diff --git a/assets/demo-screenshot.png b/assets/demo-screenshot.png
+new file mode 100644
+index 0000000..546e381
+Binary files /dev/null and b/assets/demo-screenshot.png differ

@@ -1,0 +1,63 @@
+*** FILE: frontend/src/App.tsx ***
+@@ -962,6 +962,61 @@ export default function App() {
+             </div>
+           )}
+ 
++          {/* @@@ Mobile floating toolbar - top right corner */}
++          {isMobile && (
++            <div style={{
++              position: 'fixed',
++              top: '10px',
++              right: '10px',
++              display: 'flex',
++              gap: '8px',
++              zIndex: 1000
++            }}>
++              <button
++                onClick={handleStartFresh}
++                title="Start Fresh"
++                style={{
++                  width: '44px',
++                  height: '44px',
++                  border: 'none',
++                  borderRadius: '50%',
++                  backgroundColor: '#fff',
++                  cursor: 'pointer',
++                  display: 'flex',
++                  alignItems: 'center',
++                  justifyContent: 'center',
++                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
++                  transition: 'all 0.2s ease'
++                }}
++              >
++                <FaSync size={20} color="#333" />
++              </button>
++              <button
++                onClick={handleInsertAgent}
++                title="Insert Agent Chat"
++                style={{
++                  width: '44px',
++                  height: '44px',
++                  border: 'none',
++                  borderRadius: '50%',
++                  backgroundColor: '#fff',
++                  cursor: 'pointer',
++                  display: 'flex',
++                  alignItems: 'center',
++                  justifyContent: 'center',
++                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
++                  transition: 'all 0.2s ease',
++                  fontSize: '24px',
++                  fontWeight: 600,
++                  color: '#333',
++                  fontFamily: 'monospace'
++                }}
++              >
++                @
++              </button>
++            </div>
++          )}
++
+           <div
+             ref={containerRef}
+             style={{

@@ -1,0 +1,197 @@
+commit a5cc4b1a504ce90e7fe5ee48d8631e2ecccc8b40
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Nov 18 22:17:42 2025 +0800
+
+    clean up
+
+diff --git a/.gitignore b/.gitignore
+index e36d6cd..c1de62a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,4 +1,5 @@
+ # Python
++backup/
+ backend/.venv/
+ backend/models.json
+ backend/.polycache/
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 16c4fe8..c599b0a 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -12,7 +12,6 @@ import {
+   FaAlignRight
+ } from 'react-icons/fa';
+ import TopNavBar from './components/TopNavBar';
+-import VoiceSettings from './components/VoiceSettings';
+ import DeckManager from './components/DeckManager';
+ import CalendarPopup from './components/CalendarPopup';
+ import { saveEntryToToday, type CalendarEntry } from './utils/calendarStorage';
+@@ -22,8 +21,8 @@ import AboutView from './components/AboutView';
+ import AgentDropdown from './components/AgentDropdown';
+ import ChatWidgetUI from './components/ChatWidgetUI';
+ import StateChooser from './components/StateChooser';
+-import type { VoiceConfig, StateConfig } from './api/voiceApi';
+-import { getVoices, getMetaPrompt, getStateConfig } from './utils/voiceStorage';
++import type { VoiceConfig } from './api/voiceApi';
++import { getVoices, getMetaPrompt, getStateConfig, saveMetaPrompt } from './utils/voiceStorage';
+ import { getDefaultVoices, chatWithVoice, importLocalData, getSuggestion, loadVoicesFromDecks, type VoiceInspiration } from './api/voiceApi';
+ import { useMobile } from './utils/mobileDetect';
+ import { CommentGroupCard } from './components/CommentCard';
+@@ -251,9 +250,6 @@ export default function App() {
+   const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks'>('writing');
+   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
+   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+-  const [metaPrompt, setMetaPrompt] = useState<string>('');
+-  const [loadedStateConfig, setLoadedStateConfig] = useState<StateConfig | null>(null);
+-  const [defaultVoiceConfigs, setDefaultVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+ 
+   const engineRef = useRef<EditorEngine | null>(null);
+   const [state, setState] = useState<EditorState | null>(null);
+@@ -386,7 +382,6 @@ export default function App() {
+           color: v.color
+         };
+       }
+-      setDefaultVoiceConfigs(converted);
+ 
+       // @@@ Try loading from deck system first, then localStorage, then defaults
+       const deckVoices = await loadVoicesFromDecks();
+@@ -554,10 +549,10 @@ export default function App() {
+               setVoiceConfigs(prefs.voice_configs);
+             }
+             if (prefs.meta_prompt) {
+-              setMetaPrompt(prefs.meta_prompt);
++              saveMetaPrompt(prefs.meta_prompt);
+             }
+             if (prefs.state_config) {
+-              setLoadedStateConfig(prefs.state_config);
++              setStateConfig(prefs.state_config);
+             }
+ 
+             // @@@ Load selectedState with daily reset check for authenticated users
+@@ -1246,34 +1241,6 @@ export default function App() {
+     }
+   }, [isAuthenticated]);
+ 
+-  const handleVoiceConfigsSave = useCallback(async (data: {
+-    voices: Record<string, VoiceConfig>;
+-    metaPrompt: string;
+-    stateConfig: StateConfig;
+-  }) => {
+-    console.log('App: handleVoiceConfigsSave called, isAuthenticated:', isAuthenticated);
+-    setVoiceConfigs(data.voices);
+-
+-    // @@@ Save to database if authenticated
+-    if (isAuthenticated) {
+-      try {
+-        console.log('App: Saving preferences to database...');
+-        const { savePreferences } = await import('./api/voiceApi');
+-        await savePreferences({
+-          voice_configs: data.voices,
+-          meta_prompt: data.metaPrompt,
+-          state_config: data.stateConfig
+-        });
+-        console.log('App: Preferences saved to database successfully');
+-      } catch (error) {
+-        console.error('App: Failed to save preferences to database:', error);
+-        throw error; // Propagate error to show alert
+-      }
+-    } else {
+-      console.log('App: Guest mode, skipping database save');
+-    }
+-  }, [isAuthenticated]);
+-
+   // @@@ Insert @ character at the end of last text cell
+   const handleInsertAgent = useCallback(() => {
+     if (!state || !engineRef.current) return;
+diff --git a/frontend/src/api/voiceApi.ts b/frontend/src/api/voiceApi.ts
+index 4b02249..ae29816 100644
+--- a/frontend/src/api/voiceApi.ts
++++ b/frontend/src/api/voiceApi.ts
+@@ -60,6 +60,9 @@ export interface Deck {
+   voices?: Voice[];
+   created_at?: string;
+   updated_at?: string;
++  published?: boolean;
++  author_name?: string;
++  install_count?: number;
+ }
+ 
+ // nginx proxies /ink-and-memory/api/* to backend (8765)
+diff --git a/frontend/src/components/DeckManager.tsx b/frontend/src/components/DeckManager.tsx
+index b967eda..cd77089 100644
+--- a/frontend/src/components/DeckManager.tsx
++++ b/frontend/src/components/DeckManager.tsx
+@@ -11,7 +11,6 @@ import {
+   createVoice,
+   updateVoice,
+   deleteVoice,
+-  forkVoice,
+   publishDeck,
+   type Deck,
+   type Voice
+@@ -47,22 +46,6 @@ const iconMap = {
+   compass: FaCompass,
+ };
+ 
+-// @@@ Icon labels for dropdown display
+-const ICON_LABELS = {
+-  'brain': '🧠 brain',
+-  'lightbulb': '💡 lightbulb',
+-  'masks': '🎭 masks',
+-  'cloud': '☁️ cloud',
+-  'shield': '🛡️ shield',
+-  'compass': '🧭 compass',
+-  'heart': '❤️ heart',
+-  'fist': '✊ fist',
+-  'fire': '🔥 fire',
+-  'wind': '💨 wind',
+-  'question': '❓ question',
+-  'eye': '👁️ eye'
+-};
+-
+ interface Props {
+   onUpdate?: () => void;
+ }
+@@ -243,7 +226,7 @@ export default function DeckManager({ onUpdate }: Props) {
+         color: 'blue'
+       });
+       await loadDecks(true);
+-      setExpandedDecks(prev => new Set([...prev, newDeck.id]));
++      setExpandedDecks(prev => new Set([...prev, newDeck.deck_id]));
+       onUpdate?.();
+     } catch (err: any) {
+       alert(`Failed to create deck: ${err.message}`);
+@@ -273,13 +256,13 @@ export default function DeckManager({ onUpdate }: Props) {
+ 
+   async function handlePublishClick(deck: Deck) {
+     if (deck.published) {
+-      handlePublishToggle(deck.id, false);
++      handlePublishToggle(deck.id);
+     } else {
+       setPublishWarning(deck.id);
+     }
+   }
+ 
+-  async function handlePublishToggle(deckId: string, shouldPublish: boolean) {
++  async function handlePublishToggle(deckId: string) {
+     try {
+       const result = await publishDeck(deckId);
+       alert(result.published ? '✅ Deck published to community!' : '✅ Deck unpublished');
+@@ -332,7 +315,7 @@ export default function DeckManager({ onUpdate }: Props) {
+       }}>
+         <div style={{ fontSize: 18, color: '#e74c3c' }}>❌ {error}</div>
+         <button
+-          onClick={loadDecks}
++          onClick={() => loadDecks()}
+           style={{
+             padding: '8px 16px',
+             background: '#2c2c2c',
+@@ -1212,7 +1195,7 @@ export default function DeckManager({ onUpdate }: Props) {
+                 Cancel
+               </button>
+               <button
+-                onClick={() => handlePublishToggle(publishWarning, true)}
++                onClick={() => handlePublishToggle(publishWarning)}
+                 style={{
+                   padding: '8px 16px',
+                   background: '#9b59b6',

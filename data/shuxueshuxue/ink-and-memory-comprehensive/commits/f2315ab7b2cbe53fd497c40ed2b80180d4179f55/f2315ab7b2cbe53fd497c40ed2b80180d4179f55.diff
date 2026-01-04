@@ -1,0 +1,19 @@
+commit f2315ab7b2cbe53fd497c40ed2b80180d4179f55
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Oct 7 22:05:58 2025 +0800
+
+    Use HTML video tag for demo
+
+diff --git a/README.md b/README.md
+index 38f09e0..e67416b 100644
+--- a/README.md
++++ b/README.md
+@@ -2,7 +2,7 @@
+ 
+ A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.
+ 
+-![Demo](assets/demo.mov)
++<video src="https://github.com/user-attachments/assets/demo.mov" width="100%" controls></video>
+ 
+ ## ✨ Features
+ 

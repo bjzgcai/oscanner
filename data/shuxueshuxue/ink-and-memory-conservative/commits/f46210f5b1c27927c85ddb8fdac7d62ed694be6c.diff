@@ -1,0 +1,64 @@
+*** MODIFIED: frontend/src/components/CollectionsView.tsx (+9/-13) ***
+@@ -193,8 +193,7 @@ function getTextPreview(text: string, maxLength: number = 60): string {
+ const CARD_HEIGHT = 100;
+ const CARD_OVERLAP = 30; // 30% overlap for zigzag effect
+ const SLOT_HEIGHT = CARD_HEIGHT - CARD_OVERLAP;
+-const INITIAL_PAST_DAYS = 10;
+-const INITIAL_FUTURE_DAYS = 10;
++const INITIAL_PAST_DAYS = 14;
+ const CHUNK_SIZE = 14;
+ const MAX_PAST_DAYS = 365;
+ const LOAD_THRESHOLD_PX = 200;
+@@ -483,7 +482,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+     let cancelled = false;
+     const today = new Date();
+     const start = addDays(today, -INITIAL_PAST_DAYS);
+-    const end = addDays(today, INITIAL_FUTURE_DAYS);
++    const end = today;
+ 
+     setInitialLoading(true);
+     setLoadingPast(false);
+@@ -658,6 +657,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+ 
+     const handleResize = () => {
+       setViewportHeight(container.clientHeight);
++      setScrollTopValue(container.scrollTop);
+     };
+ 
+     container.addEventListener('scroll', handleScroll);
+@@ -675,19 +675,18 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+   useLayoutEffect(() => {
+     if (!isVisible || initialLoading || !scrollContainerRef.current || !pendingInitialScroll) return;
+     const container = scrollContainerRef.current;
+-    const todayStr = getLocalDateString();
+-    const todayIndex = days.findIndex(d => d.date === todayStr);
+-    if (todayIndex === -1) return;
+-
+     requestAnimationFrame(() => {
+-      const target = todayIndex * SLOT_HEIGHT - (container.clientHeight / 2) + (CARD_HEIGHT / 2) + 32;
+-      container.scrollTop = Math.max(0, target);
+-      setScrollTopValue(container.scrollTop);
++      const bottom = Math.max(0, container.scrollHeight - container.clientHeight);
++      container.scrollTop = bottom;
++      setScrollTopValue(bottom);
+       setPendingInitialScroll(false);
+     });
+   }, [days, initialLoading, isVisible, pendingInitialScroll]);
+ 
+   const visibleMetrics = useMemo(() => {
++    if (viewportHeight === 0) {
++      return { renderStart: 0, renderEnd: days.length - 1 };
++    }
+     const effectiveScroll = Math.max(0, scrollTopValue - 32);
+     const firstVisibleIndex = Math.floor(effectiveScroll / SLOT_HEIGHT);
+     const visibleCount = Math.ceil((viewportHeight || 0) / SLOT_HEIGHT) + 1;
+@@ -879,9 +878,6 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+           </button>
+         )}
+ 
+-        {/* Sentinels for infinite load */}
+-        <div ref={topSentinelRef} style={{ position: 'absolute', top: 0, height: '1px', width: '100%' }} />
+-
+         {/* Cards */}
+         {renderedDays.map((day, localIndex) => {
+           const globalIndex = renderStart + localIndex;

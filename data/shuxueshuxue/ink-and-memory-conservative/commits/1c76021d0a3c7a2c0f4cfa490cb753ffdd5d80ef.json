@@ -1,0 +1,23 @@
+{
+  "sha": "1c76021d0a3c7a2c0f4cfa490cb753ffdd5d80ef",
+  "message": "Add frontend authentication and localStorage migration\n\nFrontend changes:\n- Create AuthContext with JWT token management\n- Add login/register UI components\n- Wrap app with AuthProvider\n- Show auth screen for guests\n- Add localStorage → database migration dialog on first login\n- Block image generation for non-authenticated users\n- Add auth headers to all authenticated API endpoints\n\nNew files:\n- frontend/src/contexts/AuthContext.tsx - Auth state management\n- frontend/src/components/Auth/LoginForm.tsx - Login form\n- frontend/src/components/Auth/RegisterForm.tsx - Register form\n\nModified files:\n- frontend/src/main.tsx - Wrap with AuthProvider\n- frontend/src/App.tsx - Add auth screens, migration dialog\n- frontend/src/api/voiceApi.ts - Add authenticated endpoints\n- frontend/src/components/CollectionsView.tsx - Block guest image gen\n\nFeatures:\n- Auto-verify JWT token on mount\n- 7-day token expiration\n- Migration prompt shows after login if localStorage data exists\n- Users can migrate or skip (sets flag to not show again)\n- Images now save to database when authenticated\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T05:51:10Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T05:51:10Z"
+  },
+  "stats": {
+    "total": 1029,
+    "additions": 1026,
+    "deletions": 3
+  },
+  "files_count": 7,
+  "parents": [
+    "3de0a0c2093156f0c420724dbca83831d96bc879"
+  ]
+}

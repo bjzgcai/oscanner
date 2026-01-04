@@ -1,0 +1,23 @@
+{
+  "sha": "3f17ec5d1849309bf8a0d8e8400e385b17ae45b0",
+  "message": "Fix migration system and date parsing bugs\n\nBackend:\n- Add migration v2: first_login_completed field to user_preferences\n- Add set_first_login_completed() database function\n- Add POST /api/mark-first-login-completed endpoint\n- Update get_preferences() to include first_login_completed\n\nFrontend:\n- Fix migration logic to use database flag instead of localStorage\n- Fix date parsing bug: use substring(0,10) instead of split('T')\n  (SQLite timestamps use space, not 'T', causing 9 fake \"days\")\n- Fix auto-save to use same session ID as manual save\n- Preserve auth token when clearing localStorage for returning users\n- Clear localStorage for returning users on every login (clean slate)\n- Show migration dialog only on first login with localStorage data\n\nMigration Flow:\n1. First login without data → mark completed, no dialog\n2. First login with data → show dialog → migrate/skip → mark completed → clear localStorage\n3. Returning user → clear localStorage (keep token), never show dialog\n\nFixes:\n- Reflections showing wrong stats (9 days instead of 1)\n- Auto-save creating duplicate \"Current Session\" entries\n- Migration dialog appearing repeatedly after skip\n- Auth token being cleared for returning users\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T12:14:25Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T12:14:25Z"
+  },
+  "stats": {
+    "total": 217,
+    "additions": 153,
+    "deletions": 64
+  },
+  "files_count": 6,
+  "parents": [
+    "38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30"
+  ]
+}

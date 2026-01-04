@@ -1,0 +1,501 @@
+*** MODIFIED: backend/config.py (+12/-7) ***
+@@ -3,13 +3,18 @@
+ import json
+ import os
+ 
+-# Model to use for voice analysis
+-MODEL = "claude-haiku-4.5"
+-MODEL = "deepseek-v3.2"
+-MODEL = "gemini-3-pro-preview"
+-MODEL = "mistral-small-creative"
+-MODEL = "claude-sonnet-4.5"
+-MODEL = "gemini-3-flash-preview"
++# VOICE_ANALYSIS_MODEL = "claude-haiku-4.5"
++# VOICE_ANALYSIS_MODEL = "deepseek-v3.2"
++# VOICE_ANALYSIS_MODEL = "gemini-3-pro-preview"
++# VOICE_ANALYSIS_MODEL = "mistral-small-creative"
++# VOICE_ANALYSIS_MODEL = "claude-sonnet-4.5"
++VOICE_ANALYSIS_MODEL = "gemini-3-flash-preview"
++
++VOICE_INSPIRATION_MODEL = "gemini-3-flash-preview"
++VOICE_CHAT_MODEL = "gemini-3-flash-preview"
++ECHO_ANALYSIS_MODEL = "gemini-3-flash-preview"
++TRAIT_ANALYSIS_MODEL = "gemini-3-flash-preview"
++PATTERN_ANALYSIS_MODEL = "gemini-3-flash-preview"
+ 
+ # @@@ Sparsity control
+ MAX_VOICES = 5
+
+*** MODIFIED: backend/server.py (+6/-6) ***
+@@ -167,11 +167,11 @@ def get_writing_suggestion(
+ Give them ONE very short, gentle nudge about what to write next (max 15 words)."""
+ 
+     # Generate inspiration
+-    print(f"📤 Calling agent.run() with model='claude-haiku-4.5'...")
++    print(f"📤 Calling agent.run() with model='{config.VOICE_INSPIRATION_MODEL}'...")
+     result = agent.run(
+         user_prompt,
+         system_prompt=system_prompt,
+-        model="claude-haiku-4.5",
++        model=config.VOICE_INSPIRATION_MODEL,
+         cli="no-tools",
+         tracked=True,
+     )
+@@ -291,7 +291,7 @@ def chat_with_voice(
+     prompt += f"\n\nUser: {user_message}\n\n{voice_name}:"
+ 
+     # Get response from LLM
+-    result = agent.run(prompt, model="gpt-4o-dou", cli="no-tools", tracked=True)
++    result = agent.run(prompt, model=config.VOICE_CHAT_MODEL, cli="no-tools", tracked=True)
+ 
+     if not result.is_success or not result.content:
+         response = "..."
+@@ -408,7 +408,7 @@ def analyze_echoes(user_id: int, language: str = "en"):
+ Return ONLY the JSON array, no other text."""
+     prompt += f"\n\n{language_instruction(language_code, 'All titles, descriptions, and examples should use this language. Keep the JSON keys the same.')}"
+ 
+-    result = agent.run(prompt, model="gpt-4o-dou", cli="no-tools", tracked=True)
++    result = agent.run(prompt, model=config.ECHO_ANALYSIS_MODEL, cli="no-tools", tracked=True)
+ 
+     if not result.is_success or not result.content:
+         return {"echoes": []}
+@@ -465,7 +465,7 @@ def analyze_traits(user_id: int, language: str = "en"):
+ Return ONLY the JSON array, no other text."""
+     prompt += f"\n\n{language_instruction(language_code, 'Use this language for trait names, explanations, and evidence (JSON keys stay in English).')}"
+ 
+-    result = agent.run(prompt, model="gpt-4o-dou", cli="no-tools", tracked=True)
++    result = agent.run(prompt, model=config.TRAIT_ANALYSIS_MODEL, cli="no-tools", tracked=True)
+ 
+     if not result.is_success or not result.content:
+         return {"traits": []}
+@@ -524,7 +524,7 @@ def analyze_patterns(
+ Return ONLY the JSON array, no other text."""
+     prompt += f"\n\n{language_instruction(language_code, 'Use this language for pattern names, descriptions, and frequency notes (JSON keys stay in English).')}"
+ 
+-    result = agent.run(prompt, model="gpt-4o-dou", cli="no-tools", tracked=True)
++    result = agent.run(prompt, model=config.PATTERN_ANALYSIS_MODEL, cli="no-tools", tracked=True)
+ 
+     if not result.is_success or not result.content:
+         return {"patterns": []}
+
+*** MODIFIED: backend/stateless_analyzer.py (+1/-1) ***
+@@ -175,7 +175,7 @@ def analyze_stateless(
+ 
+     result = agent.run(
+         prompt,
+-        model=config.MODEL,
++        model=config.VOICE_ANALYSIS_MODEL,
+         cli="no-tools",
+         schema_cls=SingleVoiceAnalysis,
+         tracked=True,
+
+*** MODIFIED: frontend/src/App.tsx (+2/-0) ***
+@@ -122,6 +122,7 @@ export default function App() {
+     setState,
+     selectedState,
+     setSelectedState,
++    selectedStateLoading,
+     userTimezone,
+     ensureStateForPersistence,
+     getFirstLineFromState,
+@@ -1197,6 +1198,7 @@ export default function App() {
+                     <StateChooser
+                       stateConfig={stateConfig}
+                       selectedState={state?.selectedState ?? selectedState}
++                      selectedStateLoading={selectedStateLoading}
+                       createdAt={state?.createdAt}
+                       onChoose={handleStateChoose}
+                     />
+
+*** MODIFIED: frontend/src/components/StateChooser.tsx (+18/-4) ***
+@@ -8,26 +8,36 @@ import { parseFlexibleTimestamp } from '../utils/timezone';
+ interface Props {
+   stateConfig: StateConfig;
+   selectedState: string | null;
++  selectedStateLoading?: boolean;
+   createdAt?: string;  // ISO timestamp recorded when the session was created
+   onChoose: (stateId: string) => void;
+ }
+ 
+-export default function StateChooser({ stateConfig, selectedState, createdAt, onChoose }: Props) {
++export default function StateChooser({
++  stateConfig,
++  selectedState,
++  selectedStateLoading = false,
++  createdAt,
++  onChoose
++}: Props) {
+   const { i18n } = useTranslation();
+-  const [isExpanded, setIsExpanded] = useState(!selectedState);
++  const [isExpanded, setIsExpanded] = useState(false);
+   const [shouldAnimate, setShouldAnimate] = useState(false);
+   const [isFadingOut, setIsFadingOut] = useState(false);
+   const indicatorRef = useRef<HTMLDivElement>(null);
+ 
+-  // @@@ Collapse when selectedState is set externally
++  // @@@ Collapse when selectedState is set externally (skip while loading)
+   useEffect(() => {
++    if (selectedStateLoading) return;
+     if (selectedState) {
+       setIsExpanded(false);
+       // Trigger highlight animation
+       setShouldAnimate(true);
+       setTimeout(() => setShouldAnimate(false), 600);
++    } else {
++      setIsExpanded(true);
+     }
+-  }, [selectedState]);
++  }, [selectedState, selectedStateLoading]);
+ 
+   const selectedStateData = selectedState ? stateConfig.states[selectedState] : null;
+ 
+@@ -96,6 +106,10 @@ export default function StateChooser({ stateConfig, selectedState, createdAt, on
+     }
+   };
+ 
++  if (selectedStateLoading) {
++    return <div style={{ height: '32px' }} />;
++  }
++
+   return (
+     <>
+       {/* @@@ Keyframe animation for highlight effect */}
+
+*** MODIFIED: frontend/src/hooks/useComments.ts (+16/-4) ***
+@@ -1,4 +1,4 @@
+-import { useState, useEffect, useMemo, useCallback } from 'react';
++import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+ import type { MutableRefObject, Dispatch, SetStateAction, SyntheticEvent } from 'react';
+ import type { EditorState, Commentor, TextCell, EditorEngine } from '../engine/EditorEngine';
+ import { findNormalizedPhrase } from '../utils/textNormalize';
+@@ -52,6 +52,7 @@ export function useComments({
+   engineRef,
+ }: UseCommentsOptions): UseCommentsReturn {
+   const [groupPages, setGroupPages] = useState<Map<string, number>>(new Map());
++  const prevCommentCounts = useRef<Map<string, number>>(new Map());
+   const [cursorPosition, setCursorPosition] = useState<number>(0);
+   const [cursorCellId, setCursorCellId] = useState<string | null>(null);
+   const [mobileActiveComment, setMobileActiveComment] = useState<Commentor | null>(null);
+@@ -156,8 +157,12 @@ export function useComments({
+     return groups;
+   }, [state?.commentors, state, refsReady, selectedState]);
+ 
++  // @@@ Preserve manual selection - only jump to newest when a group gains comments
+   useEffect(() => {
+-    if (!commentGroups) return;
++    const currentCounts = new Map<string, number>();
++    commentGroups.forEach((group, groupKey) => {
++      currentCounts.set(groupKey, group.comments.length);
++    });
+ 
+     setGroupPages(prev => {
+       const next = new Map(prev);
+@@ -168,10 +173,15 @@ export function useComments({
+           return;
+         }
+ 
+-        const currentPage = prev.get(groupKey) || 0;
++        const currentPage = prev.get(groupKey) ?? 0;
+         const maxPage = group.comments.length - 1;
++        const prevCount = prevCommentCounts.current.get(groupKey) ?? 0;
++        const currentCount = group.comments.length;
++        const isNewGroup = !prev.has(groupKey);
+ 
+-        if (group.comments.length > 1 && currentPage < maxPage) {
++        if (isNewGroup) {
++          next.set(groupKey, maxPage);
++        } else if (currentCount > prevCount) {
+           next.set(groupKey, maxPage);
+         } else if (currentPage > maxPage) {
+           next.set(groupKey, maxPage);
+@@ -186,6 +196,8 @@ export function useComments({
+ 
+       return next;
+     });
++
++    prevCommentCounts.current = currentCounts;
+   }, [commentGroups]);
+ 
+   const handleGroupNavigate = useCallback((groupKey: string, newIndex: number) => {
+
+*** MODIFIED: frontend/src/hooks/useSessionLifecycle.ts (+138/-107) ***
+@@ -33,6 +33,7 @@ export function useSessionLifecycle({
+   const [state, setState] = useState<EditorState | null>(null);
+   const [localTexts, setLocalTexts] = useState<Map<string, string>>(new Map());
+   const [selectedState, setSelectedState] = useState<string | null>(null);
++  const [selectedStateLoading, setSelectedStateLoading] = useState(true);
+   const [userTimezone, setUserTimezone] = useState(browserTimezone);
+ 
+   const ensuredSessionForDayRef = useRef<string | null>(null);
+@@ -302,127 +303,156 @@ export function useSessionLifecycle({
+ 
+   useEffect(() => {
+     const loadInitialState = async () => {
+-      if (isAuthenticated) {
+-        try {
+-          const { listSessions, getSession, getPreferences } = await import('../api/voiceApi');
+-
+-          const sessions = await listSessions(userTimezoneRef.current);
+-
+-          let sessionToLoad = null;
+-          let loadedSessionId: string | undefined = undefined;
+-          const currentSessionId = 'current-session';
+-          const currentSession = sessions.find(s => s.id === currentSessionId);
+-
+-          if (currentSession) {
+-            const fullSession = await getSession(currentSessionId);
+-            sessionToLoad = fullSession.editor_state;
+-            loadedSessionId = currentSessionId;
+-          } else if (sessions.length > 0) {
+-            const mostRecent = sessions.sort((a, b) =>
+-              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+-            )[0];
+-
+-            const timezoneForDay = userTimezoneRef.current || 'UTC';
+-            const today = getTodayKeyInTimezone(timezoneForDay);
+-            const sessionDate = getLocalDayKey(mostRecent.updated_at, timezoneForDay);
+-
+-            if (sessionDate === today) {
+-              const fullSession = await getSession(mostRecent.id);
+-              sessionToLoad = fullSession.editor_state;
+-              loadedSessionId = mostRecent.id;
+-            } else {
+-              console.log(`📅 New day detected. Last session was from ${sessionDate}, today is ${today}. Starting fresh.`);
+-              sessionToLoad = null;
+-              loadedSessionId = undefined;
+-            }
+-          }
++      setSelectedStateLoading(true);
++      try {
++        if (isAuthenticated) {
++          try {
++            const { listSessions, getSession, getPreferences } = await import('../api/voiceApi');
+ 
+-          if (sessionToLoad && loadedSessionId) {
+-            const normalizedState: EditorState = {
+-              ...sessionToLoad,
+-              id: sessionToLoad.id || (sessionToLoad as any)?.currentEntryId || (sessionToLoad as any)?.sessionId || loadedSessionId
+-            };
+-            engineRef.current?.loadState(normalizedState);
+-            setState(engineRef.current?.getState() || normalizedState);
+-
+-            const texts = new Map<string, string>();
+-            sessionToLoad.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
+-              texts.set(c.id, c.content || '');
+-            });
+-            setLocalTexts(texts);
+-          } else {
+-            setState(engineRef.current?.getState() || null);
+-          }
++            const sessions = await listSessions(userTimezoneRef.current);
+ 
+-          try {
+-            const prefs = await getPreferences();
+-            if (prefs.voice_configs) {
+-              setVoiceConfigs(prefs.voice_configs);
+-            }
+-            if (prefs.meta_prompt) {
+-              saveMetaPrompt(prefs.meta_prompt);
+-            }
+-            if (prefs.state_config) {
+-              setStateConfig(prefs.state_config);
+-            }
+-            if (prefs.timezone) {
+-              setUserTimezone(prefs.timezone);
+-            }
++            let sessionToLoad = null;
++            let loadedSessionId: string | undefined = undefined;
++            let startedFreshForToday = false;
++            const currentSessionId = 'current-session';
++            const currentSession = sessions.find(s => s.id === currentSessionId);
++
++            if (currentSession) {
++              const fullSession = await getSession(currentSessionId);
++              sessionToLoad = fullSession.editor_state;
++              loadedSessionId = currentSessionId;
++            } else if (sessions.length > 0) {
++              const mostRecent = sessions.sort((a, b) =>
++                new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
++              )[0];
+ 
+-            if (prefs.selected_state !== undefined && prefs.selected_state !== null) {
+               const timezoneForDay = userTimezoneRef.current || 'UTC';
+               const today = getTodayKeyInTimezone(timezoneForDay);
+-              const updatedAtDate = prefs.updated_at
+-                ? getLocalDayKey(prefs.updated_at, timezoneForDay)
+-                : null;
++              const sessionDate = getLocalDayKey(mostRecent.updated_at, timezoneForDay);
+ 
+-              if (updatedAtDate === today) {
+-                setSelectedState(prefs.selected_state);
++              if (sessionDate === today) {
++                const fullSession = await getSession(mostRecent.id);
++                sessionToLoad = fullSession.editor_state;
++                loadedSessionId = mostRecent.id;
+               } else {
+-                setSelectedState(null);
++                console.log(`📅 New day detected. Last session was from ${sessionDate}, today is ${today}. Starting fresh.`);
++                if (engineRef.current) {
++                  // @@@ New Day Reset - force blank state so the chooser saves to today
++                  const blankState: EditorState = {
++                    cells: [{ id: Math.random().toString(36).slice(2), type: 'text', content: '' }],
++                    commentors: [],
++                    tasks: [],
++                    weightPath: [],
++                    overlappedPhrases: [],
++                    id: createSessionId(),
++                    selectedState: undefined,
++                    createdAt: new Date().toISOString()
++                  };
++
++                  engineRef.current.loadState(blankState);
++                  setState(blankState);
++                  setLocalTexts(new Map());
++                  ensuredSessionForDayRef.current = today;
++                  startedFreshForToday = true;
++
++                  await persistSessionImmediately(blankState);
++                } else {
++                  console.error('Engine not ready when starting fresh for new day');
++                }
+               }
+             }
+-          } catch (err) {
+-            console.log('No preferences found, using defaults');
+-          }
+-        } catch (error) {
+-          console.error('Failed to load from database:', error);
+-          setState(engineRef.current?.getState() || null);
+-        }
+-      } else {
+-        const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_STATE);
+-        if (saved) {
+-          try {
+-            const parsed = JSON.parse(saved);
+-            engineRef.current?.loadState(parsed);
+-            setState(engineRef.current?.getState() || parsed);
+-
+-            const texts = new Map<string, string>();
+-            parsed.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
+-              texts.set(c.id, c.content || '');
+-            });
+-            setLocalTexts(texts);
+-          } catch (e) {
+-            console.error('Failed to load saved state:', e);
++
++            if (sessionToLoad && loadedSessionId) {
++              const normalizedState: EditorState = {
++                ...sessionToLoad,
++                id: sessionToLoad.id || (sessionToLoad as any)?.currentEntryId || (sessionToLoad as any)?.sessionId || loadedSessionId
++              };
++              engineRef.current?.loadState(normalizedState);
++              setState(engineRef.current?.getState() || normalizedState);
++
++              const texts = new Map<string, string>();
++              sessionToLoad.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
++                texts.set(c.id, c.content || '');
++              });
++              setLocalTexts(texts);
++            } else if (!startedFreshForToday) {
++              setState(engineRef.current?.getState() || null);
++            }
++
++            try {
++              const prefs = await getPreferences();
++              if (prefs.voice_configs) {
++                setVoiceConfigs(prefs.voice_configs);
++              }
++              if (prefs.meta_prompt) {
++                saveMetaPrompt(prefs.meta_prompt);
++              }
++              if (prefs.state_config) {
++                setStateConfig(prefs.state_config);
++              }
++              if (prefs.timezone) {
++                setUserTimezone(prefs.timezone);
++              }
++
++              if (prefs.selected_state !== undefined && prefs.selected_state !== null) {
++                const timezoneForDay = userTimezoneRef.current || 'UTC';
++                const today = getTodayKeyInTimezone(timezoneForDay);
++                const updatedAtDate = prefs.updated_at
++                  ? getLocalDayKey(prefs.updated_at, timezoneForDay)
++                  : null;
++
++                if (updatedAtDate === today) {
++                  setSelectedState(prefs.selected_state);
++                } else {
++                  setSelectedState(null);
++                }
++              }
++            } catch (err) {
++              console.log('No preferences found, using defaults');
++            }
++          } catch (error) {
++            console.error('Failed to load from database:', error);
++            setState(engineRef.current?.getState() || null);
+           }
+         } else {
+-          setState(engineRef.current?.getState() || null);
+-        }
++          const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_STATE);
++          if (saved) {
++            try {
++              const parsed = JSON.parse(saved);
++              engineRef.current?.loadState(parsed);
++              setState(engineRef.current?.getState() || parsed);
++
++              const texts = new Map<string, string>();
++              parsed.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
++                texts.set(c.id, c.content || '');
++              });
++              setLocalTexts(texts);
++            } catch (e) {
++              console.error('Failed to load saved state:', e);
++            }
++          } else {
++            setState(engineRef.current?.getState() || null);
++          }
+ 
+-        const savedState = localStorage.getItem(STORAGE_KEYS.SELECTED_STATE);
+-        const savedDate = localStorage.getItem('selected-state-date');
+-        const today = getTodayKeyInTimezone(userTimezoneRef.current || browserTimezone);
++          const savedState = localStorage.getItem(STORAGE_KEYS.SELECTED_STATE);
++          const savedDate = localStorage.getItem('selected-state-date');
++          const today = getTodayKeyInTimezone(userTimezoneRef.current || browserTimezone);
+ 
+-        if (savedState && savedDate === today) {
+-          setSelectedState(savedState);
+-        } else {
+-          localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+-          localStorage.removeItem('selected-state-date');
+-          setSelectedState(null);
++          if (savedState && savedDate === today) {
++            setSelectedState(savedState);
++          } else {
++            localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
++            localStorage.removeItem('selected-state-date');
++            setSelectedState(null);
++          }
+         }
+-      }
+-      if (!isAuthenticated) {
+-        setUserTimezone(browserTimezone);
++        if (!isAuthenticated) {
++          setUserTimezone(browserTimezone);
++        }
++      } catch (error) {
++        console.error('Failed to initialize session lifecycle:', error);
++      } finally {
++        setSelectedStateLoading(false);
+       }
+     };
+ 
+@@ -493,6 +523,7 @@ export function useSessionLifecycle({
+     setLocalTexts,
+     selectedState,
+     setSelectedState,
++    selectedStateLoading,
+     userTimezone,
+     setUserTimezone,
+     ensureStateForPersistence,

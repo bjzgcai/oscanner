@@ -1,0 +1,14 @@
+{
+  "hash": "adb714ae95ee4fa51c07fd30135713a7904f89d8",
+  "author": "zhuchenyu2008",
+  "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+  "date": "Sat Jan 3 12:06:22 2026 +0800",
+  "subject": "\u79fb\u52a8\u7aef\u5199\u4f5c\u754c\u9762\u7684\u201c\u91cd\u7f6e\u201d\u6309\u94ae\u6362\u6210\u684c\u9762\u7aef\u7684\u201c+\u201d\u6309\u94ae",
+  "files": [
+    "frontend/src/App.tsx"
+  ],
+  "diff": "commits/adb714ae95ee4fa51c07fd30135713a7904f89d8/adb714ae95ee4fa51c07fd30135713a7904f89d8.diff",
+  "related_files": {
+    "frontend/src/App.tsx": []
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "sha": "866b6922d615c87c39d6d589a32a18a1defcb9f4",
+  "message": "Fix session id reset when loading calendar entry",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-22T06:53:37Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-22T06:53:37Z"
+  },
+  "stats": {
+    "total": 30,
+    "additions": 13,
+    "deletions": 17
+  },
+  "files_count": 1,
+  "parents": [
+    "51e3f5403df116245fda168142f5c836f55fc01a"
+  ]
+}

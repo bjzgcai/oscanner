@@ -1,0 +1,36 @@
+{
+  "hash": "0ec0ecce3db148dd243d31c53feedd9eaa52527f",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Oct 1 19:46:18 2025 +0800",
+  "subject": "Implement voice highlighting with custom Tiptap extension",
+  "files": [
+    "frontend/src/App.css",
+    "frontend/src/App.tsx",
+    "frontend/src/components/EditableTextArea.tsx",
+    "frontend/src/extensions/VoiceHighlight.ts"
+  ],
+  "diff": "commits/0ec0ecce3db148dd243d31c53feedd9eaa52527f/0ec0ecce3db148dd243d31c53feedd9eaa52527f.diff",
+  "related_files": {
+    "frontend/src/App.css": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/extensions/VoiceHighlight.ts"
+    ],
+    "frontend/src/App.tsx": [
+      "frontend/src/App.css",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/extensions/VoiceHighlight.ts"
+    ],
+    "frontend/src/components/EditableTextArea.tsx": [
+      "frontend/src/App.css",
+      "frontend/src/App.tsx",
+      "frontend/src/extensions/VoiceHighlight.ts"
+    ],
+    "frontend/src/extensions/VoiceHighlight.ts": [
+      "frontend/src/App.css",
+      "frontend/src/App.tsx",
+      "frontend/src/components/EditableTextArea.tsx"
+    ]
+  }
+}

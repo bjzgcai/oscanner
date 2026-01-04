@@ -1,0 +1,1129 @@
+*** MODIFIED: frontend/src/App.tsx (+105/-28) ***
+@@ -12,6 +12,7 @@ import {
+ } from 'react-icons/fa';
+ import TopNavBar from './components/TopNavBar';
+ import VoiceSettings from './components/VoiceSettings';
++import DeckManager from './components/DeckManager';
+ import CalendarPopup from './components/CalendarPopup';
+ import { saveEntryToToday, type CalendarEntry } from './utils/calendarStorage';
+ import CollectionsView from './components/CollectionsView';
+@@ -20,9 +21,9 @@ import AboutView from './components/AboutView';
+ import AgentDropdown from './components/AgentDropdown';
+ import ChatWidgetUI from './components/ChatWidgetUI';
+ import StateChooser from './components/StateChooser';
+-import type { VoiceConfig, StateConfig } from './types/voice';
++import type { VoiceConfig, StateConfig } from './api/voiceApi';
+ import { getVoices, getMetaPrompt, getStateConfig } from './utils/voiceStorage';
+-import { getDefaultVoices, chatWithVoice, importLocalData, getSuggestion, type VoiceInspiration } from './api/voiceApi';
++import { getDefaultVoices, chatWithVoice, importLocalData, getSuggestion, loadVoicesFromDecks, type VoiceInspiration } from './api/voiceApi';
+ import { useMobile } from './utils/mobileDetect';
+ import { CommentGroupCard } from './components/CommentCard';
+ import { findNormalizedPhrase } from './utils/textNormalize';
+@@ -237,7 +238,7 @@ export default function App() {
+   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+   const [isMigrating, setIsMigrating] = useState(false);
+ 
+-  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'about'>('writing');
++  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks'>('writing');
+   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
+   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+   const [metaPrompt, setMetaPrompt] = useState<string>('');
+@@ -361,9 +362,9 @@ export default function App() {
+     }
+   }, [currentInspiration]);
+ 
+-  // @@@ Fetch default voices from backend
++  // @@@ Fetch default voices from backend and load from deck system
+   useEffect(() => {
+-    getDefaultVoices().then(backendVoices => {
++    getDefaultVoices().then(async backendVoices => {
+       const converted: Record<string, VoiceConfig> = {};
+       for (const [name, data] of Object.entries(backendVoices)) {
+         const v = data as any;
+@@ -376,9 +377,15 @@ export default function App() {
+         };
+       }
+       setDefaultVoiceConfigs(converted);
+-      const configs = getVoices() || converted;
++
++      // @@@ Try loading from deck system first, then localStorage, then defaults
++      const deckVoices = await loadVoicesFromDecks();
++      const hasDecks = Object.keys(deckVoices).length > 0;
++      const configs = hasDecks ? deckVoices : (getVoices() || converted);
+       setVoiceConfigs(configs);
+ 
++      console.log(`📚 Loaded voices from: ${hasDecks ? 'deck system' : 'localStorage or defaults'}`);
++
+       // Update engine with voice configs
+       if (engineRef.current) {
+         engineRef.current.setVoiceConfigs(configs);
+@@ -2293,7 +2300,7 @@ export default function App() {
+           )}
+         </div>
+       )}
+-      {currentView === 'settings' && (
++      {currentView === 'decks' && (
+         <div style={{
+           position: 'fixed',
+           top: 48,
+@@ -2304,13 +2311,97 @@ export default function App() {
+           display: 'flex',
+           overflow: 'hidden'
+         }}>
+-          <VoiceSettings
+-            defaultVoices={defaultVoiceConfigs}
+-            currentVoices={voiceConfigs}
+-            currentMetaPrompt={metaPrompt}
+-            currentStateConfig={loadedStateConfig}
+-            onSave={handleVoiceConfigsSave}
+-          />
++          <DeckManager onUpdate={() => {
++            // Reload voice configs when decks/voices are updated
++            console.log('Deck system updated, reloading...');
++          }} />
++        </div>
++      )}
++      {currentView === 'settings' && (
++        <div style={{
++          flex: 1,
++          display: 'flex',
++          justifyContent: 'center',
++          padding: '60px 40px 120px 40px',
++          overflow: 'auto',
++          position: 'fixed',
++          top: 48,
++          left: 0,
++          right: 0,
++          bottom: 0,
++          background: '#f8f0e6'
++        }}>
++          <div style={{
++            maxWidth: 800,
++            width: '100%'
++          }}>
++            {/* Language Toggle (Placeholder) */}
++            <section style={{ marginBottom: 48 }}>
++              <h2 style={{
++                fontSize: 24,
++                fontWeight: 600,
++                color: '#2c2c2c',
++                marginBottom: 16,
++                fontFamily: 'Georgia, "Times New Roman", serif'
++              }}>
++                Settings
++              </h2>
++              <div style={{
++                background: 'rgba(255, 255, 255, 0.5)',
++                border: '1px solid #d0c4b0',
++                borderRadius: 8,
++                padding: 24
++              }}>
++                <div style={{ marginBottom: 16 }}>
++                  <label style={{
++                    fontSize: 14,
++                    fontWeight: 500,
++                    color: '#2c2c2c',
++                    marginBottom: 8,
++                    display: 'block',
++                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
++                  }}>
++                    Language / 语言
++                  </label>
++                  <div style={{ display: 'flex', gap: 12 }}>
++                    <button
++                      style={{
++                        padding: '8px 16px',
++                        background: '#2c2c2c',
++                        color: '#fff',
++                        border: 'none',
++                        borderRadius: 6,
++                        fontSize: 14,
++                        fontWeight: 500,
++                        cursor: 'pointer',
++                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
++                      }}
++                    >
++                      English
++                    </button>
++                    <button
++                      style={{
++                        padding: '8px 16px',
++                        background: 'transparent',
++                        color: '#666',
++                        border: '1px solid #d0c4b0',
++                        borderRadius: 6,
++                        fontSize: 14,
++                        fontWeight: 500,
++                        cursor: 'pointer',
++                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
++                      }}
++                    >
++                      中文
++                    </button>
++                  </div>
++                </div>
++              </div>
++            </section>
++
++            {/* About Content */}
++            <AboutView />
++          </div>
+         </div>
+       )}
+       {/* @@@ Always render timeline to pre-load data and position scroll */}
+@@ -2340,20 +2431,6 @@ export default function App() {
+           <AnalysisView />
+         </div>
+       )}
+-      {currentView === 'about' && (
+-        <div style={{
+-          position: 'fixed',
+-          top: 48,
+-          left: 0,
+-          right: 0,
+-          bottom: 0,
+-          background: '#f8f0e6',
+-          display: 'flex',
+-          overflow: 'hidden'
+-        }}>
+-          <AboutView />
+-        </div>
+-      )}
+ 
+       {/* Warning Dialog */}
+       {showWarning && (
+
+*** MODIFIED: frontend/src/api/voiceApi.ts (+308/-0) ***
+@@ -4,6 +4,63 @@
+ 
+ import { STORAGE_KEYS } from '../constants/storageKeys';
+ 
++// ========== Inline Types (workaround for Vite bug) ==========
++export interface VoiceConfig {
++  name: string;
++  systemPrompt: string;
++  enabled: boolean;
++  icon: string;
++  color: string;
++}
++
++export interface UserState {
++  name: string;
++  prompt: string;
++}
++
++export interface StateConfig {
++  greeting: string;
++  states: Record<string, UserState>;
++}
++export interface Voice {
++  id: string;
++  deck_id: string;
++  name: string;
++  name_zh?: string;
++  name_en?: string;
++  system_prompt: string;
++  icon: string;
++  color: string;
++  is_system: boolean;
++  parent_id?: string;
++  owner_id?: number;
++  enabled: boolean;
++  order_index?: number;
++  created_at?: string;
++  updated_at?: string;
++}
++
++export interface Deck {
++  id: string;
++  name: string;
++  name_zh?: string;
++  name_en?: string;
++  description?: string;
++  description_zh?: string;
++  description_en?: string;
++  icon?: string;
++  color?: string;
++  is_system: boolean;
++  parent_id?: string;
++  owner_id?: number;
++  enabled: boolean;
++  order_index?: number;
++  voice_count?: number;
++  voices?: Voice[];
++  created_at?: string;
++  updated_at?: string;
++}
++
+ // nginx proxies /ink-and-memory/api/* to backend (8765)
+ const API_BASE = '/ink-and-memory';
+ 
+@@ -563,3 +620,254 @@ export async function markFirstLoginCompleted(): Promise<void> {
+     throw new Error(error.detail || 'Mark first login completed failed');
+   }
+ }
++
++// ========== Deck System API ==========
++
++/**
++ * List all decks (includes system decks + user's own decks)
++ */
++export async function listDecks(): Promise<Deck[]> {
++  const response = await fetch(`${API_BASE}/api/decks`, {
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'List decks failed');
++  }
++
++  const data = await response.json();
++  return data.decks;
++}
++
++/**
++ * Get a specific deck with all its voices
++ */
++export async function getDeck(deckId: string): Promise<Deck> {
++  const response = await fetch(`${API_BASE}/api/decks/${deckId}`, {
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Get deck failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Create a new deck
++ */
++export async function createDeck(data: {
++  name: string;
++  name_zh?: string;
++  name_en?: string;
++  description?: string;
++  description_zh?: string;
++  description_en?: string;
++  icon?: string;
++  color?: string;
++}): Promise<{ deck_id: string }> {
++  const response = await fetch(`${API_BASE}/api/decks`, {
++    method: 'POST',
++    headers: getAuthHeaders(),
++    body: JSON.stringify(data)
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Create deck failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Update a deck (only user-owned decks)
++ */
++export async function updateDeck(deckId: string, data: {
++  name?: string;
++  name_zh?: string;
++  name_en?: string;
++  description?: string;
++  description_zh?: string;
++  description_en?: string;
++  icon?: string;
++  color?: string;
++  enabled?: boolean;
++  order_index?: number;
++}): Promise<void> {
++  const response = await fetch(`${API_BASE}/api/decks/${deckId}`, {
++    method: 'PUT',
++    headers: getAuthHeaders(),
++    body: JSON.stringify(data)
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Update deck failed');
++  }
++}
++
++/**
++ * Delete a deck (only user-owned decks, cascades to voices)
++ */
++export async function deleteDeck(deckId: string): Promise<void> {
++  const response = await fetch(`${API_BASE}/api/decks/${deckId}`, {
++    method: 'DELETE',
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Delete deck failed');
++  }
++}
++
++/**
++ * Fork a deck (copy-on-write: creates user-owned copy of system deck)
++ */
++export async function forkDeck(deckId: string): Promise<{ deck_id: string }> {
++  const response = await fetch(`${API_BASE}/api/decks/${deckId}/fork`, {
++    method: 'POST',
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Fork deck failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Create a new voice in a deck
++ */
++export async function createVoice(data: {
++  deck_id: string;
++  name: string;
++  name_zh?: string;
++  name_en?: string;
++  system_prompt: string;
++  icon: string;
++  color: string;
++}): Promise<{ voice_id: string }> {
++  const response = await fetch(`${API_BASE}/api/voices`, {
++    method: 'POST',
++    headers: getAuthHeaders(),
++    body: JSON.stringify(data)
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Create voice failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Update a voice (only voices in user-owned decks)
++ */
++export async function updateVoice(voiceId: string, data: {
++  name?: string;
++  name_zh?: string;
++  name_en?: string;
++  system_prompt?: string;
++  icon?: string;
++  color?: string;
++  enabled?: boolean;
++  order_index?: number;
++}): Promise<void> {
++  const response = await fetch(`${API_BASE}/api/voices/${voiceId}`, {
++    method: 'PUT',
++    headers: getAuthHeaders(),
++    body: JSON.stringify(data)
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Update voice failed');
++  }
++}
++
++/**
++ * Delete a voice (only voices in user-owned decks)
++ */
++export async function deleteVoice(voiceId: string): Promise<void> {
++  const response = await fetch(`${API_BASE}/api/voices/${voiceId}`, {
++    method: 'DELETE',
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Delete voice failed');
++  }
++}
++
++/**
++ * Fork a voice to a target deck (copy-on-write: creates user-owned copy)
++ */
++export async function forkVoice(voiceId: string, targetDeckId: string): Promise<{ voice_id: string }> {
++  const response = await fetch(`${API_BASE}/api/voices/${voiceId}/fork`, {
++    method: 'POST',
++    headers: getAuthHeaders(),
++    body: JSON.stringify({ target_deck_id: targetDeckId })
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Fork voice failed');
++  }
++
++  return await response.json();
++}
++
++// ========== Voice Config Loading ==========
++
++/**
++ * @@@ Load all enabled voices from all enabled decks and convert to VoiceConfig format
++ * This bridges the new deck system with the existing voice analysis system
++ */
++export async function loadVoicesFromDecks(): Promise<Record<string, VoiceConfig>> {
++  try {
++    const decks = await listDecks();
++    const voiceConfigs: Record<string, VoiceConfig> = {};
++
++    // Load voices from each enabled deck
++    for (const deck of decks) {
++      if (!deck.enabled) continue;
++
++      try {
++        const fullDeck = await getDeck(deck.id);
++
++        if (fullDeck.voices) {
++          for (const voice of fullDeck.voices) {
++            if (!voice.enabled) continue;
++
++            // Convert Voice to VoiceConfig format
++            voiceConfigs[voice.name] = {
++              name: voice.name,
++              systemPrompt: voice.system_prompt,
++              enabled: voice.enabled,
++              icon: voice.icon,
++              color: voice.color
++            };
++          }
++        }
++      } catch (err) {
++        console.error(`Failed to load voices from deck ${deck.id}:`, err);
++        // Continue loading other decks even if one fails
++      }
++    }
++
++    return voiceConfigs;
++  } catch (err) {
++    console.error('Failed to load voices from decks:', err);
++    // Return empty object if loading fails - app can fall back to localStorage
++    return {};
++  }
++}
+
+*** MODIFIED: frontend/src/components/AgentDropdown.tsx (+1/-1) ***
+@@ -1,5 +1,5 @@
+ import React from 'react';
+-import type { VoiceConfig } from '../types/voice';
++import type { VoiceConfig } from '../api/voiceApi';
+ import {
+   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
+
+*** ADDED: frontend/src/components/DeckManager.tsx (+514/-0) ***
+@@ -0,0 +1,514 @@
++import { useState, useEffect } from 'react';
++import {
++  listDecks,
++  getDeck,
++  createDeck,
++  updateDeck,
++  deleteDeck,
++  forkDeck,
++  createVoice,
++  updateVoice,
++  deleteVoice,
++  forkVoice,
++  type Deck,
++  type Voice
++} from '../api/voiceApi';
++import {
++  FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
++  FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass,
++  FaChevronDown, FaChevronRight
++} from 'react-icons/fa';
++
++// @@@ Display mappings (text name → visual)
++const COLORS = {
++  'blue': { hex: '#4a90e2', label: 'Blue' },
++  'purple': { hex: '#9b59b6', label: 'Purple' },
++  'pink': { hex: '#e91e63', label: 'Pink' },
++  'green': { hex: '#27ae60', label: 'Green' },
++  'yellow': { hex: '#f39c12', label: 'Yellow' }
++};
++
++// @@@ Icon map with React Icons
++const iconMap = {
++  brain: FaBrain,
++  heart: FaHeart,
++  question: FaQuestion,
++  cloud: FaCloud,
++  masks: FaTheaterMasks,
++  eye: FaEye,
++  fist: FaFistRaised,
++  lightbulb: FaLightbulb,
++  shield: FaShieldAlt,
++  wind: FaWind,
++  fire: FaFire,
++  compass: FaCompass,
++};
++
++// @@@ Icon labels for dropdown display
++const ICON_LABELS = {
++  'brain': '🧠 brain',
++  'lightbulb': '💡 lightbulb',
++  'masks': '🎭 masks',
++  'cloud': '☁️ cloud',
++  'shield': '🛡️ shield',
++  'compass': '🧭 compass',
++  'heart': '❤️ heart',
++  'fist': '✊ fist',
++  'fire': '🔥 fire',
++  'wind': '💨 wind',
++  'question': '❓ question',
++  'eye': '👁️ eye'
++};
++
++interface Props {
++  onUpdate?: () => void;
++}
++
++export default function DeckManager({ onUpdate }: Props) {
++  const [decks, setDecks] = useState<Deck[]>([]);
++  const [expandedDecks, setExpandedDecks] = useState<Set<string>>(new Set());
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState<string | null>(null);
++  const [editingVoice, setEditingVoice] = useState<string | null>(null);
++
++  useEffect(() => {
++    loadDecks();
++  }, []);
++
++  async function loadDecks() {
++    try {
++      setLoading(true);
++      const fetchedDecks = await listDecks();
++
++      // Load voices for each deck
++      const decksWithVoices = await Promise.all(
++        fetchedDecks.map(async (deck) => {
++          try {
++            return await getDeck(deck.id);
++          } catch (err) {
++            console.error(`Failed to load voices for deck ${deck.id}:`, err);
++            return deck;
++          }
++        })
++      );
++
++      setDecks(decksWithVoices);
++      setError(null);
++    } catch (err: any) {
++      console.error('Failed to load decks:', err);
++      setError(err.message || 'Failed to load decks');
++    } finally {
++      setLoading(false);
++    }
++  }
++
++  function toggleDeck(deckId: string) {
++    setExpandedDecks(prev => {
++      const next = new Set(prev);
++      if (next.has(deckId)) {
++        next.delete(deckId);
++      } else {
++        next.add(deckId);
++      }
++      return next;
++    });
++  }
++
++  async function handleForkDeck(deckId: string) {
++    try {
++      await forkDeck(deckId);
++      await loadDecks();
++      onUpdate?.();
++    } catch (err: any) {
++      alert(`Failed to fork deck: ${err.message}`);
++    }
++  }
++
++  async function handleDeleteDeck(deckId: string) {
++    if (!confirm('Delete this deck and all its voices?')) return;
++
++    try {
++      await deleteDeck(deckId);
++      await loadDecks();
++      onUpdate?.();
++    } catch (err: any) {
++      alert(`Failed to delete deck: ${err.message}`);
++    }
++  }
++
++  async function handleUpdateVoice(voiceId: string, data: Partial<Voice>) {
++    try {
++      await updateVoice(voiceId, data);
++      await loadDecks();
++      setEditingVoice(null);
++      onUpdate?.();
++    } catch (err: any) {
++      alert(`Failed to update voice: ${err.message}`);
++    }
++  }
++
++  async function handleDeleteVoice(voiceId: string) {
++    if (!confirm('Delete this voice?')) return;
++
++    try {
++      await deleteVoice(voiceId);
++      await loadDecks();
++      onUpdate?.();
++    } catch (err: any) {
++      alert(`Failed to delete voice: ${err.message}`);
++    }
++  }
++
++  if (loading) {
++    return (
++      <div style={{
++        display: 'flex',
++        alignItems: 'center',
++        justifyContent: 'center',
++        height: '100vh',
++        background: '#f8f0e6'
++      }}>
++        <div style={{ fontSize: 18, color: '#666' }}>Loading decks...</div>
++      </div>
++    );
++  }
++
++  if (error) {
++    return (
++      <div style={{
++        display: 'flex',
++        flexDirection: 'column',
++        alignItems: 'center',
++        justifyContent: 'center',
++        height: '100vh',
++        background: '#f8f0e6',
++        gap: 16
++      }}>
++        <div style={{ fontSize: 18, color: '#e74c3c' }}>❌ {error}</div>
++        <button
++          onClick={loadDecks}
++          style={{
++            padding: '8px 16px',
++            background: '#2c2c2c',
++            color: '#fff',
++            border: 'none',
++            borderRadius: 6,
++            cursor: 'pointer'
++          }}
++        >
++          Retry
++        </button>
++      </div>
++    );
++  }
++
++  return (
++    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f8f0e6', overflow: 'hidden' }}>
++      {/* Fixed Header */}
++      <div style={{
++        padding: '24px 32px',
++        background: '#f8f0e6',
++        flexShrink: 0,
++        borderBottom: '2px solid #d0c4b0'
++      }}>
++        <h1 style={{
++          margin: 0,
++          fontSize: 28,
++          fontWeight: 700,
++          color: '#2c2c2c',
++          fontFamily: 'Georgia, serif',
++          letterSpacing: '-0.5px'
++        }}>
++          Voice Decks
++        </h1>
++        <p style={{
++          margin: '6px 0 0',
++          fontSize: 14,
++          color: '#666',
++          fontStyle: 'italic'
++        }}>
++          Organize your inner voices into thematic collections
++        </p>
++      </div>
++
++      {/* Scrollable Content */}
++      <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
++        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
++          {decks.map(deck => {
++            const isExpanded = expandedDecks.has(deck.id);
++            const isSystem = deck.is_system;
++            const Icon = iconMap[deck.icon as keyof typeof iconMap] || FaBrain;
++            const colorHex = COLORS[deck.color as keyof typeof COLORS]?.hex || '#4a90e2';
++
++            return (
++              <div
++                key={deck.id}
++                style={{
++                  background: '#fff',
++                  border: `2px solid ${isSystem ? '#d0c4b0' : colorHex}`,
++                  borderRadius: 12,
++                  overflow: 'hidden',
++                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
++                  transition: 'all 0.3s'
++                }}
++              >
++                {/* Deck Header */}
++                <div
++                  onClick={() => toggleDeck(deck.id)}
++                  style={{
++                    padding: 20,
++                    background: isSystem ? '#f9f9f9' : '#fafafa',
++                    cursor: 'pointer',
++                    display: 'flex',
++                    alignItems: 'center',
++                    gap: 16,
++                    transition: 'background 0.2s'
++                  }}
++                  onMouseEnter={(e) => {
++                    e.currentTarget.style.background = isSystem ? '#f0f0f0' : '#f5f5f5';
++                  }}
++                  onMouseLeave={(e) => {
++                    e.currentTarget.style.background = isSystem ? '#f9f9f9' : '#fafafa';
++                  }}
++                >
++                  {/* Expand/Collapse Icon */}
++                  <div style={{ fontSize: 20, color: '#666' }}>
++                    {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
++                  </div>
++
++                  {/* Deck Icon */}
++                  <div style={{
++                    width: 56,
++                    height: 56,
++                    borderRadius: 28,
++                    background: `linear-gradient(135deg, ${colorHex} 0%, ${colorHex}cc 100%)`,
++                    display: 'flex',
++                    alignItems: 'center',
++                    justifyContent: 'center',
++                    color: '#fff',
++                    flexShrink: 0,
++                    boxShadow: `0 3px 8px ${colorHex}40`
++                  }}>
++                    <Icon size={28} />
++                  </div>
++
++                  {/* Deck Info */}
++                  <div style={{ flex: 1, minWidth: 0 }}>
++                    <div style={{
++                      fontSize: 20,
++                      fontWeight: 700,
++                      color: '#2c2c2c',
++                      marginBottom: 4
++                    }}>
++                      {deck.name}
++                      {isSystem && (
++                        <span style={{
++                          marginLeft: 12,
++                          fontSize: 12,
++                          fontWeight: 500,
++                          color: '#888',
++                          background: '#e0e0e0',
++                          padding: '2px 8px',
++                          borderRadius: 4
++                        }}>
++                          System
++                        </span>
++                      )}
++                    </div>
++                    <div style={{
++                      fontSize: 14,
++                      color: '#666'
++                    }}>
++                      {deck.description || 'No description'}
++                    </div>
++                    <div style={{
++                      fontSize: 12,
++                      color: '#999',
++                      marginTop: 4
++                    }}>
++                      {deck.voice_count || deck.voices?.length || 0} voices
++                    </div>
++                  </div>
++
++                  {/* Actions */}
++                  <div style={{ display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
++                    {isSystem ? (
++                      <button
++                        onClick={() => handleForkDeck(deck.id)}
++                        style={{
++                          padding: '8px 16px',
++                          background: colorHex,
++                          color: '#fff',
++                          border: 'none',
++                          borderRadius: 6,
++                          cursor: 'pointer',
++                          fontSize: 13,
++                          fontWeight: 600,
++                          transition: 'all 0.2s'
++                        }}
++                        onMouseEnter={(e) => {
++                          e.currentTarget.style.transform = 'translateY(-1px)';
++                          e.currentTarget.style.boxShadow = `0 4px 12px ${colorHex}60`;
++                        }}
++                        onMouseLeave={(e) => {
++                          e.currentTarget.style.transform = 'translateY(0)';
++                          e.currentTarget.style.boxShadow = 'none';
++                        }}
++                      >
++                        Fork to My Collection
++                      </button>
++                    ) : (
++                      <button
++                        onClick={() => handleDeleteDeck(deck.id)}
++                        style={{
++                          padding: '8px 16px',
++                          background: '#e74c3c',
++                          color: '#fff',
++                          border: 'none',
++                          borderRadius: 6,
++                          cursor: 'pointer',
++                          fontSize: 13,
++                          fontWeight: 600,
++                          transition: 'all 0.2s'
++                        }}
++                        onMouseEnter={(e) => {
++                          e.currentTarget.style.transform = 'translateY(-1px)';
++                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(231, 76, 60, 0.4)';
++                        }}
++                        onMouseLeave={(e) => {
++                          e.currentTarget.style.transform = 'translateY(0)';
++                          e.currentTarget.style.boxShadow = 'none';
++                        }}
++                      >
++                        Delete Deck
++                      </button>
++                    )}
++                  </div>
++                </div>
++
++                {/* Voices List (Expanded) */}
++                {isExpanded && deck.voices && deck.voices.length > 0 && (
++                  <div style={{ padding: 20, background: '#fafafa' }}>
++                    <div style={{
++                      display: 'grid',
++                      gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
++                      gap: 16
++                    }}>
++                      {deck.voices.map(voice => {
++                        const VoiceIcon = iconMap[voice.icon as keyof typeof iconMap] || FaBrain;
++                        const voiceColor = COLORS[voice.color as keyof typeof COLORS]?.hex || '#4a90e2';
++                        const isEditing = editingVoice === voice.id;
++
++                        return (
++                          <div
++                            key={voice.id}
++                            style={{
++                              background: '#fff',
++                              border: `2px solid ${voice.enabled ? voiceColor : '#ddd'}`,
++                              borderRadius: 8,
++                              padding: 16,
++                              position: 'relative',
++                              boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
++                              transition: 'all 0.2s',
++                              opacity: voice.enabled ? 1 : 0.6
++                            }}
++                          >
++                            {/* Voice Header */}
++                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
++                              <div style={{
++                                width: 40,
++                                height: 40,
++                                borderRadius: 20,
++                                background: `linear-gradient(135deg, ${voiceColor} 0%, ${voiceColor}cc 100%)`,
++                                display: 'flex',
++                                alignItems: 'center',
++                                justifyContent: 'center',
++                                color: '#fff',
++                                flexShrink: 0
++                              }}>
++                                <VoiceIcon size={20} />
++                              </div>
++
++                              <div style={{ flex: 1, minWidth: 0 }}>
++                                <div style={{
++                                  fontSize: 16,
++                                  fontWeight: 600,
++                                  color: '#2c2c2c',
++                                  overflow: 'hidden',
++                                  textOverflow: 'ellipsis',
++                                  whiteSpace: 'nowrap'
++                                }}>
++                                  {voice.name}
++                                </div>
++                              </div>
++
++                              {!isSystem && (
++                                <button
++                                  onClick={() => handleDeleteVoice(voice.id)}
++                                  style={{
++                                    background: 'rgba(255, 255, 255, 0.9)',
++                                    border: '1px solid #ddd',
++                                    borderRadius: 4,
++                                    width: 24,
++                                    height: 24,
++                                    display: 'flex',
++                                    alignItems: 'center',
++                                    justifyContent: 'center',
++                                    cursor: 'pointer',
++                                    fontSize: 12,
++                                    transition: 'all 0.2s'
++                                  }}
++                                  onMouseEnter={(e) => {
++                                    e.currentTarget.style.background = '#fee';
++                                    e.currentTarget.style.borderColor = '#fcc';
++                                  }}
++                                  onMouseLeave={(e) => {
++                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
++                                    e.currentTarget.style.borderColor = '#ddd';
++                                  }}
++                                  title="Delete"
++                                >
++                                  ×
++                                </button>
++                              )}
++                            </div>
++
++                            {/* Voice Prompt */}
++                            <div style={{
++                              fontSize: 12,
++                              color: '#666',
++                              lineHeight: 1.6,
++                              overflow: 'hidden',
++                              textOverflow: 'ellipsis',
++                              display: '-webkit-box',
++                              WebkitLineClamp: 3,
++                              WebkitBoxOrient: 'vertical'
++                            }}>
++                              {voice.system_prompt}
++                            </div>
++                          </div>
++                        );
++                      })}
++                    </div>
++                  </div>
++                )}
++
++                {/* Empty State */}
++                {isExpanded && (!deck.voices || deck.voices.length === 0) && (
++                  <div style={{
++                    padding: 32,
++                    textAlign: 'center',
++                    color: '#999',
++                    fontStyle: 'italic'
++                  }}>
++                    No voices in this deck yet
++                  </div>
++                )}
++              </div>
++            );
++          })}
++        </div>
++      </div>
++    </div>
++  );
++}
+
+*** MODIFIED: frontend/src/components/StateChooser.tsx (+1/-1) ***
+@@ -1,6 +1,6 @@
+ import { useState, useEffect, useRef } from 'react';
+ import { StateCube } from './StateCube';
+-import type { StateConfig } from '../types/voice';
++import type { StateConfig } from '../api/voiceApi';
+ 
+ interface Props {
+   stateConfig: StateConfig;
+
+*** MODIFIED: frontend/src/components/TopNavBar.tsx (+8/-8) ***
+@@ -2,8 +2,8 @@ import { useState } from 'react';
+ import { useAuth } from '../contexts/AuthContext';
+ 
+ interface Props {
+-  currentView: 'writing' | 'settings' | 'timeline' | 'analysis' | 'about';
+-  onViewChange: (view: 'writing' | 'settings' | 'timeline' | 'analysis' | 'about') => void;
++  currentView: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks';
++  onViewChange: (view: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks') => void;
+ }
+ 
+ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+@@ -134,21 +134,21 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+         </button>
+ 
+         <button
+-          onClick={() => onViewChange('about')}
+-          style={buttonStyle(currentView === 'about')}
+-          title="About"
++          onClick={() => onViewChange('decks')}
++          style={buttonStyle(currentView === 'decks')}
++          title="Decks"
+           onMouseEnter={e => {
+-            if (currentView !== 'about') {
++            if (currentView !== 'decks') {
+               e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
+             }
+           }}
+           onMouseLeave={e => {
+-            if (currentView !== 'about') {
++            if (currentView !== 'decks') {
+               e.currentTarget.style.background = 'transparent';
+             }
+           }}
+         >
+-          About
++          Decks
+         </button>
+       </div>
+ 
+
+*** MODIFIED: frontend/src/components/VoiceSettings.tsx (+1/-1) ***
+@@ -1,5 +1,5 @@
+ import { useState, useEffect, useRef } from 'react';
+-import type { VoiceConfig, StateConfig, UserState } from '../types/voice';
++import type { VoiceConfig, StateConfig, UserState } from '../api/voiceApi';
+ import { saveVoices, clearVoices, getMetaPrompt, saveMetaPrompt, getStateConfig, saveStateConfig } from '../utils/voiceStorage';
+ import {
+   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+
+*** REMOVED: frontend/src/types/voice.ts (+0/-17) ***
+@@ -1,17 +0,0 @@
+-export interface VoiceConfig {
+-  name: string;
+-  systemPrompt: string;
+-  enabled: boolean;
+-  icon: string;
+-  color: string;
+-}
+-
+-export interface UserState {
+-  name: string;
+-  prompt: string;
+-}
+-
+-export interface StateConfig {
+-  greeting: string;
+-  states: Record<string, UserState>;
+-}
+
+*** MODIFIED: frontend/src/utils/voiceStorage.ts (+1/-1) ***
+@@ -1,4 +1,4 @@
+-import type { VoiceConfig, StateConfig } from '../types/voice';
++import type { VoiceConfig, StateConfig } from '../api/voiceApi';
+ import { STORAGE_KEYS } from '../constants/storageKeys';
+ 
+ // @@@ Default meta prompt: honest, pragmatic advice over role-playing fluff

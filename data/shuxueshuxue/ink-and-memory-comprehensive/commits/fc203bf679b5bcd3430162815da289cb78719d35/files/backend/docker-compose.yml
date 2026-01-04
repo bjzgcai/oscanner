@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  ink-backend:
+    image: ghcr.io/shuxueshuxue/ink-backend:latest
+    container_name: ink-backend
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - ./data:/app/data
+      - ./models.json:/app/models.json:ro
+    environment:
+      BACKEND_VERSION: ghcr.io/shuxueshuxue/ink-backend:latest
+      HTTP_PROXY: http://host.docker.internal:7890
+      HTTPS_PROXY: http://host.docker.internal:7890
+      NO_PROXY: localhost,127.0.0.1,::1
+      http_proxy: http://host.docker.internal:7890
+      https_proxy: http://host.docker.internal:7890
+      no_proxy: localhost,127.0.0.1,::1

@@ -1,0 +1,23 @@
+{
+  "sha": "f2315ab7b2cbe53fd497c40ed2b80180d4179f55",
+  "message": "Use HTML video tag for demo",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-07T14:05:58Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-07T14:05:58Z"
+  },
+  "stats": {
+    "total": 2,
+    "additions": 1,
+    "deletions": 1
+  },
+  "files_count": 1,
+  "parents": [
+    "cefa11a21eaf6f012f839e8223a58d8e51ec6bb1"
+  ]
+}

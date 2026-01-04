@@ -1,0 +1,14 @@
+{
+  "hash": "e35aa0f01ccacedee8ad181d387c031f0bd1622d",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Dec 3 03:13:10 2025 +0800",
+  "subject": "Expose frontend version on window and console",
+  "files": [
+    "frontend/src/main.tsx"
+  ],
+  "diff": "commits/e35aa0f01ccacedee8ad181d387c031f0bd1622d/e35aa0f01ccacedee8ad181d387c031f0bd1622d.diff",
+  "related_files": {
+    "frontend/src/main.tsx": []
+  }
+}

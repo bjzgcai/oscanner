@@ -1,0 +1,23 @@
+commit 86bddd0c3efa51e0e7600a68b2cc682a2683bb71
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Sat Dec 20 10:31:01 2025 +0800
+
+    fix open new session in new day
+
+diff --git a/frontend/src/hooks/useSessionLifecycle.ts b/frontend/src/hooks/useSessionLifecycle.ts
+index 56a671f..ee3083b 100644
+--- a/frontend/src/hooks/useSessionLifecycle.ts
++++ b/frontend/src/hooks/useSessionLifecycle.ts
+@@ -356,9 +356,9 @@ export function useSessionLifecycle({
+                   setLocalTexts(new Map());
+                   ensuredSessionForDayRef.current = today;
+                   startedFreshForToday = true;
+-                  // @@@ New Day Guard - clear any previously chosen session so we don't overwrite the blank state below
+-                  sessionToLoad = null;
+-                  loadedSessionId = undefined;
++                  // @@@ New Day Guard - hand the fresh state to the loader so nothing older overwrites it below
++                  sessionToLoad = blankState;
++                  loadedSessionId = blankState.id;
+ 
+                   await persistSessionImmediately(blankState);
+                 } else {

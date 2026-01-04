@@ -1,0 +1,35 @@
+*** FILE: frontend/src/App.tsx ***
+@@ -467,8 +467,22 @@ export default function App() {
+             if (prefs.state_config) {
+               setLoadedStateConfig(prefs.state_config);
+             }
++
++            // @@@ Load selectedState with daily reset check for authenticated users
+             if (prefs.selected_state !== undefined && prefs.selected_state !== null) {
+-              setSelectedState(prefs.selected_state);
++              const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
++
++              // Extract date from database's updated_at timestamp (format: "YYYY-MM-DD HH:MM:SS")
++              const updatedAtDate = prefs.updated_at ? prefs.updated_at.split(' ')[0] : null;
++
++              // Check if state was updated today
++              if (updatedAtDate === today) {
++                // Same day - load the state
++                setSelectedState(prefs.selected_state);
++              } else {
++                // Different day or no timestamp - show cube for daily check-in
++                setSelectedState(null);
++              }
+             }
+           } catch (err) {
+             console.log('No preferences found, using defaults');
+@@ -1058,8 +1072,7 @@ export default function App() {
+       try {
+         const { savePreferences } = await import('./api/voiceApi');
+         await savePreferences({ selected_state: stateId });
+-        // Also save date to localStorage for daily reset check
+-        localStorage.setItem('selected-state-date', today);
++        // Database updated_at will be used for daily reset check
+       } catch (error) {
+         console.error('Failed to save state to database:', error);
+       }

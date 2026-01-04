@@ -1,0 +1,23 @@
+{
+  "sha": "348fac22f83ca12deff43fea760a5cc7702cbc66",
+  "message": "Fix comment positioning and scroll UX issues\n\n- Switch comment positioning from getBoundingClientRect to offsetTop for scroll-independent coordinates\n- Prevent browser auto-scroll on focus to stop position shifts when clicking after scrolling\n- Add bottom padding (41px) to account for fixed stats bar, eliminating stuck scroll zones\n- Fine-tune comment vertical alignment with 0.7 lineHeight offset adjustment\n- Remove auto-focus on writing view to prevent unwanted scrolling\n- Add font preloading and font-display: swap to prevent FOIT\n- Implement highlight collision detection in EditorEngine\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T14:19:08Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T14:19:08Z"
+  },
+  "stats": {
+    "total": 117,
+    "additions": 80,
+    "deletions": 37
+  },
+  "files_count": 4,
+  "parents": [
+    "fe5df60313f830aebc01494ece05b074d6383dbe"
+  ]
+}

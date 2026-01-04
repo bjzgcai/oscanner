@@ -1,0 +1,20 @@
+{
+  "hash": "a1e1a0b7f8fa00b8fc5cfa1d2ed600a525c9dea1",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 30 22:39:35 2025 +0800",
+  "subject": "removed proxy",
+  "files": [
+    "README.md",
+    "backend/server.py"
+  ],
+  "diff": "commits/a1e1a0b7f8fa00b8fc5cfa1d2ed600a525c9dea1/a1e1a0b7f8fa00b8fc5cfa1d2ed600a525c9dea1.diff",
+  "related_files": {
+    "README.md": [
+      "backend/server.py"
+    ],
+    "backend/server.py": [
+      "README.md"
+    ]
+  }
+}

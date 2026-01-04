@@ -1,0 +1,132 @@
+*** FILE: backend/config.py ***
+@@ -8,6 +8,20 @@
+ MIN_TEXT_LENGTH = 20
+ SINGLE_COMMENT_MODE = True  # If True, only add 1 comment per request (gradual accumulation)
+ 
++# @@@ Image generation configuration
++IMAGE_API_KEY = "sk-yz0JLc7sGbCHnwam70Bc9e29Dc684bAe904102C95dF32fB1"
++IMAGE_API_ENDPOINT = "https://api.dou.chat/v1"
++IMAGE_DESCRIPTION_MODEL = "anthropic/claude-haiku-4.5"
++IMAGE_GENERATION_MODEL = "google/gemini-2.5-flash-image-preview"
++
++# Retry configuration for image generation
++IMAGE_RETRY_MAX_ATTEMPTS = 3
++IMAGE_RETRY_BASE_TIMEOUT = 60  # First attempt: 60s, then +30s per retry
++IMAGE_RETRY_TIMEOUT_INCREMENT = 30
++IMAGE_MAX_TOKENS = 1000
++IMAGE_DESCRIPTION_MAX_TOKENS = 500
++IMAGE_DESCRIPTION_TIMEOUT = 30
++
+ # Voice archetypes (Disco Elysium skills adapted for general writing)
+ VOICE_ARCHETYPES = {
+     "Logic": {
+
+*** FILE: backend/server.py ***
+@@ -329,17 +329,8 @@ def generate_daily_picture(all_notes: str):
+     print(f"{'='*60}\n")
+ 
+     import requests
+-    import base64
+-
+-    API_KEY = "sk-yz0JLc7sGbCHnwam70Bc9e29Dc684bAe904102C95dF32fB1"
+-    ENDPOINT = "https://api.dou.chat/v1"
+ 
+     # @@@ Step 1: Convert notes to artistic image description using Claude Haiku
+-    import requests as req
+-
+-    CLAUDE_API_KEY = "sk-yz0JLc7sGbCHnwam70Bc9e29Dc684bAe904102C95dF32fB1"
+-    CLAUDE_ENDPOINT = "https://api.dou.chat/v1"
+-    CLAUDE_MODEL = "anthropic/claude-haiku-4.5"
+ 
+     description_prompt = f"""Read these personal notes and create a vivid, artistic image description that captures the essence, mood, and themes.
+ 
+@@ -363,19 +354,19 @@ def generate_daily_picture(all_notes: str):
+     # @@@ Use proxy for GFW bypass (if configured)
+     proxies = get_image_api_proxies()
+ 
+-    claude_response = req.post(
+-        f"{CLAUDE_ENDPOINT}/chat/completions",
++    claude_response = requests.post(
++        f"{config.IMAGE_API_ENDPOINT}/chat/completions",
+         headers={
+-            "Authorization": f"Bearer {CLAUDE_API_KEY}",
++            "Authorization": f"Bearer {config.IMAGE_API_KEY}",
+             "Content-Type": "application/json"
+         },
+         json={
+-            "model": CLAUDE_MODEL,
++            "model": config.IMAGE_DESCRIPTION_MODEL,
+             "messages": [{"role": "user", "content": description_prompt}],
+-            "max_tokens": 500
++            "max_tokens": config.IMAGE_DESCRIPTION_MAX_TOKENS
+         },
+         proxies=proxies,
+-        timeout=30
++        timeout=config.IMAGE_DESCRIPTION_TIMEOUT
+     )
+ 
+     if claude_response.status_code != 200:
+@@ -390,36 +381,33 @@ def generate_daily_picture(all_notes: str):
+     print(f"📝 Image description: {image_description}")
+ 
+     # @@@ Step 2: Generate image from description with retry logic
+-    MODEL = "google/gemini-2.5-flash-image-preview"
+-
+-    url = f"{ENDPOINT}/chat/completions"
++    url = f"{config.IMAGE_API_ENDPOINT}/chat/completions"
+     headers = {
+-        "Authorization": f"Bearer {API_KEY}",
++        "Authorization": f"Bearer {config.IMAGE_API_KEY}",
+         "Content-Type": "application/json"
+     }
+ 
+     payload = {
+-        "model": MODEL,
++        "model": config.IMAGE_GENERATION_MODEL,
+         "messages": [
+             {
+                 "role": "user",
+                 "content": image_description
+             }
+         ],
+-        "max_tokens": 1000
++        "max_tokens": config.IMAGE_MAX_TOKENS
+     }
+ 
+-    # @@@ Retry logic: 3 attempts with increasing timeouts
+-    max_attempts = 3
+-    for attempt in range(1, max_attempts + 1):
++    # @@@ Retry logic with increasing timeouts
++    for attempt in range(1, config.IMAGE_RETRY_MAX_ATTEMPTS + 1):
+         try:
+-            timeout_seconds = 60 + (attempt - 1) * 30  # 60s, 90s, 120s
+-            print(f"🎨 Generating image (attempt {attempt}/{max_attempts}, timeout={timeout_seconds}s)...")
++            timeout_seconds = config.IMAGE_RETRY_BASE_TIMEOUT + (attempt - 1) * config.IMAGE_RETRY_TIMEOUT_INCREMENT
++            print(f"🎨 Generating image (attempt {attempt}/{config.IMAGE_RETRY_MAX_ATTEMPTS}, timeout={timeout_seconds}s)...")
+             response = requests.post(url, headers=headers, json=payload, proxies=proxies, timeout=timeout_seconds)
+ 
+             if response.status_code != 200:
+                 print(f"❌ Error: {response.status_code}")
+-                if attempt < max_attempts:
++                if attempt < config.IMAGE_RETRY_MAX_ATTEMPTS:
+                     print(f"⏳ Retrying in 2 seconds...")
+                     import time
+                     time.sleep(2)
+@@ -448,7 +436,7 @@ def generate_daily_picture(all_notes: str):
+                             "prompt": image_description  # Return the creative description
+                         }
+ 
+-            if attempt < max_attempts:
++            if attempt < config.IMAGE_RETRY_MAX_ATTEMPTS:
+                 print(f"⚠️ No image in response, retrying...")
+                 import time
+                 time.sleep(2)
+@@ -457,7 +445,7 @@ def generate_daily_picture(all_notes: str):
+ 
+         except Exception as e:
+             print(f"❌ Exception on attempt {attempt}: {e}")
+-            if attempt < max_attempts:
++            if attempt < config.IMAGE_RETRY_MAX_ATTEMPTS:
+                 print(f"⏳ Retrying in 2 seconds...")
+                 import time
+                 time.sleep(2)

@@ -1,0 +1,14 @@
+{
+  "hash": "0386af9af8ff3f2708263fe7d7e47ae63b5cba41",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Thu Dec 18 16:00:29 2025 +0800",
+  "subject": "use gemini flash",
+  "files": [
+    "backend/config.py"
+  ],
+  "diff": "commits/0386af9af8ff3f2708263fe7d7e47ae63b5cba41/0386af9af8ff3f2708263fe7d7e47ae63b5cba41.diff",
+  "related_files": {
+    "backend/config.py": []
+  }
+}

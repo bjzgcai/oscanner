@@ -1,0 +1,14 @@
+{
+  "hash": "96e83b7937ab958b2f726ebf723f45bfceedfdaa",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Dec 9 22:17:06 2025 +0800",
+  "subject": "fix background scrolling",
+  "files": [
+    "frontend/src/App.css"
+  ],
+  "diff": "commits/96e83b7937ab958b2f726ebf723f45bfceedfdaa/96e83b7937ab958b2f726ebf723f45bfceedfdaa.diff",
+  "related_files": {
+    "frontend/src/App.css": []
+  }
+}

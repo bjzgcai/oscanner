@@ -1,0 +1,27 @@
+{
+  "hash": "6a134c937fb4c3152fdc4e3d66d648855142b72d",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Dec 16 16:17:44 2025 +0800",
+  "subject": "use a smaller image",
+  "files": [
+    "frontend/public/login-banner.jpg",
+    "frontend/public/login-banner.png",
+    "frontend/src/App.tsx"
+  ],
+  "diff": "commits/6a134c937fb4c3152fdc4e3d66d648855142b72d/6a134c937fb4c3152fdc4e3d66d648855142b72d.diff",
+  "related_files": {
+    "frontend/public/login-banner.jpg": [
+      "frontend/public/login-banner.png",
+      "frontend/src/App.tsx"
+    ],
+    "frontend/public/login-banner.png": [
+      "frontend/public/login-banner.jpg",
+      "frontend/src/App.tsx"
+    ],
+    "frontend/src/App.tsx": [
+      "frontend/public/login-banner.jpg",
+      "frontend/public/login-banner.png"
+    ]
+  }
+}

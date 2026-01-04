@@ -1,0 +1,27 @@
+commit f54b56896312228f1d98854abffe03b6a4cdc197
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Dec 3 02:31:20 2025 +0800
+
+    Run container detached and log via tmux
+
+diff --git a/.github/workflows/deploy-backend.yml b/.github/workflows/deploy-backend.yml
+index 0e3a3fd..bb88d6e 100644
+--- a/.github/workflows/deploy-backend.yml
++++ b/.github/workflows/deploy-backend.yml
+@@ -63,10 +63,10 @@ jobs:
+             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u shuxueshuxue --password-stdin >/dev/null
+             docker pull "${IMAGE_TAG}"
+             docker rm -f ink-backend || true
++            docker run -d --name ink-backend --restart unless-stopped \
++              -p 127.0.0.1:8765:8765 \
++              -v /root/ink-and-memory/backend/data:/app/data \
++              -e BACKEND_VERSION=${IMAGE_TAG} \
++              ${IMAGE_TAG}
+             tmux kill-session -t ink-and-memory-docker || true
+-            tmux new -d -s ink-and-memory-docker \
+-              "docker run --name ink-backend --restart unless-stopped \
+-                -p 127.0.0.1:8765:8765 \
+-                -v /root/ink-and-memory/backend/data:/app/data \
+-                -e BACKEND_VERSION=${IMAGE_TAG} \
+-                ${IMAGE_TAG}"
++            tmux new -d -s ink-and-memory-docker "docker logs -f --tail 200 ink-backend"

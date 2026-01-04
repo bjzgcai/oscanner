@@ -1,0 +1,23 @@
+{
+  "sha": "e7d5ea83b82e7f5cffd8e52b95b60190e4ceecd5",
+  "message": "Refactor sessions for timezone-safe calendar",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-22T03:48:00Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-22T03:48:00Z"
+  },
+  "stats": {
+    "total": 630,
+    "additions": 510,
+    "deletions": 120
+  },
+  "files_count": 11,
+  "parents": [
+    "ad35b36acdb5957964dcb99b941a07ca20504917"
+  ]
+}

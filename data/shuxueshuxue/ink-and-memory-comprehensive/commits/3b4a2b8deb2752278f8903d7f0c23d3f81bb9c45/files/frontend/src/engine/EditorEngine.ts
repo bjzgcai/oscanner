@@ -1,0 +1,573 @@
+/**
+ * Clean editor engine based on trace-based energy model
+ */
+
+// @@@ Core data model - cells + commentors + tasks + WeightPath
+export interface EditorState {
+  cells: Cell[];
+  commentors: Commentor[];
+  tasks: Task[];
+  weightPath: WeightEntry[];
+  sessionId: string;
+}
+
+export type Cell = TextCell | WidgetCell;
+
+export interface TextCell {
+  id: string;
+  type: 'text';
+  content: string;  // Plain text content
+}
+
+export interface WidgetCell {
+  id: string;
+  type: 'widget';
+  widgetType: 'chat' | 'greeting' | 'other';
+  data: any;  // Widget-specific data
+}
+
+export interface Commentor {
+  id: string;
+  phrase: string;       // Highlighted phrase
+  comment: string;      // The comment
+  voice: string;        // Voice name
+  icon: string;         // Icon identifier
+  color: string;        // Color identifier
+  appliedAt?: number;   // Timestamp when applied (if applied)
+  computedAt: number;   // Timestamp when computed
+  textSnapshot: string; // Text at computation time
+}
+
+export interface Task {
+  id: string;
+  type: 'searching' | 'thinking' | 'other';
+  message: string;
+  startedAt: number;
+  completedAt?: number;
+}
+
+export interface WeightEntry {
+  timestamp: number;
+  text: string;
+  weight: number;
+  delta: number;  // max(0, weight - prevWeight)
+  energy: number; // Accumulated energy at this point
+}
+
+// @@@ Weight function implementation
+export function computeWeight(text: string): number {
+  let weight = 0;
+
+  for (const char of text) {
+    // Sentence boundaries
+    if (/[.!?。！？\n]/.test(char)) {
+      weight += 4;
+    }
+    // Chinese comma (ignored)
+    else if (char === '，') {
+      // Skip: weight += 0
+    }
+    // CJK characters
+    else if (/[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff]/.test(char)) {
+      weight += 2;
+    }
+    // Default
+    else {
+      weight += 1;
+    }
+  }
+
+  return weight;
+}
+
+// @@@ Extract completed sentences (for backend analysis)
+export function getCompletedSentences(text: string): string {
+  // Split by sentence boundaries
+  const parts = text.split(/([.!?。！？]+)/);
+
+  let result = '';
+  for (let i = 0; i < parts.length - 1; i += 2) {
+    // Include sentence + its punctuation
+    if (i + 1 < parts.length) {
+      result += parts[i] + parts[i + 1];
+    }
+  }
+
+  // Don't include the last part if it doesn't end with punctuation
+  return result.trim();
+}
+
+// @@@ Main engine class
+export class EditorEngine {
+  private state: EditorState;
+  private usedEnergy: number = 0;
+  private threshold: number = 40;
+  private commentorWaitlist: Commentor[] = [];
+  private sentCache: Map<string, string> = new Map(); // Track sent sentences -> commentor hash
+  private onStateChange?: (state: EditorState) => void;
+  private isRequesting: boolean = false; // Track if request in progress
+  private voiceConfigs: Record<string, any> = {}; // Voice configurations from settings
+
+  constructor(sessionId: string) {
+    this.state = {
+      cells: [{ id: generateId(), type: 'text', content: '' }],
+      commentors: [],
+      tasks: [],
+      weightPath: [],
+      sessionId
+    };
+  }
+
+  // @@@ Update voice configurations from settings
+  setVoiceConfigs(configs: Record<string, any>) {
+    this.voiceConfigs = configs;
+  }
+
+  // @@@ Update a specific text cell by ID
+  updateTextCell(cellId: string, newText: string) {
+    const cell = this.state.cells.find(c => c.id === cellId);
+    if (!cell || cell.type !== 'text') return;
+
+    (cell as TextCell).content = newText;
+    this.applyTextUpdate();
+  }
+
+  // @@@ Apply weight calculation and trigger analysis
+  private applyTextUpdate() {
+    const combinedText = this.getCombinedText();
+
+    // Compute new weight entry
+    const weight = computeWeight(combinedText);
+    const lastEntry = this.state.weightPath[this.state.weightPath.length - 1];
+    const prevWeight = lastEntry?.weight || 0;
+    const delta = Math.max(0, weight - prevWeight);
+    const prevEnergy = lastEntry?.energy || 0;
+    const energy = prevEnergy + delta;
+
+    // Add to weight path
+    this.state.weightPath.push({
+      timestamp: Date.now(),
+      text: combinedText,
+      weight,
+      delta,
+      energy
+    });
+
+    // Check if we should request analysis
+    this.checkAnalysisTrigger(combinedText, energy);
+
+    // Check if we can apply commentors
+    this.checkCommentorApplication(combinedText, energy);
+
+    this.notifyChange();
+  }
+
+  // @@@ Get combined text from all text cells
+  private getCombinedText(): string {
+    return this.state.cells
+      .filter(c => c.type === 'text')
+      .map(c => (c as TextCell).content)
+      .join('');
+  }
+
+
+  // @@@ Check if we should send text for analysis
+  private checkAnalysisTrigger(text: string, _currentEnergy: number) {
+    const completedSentences = getCompletedSentences(text);
+
+    // Skip if no completed sentences or already requesting
+    if (!completedSentences || this.isRequesting) {
+      return;
+    }
+
+    // Build hash of current commentor configuration
+    const commentorHash = this.getCommentorHash();
+
+    // Check if this text+commentor combination was already sent
+    const cachedHash = this.sentCache.get(completedSentences);
+
+    // Only send if not in cache OR commentor config changed
+    if (!cachedHash || cachedHash !== commentorHash) {
+      this.sentCache.set(completedSentences, commentorHash);
+
+      // Request analysis from backend (async, results go to waitlist)
+      this.requestAnalysis(completedSentences);
+    }
+  }
+
+  // @@@ Get hash of current commentor configuration
+  private getCommentorHash(): string {
+    // For now, just use applied commentor count as simple hash
+    // Could be more sophisticated if needed
+    return `v1_${this.state.commentors.filter(c => c.appliedAt).length}`;
+  }
+
+  // @@@ Check if we can apply commentors from waitlist
+  private checkCommentorApplication(text: string, currentEnergy: number): boolean {
+    let appliedAny = false;
+
+    // Apply ONE commentor at a time when we have enough energy
+    while (this.commentorWaitlist.length > 0) {
+      const unusedEnergy = currentEnergy - this.usedEnergy;
+
+      // Stop if we don't have enough energy for the next commentor
+      if (unusedEnergy < this.threshold) {
+        break;
+      }
+
+      const commentor = this.commentorWaitlist.pop()!;
+
+      // Check if text still matches (current text starts with snapshot)
+      if (text.startsWith(commentor.textSnapshot)) {
+        // Apply commentor
+        commentor.appliedAt = Date.now();
+        this.state.commentors.push(commentor);
+        this.usedEnergy += this.threshold;
+        appliedAny = true;
+        console.log(`✅ Applied commentor: ${commentor.voice} on "${commentor.phrase}"`);
+        console.log(`   Energy: used ${this.usedEnergy}/${currentEnergy} (${currentEnergy - this.usedEnergy} remaining)`);
+      } else {
+        console.log(`⏭️ Skipped outdated commentor: ${commentor.voice}`);
+      }
+    }
+
+    if (appliedAny) {
+      this.notifyChange();
+    }
+
+    return appliedAny;
+  }
+
+  // @@@ Request analysis from backend
+  private async requestAnalysis(text: string) {
+    // Prevent duplicate requests
+    if (this.isRequesting) {
+      return;
+    }
+
+    this.isRequesting = true;
+
+    // Add a task to show we're working
+    const task: Task = {
+      id: generateId(),
+      type: 'thinking',
+      message: 'Analyzing text...',
+      startedAt: Date.now()
+    };
+    this.state.tasks.push(task);
+    this.notifyChange();
+
+    try {
+      // Call backend (returns ONLY ONE comment at a time)
+      const { analyzeText } = await import('../api/voiceApi');
+      const { getMetaPrompt, getStateConfig } = await import('../utils/voiceStorage');
+
+      // Convert voiceConfigs to backend format
+      const backendVoices: Record<string, any> = {};
+      for (const [name, cfg] of Object.entries(this.voiceConfigs)) {
+        if (cfg.enabled) {
+          backendVoices[name] = {
+            name: cfg.name,
+            tagline: cfg.systemPrompt,
+            icon: cfg.icon,
+            color: cfg.color
+          };
+        }
+      }
+
+      // Send only APPLIED commentors to backend
+      const appliedCommentors = this.state.commentors.filter(c => c.appliedAt);
+      const metaPrompt = getMetaPrompt();
+
+      // Get state prompt from localStorage
+      const selectedState = localStorage.getItem('selected-state');
+      const stateConfig = getStateConfig();
+      const statePrompt = selectedState && stateConfig.states[selectedState]
+        ? stateConfig.states[selectedState].prompt
+        : '';
+
+      const result = await analyzeText(text, this.state.sessionId, backendVoices, appliedCommentors, metaPrompt, statePrompt);
+
+      // Backend returns at most ONE voice
+      if (result.voices.length > 0) {
+        const voice = result.voices[0]; // Only take first one
+        const commentor: Commentor = {
+          id: generateId(),
+          phrase: voice.phrase,
+          comment: voice.comment,
+          voice: voice.voice,
+          icon: voice.icon,
+          color: voice.color,
+          computedAt: Date.now(),
+          textSnapshot: text
+        };
+        this.commentorWaitlist.push(commentor);
+        console.log(`📥 Added 1 commentor to waitlist: ${commentor.voice}`);
+      } else {
+        console.log(`📭 No new commentor from backend`);
+      }
+    } catch (error) {
+      console.error('Analysis failed:', error);
+    } finally {
+      this.isRequesting = false;
+
+      // Complete task
+      task.completedAt = Date.now();
+      this.notifyChange();
+
+      // Remove task after a delay
+      setTimeout(() => {
+        const idx = this.state.tasks.indexOf(task);
+        if (idx !== -1) {
+          this.state.tasks.splice(idx, 1);
+          this.notifyChange();
+        }
+      }, 2000);
+
+      // @@@ After request completes, immediately check if we can apply and request more
+      this.processPendingComments(text);
+    }
+  }
+
+  // @@@ Process pending comments and trigger more requests if needed
+  private processPendingComments(text: string) {
+    const lastEntry = this.state.weightPath[this.state.weightPath.length - 1];
+    const currentEnergy = lastEntry?.energy || 0;
+
+    // Try to apply comments from waitlist
+    const appliedAny = this.checkCommentorApplication(text, currentEnergy);
+
+    // If we applied comments, hash changed, so check if we need another request
+    if (appliedAny) {
+      // Give a small delay to let the UI update
+      setTimeout(() => {
+        this.checkAnalysisTrigger(text, currentEnergy);
+      }, 50);
+    }
+  }
+
+  // @@@ Merge consecutive text cells to prevent text-text pattern
+  private mergeConsecutiveTextCells() {
+    const merged: Cell[] = [];
+    let i = 0;
+    let mergeCount = 0;
+
+    while (i < this.state.cells.length) {
+      const cell = this.state.cells[i];
+
+      if (cell.type === 'text') {
+        // Collect all consecutive text cells
+        let combinedContent = (cell as TextCell).content;
+        let j = i + 1;
+        let mergedCells = 0;
+
+        while (j < this.state.cells.length && this.state.cells[j].type === 'text') {
+          combinedContent += (this.state.cells[j] as TextCell).content;
+          j++;
+          mergedCells++;
+        }
+
+        if (mergedCells > 0) {
+          mergeCount += mergedCells;
+          console.log(`🔗 Merged ${mergedCells + 1} consecutive text cells into one`);
+        }
+
+        // Add merged text cell
+        merged.push({
+          id: cell.id, // Keep first cell's ID
+          type: 'text',
+          content: combinedContent
+        });
+
+        i = j; // Skip all merged cells
+      } else {
+        merged.push(cell);
+        i++;
+      }
+    }
+
+    if (mergeCount > 0) {
+      console.log(`✅ Total merged: ${mergeCount} cells → Final cell count: ${merged.length}`);
+    }
+
+    this.state.cells = merged;
+  }
+
+  // @@@ Insert widget at cursor, removing @ character if present
+  insertWidgetAtCursor(cellId: string, cursorPosition: number, widgetType: WidgetCell['widgetType'], data: any) {
+    const cell = this.state.cells.find(c => c.id === cellId);
+    if (!cell || cell.type !== 'text') return;
+
+    const text = (cell as TextCell).content;
+
+    // Remove @ character if it's right before cursor
+    const atPosition = cursorPosition - 1;
+    if (atPosition >= 0 && text[atPosition] === '@') {
+      // Check if @ is the only character on its line
+      const lineStart = text.lastIndexOf('\n', atPosition - 1) + 1;
+      const lineEnd = text.indexOf('\n', cursorPosition);
+      const lineEndPos = lineEnd === -1 ? text.length : lineEnd;
+      const lineContent = text.substring(lineStart, lineEndPos);
+      const isOnlyCharOnLine = lineContent.trim() === '@';
+
+      // Remove the @ and optionally the newline
+      let newText: string;
+      if (isOnlyCharOnLine) {
+        // @ is alone on its line - remove the newline before it (if exists)
+        const hasNewlineBefore = atPosition > 0 && text[atPosition - 1] === '\n';
+        if (hasNewlineBefore) {
+          // Remove the newline before @ and the @
+          newText = text.substring(0, atPosition - 1) + text.substring(cursorPosition);
+          console.log('✂️ Removed newline before @ and the @');
+        } else {
+          // Just remove @
+          newText = text.substring(0, atPosition) + text.substring(cursorPosition);
+          console.log('✂️ Removed @ only (first line)');
+        }
+      } else {
+        // @ is not alone - just remove @
+        newText = text.substring(0, atPosition) + text.substring(cursorPosition);
+        console.log('✂️ Removed @ only (inline)');
+      }
+      (cell as TextCell).content = newText;
+
+      // Insert widget at the @ position (adjust if we removed newline before)
+      const insertPos = isOnlyCharOnLine && atPosition > 0 && text[atPosition - 1] === '\n'
+        ? atPosition - 1
+        : atPosition;
+      this.insertWidgetAfterLine(cellId, insertPos, widgetType, data);
+    } else {
+      // No @ found, just insert widget at cursor position
+      this.insertWidgetAfterLine(cellId, cursorPosition, widgetType, data);
+    }
+  }
+
+  // @@@ Add a widget cell after a specific text position in a specific cell
+  insertWidgetAfterLine(cellId: string, cursorPosition: number, widgetType: WidgetCell['widgetType'], data: any) {
+    // Find the specific cell and its index
+    const cellIndex = this.state.cells.findIndex(c => c.id === cellId);
+    if (cellIndex === -1) return;
+
+    const cell = this.state.cells[cellIndex];
+    if (cell.type !== 'text') return;
+
+    const text = (cell as TextCell).content;
+
+    // Find the line end after cursor position
+    let lineEndPos = text.indexOf('\n', cursorPosition);
+    if (lineEndPos === -1) {
+      lineEndPos = text.length;
+    } else {
+      lineEndPos += 1; // Include the newline
+    }
+
+    // Split text into before and after
+    const beforeText = text.substring(0, lineEndPos);
+    const afterText = text.substring(lineEndPos);
+
+    // Create replacement cells for this position
+    const replacementCells: Cell[] = [];
+
+    // Text before widget (only if non-empty)
+    if (beforeText.length > 0) {
+      replacementCells.push({
+        id: generateId(),
+        type: 'text',
+        content: beforeText
+      });
+    }
+
+    // Widget cell
+    replacementCells.push({
+      id: generateId(),
+      type: 'widget',
+      widgetType,
+      data
+    });
+
+    // Text after widget (only if non-empty, otherwise rely on adjacent cell or create empty)
+    // Always add if non-empty, or if this is the last cell (to allow continued writing)
+    const isLastCell = cellIndex === this.state.cells.length - 1;
+    const hasNextTextCell = cellIndex + 1 < this.state.cells.length &&
+                           this.state.cells[cellIndex + 1].type === 'text';
+
+    if (afterText.length > 0 || (isLastCell && !hasNextTextCell)) {
+      replacementCells.push({
+        id: generateId(),
+        type: 'text',
+        content: afterText
+      });
+    }
+
+    // Replace the cell at cellIndex with the new cells, keeping all other cells intact
+    this.state.cells.splice(cellIndex, 1, ...replacementCells);
+    this.mergeConsecutiveTextCells(); // Ensure no consecutive text cells
+    this.notifyChange();
+  }
+
+  // @@@ Add a widget cell at the end
+  addWidgetCell(widgetType: WidgetCell['widgetType'], data: any) {
+    const widget: WidgetCell = {
+      id: generateId(),
+      type: 'widget',
+      widgetType,
+      data
+    };
+    this.state.cells.push(widget);
+    this.notifyChange();
+  }
+
+  // @@@ Update widget data (for chat messages)
+  updateWidgetData(widgetId: string, data: any) {
+    const widget = this.state.cells.find(c => c.type === 'widget' && c.id === widgetId);
+    if (widget && widget.type === 'widget') {
+      widget.data = data;
+      this.notifyChange();
+    }
+  }
+
+  // @@@ Subscribe to state changes
+  subscribe(callback: (state: EditorState) => void) {
+    this.onStateChange = callback;
+  }
+
+  private notifyChange() {
+    this.onStateChange?.(this.state);
+  }
+
+  // @@@ Get current state
+  getState(): EditorState {
+    return this.state;
+  }
+
+  // @@@ Load state from storage
+  loadState(state: EditorState) {
+    this.state = state;
+    // Recompute used energy from applied commentors
+    this.usedEnergy = this.state.commentors.filter(c => c.appliedAt).length * this.threshold;
+    this.notifyChange();
+  }
+
+  // @@@ Delete a cell by ID
+  deleteCell(cellId: string) {
+    const cellIndex = this.state.cells.findIndex(c => c.id === cellId);
+    if (cellIndex === -1) return;
+
+    this.state.cells.splice(cellIndex, 1);
+
+    // Ensure we always have at least one text cell
+    if (this.state.cells.length === 0) {
+      this.state.cells.push({ id: generateId(), type: 'text', content: '' });
+    }
+
+    // Merge consecutive text cells (important when deleting a widget between text cells)
+    this.mergeConsecutiveTextCells();
+
+    this.notifyChange();
+  }
+}
+
+// @@@ Helper to generate IDs
+function generateId(): string {
+  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}

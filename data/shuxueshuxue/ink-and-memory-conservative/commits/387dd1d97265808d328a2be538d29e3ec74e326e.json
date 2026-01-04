@@ -1,0 +1,23 @@
+{
+  "sha": "387dd1d97265808d328a2be538d29e3ec74e326e",
+  "message": "Fix stacking order: latest card on top, only lower cards pop up on hover",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-08T01:17:23Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-08T01:17:23Z"
+  },
+  "stats": {
+    "total": 20,
+    "additions": 13,
+    "deletions": 7
+  },
+  "files_count": 3,
+  "parents": [
+    "9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e"
+  ]
+}

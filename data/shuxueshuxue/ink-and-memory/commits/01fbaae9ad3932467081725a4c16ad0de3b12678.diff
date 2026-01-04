@@ -1,0 +1,21 @@
+*** FILE: frontend/index.html ***
+@@ -8,7 +8,7 @@
+ 
+     <!-- Preload critical fonts to prevent FOIT (Flash of Invisible Text) -->
+     <link rel="preload" href="/Excalifont-Regular.woff2" as="font" type="font/woff2" crossorigin />
+-    <link rel="preload" href="/Xiaolai-Regular.ttf" as="font" type="font/ttf" crossorigin />
++    <link rel="preload" href="/Xiaolai-Regular.woff2" as="font" type="font/woff2" crossorigin />
+   </head>
+   <body>
+     <div id="root"></div>
+
+*** FILE: frontend/src/App.css ***
+@@ -9,7 +9,7 @@
+ 
+ @font-face {
+   font-family: 'Xiaolai';
+-  src: url('/Xiaolai-Regular.ttf') format('truetype');
++  src: url('/Xiaolai-Regular.woff2') format('woff2');
+   font-weight: normal;
+   font-style: normal;
+   font-display: swap;

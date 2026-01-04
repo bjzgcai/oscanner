@@ -1,0 +1,27 @@
+commit 0e483ff44de42271f2cba173e1d20589be3ea36a
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Dec 16 17:23:50 2025 +0800
+
+    switch to sonnet model
+
+diff --git a/backend/config.py b/backend/config.py
+index 9b2e70c..5d93190 100644
+--- a/backend/config.py
++++ b/backend/config.py
+@@ -6,6 +6,8 @@ import os
+ # Model to use for voice analysis
+ MODEL = "claude-haiku-4.5"
+ MODEL = "deepseek-v3.2"
++MODEL = "gemini-3-pro-preview"
++MODEL = "claude-sonnet-4.5"
+ 
+ # @@@ Sparsity control
+ MAX_VOICES = 5
+@@ -14,6 +16,7 @@ SINGLE_COMMENT_MODE = (
+     True  # If True, only add 1 comment per request (gradual accumulation)
+ )
+ 
++
+ # @@@ Image generation configuration
+ def _load_image_api_key() -> str:
+     """

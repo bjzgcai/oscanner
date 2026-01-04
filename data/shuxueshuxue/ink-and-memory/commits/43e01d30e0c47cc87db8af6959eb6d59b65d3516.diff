@@ -1,0 +1,19 @@
+*** FILE: frontend/src/App.tsx ***
+@@ -243,9 +243,16 @@ function App() {
+   // @@@ Clear old triggers when voice config changes (e.g., Use Default)
+   // This forces immediate re-analysis with new config
+   useEffect(() => {
+-    console.log('🔄 Voice config changed, clearing old triggers');
++    // Skip on initial mount (voiceConfigs is empty)
++    if (Object.keys(voiceConfigs).length === 0) return;
++
++    console.log('🔄 Voice config changed, clearing old triggers and triggering immediate analysis');
+     setVoiceTriggers([]);
+     setVoices([]);
++
++    // Force immediate re-analysis (session ID ensures backend returns cached results)
++    energyRef.current = 40;
++    analyzeIfNeeded();
+   }, [voiceConfigs]);
+ 
+   return (

@@ -1,0 +1,23 @@
+{
+  "sha": "5237b059f3950e069df2aff7a7fcc855ad30094c",
+  "message": "Add deck publishing backend (database + API)\n\nBackend infrastructure for deck store:\n- Database: Add published, author_name, install_count columns to decks\n- Database: Add publish/unpublish/increment_install_count functions\n- Database: Add get_published_decks() for community store\n- Server: Modify GET /api/decks to support ?published=true filter\n- Server: Add POST /api/decks/{id}/publish endpoint (toggle)\n- Server: Update fork endpoint to increment install_count\n- Frontend API: Update listDecks() to support published parameter\n- Frontend API: Add publishDeck() function\n\nPublishing design (Option 1):\n- When publishing, breaks parent_id chain (deck becomes standalone)\n- Prevents fork-of-fork attribution issues\n- Warning shown to user before publishing\n\nRemaining frontend UI changes in next commit.",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-18T06:35:04Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-18T06:35:04Z"
+  },
+  "stats": {
+    "total": 155,
+    "additions": 148,
+    "deletions": 7
+  },
+  "files_count": 3,
+  "parents": [
+    "73a3187a708e5a9282fc0de3904f2aec4ac5347b"
+  ]
+}

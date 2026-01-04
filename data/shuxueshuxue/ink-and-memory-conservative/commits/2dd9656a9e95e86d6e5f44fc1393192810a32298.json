@@ -1,0 +1,23 @@
+{
+  "sha": "2dd9656a9e95e86d6e5f44fc1393192810a32298",
+  "message": "Improve migration error handling for 413 errors\n\n- Handle 413 (Payload Too Large) specifically in voiceApi.ts\n- Provide helpful user message explaining the issue\n- Explain workaround options (skip or wait for fix)\n- Prevent crash when nginx returns HTML instead of JSON",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T08:36:12Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T08:36:12Z"
+  },
+  "stats": {
+    "total": 30,
+    "additions": 27,
+    "deletions": 3
+  },
+  "files_count": 3,
+  "parents": [
+    "fd21fac0377a9c3d062743f597d2629fa24b67d3"
+  ]
+}

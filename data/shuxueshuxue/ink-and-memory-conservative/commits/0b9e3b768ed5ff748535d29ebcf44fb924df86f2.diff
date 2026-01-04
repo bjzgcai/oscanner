@@ -1,0 +1,4226 @@
+*** ADDED: backend/proxy_config.py (+28/-0) ***
+@@ -0,0 +1,28 @@
++"""Proxy configuration for API calls that need GFW bypass."""
++import os
++
++def get_image_api_proxies():
++    """
++    Get proxy configuration for image generation API calls.
++    
++    Returns dict for requests.post(proxies=...) or None if no proxy configured.
++    
++    Configuration priority:
++    1. Environment variable IMAGE_API_PROXY (e.g., "socks5://localhost:7890")
++    2. Return None (no proxy)
++    
++    Usage in server.py:
++        proxies = get_image_api_proxies()
++        response = requests.post(url, proxies=proxies, ...)  # None is valid
++    """
++    proxy_url = os.getenv('IMAGE_API_PROXY')
++    
++    if proxy_url:
++        print(f"[Proxy Config] Using proxy for image API: {proxy_url}")
++        return {
++            'http': proxy_url,
++            'https': proxy_url
++        }
++    else:
++        print("[Proxy Config] No proxy configured for image API")
++        return None
+
+*** MODIFIED: backend/server.py (+159/-0) ***
+@@ -6,6 +6,7 @@
+ from polycli import PolyAgent
+ from stateless_analyzer import analyze_stateless
+ import config
++from proxy_config import get_image_api_proxies
+ 
+ @session_def(
+     name="Chat with Voice",
+@@ -307,6 +308,164 @@ def analyze_patterns(all_notes: str):
+     except:
+         return {"patterns": []}
+ 
++@session_def(
++    name="Generate Daily Picture",
++    description="Generate an artistic image based on user's daily notes",
++    params={
++        "all_notes": {"type": "str"}
++    },
++    category="Creative"
++)
++def generate_daily_picture(all_notes: str):
++    """Generate an image based on the essence of user's daily notes.
++
++    Uses a two-step process:
++    1. LLM analyzes notes and creates artistic image description
++    2. Image generation model creates the image
++    """
++    print(f"\n{'='*60}")
++    print(f"🎨 generate_daily_picture() called")
++    print(f"   Notes length: {len(all_notes)} chars")
++    print(f"{'='*60}\n")
++
++    import requests
++    import base64
++
++    API_KEY = "sk-yz0JLc7sGbCHnwam70Bc9e29Dc684bAe904102C95dF32fB1"
++    ENDPOINT = "https://api.dou.chat/v1"
++
++    # @@@ Step 1: Convert notes to artistic image description using Claude Haiku
++    import requests as req
++
++    CLAUDE_API_KEY = "sk-yz0JLc7sGbCHnwam70Bc9e29Dc684bAe904102C95dF32fB1"
++    CLAUDE_ENDPOINT = "https://api.dou.chat/v1"
++    CLAUDE_MODEL = "anthropic/claude-haiku-4.5"
++
++    description_prompt = f"""Read these personal notes and create a vivid, artistic image description that captures the essence, mood, and themes.
++
++Notes:
++---
++{all_notes}
++---
++
++Create a detailed image description (2-3 sentences) that:
++- Captures the emotional tone and atmosphere
++- Uses visual metaphors for abstract concepts
++- Specifies artistic style (e.g., watercolor, impressionist, minimalist)
++- Describes colors, lighting, composition
++
++Be creative and interpretive. Focus on mood and feeling, not literal representation.
++
++Return ONLY the image description, no other text."""
++
++    print("🧠 Creating image description from notes with Claude Haiku...")
++
++    # @@@ Use proxy for GFW bypass (if configured)
++    proxies = get_image_api_proxies()
++
++    claude_response = req.post(
++        f"{CLAUDE_ENDPOINT}/chat/completions",
++        headers={
++            "Authorization": f"Bearer {CLAUDE_API_KEY}",
++            "Content-Type": "application/json"
++        },
++        json={
++            "model": CLAUDE_MODEL,
++            "messages": [{"role": "user", "content": description_prompt}],
++            "max_tokens": 500
++        },
++        proxies=proxies,
++        timeout=30
++    )
++
++    if claude_response.status_code != 200:
++        return {"image_base64": None, "error": "Failed to create image description"}
++
++    claude_data = claude_response.json()
++    image_description = claude_data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
++
++    if not image_description:
++        return {"image_base64": None, "error": "Failed to create image description"}
++
++    print(f"📝 Image description: {image_description}")
++
++    # @@@ Step 2: Generate image from description with retry logic
++    MODEL = "google/gemini-2.5-flash-image-preview"
++
++    url = f"{ENDPOINT}/chat/completions"
++    headers = {
++        "Authorization": f"Bearer {API_KEY}",
++        "Content-Type": "application/json"
++    }
++
++    payload = {
++        "model": MODEL,
++        "messages": [
++            {
++                "role": "user",
++                "content": image_description
++            }
++        ],
++        "max_tokens": 1000
++    }
++
++    # @@@ Retry logic: 3 attempts with increasing timeouts
++    max_attempts = 3
++    for attempt in range(1, max_attempts + 1):
++        try:
++            timeout_seconds = 60 + (attempt - 1) * 30  # 60s, 90s, 120s
++            print(f"🎨 Generating image (attempt {attempt}/{max_attempts}, timeout={timeout_seconds}s)...")
++            response = requests.post(url, headers=headers, json=payload, proxies=proxies, timeout=timeout_seconds)
++
++            if response.status_code != 200:
++                print(f"❌ Error: {response.status_code}")
++                if attempt < max_attempts:
++                    print(f"⏳ Retrying in 2 seconds...")
++                    import time
++                    time.sleep(2)
++                    continue
++                return {"image_base64": None, "error": "Image generation failed"}
++
++            data = response.json()
++
++            # Extract image from response
++            if 'choices' in data and len(data['choices']) > 0:
++                message = data['choices'][0].get('message', {})
++                images = message.get('images', [])
++
++                if images:
++                    image_data = images[0].get('image_url', {}).get('url', '')
++
++                    if image_data.startswith('data:image/png;base64,'):
++                        # Extract base64 data (without the data URI prefix)
++                        base64_data = image_data.split(',', 1)[1]
++
++                        print(f"✅ Image generated successfully")
++                        print(f"   Size: {len(base64_data)} chars")
++
++                        return {
++                            "image_base64": base64_data,
++                            "prompt": image_description  # Return the creative description
++                        }
++
++            if attempt < max_attempts:
++                print(f"⚠️ No image in response, retrying...")
++                import time
++                time.sleep(2)
++                continue
++            return {"image_base64": None, "error": "No image in response"}
++
++        except Exception as e:
++            print(f"❌ Exception on attempt {attempt}: {e}")
++            if attempt < max_attempts:
++                print(f"⏳ Retrying in 2 seconds...")
++                import time
++                time.sleep(2)
++                continue
++            return {"image_base64": None, "error": str(e)}
++
++    return {"image_base64": None, "error": "All retry attempts failed"}
++
+ if __name__ == "__main__":
+     # Get the global registry
+     registry = get_registry()
+
+*** ADDED: backend/test_image_gen.py (+91/-0) ***
+@@ -0,0 +1,91 @@
++#!/usr/bin/env python3
++"""Test Gemini image generation via dou.chat endpoint"""
++
++import requests
++import json
++import base64
++from pathlib import Path
++
++API_KEY = "sk-yz0JLc7sGbCHnwam70Bc9e29Dc684bAe904102C95dF32fB1"
++ENDPOINT = "https://api.dou.chat/v1"
++MODEL = "google/gemini-2.5-flash-image-preview"
++
++def test_image_generation():
++    """Test if image generation works with the given model"""
++
++    print(f"\n{'='*60}")
++    print(f"🎨 Testing Image Generation")
++    print(f"   Endpoint: {ENDPOINT}")
++    print(f"   Model: {MODEL}")
++    print(f"{'='*60}\n")
++
++    # Try a simple prompt
++    prompt = "A serene morning scene with a cup of coffee on a wooden table, sunlight streaming through a window, peaceful and contemplative mood"
++
++    print(f"Prompt: {prompt}\n")
++
++    # Make request
++    url = f"{ENDPOINT}/chat/completions"
++    headers = {
++        "Authorization": f"Bearer {API_KEY}",
++        "Content-Type": "application/json"
++    }
++
++    payload = {
++        "model": MODEL,
++        "messages": [
++            {
++                "role": "user",
++                "content": prompt
++            }
++        ],
++        "max_tokens": 1000
++    }
++
++    print("Sending request...")
++    try:
++        response = requests.post(url, headers=headers, json=payload, timeout=60)
++        print(f"Status: {response.status_code}")
++
++        if response.status_code == 200:
++            data = response.json()
++            print("\n✅ Success!")
++            print(json.dumps(data, indent=2))
++
++            # Check if there's image data
++            if 'choices' in data and len(data['choices']) > 0:
++                message = data['choices'][0].get('message', {})
++                images = message.get('images', [])
++
++                if images:
++                    print(f"\n🖼️  Found {len(images)} image(s)!")
++
++                    # Extract first image
++                    image_data = images[0].get('image_url', {}).get('url', '')
++
++                    if image_data.startswith('data:image/png;base64,'):
++                        # Extract base64 data
++                        base64_data = image_data.split(',', 1)[1]
++
++                        # Decode and save
++                        image_bytes = base64.b64decode(base64_data)
++                        output_path = Path("/tmp/test_gemini_image.png")
++                        output_path.write_bytes(image_bytes)
++
++                        print(f"✅ Image saved to: {output_path}")
++                        print(f"   Size: {len(image_bytes)} bytes")
++                        print(f"\n💡 Open with: open {output_path}")
++                    else:
++                        print(f"⚠️  Unexpected image format: {image_data[:100]}...")
++                else:
++                    print("\n❌ No images found in response")
++
++        else:
++            print(f"\n❌ Error: {response.status_code}")
++            print(response.text)
++
++    except Exception as e:
++        print(f"\n❌ Exception: {e}")
++
++if __name__ == "__main__":
++    test_image_generation()
+
+*** MODIFIED: frontend/src/App.tsx (+6/-4) ***
+@@ -252,7 +252,7 @@ const colorMap: Record<string, { gradient: string; text: string; glow: string }>
+ // @@@ Main App Component
+ export default function App() {
+   const isMobile = useMobile();
+-  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'collections' | 'analysis' | 'about'>('writing');
++  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'about'>('writing');
+   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
+   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+   const [defaultVoiceConfigs, setDefaultVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+@@ -298,10 +298,12 @@ export default function App() {
+   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
+   const [commentChatProcessing, setCommentChatProcessing] = useState<Set<string>>(new Set());
+ 
+-  // @@@ Reset refs ready flag when returning to writing view
++  // @@@ Trigger re-render when returning to writing view to recalculate comment positions
+   useEffect(() => {
+     if (currentView === 'writing') {
+-      refsReadyTriggered.current = false;
++      // Force re-render to recalculate comment positions
++      // Don't reset refsReadyTriggered - it should remain true after initial mount
++      setRefsReady(prev => prev + 1);
+     }
+   }, [currentView]);
+ 
+@@ -1468,7 +1470,7 @@ export default function App() {
+           />
+         </div>
+       )}
+-      {currentView === 'collections' && (
++      {currentView === 'timeline' && (
+         <div style={{
+           position: 'fixed',
+           top: 48,
+
+*** MODIFIED: frontend/src/api/voiceApi.ts (+36/-2) ***
+@@ -36,6 +36,8 @@ interface StatusResponse {
+     echoes?: any[];  // For echoes analysis
+     traits?: any[];  // For traits analysis
+     patterns?: any[];  // For patterns analysis
++    image_base64?: string;  // For image generation
++    prompt?: string;  // Image generation prompt
+   };
+   error?: string;
+ }
+@@ -70,8 +72,8 @@ export async function triggerAnalysis(text: string, sessionId: string, voices?:
+  * Get analysis result (polls until completed)
+  */
+ export async function getAnalysisResult(exec_id: string): Promise<StatusResponse['result']> {
+-  // Poll every 500ms, max 30 seconds
+-  const maxAttempts = 60;
++  // Poll every 500ms, max 2 minutes (enough for image generation)
++  const maxAttempts = 240;
+   let attempts = 0;
+ 
+   console.log('🔄 Starting to poll for exec_id:', exec_id);
+@@ -229,3 +231,35 @@ export async function analyzePatterns(allNotes: string): Promise<any[]> {
+   const result = await getAnalysisResult(data.exec_id);
+   return result?.patterns || [];
+ }
++
++/**
++ * Generate a daily picture based on user's notes
++ */
++export async function generateDailyPicture(allNotes: string): Promise<{ image_base64: string; prompt: string }> {
++  console.log('🎨 Sending image generation request...');
++
++  const response = await fetch(`${API_BASE}/api/trigger`, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({
++      session_id: 'generate_daily_picture',
++      params: { all_notes: allNotes }
++    })
++  });
++
++  const data: TriggerResponse = await response.json();
++  if (!data.success) {
++    throw new Error('Failed to trigger image generation');
++  }
++
++  const result = await getAnalysisResult(data.exec_id);
++
++  if (result?.image_base64) {
++    return {
++      image_base64: result.image_base64,
++      prompt: result.prompt || 'Generated from your notes'
++    };
++  }
++
++  throw new Error('Image generation failed');
++}
+
+*** MODIFIED: frontend/src/components/AnalysisView.tsx (+1123/-447) ***
+@@ -3,25 +3,100 @@ import { getCalendarData } from '../utils/calendarStorage';
+ import { analyzeEchoes, analyzeTraits, analyzePatterns } from '../api/voiceApi';
+ import type { TextCell } from '../engine/EditorEngine';
+ 
++// @@@ Constants
++const MAX_SAVED_REPORTS = 10;
++const LOCALSTORAGE_KEY = 'analysis-reports-history';
++
++// @@@ Utility Functions
++
++// @@@ Count words properly for mixed Chinese/English text
++function countWords(text: string): number {
++  let wordCount = 0;
++
++  // Count CJK characters (each character = 1 word)
++  for (let i = 0; i < text.length; i++) {
++    const code = text.charCodeAt(i);
++    if ((code >= 0x4E00 && code <= 0x9FFF) ||   // CJK Unified Ideographs
++        (code >= 0x3400 && code <= 0x4DBF) ||   // CJK Extension A
++        (code >= 0x3040 && code <= 0x309F) ||   // Hiragana
++        (code >= 0x30A0 && code <= 0x30FF)) {   // Katakana
++      wordCount++;
++    }
++  }
++
++  // Count English words (space-separated)
++  const englishWords = text
++    .replace(/[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u309F\u30A0-\u30FF]/g, ' ')
++    .split(/\s+/)
++    .filter(w => w.length > 0).length;
++
++  return wordCount + englishWords;
++}
++
++// @@@ Types
++interface Echo {
++  title: string;
++  description: string;
++  examples?: string[];
++}
++
++interface Trait {
++  trait: string;
++  strength: number;
++  evidence: string;
++}
++
++interface Pattern {
++  pattern: string;
++  description: string;
++  frequency: string;
++}
++
++interface AnalysisReport {
++  id: number;
++  echoes: Echo[];
++  traits: Trait[];
++  patterns: Pattern[];
++  timestamp: number;
++  stats: {
++    days: number;
++    entries: number;
++    words: number;
++  };
++}
++
+ export default function AnalysisView() {
+-  const [currentPage, setCurrentPage] = useState(0);
+   const [allNotes, setAllNotes] = useState('');
++  const [echoes, setEchoes] = useState<Echo[]>([]);
++  const [traits, setTraits] = useState<Trait[]>([]);
++  const [patterns, setPatterns] = useState<Pattern[]>([]);
++  const [loading, setLoading] = useState({ echoes: false, traits: false, patterns: false });
++  const [error, setError] = useState('');
++  const [currentPaper, setCurrentPaper] = useState(0); // @@@ Track which paper is on top
++  const [viewMode, setViewMode] = useState<'dashboard' | 'report'>('dashboard'); // @@@ Track dashboard vs report view
++
++  // Stats
++  const [stats, setStats] = useState({
++    totalDays: 0,
++    totalWords: 0,
++    totalEntries: 0
++  });
+ 
+-  const pages = [
+-    { id: 0, name: 'Adventure' },
+-    { id: 1, name: 'Patterns' },
+-    { id: 2, name: 'Traits' },
+-    { id: 3, name: 'Echoes' }
+-  ];
++  // @@@ Saved reports history
++  const [savedReports, setSavedReports] = useState<AnalysisReport[]>([]);
+ 
+   // Collect all notes when component mounts
+   useEffect(() => {
+     const calendarData = getCalendarData();
+     const notes: string[] = [];
++    let entryCount = 0;
++    const uniqueDays = new Set<string>();
+ 
+     // Collect all text from all entries
+     Object.keys(calendarData).forEach(dateKey => {
++      uniqueDays.add(dateKey);
+       calendarData[dateKey].forEach(entry => {
++        entryCount++;
+         entry.state.cells
+           .filter(cell => cell.type === 'text')
+           .forEach(cell => {
+@@ -33,528 +108,1129 @@ export default function AnalysisView() {
+       });
+     });
+ 
+-    setAllNotes(notes.join('\n\n'));
++    const allText = notes.join('\n\n');
++
++    setAllNotes(allText);
++    setStats({
++      totalDays: uniqueDays.size,
++      totalWords: countWords(allText),
++      totalEntries: entryCount
++    });
++
++    // @@@ Load saved reports history from localStorage
++    const savedReportsData = localStorage.getItem(LOCALSTORAGE_KEY);
++    if (savedReportsData) {
++      try {
++        const reports = JSON.parse(savedReportsData);
++        setSavedReports(reports);
++
++        // @@@ Load most recent report into state (defensive checks for legacy data)
++        if (reports.length > 0) {
++          const mostRecent = reports[0];
++          setEchoes(mostRecent.echoes || []);
++          setTraits(mostRecent.traits || []);
++          setPatterns(mostRecent.patterns || []);
++        }
++      } catch (e) {
++        console.error('Failed to load saved reports:', e);
++      }
++    }
+   }, []);
+ 
+-  return (
+-    <div style={{
+-      width: '100%',
+-      height: '100%',
+-      display: 'flex',
+-      fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
+-      paddingTop: '2rem'
+-    }}>
+-      {/* Left sidebar - Page tabs */}
+-      <div style={{
+-        width: 200,
+-        background: 'transparent',
+-        alignSelf: 'stretch',
+-        paddingTop: '1rem',
+-        borderRight: '1px solid #d0c4b0'
+-      }}>
+-        {pages.map(page => (
+-          <div
+-            key={page.id}
+-            onClick={() => setCurrentPage(page.id)}
+-            style={{
+-              padding: '0.75rem 1.5rem',
+-              cursor: 'pointer',
+-              background: currentPage === page.id ? 'rgba(44, 44, 44, 0.05)' : 'transparent',
+-              borderLeft: currentPage === page.id ? '3px solid #333' : '3px solid transparent',
+-              fontWeight: currentPage === page.id ? 600 : 400,
+-              color: currentPage === page.id ? '#333' : '#888',
+-              transition: 'all 0.2s',
+-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+-              fontSize: 14
+-            }}
+-            onMouseEnter={e => {
+-              if (currentPage !== page.id) {
+-                e.currentTarget.style.color = '#555';
+-                e.currentTarget.style.background = 'rgba(44, 44, 44, 0.03)';
+-              }
+-            }}
+-            onMouseLeave={e => {
+-              if (currentPage !== page.id) {
+-                e.currentTarget.style.color = '#888';
+-                e.currentTarget.style.background = 'transparent';
+-              }
+-            }}
+-          >
+-            {page.name}
+-          </div>
+-        ))}
+-      </div>
++  const handleAnalyzeAll = async () => {
++    if (!allNotes.trim()) {
++      setError('No notes found. Save some entries first.');
++      return;
++    }
+ 
+-      {/* Right content area */}
+-      <div style={{
+-        flex: 1,
+-        padding: '2rem',
+-        overflowY: 'auto',
+-        background: '#f8f0e6'
+-      }}>
+-        {currentPage === 0 && <Page0StickyNotes />}
+-        {currentPage === 1 && <PatternsPage allNotes={allNotes} />}
+-        {currentPage === 2 && <TraitsPage allNotes={allNotes} />}
+-        {currentPage === 3 && <EchoesPage allNotes={allNotes} />}
+-      </div>
+-    </div>
+-  );
+-}
++    setError('');
+ 
+-// Page 0: Sticky notes with actionable nudges
+-function Page0StickyNotes() {
+-  const notes = [
+-    { text: '下次点咖啡，试试菜单上从没点过的那一个。', color: '#FFF9BE', rotation: -2 },
+-    { text: '给一个很久没联系的人发条消息，就说"想起你了"。', color: '#D4EAF1', rotation: 1 },
+-    { text: '今天走不同的路回家，哪怕只是换一条街。', color: '#F1D4D4', rotation: -1 },
+-    { text: '在电梯里和陌生人说句话，比如"今天天气不错"。', color: '#FFF9BE', rotation: 2 },
+-    { text: '把一件拖了很久的小事做掉，5 分钟就够了。', color: '#D4EAF1', rotation: -3 },
+-    { text: '闭上眼睛吃一口东西，专注地感受味道。', color: '#F1D4D4', rotation: 1 }
+-  ];
++    // @@@ Capture results to save to localStorage (state updates are async!)
++    let echoesResult: Echo[] = [];
++    let traitsResult: Trait[] = [];
++    let patternsResult: Pattern[] = [];
+ 
+-  return (
+-    <div style={{
+-      display: 'grid',
+-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+-      gap: '2rem',
+-      padding: '2rem'
+-    }}>
+-      {notes.map((note, index) => (
+-        <div
+-          key={index}
++    // @@@ Helper to wrap analysis calls with loading state and error handling
++    const analyzeWithState = <T,>(
++      analyzeFn: () => Promise<T>,
++      loadingKey: 'echoes' | 'traits' | 'patterns',
++      onSuccess: (result: T) => void
++    ) => {
++      setLoading(prev => ({ ...prev, [loadingKey]: true }));
++      return analyzeFn()
++        .then(result => {
++          onSuccess(result);
++          return result;
++        })
++        .catch(err => {
++          console.error(`Failed to analyze ${loadingKey}:`, err);
++          return [] as T;
++        })
++        .finally(() => setLoading(prev => ({ ...prev, [loadingKey]: false })));
++    };
++
++    // Analyze all three in parallel
++    [echoesResult, traitsResult, patternsResult] = await Promise.all([
++      analyzeWithState(
++        () => analyzeEchoes(allNotes),
++        'echoes',
++        result => setEchoes(result)
++      ),
++      analyzeWithState(
++        () => analyzeTraits(allNotes),
++        'traits',
++        result => setTraits(result)
++      ),
++      analyzeWithState(
++        () => analyzePatterns(allNotes),
++        'patterns',
++        result => setPatterns(result)
++      )
++    ]);
++
++    // @@@ Save report to localStorage history (prepend to array)
++    const newReport: AnalysisReport = {
++      id: Date.now(),
++      echoes: echoesResult,
++      traits: traitsResult,
++      patterns: patternsResult,
++      timestamp: Date.now(),
++      stats: {
++        days: stats.totalDays,
++        entries: stats.totalEntries,
++        words: stats.totalWords
++      }
++    };
++
++    // Get existing reports and prepend new one
++    const updatedReports = [newReport, ...savedReports];
++
++    // Keep only last MAX_SAVED_REPORTS reports
++    const limitedReports = updatedReports.slice(0, MAX_SAVED_REPORTS);
++
++    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(limitedReports));
++    setSavedReports(limitedReports);
++
++    // @@@ Switch to report view after analysis completes
++    setViewMode('report');
++    setCurrentPaper(0); // Reset to first paper
++  };
++
++  const anyLoading = loading.echoes || loading.traits || loading.patterns;
++  const hasAnyData = echoes.length > 0 || traits.length > 0 || patterns.length > 0;
++
++  // @@@ Full-page report view
++  if (viewMode === 'report' && hasAnyData) {
++    return (
++      <div style={{
++        width: '100%',
++        height: '100%',
++        background: 'linear-gradient(180deg, #f8f0e6 0%, #ede3d5 100%)',
++        fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++        position: 'relative',
++        overflow: 'hidden',
++        display: 'flex',
++        flexDirection: 'column'
++      }}>
++        {/* Back button - top left corner */}
++        <button
++          onClick={() => setViewMode('dashboard')}
+           style={{
+-            background: note.color,
+-            padding: '1.5rem',
+-            borderRadius: '4px',
+-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+-            transform: `rotate(${note.rotation}deg)`,
+-            transition: 'all 0.2s',
++            position: 'absolute',
++            top: '2rem',
++            left: '2rem',
++            padding: '12px 24px',
++            borderRadius: '24px',
++            background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,250,240,0.9) 100%)',
++            border: '2px solid rgba(139,115,85,0.25)',
+             cursor: 'pointer',
+-            minHeight: '120px',
+             display: 'flex',
+             alignItems: 'center',
+             justifyContent: 'center',
+-            textAlign: 'center',
+-            lineHeight: 1.6
++            gap: '8px',
++            fontSize: '14px',
++            fontWeight: 500,
++            color: '#5d4a3a',
++            transition: 'all 0.3s',
++            boxShadow: '0 4px 16px rgba(139,115,85,0.2), inset 0 1px 0 rgba(255,255,255,0.8)',
++            zIndex: 30,
++            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
++            letterSpacing: '0.3px'
+           }}
+           onMouseEnter={e => {
+-            e.currentTarget.style.transform = `rotate(0deg) scale(1.05)`;
+-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
++            e.currentTarget.style.transform = 'translateY(-2px)';
++            e.currentTarget.style.boxShadow = '0 8px 24px rgba(139,115,85,0.3), inset 0 1px 0 rgba(255,255,255,0.8)';
++            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(255,248,235,0.95) 100%)';
+           }}
+           onMouseLeave={e => {
+-            e.currentTarget.style.transform = `rotate(${note.rotation}deg) scale(1)`;
+-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
++            e.currentTarget.style.transform = 'translateY(0)';
++            e.currentTarget.style.boxShadow = '0 4px 16px rgba(139,115,85,0.2), inset 0 1px 0 rgba(255,255,255,0.8)';
++            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,250,240,0.9) 100%)';
+           }}
++          title="Back to Dashboard"
+         >
+-          {note.text}
+-        </div>
+-      ))}
+-    </div>
+-  );
+-}
++          <span style={{ fontSize: '16px' }}>←</span>
++          <span>Back</span>
++        </button>
+ 
+-// @@@ Echoes Page - Recurring themes
+-function EchoesPage({ allNotes }: { allNotes: string }) {
+-  const [echoes, setEchoes] = useState<any[]>([]);
+-  const [loading, setLoading] = useState(false);
+-  const [error, setError] = useState('');
++        <DecorativeInkSpots />
+ 
+-  const handleAnalyze = async () => {
+-    if (!allNotes.trim()) {
+-      setError('No notes found. Save some entries first.');
+-      return;
+-    }
+-
+-    setLoading(true);
+-    setError('');
+-
+-    try {
+-      const result = await analyzeEchoes(allNotes);
+-      setEchoes(result);
+-    } catch (e: any) {
+-      setError(e.message || 'Analysis failed');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
++        {/* Centered paper stack - moved up slightly */}
++        <div style={{
++          flex: 1,
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'center',
++          padding: '2rem',
++          marginTop: '-60px'
++        }}>
++          <PaperStack
++            echoes={echoes}
++            traits={traits}
++            patterns={patterns}
++            currentPaper={currentPaper}
++            onPaperChange={setCurrentPaper}
++          />
++        </div>
++      </div>
++    );
++  }
+ 
++  // @@@ Dashboard view
+   return (
+-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+-      <h2 style={{
+-        fontSize: '24px',
+-        fontWeight: 600,
+-        marginBottom: '1rem'
+-      }}>
+-        重复出现的话题 (Echoes)
+-      </h2>
+-
+-      <p style={{
+-        color: '#666',
+-        marginBottom: '2rem',
+-        lineHeight: 1.6
+-      }}>
+-        Identify recurring themes and topics across all your notes.
+-      </p>
++    <div style={{
++      width: '100%',
++      height: '100%',
++      overflowY: 'auto',
++      background: 'linear-gradient(180deg, #f8f0e6 0%, #ede3d5 100%)',
++      fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++      padding: '3rem 2rem',
++      position: 'relative'
++    }}>
++      <DecorativeInkSpots />
+ 
+-      <button
+-        onClick={handleAnalyze}
+-        disabled={loading}
+-        style={{
+-          padding: '12px 24px',
+-          background: loading ? '#ccc' : '#333',
+-          color: '#fff',
+-          border: 'none',
+-          borderRadius: '6px',
+-          cursor: loading ? 'not-allowed' : 'pointer',
+-          fontSize: '14px',
+-          fontWeight: 600,
+-          marginBottom: '2rem'
+-        }}
+-      >
+-        {loading ? 'Analyzing...' : 'Analyze Echoes'}
+-      </button>
++      <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
++        {/* Header - Hand-drawn style */}
++        <div style={{
++          marginBottom: '3rem',
++          textAlign: 'center',
++          position: 'relative'
++        }}>
++          <h1 style={{
++            fontSize: '48px',
++            fontWeight: 400,
++            color: '#3d3226',
++            marginBottom: '0.75rem',
++            fontFamily: 'Georgia, serif',
++            fontStyle: 'italic',
++            letterSpacing: '-0.5px',
++            textShadow: '2px 2px 0px rgba(139,115,85,0.1)'
++          }}>
++            Reflections
++          </h1>
++          <div style={{
++            width: '80px',
++            height: '3px',
++            background: 'linear-gradient(90deg, transparent, #8B7355, transparent)',
++            margin: '0 auto 1rem',
++            opacity: 0.4
++          }} />
++          <p style={{
++            fontSize: '15px',
++            color: '#6b5d4f',
++            lineHeight: 1.8,
++            fontStyle: 'italic',
++            maxWidth: '500px',
++            margin: '0 auto'
++          }}>
++            Patterns and insights woven through your words
++          </p>
++        </div>
+ 
+-      {error && (
++        {/* Stats - Vintage label style */}
+         <div style={{
+-          padding: '1rem',
+-          background: '#fee',
+-          border: '1px solid #fcc',
+-          borderRadius: '6px',
+-          color: '#c33',
+-          marginBottom: '2rem'
++          display: 'flex',
++          justifyContent: 'center',
++          gap: '2rem',
++          marginBottom: '3rem',
++          flexWrap: 'wrap'
+         }}>
+-          {error}
++          <VintageStatLabel label="Days" value={stats.totalDays} />
++          <VintageStatLabel label="Entries" value={stats.totalEntries} />
++          <VintageStatLabel label="Words" value={stats.totalWords.toLocaleString()} />
+         </div>
+-      )}
+ 
+-      <div style={{
+-        display: 'flex',
+-        flexDirection: 'column',
+-        gap: '1.5rem'
+-      }}>
+-        {echoes.map((echo, idx) => (
+-          <div
+-            key={idx}
+-            style={{
+-              background: '#fff',
+-              padding: '1.5rem',
+-              borderRadius: '8px',
+-              border: '1px solid #d0c4b0',
+-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+-            }}
+-          >
+-            <h3 style={{
+-              fontSize: '18px',
+-              fontWeight: 600,
+-              marginBottom: '0.75rem',
+-              color: '#333'
+-            }}>
+-              {echo.title}
+-            </h3>
+-            <p style={{
+-              color: '#666',
+-              lineHeight: 1.6,
+-              marginBottom: '1rem'
++        {/* Saved Reports History */}
++        {savedReports.length > 0 && (
++          <div style={{ marginBottom: '3rem' }}>
++            <h2 style={{
++              fontSize: '20px',
++              fontWeight: 500,
++              color: '#5d4a3a',
++              marginBottom: '1.5rem',
++              textAlign: 'center',
++              fontFamily: 'Georgia, serif',
++              fontStyle: 'italic'
+             }}>
+-              {echo.description}
+-            </p>
++              Past Reflections
++            </h2>
+             <div style={{
+-              borderTop: '1px solid #f0f0f0',
+-              paddingTop: '1rem'
++              display: 'grid',
++              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
++              gap: '1.5rem',
++              marginBottom: '2rem'
+             }}>
+-              <div style={{
+-                fontSize: '12px',
+-                fontWeight: 600,
+-                color: '#999',
+-                marginBottom: '0.5rem'
+-              }}>
+-                EXAMPLES:
+-              </div>
+-              {echo.examples?.map((ex: string, i: number) => (
++              {savedReports.map((report, idx) => (
+                 <div
+-                  key={i}
++                  key={report.id}
++                  onClick={() => {
++                    setEchoes(report.echoes);
++                    setTraits(report.traits);
++                    setPatterns(report.patterns);
++                    setViewMode('report');
++                    setCurrentPaper(0);
++                  }}
+                   style={{
+-                    padding: '0.5rem',
+-                    background: '#f8f0e6',
+-                    borderLeft: '3px solid #d0c4b0',
+-                    marginBottom: '0.5rem',
+-                    fontSize: '13px',
+-                    fontStyle: 'italic',
+-                    color: '#666'
++                    padding: '1.5rem',
++                    background: 'rgba(255,248,240,0.6)',
++                    borderRadius: '16px',
++                    border: '1px solid rgba(139,115,85,0.2)',
++                    cursor: 'pointer',
++                    transition: 'all 0.3s',
++                    backdropFilter: 'blur(10px)'
++                  }}
++                  onMouseEnter={e => {
++                    e.currentTarget.style.transform = 'translateY(-4px)';
++                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(139,115,85,0.2)';
++                  }}
++                  onMouseLeave={e => {
++                    e.currentTarget.style.transform = 'translateY(0)';
++                    e.currentTarget.style.boxShadow = 'none';
+                   }}
+                 >
+-                  "{ex}"
++                  <div style={{
++                    display: 'flex',
++                    justifyContent: 'space-between',
++                    alignItems: 'flex-start',
++                    marginBottom: '1rem'
++                  }}>
++                    <div style={{
++                      fontSize: '13px',
++                      color: '#8B7355',
++                      fontWeight: 500
++                    }}>
++                      {new Date(report.timestamp).toLocaleDateString('en-US', {
++                        month: 'short',
++                        day: 'numeric',
++                        year: 'numeric',
++                        hour: '2-digit',
++                        minute: '2-digit'
++                      })}
++                    </div>
++                    {idx === 0 && (
++                      <div style={{
++                        fontSize: '10px',
++                        fontWeight: 600,
++                        color: '#4CAF50',
++                        background: 'rgba(76,175,80,0.1)',
++                        padding: '4px 8px',
++                        borderRadius: '8px',
++                        textTransform: 'uppercase',
++                        letterSpacing: '0.5px'
++                      }}>
++                        Latest
++                      </div>
++                    )}
++                  </div>
++                  <div style={{
++                    display: 'flex',
++                    gap: '1rem',
++                    fontSize: '12px',
++                    color: '#6b5d4f',
++                    marginBottom: '0.75rem'
++                  }}>
++                    <div>{report.stats?.days || 0} days</div>
++                    <div>·</div>
++                    <div>{report.stats?.entries || 0} entries</div>
++                    <div>·</div>
++                    <div>{(report.stats?.words || 0).toLocaleString()} words</div>
++                  </div>
++                  <div style={{
++                    display: 'flex',
++                    gap: '0.5rem',
++                    flexWrap: 'wrap'
++                  }}>
++                    {report.echoes?.length > 0 && (
++                      <span style={{
++                        fontSize: '11px',
++                        padding: '4px 10px',
++                        background: 'rgba(139,115,85,0.1)',
++                        borderRadius: '12px',
++                        color: '#5d4a3a'
++                      }}>
++                        {report.echoes.length} echoes
++                      </span>
++                    )}
++                    {report.traits?.length > 0 && (
++                      <span style={{
++                        fontSize: '11px',
++                        padding: '4px 10px',
++                        background: 'rgba(139,115,85,0.1)',
++                        borderRadius: '12px',
++                        color: '#5d4a3a'
++                      }}>
++                        {report.traits.length} traits
++                      </span>
++                    )}
++                    {report.patterns?.length > 0 && (
++                      <span style={{
++                        fontSize: '11px',
++                        padding: '4px 10px',
++                        background: 'rgba(139,115,85,0.1)',
++                        borderRadius: '12px',
++                        color: '#5d4a3a'
++                      }}>
++                        {report.patterns.length} patterns
++                      </span>
++                    )}
++                  </div>
+                 </div>
+               ))}
+             </div>
+           </div>
+-        ))}
++        )}
++
++        {/* Analyze Button - Ink stamp style */}
++        <div style={{ marginBottom: '3rem', textAlign: 'center' }}>
++          <button
++            onClick={handleAnalyzeAll}
++            disabled={anyLoading}
++            style={{
++              padding: '16px 48px',
++              background: anyLoading ? 'rgba(139,115,85,0.3)' : 'transparent',
++              color: anyLoading ? '#999' : '#5d4a3a',
++              border: '2px solid',
++              borderColor: anyLoading ? '#ccc' : '#8B7355',
++              borderRadius: '30px',
++              cursor: anyLoading ? 'not-allowed' : 'pointer',
++              fontSize: '15px',
++              fontWeight: 500,
++              fontFamily: 'Georgia, serif',
++              transition: 'all 0.3s',
++              letterSpacing: '1px',
++              textTransform: 'uppercase',
++              position: 'relative',
++              overflow: 'hidden'
++            }}
++            onMouseEnter={e => {
++              if (!anyLoading) {
++                e.currentTarget.style.background = 'rgba(139,115,85,0.12)';
++                e.currentTarget.style.transform = 'translateY(-2px)';
++                e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,115,85,0.2)';
++              }
++            }}
++            onMouseLeave={e => {
++              if (!anyLoading) {
++                e.currentTarget.style.background = 'transparent';
++                e.currentTarget.style.transform = 'translateY(0)';
++                e.currentTarget.style.boxShadow = 'none';
++              }
++            }}
++          >
++            {anyLoading ? 'Reflecting...' : 'Generate New Analysis'}
++          </button>
++        </div>
++
++        {error && (
++          <div style={{
++            padding: '1rem',
++            background: '#fee',
++            border: '1px solid #fcc',
++            borderRadius: '8px',
++            color: '#c33',
++            marginBottom: '2rem',
++            textAlign: 'center'
++          }}>
++            {error}
++          </div>
++        )}
++
++        {/* Empty State - Journal page aesthetic */}
++        {!hasAnyData && !anyLoading && (
++          <div style={{
++            textAlign: 'center',
++            padding: '5rem 2rem',
++            position: 'relative'
++          }}>
++            {/* Decorative watercolor wash */}
++            <div style={{
++              position: 'absolute',
++              top: '50%',
++              left: '50%',
++              transform: 'translate(-50%, -50%)',
++              width: '300px',
++              height: '300px',
++              borderRadius: '50%',
++              background: 'radial-gradient(circle, rgba(139,115,85,0.06) 0%, transparent 70%)',
++              filter: 'blur(40px)',
++              pointerEvents: 'none'
++            }} />
++
++            <div style={{
++              fontSize: '72px',
++              marginBottom: '1.5rem',
++              opacity: 0.3,
++              filter: 'grayscale(100%)'
++            }}>
++              📖
++            </div>
++            <p style={{
++              fontSize: '20px',
++              marginBottom: '0.75rem',
++              color: '#5d4a3a',
++              fontFamily: 'Georgia, serif',
++              fontStyle: 'italic',
++              fontWeight: 300
++            }}>
++              Your story awaits analysis
++            </p>
++            <p style={{
++              fontSize: '14px',
++              color: '#8B7355',
++              maxWidth: '400px',
++              margin: '0 auto',
++              lineHeight: 1.7
++            }}>
++              Begin the journey to discover the patterns, themes, and essence woven through your words
++            </p>
++          </div>
++        )}
+       </div>
+     </div>
+   );
+ }
+ 
+-// @@@ Traits Page - Personality characteristics
+-function TraitsPage({ allNotes }: { allNotes: string }) {
+-  const [traits, setTraits] = useState<any[]>([]);
+-  const [loading, setLoading] = useState(false);
+-  const [error, setError] = useState('');
+-
+-  const handleAnalyze = async () => {
+-    if (!allNotes.trim()) {
+-      setError('No notes found. Save some entries first.');
+-      return;
+-    }
+-
+-    setLoading(true);
+-    setError('');
+-
+-    try {
+-      const result = await analyzeTraits(allNotes);
+-      setTraits(result);
+-    } catch (e: any) {
+-      setError(e.message || 'Analysis failed');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
++// @@@ Reusable Components
+ 
++// @@@ Decorative ink spot background elements
++function DecorativeInkSpots() {
+   return (
+-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+-      <h2 style={{
+-        fontSize: '24px',
+-        fontWeight: 600,
+-        marginBottom: '1rem'
+-      }}>
+-        性格特征分析 (Traits)
+-      </h2>
++    <>
++      <div style={{
++        position: 'absolute',
++        top: '10%',
++        right: '5%',
++        width: '120px',
++        height: '120px',
++        borderRadius: '50%',
++        background: 'radial-gradient(circle, rgba(139,115,85,0.08) 0%, rgba(139,115,85,0) 70%)',
++        filter: 'blur(20px)',
++        pointerEvents: 'none'
++      }} />
++      <div style={{
++        position: 'absolute',
++        bottom: '20%',
++        left: '8%',
++        width: '150px',
++        height: '150px',
++        borderRadius: '50%',
++        background: 'radial-gradient(circle, rgba(160,130,109,0.06) 0%, rgba(160,130,109,0) 70%)',
++        filter: 'blur(25px)',
++        pointerEvents: 'none'
++      }} />
++    </>
++  );
++}
+ 
+-      <p style={{
+-        color: '#666',
+-        marginBottom: '2rem',
+-        lineHeight: 1.6
+-      }}>
+-        Identify personality traits evident from your writing.
+-      </p>
++// @@@ Stacked Paper Component - Realistic paper effect with navigation
++function PaperStack({
++  echoes,
++  traits,
++  patterns,
++  currentPaper,
++  onPaperChange
++}: {
++  echoes: Echo[];
++  traits: Trait[];
++  patterns: Pattern[];
++  currentPaper: number;
++  onPaperChange: (index: number) => void;
++}) {
++  // @@@ Build papers array (only include non-empty ones)
++  const papers = [];
+ 
+-      <button
+-        onClick={handleAnalyze}
+-        disabled={loading}
+-        style={{
+-          padding: '12px 24px',
+-          background: loading ? '#ccc' : '#333',
+-          color: '#fff',
+-          border: 'none',
+-          borderRadius: '6px',
+-          cursor: loading ? 'not-allowed' : 'pointer',
+-          fontSize: '14px',
+-          fontWeight: 600,
+-          marginBottom: '2rem'
+-        }}
+-      >
+-        {loading ? 'Analyzing...' : 'Analyze Traits'}
+-      </button>
++  if (echoes.length > 0) {
++    papers.push({
++      title: 'Recurring Themes',
++      subtitle: 'Echoes',
++      icon: '🔄',
++      content: (
++        <div style={{
++          display: 'flex',
++          flexDirection: 'column',
++          gap: '1rem',
++          maxHeight: '500px',
++          overflowY: 'auto',
++          paddingRight: '1rem'
++        }}>
++          {echoes.map((echo, idx) => (
++            <EchoCard key={idx} echo={echo} />
++          ))}
++        </div>
++      )
++    });
++  }
+ 
+-      {error && (
++  if (traits.length > 0) {
++    papers.push({
++      title: 'Character Traits',
++      subtitle: 'Personality',
++      icon: '⭐',
++      content: (
+         <div style={{
+-          padding: '1rem',
+-          background: '#fee',
+-          border: '1px solid #fcc',
+-          borderRadius: '6px',
+-          color: '#c33',
+-          marginBottom: '2rem'
++          display: 'grid',
++          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
++          gap: '1rem',
++          maxHeight: '500px',
++          overflowY: 'auto',
++          paddingRight: '1rem'
+         }}>
+-          {error}
++          {traits.map((trait, idx) => (
++            <TraitCard key={idx} trait={trait} />
++          ))}
+         </div>
+-      )}
++      )
++    });
++  }
++
++  if (patterns.length > 0) {
++    papers.push({
++      title: 'Behavioral Patterns',
++      subtitle: 'Habits',
++      icon: '🌀',
++      content: (
++        <div style={{
++          display: 'flex',
++          flexDirection: 'column',
++          gap: '1rem',
++          maxHeight: '500px',
++          overflowY: 'auto',
++          paddingRight: '1rem'
++        }}>
++          {patterns.map((pattern, idx) => (
++            <PatternCard key={idx} pattern={pattern} />
++          ))}
++        </div>
++      )
++    });
++  }
++
++  const totalPapers = papers.length;
++  if (totalPapers === 0) return null;
+ 
++  return (
++    <div style={{
++      position: 'relative',
++      width: '100%',
++      maxWidth: '1100px',
++      height: '650px',
++      margin: '0 auto',
++      perspective: '1200px'
++    }}>
++      {/* Stack of papers */}
+       <div style={{
+-        display: 'grid',
+-        gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+-        gap: '1.5rem'
++        position: 'absolute',
++        top: '50%',
++        left: '50%',
++        transform: 'translate(-50%, -50%)',
++        marginLeft: '-30px',
++        width: '100%',
++        maxWidth: '900px',
++        height: '600px'
+       }}>
+-        {traits.map((trait, idx) => (
+-          <div
+-            key={idx}
++        {papers.map((paper, idx) => {
++          const isActive = idx === currentPaper;
++          const isBehind = idx < currentPaper;
++          const offset = isActive ? 0 : isBehind ? -10 : 10;
++          const zIndex = isActive ? 10 : isBehind ? totalPapers - idx : idx;
++
++          return (
++            <div
++              key={idx}
++              style={{
++                position: 'absolute',
++                top: 0,
++                left: '50%',
++                transform: `translateX(-50%) translateY(${offset}px) rotate(${isActive ? 0 : isBehind ? -0.5 : 0.5}deg)`,
++                width: '100%',
++                height: '100%',
++                transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
++                opacity: isActive ? 1 : 0.4,
++                pointerEvents: isActive ? 'auto' : 'none',
++                zIndex
++              }}
++            >
++              {/* Paper sheet with realistic effects */}
++              <div style={{
++                width: '100%',
++                height: '100%',
++                background: `
++                  linear-gradient(135deg,
++                    rgba(255,255,255,0.95) 0%,
++                    rgba(255,250,240,0.92) 50%,
++                    rgba(255,248,235,0.9) 100%
++                  )
++                `,
++                borderRadius: '3px',
++                boxShadow: `
++                  0 1px 3px rgba(139,115,85,0.12),
++                  0 4px 12px rgba(139,115,85,0.15),
++                  0 10px 30px rgba(139,115,85,0.2),
++                  inset 0 1px 0 rgba(255,255,255,0.9),
++                  inset 0 -1px 0 rgba(139,115,85,0.08)
++                `,
++                border: '1px solid rgba(139,115,85,0.15)',
++                padding: '3rem',
++                overflow: 'hidden',
++                position: 'relative'
++              }}>
++                {/* Paper texture overlay */}
++                <div style={{
++                  position: 'absolute',
++                  top: 0,
++                  left: 0,
++                  right: 0,
++                  bottom: 0,
++                  backgroundImage: `
++                    repeating-linear-gradient(
++                      0deg,
++                      rgba(139,115,85,0.01) 0px,
++                      rgba(139,115,85,0.015) 1px,
++                      transparent 1px,
++                      transparent 2px
++                    ),
++                    repeating-linear-gradient(
++                      90deg,
++                      rgba(139,115,85,0.008) 0px,
++                      rgba(139,115,85,0.012) 1px,
++                      transparent 1px,
++                      transparent 2px
++                    )
++                  `,
++                  pointerEvents: 'none',
++                  opacity: 0.7
++                }} />
++
++                {/* Decorative watercolor wash */}
++                <div style={{
++                  position: 'absolute',
++                  top: '10%',
++                  right: '5%',
++                  width: '150px',
++                  height: '150px',
++                  borderRadius: '50%',
++                  background: 'radial-gradient(circle, rgba(160,130,109,0.06) 0%, transparent 70%)',
++                  filter: 'blur(30px)',
++                  pointerEvents: 'none'
++                }} />
++
++                {/* Paper content */}
++                <div style={{ position: 'relative', zIndex: 1 }}>
++                  {/* Paper header */}
++                  <div style={{
++                    marginBottom: '2rem',
++                    borderBottom: '2px solid rgba(139,115,85,0.15)',
++                    paddingBottom: '1rem'
++                  }}>
++                    <div style={{
++                      display: 'flex',
++                      alignItems: 'center',
++                      gap: '0.75rem',
++                      marginBottom: '0.5rem'
++                    }}>
++                      <span style={{ fontSize: '32px' }}>{paper.icon}</span>
++                      <div>
++                        <h2 style={{
++                          fontSize: '28px',
++                          fontWeight: 400,
++                          color: '#3d3226',
++                          fontFamily: 'Georgia, serif',
++                          fontStyle: 'italic',
++                          letterSpacing: '-0.3px',
++                          margin: 0,
++                          lineHeight: 1.2
++                        }}>
++                          {paper.title}
++                        </h2>
++                        <div style={{
++                          fontSize: '12px',
++                          color: '#8B7355',
++                          textTransform: 'uppercase',
++                          letterSpacing: '1.5px',
++                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
++                          fontWeight: 500
++                        }}>
++                          {paper.subtitle}
++                        </div>
++                      </div>
++                    </div>
++                  </div>
++
++                  {/* Paper body */}
++                  {paper.content}
++                </div>
++              </div>
++            </div>
++          );
++        })}
++      </div>
++
++      {/* Navigation arrows */}
++      {totalPapers > 1 && (
++        <>
++          <button
++            onClick={() => onPaperChange(Math.max(0, currentPaper - 1))}
++            disabled={currentPaper === 0}
+             style={{
+-              background: '#fff',
+-              padding: '1.5rem',
+-              borderRadius: '8px',
+-              border: '1px solid #d0c4b0',
+-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
++              position: 'absolute',
++              left: '50%',
++              marginLeft: '-540px',
++              top: '50%',
++              transform: 'translateY(-50%)',
++              width: '48px',
++              height: '48px',
++              borderRadius: '50%',
++              background: currentPaper === 0 ? 'rgba(139,115,85,0.1)' : 'rgba(255,255,255,0.95)',
++              border: '2px solid rgba(139,115,85,0.2)',
++              cursor: currentPaper === 0 ? 'not-allowed' : 'pointer',
++              display: 'flex',
++              alignItems: 'center',
++              justifyContent: 'center',
++              fontSize: '20px',
++              color: currentPaper === 0 ? '#ccc' : '#5d4a3a',
++              transition: 'all 0.3s',
++              boxShadow: currentPaper === 0 ? 'none' : '0 4px 12px rgba(139,115,85,0.15)',
++              zIndex: 20
++            }}
++            onMouseEnter={e => {
++              if (currentPaper !== 0) {
++                e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
++                e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,115,85,0.25)';
++              }
++            }}
++            onMouseLeave={e => {
++              e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
++              e.currentTarget.style.boxShadow = currentPaper === 0 ? 'none' : '0 4px 12px rgba(139,115,85,0.15)';
+             }}
+           >
+-            <div style={{
++            ←
++          </button>
++
++          <button
++            onClick={() => onPaperChange(Math.min(totalPapers - 1, currentPaper + 1))}
++            disabled={currentPaper === totalPapers - 1}
++            style={{
++              position: 'absolute',
++              left: '50%',
++              marginLeft: '530px',
++              top: '50%',
++              transform: 'translateY(-50%)',
++              width: '48px',
++              height: '48px',
++              borderRadius: '50%',
++              background: currentPaper === totalPapers - 1 ? 'rgba(139,115,85,0.1)' : 'rgba(255,255,255,0.95)',
++              border: '2px solid rgba(139,115,85,0.2)',
++              cursor: currentPaper === totalPapers - 1 ? 'not-allowed' : 'pointer',
+               display: 'flex',
+-              justifyContent: 'space-between',
+               alignItems: 'center',
+-              marginBottom: '0.75rem'
+-            }}>
+-              <h3 style={{
+-                fontSize: '18px',
+-                fontWeight: 600,
+-                color: '#333'
+-              }}>
+-                {trait.trait}
+-              </h3>
+-              <div style={{
+-                fontSize: '14px',
+-                fontWeight: 600,
+-                color: '#666',
+-                background: '#f0f0f0',
+-                padding: '4px 8px',
+-                borderRadius: '4px'
+-              }}>
+-                {trait.strength}/5
+-              </div>
+-            </div>
+-            {/* Strength bar */}
+-            <div style={{
+-              height: '6px',
+-              background: '#f0f0f0',
+-              borderRadius: '3px',
+-              marginBottom: '1rem',
+-              overflow: 'hidden'
+-            }}>
+-              <div style={{
+-                height: '100%',
+-                width: `${(trait.strength / 5) * 100}%`,
+-                background: 'linear-gradient(90deg, #4CAF50, #8BC34A)',
+-                borderRadius: '3px'
+-              }} />
+-            </div>
+-            <p style={{
+-              color: '#666',
+-              lineHeight: 1.6,
+-              fontSize: '13px'
+-            }}>
+-              {trait.evidence}
+-            </p>
++              justifyContent: 'center',
++              fontSize: '20px',
++              color: currentPaper === totalPapers - 1 ? '#ccc' : '#5d4a3a',
++              transition: 'all 0.3s',
++              boxShadow: currentPaper === totalPapers - 1 ? 'none' : '0 4px 12px rgba(139,115,85,0.15)',
++              zIndex: 20
++            }}
++            onMouseEnter={e => {
++              if (currentPaper !== totalPapers - 1) {
++                e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
++                e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,115,85,0.25)';
++              }
++            }}
++            onMouseLeave={e => {
++              e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
++              e.currentTarget.style.boxShadow = currentPaper === totalPapers - 1 ? 'none' : '0 4px 12px rgba(139,115,85,0.15)';
++            }}
++          >
++            →
++          </button>
++
++          {/* Paper indicators */}
++          <div style={{
++            position: 'absolute',
++            bottom: '-40px',
++            left: '50%',
++            transform: 'translateX(-50%)',
++            display: 'flex',
++            gap: '10px',
++            zIndex: 20
++          }}>
++            {papers.map((_, idx) => (
++              <button
++                key={idx}
++                onClick={() => onPaperChange(idx)}
++                style={{
++                  width: '12px',
++                  height: '12px',
++                  borderRadius: '50%',
++                  background: idx === currentPaper ? '#8B7355' : 'rgba(139,115,85,0.3)',
++                  border: 'none',
++                  cursor: 'pointer',
++                  transition: 'all 0.3s',
++                  padding: 0
++                }}
++                onMouseEnter={e => {
++                  if (idx !== currentPaper) {
++                    e.currentTarget.style.background = 'rgba(139,115,85,0.5)';
++                    e.currentTarget.style.transform = 'scale(1.2)';
++                  }
++                }}
++                onMouseLeave={e => {
++                  if (idx !== currentPaper) {
++                    e.currentTarget.style.background = 'rgba(139,115,85,0.3)';
++                    e.currentTarget.style.transform = 'scale(1)';
++                  }
++                }}
++              />
++            ))}
+           </div>
+-        ))}
+-      </div>
++        </>
++      )}
+     </div>
+   );
+ }
+ 
+-// @@@ Patterns Page - Behavioral patterns
+-function PatternsPage({ allNotes }: { allNotes: string }) {
+-  const [patterns, setPatterns] = useState<any[]>([]);
+-  const [loading, setLoading] = useState(false);
+-  const [error, setError] = useState('');
+-
+-  const handleAnalyze = async () => {
+-    if (!allNotes.trim()) {
+-      setError('No notes found. Save some entries first.');
+-      return;
+-    }
+-
+-    setLoading(true);
+-    setError('');
+-
+-    try {
+-      const result = await analyzePatterns(allNotes);
+-      setPatterns(result);
+-    } catch (e: any) {
+-      setError(e.message || 'Analysis failed');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
++function VintageStatLabel({ label, value }: { label: string; value: number | string }) {
+   return (
+-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+-      <h2 style={{
+-        fontSize: '24px',
+-        fontWeight: 600,
+-        marginBottom: '1rem'
++    <div style={{
++      display: 'inline-flex',
++      flexDirection: 'column',
++      alignItems: 'center',
++      gap: '0.5rem'
++    }}>
++      <div style={{
++        fontSize: '36px',
++        fontWeight: 300,
++        color: '#5d4a3a',
++        fontFamily: 'Georgia, serif',
++        lineHeight: 1
++      }}>
++        {value}
++      </div>
++      <div style={{
++        fontSize: '11px',
++        color: '#8B7355',
++        fontWeight: 500,
++        textTransform: 'uppercase',
++        letterSpacing: '1.5px',
++        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
++        borderTop: '1px solid rgba(139,115,85,0.3)',
++        paddingTop: '0.5rem'
+       }}>
+-        行为模式分析 (Patterns)
+-      </h2>
++        {label}
++      </div>
++    </div>
++  );
++}
+ 
++function EchoCard({ echo }: { echo: Echo }) {
++  return (
++    <div style={{
++      background: 'rgba(255,248,240,0.6)',
++      padding: '1.75rem',
++      borderRadius: '16px',
++      border: '1px solid rgba(139,115,85,0.2)',
++      transition: 'all 0.3s',
++      position: 'relative',
++      backdropFilter: 'blur(10px)'
++    }}>
++      <h3 style={{
++        fontSize: '19px',
++        fontWeight: 500,
++        color: '#3d3226',
++        marginBottom: '1rem',
++        fontFamily: 'Georgia, serif',
++        fontStyle: 'italic',
++        position: 'relative'
++      }}>
++        {echo.title}
++      </h3>
+       <p style={{
+-        color: '#666',
+-        marginBottom: '2rem',
+-        lineHeight: 1.6
++        color: '#5d4a3a',
++        lineHeight: 1.8,
++        marginBottom: '1.25rem',
++        fontSize: '14px'
+       }}>
+-        Identify behavioral patterns and habits from your notes.
++        {echo.description}
+       </p>
++      {echo.examples && echo.examples.length > 0 && (
++        <div>
++          <div style={{
++            fontSize: '10px',
++            fontWeight: 600,
++            color: '#8B7355',
++            marginBottom: '0.75rem',
++            textTransform: 'uppercase',
++            letterSpacing: '1px',
++            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
++          }}>
++            Echoes
++          </div>
++          {echo.examples.map((ex: string, i: number) => (
++            <div
++              key={i}
++              style={{
++                padding: '1rem',
++                background: 'rgba(255,255,255,0.7)',
++                borderLeft: '4px solid rgba(139,115,85,0.4)',
++                marginBottom: '0.75rem',
++                fontSize: '13px',
++                fontStyle: 'italic',
++                color: '#5d4a3a',
++                borderRadius: '0 8px 8px 0',
++                lineHeight: 1.6
++              }}
++            >
++              "{ex}"
++            </div>
++          ))}
++        </div>
++      )}
++    </div>
++  );
++}
+ 
+-      <button
+-        onClick={handleAnalyze}
+-        disabled={loading}
+-        style={{
+-          padding: '12px 24px',
+-          background: loading ? '#ccc' : '#333',
+-          color: '#fff',
+-          border: 'none',
+-          borderRadius: '6px',
+-          cursor: loading ? 'not-allowed' : 'pointer',
+-          fontSize: '14px',
+-          fontWeight: 600,
+-          marginBottom: '2rem'
+-        }}
+-      >
+-        {loading ? 'Analyzing...' : 'Analyze Patterns'}
+-      </button>
+-
+-      {error && (
++function TraitCard({ trait }: { trait: Trait }) {
++  return (
++    <div style={{
++      background: 'rgba(255,252,247,0.7)',
++      padding: '1.75rem',
++      borderRadius: '18px',
++      border: '1px solid rgba(139,115,85,0.2)',
++      transition: 'all 0.3s',
++      position: 'relative',
++      backdropFilter: 'blur(8px)'
++    }}>
++      <div style={{
++        display: 'flex',
++        justifyContent: 'space-between',
++        alignItems: 'flex-start',
++        marginBottom: '1.25rem'
++      }}>
++        <h3 style={{
++          fontSize: '18px',
++          fontWeight: 500,
++          color: '#3d3226',
++          fontFamily: 'Georgia, serif',
++          fontStyle: 'italic',
++          flex: 1
++        }}>
++          {trait.trait}
++        </h3>
+         <div style={{
+-          padding: '1rem',
+-          background: '#fee',
+-          border: '1px solid #fcc',
+-          borderRadius: '6px',
+-          color: '#c33',
+-          marginBottom: '2rem'
++          fontSize: '12px',
++          fontWeight: 600,
++          color: '#8B7355',
++          background: 'rgba(139,115,85,0.1)',
++          padding: '6px 12px',
++          borderRadius: '20px',
++          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
++          border: '1px solid rgba(139,115,85,0.2)',
++          marginLeft: '1rem'
+         }}>
+-          {error}
++          {trait.strength}/5
+         </div>
+-      )}
++      </div>
+ 
++      {/* Organic strength indicator */}
+       <div style={{
+         display: 'flex',
+-        flexDirection: 'column',
+-        gap: '1.5rem'
++        gap: '6px',
++        marginBottom: '1.25rem'
+       }}>
+-        {patterns.map((pattern, idx) => (
++        {[1, 2, 3, 4, 5].map(i => (
+           <div
+-            key={idx}
++            key={i}
+             style={{
+-              background: '#fff',
+-              padding: '1.5rem',
+-              borderRadius: '8px',
+-              border: '1px solid #d0c4b0',
+-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
++              flex: 1,
++              height: '6px',
++              borderRadius: '3px',
++              background: i <= trait.strength
++                ? 'linear-gradient(90deg, rgba(139,115,85,0.6), rgba(160,130,109,0.4))'
++                : 'rgba(139,115,85,0.1)',
++              transition: 'all 0.4s',
++              opacity: i <= trait.strength ? 1 : 0.4
+             }}
+-          >
+-            <h3 style={{
+-              fontSize: '18px',
+-              fontWeight: 600,
+-              marginBottom: '0.75rem',
+-              color: '#333'
+-            }}>
+-              {pattern.pattern}
+-            </h3>
+-            <p style={{
+-              color: '#666',
+-              lineHeight: 1.6,
+-              marginBottom: '1rem'
+-            }}>
+-              {pattern.description}
+-            </p>
+-            <div style={{
+-              display: 'flex',
+-              alignItems: 'center',
+-              gap: '0.5rem',
+-              fontSize: '13px',
+-              color: '#999'
+-            }}>
+-              <span style={{ fontWeight: 600 }}>Frequency:</span>
+-              <span>{pattern.frequency}</span>
+-            </div>
+-          </div>
++          />
+         ))}
+       </div>
++
++      <p style={{
++        color: '#5d4a3a',
++        lineHeight: 1.8,
++        fontSize: '13px'
++      }}>
++        {trait.evidence}
++      </p>
++    </div>
++  );
++}
++
++function PatternCard({ pattern }: { pattern: Pattern }) {
++  return (
++    <div style={{
++      background: 'rgba(255,250,242,0.6)',
++      padding: '1.75rem',
++      borderRadius: '16px',
++      border: '1px solid rgba(139,115,85,0.2)',
++      transition: 'all 0.3s',
++      position: 'relative',
++      backdropFilter: 'blur(10px)'
++    }}>
++      <h3 style={{
++        fontSize: '19px',
++        fontWeight: 500,
++        color: '#3d3226',
++        marginBottom: '1rem',
++        fontFamily: 'Georgia, serif',
++        fontStyle: 'italic',
++        position: 'relative'
++      }}>
++        {pattern.pattern}
++      </h3>
++      <p style={{
++        color: '#5d4a3a',
++        lineHeight: 1.8,
++        marginBottom: '1.25rem',
++        fontSize: '14px'
++      }}>
++        {pattern.description}
++      </p>
++      <div style={{
++        display: 'inline-flex',
++        alignItems: 'center',
++        gap: '0.5rem',
++        fontSize: '12px',
++        color: '#8B7355',
++        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
++        background: 'rgba(139,115,85,0.08)',
++        padding: '6px 14px',
++        borderRadius: '20px',
++        border: '1px solid rgba(139,115,85,0.15)'
++      }}>
++        <span style={{ fontWeight: 600 }}>Frequency:</span>
++        <span style={{ fontStyle: 'italic' }}>{pattern.frequency}</span>
++      </div>
+     </div>
+   );
+ }
++
+
+*** MODIFIED: frontend/src/components/CollectionsView.tsx (+687/-241) ***
+@@ -1,83 +1,164 @@
+-import { useState, useEffect } from 'react';
++import { useState, useEffect, useRef } from 'react';
+ import type { Commentor } from '../engine/EditorEngine';
+ 
+-export default function CollectionsView() {
+-  const [currentPage, setCurrentPage] = useState(0);
+-
+-  const pages = [
+-    { id: 0, name: 'Starred Comments' },
+-    { id: 1, name: 'Daily Pictures' }
+-  ];
++// @@@ TypeScript interfaces
++interface TimelineDay {
++  date: string;
++  isPast: boolean;
++  isFuture: boolean;
++  isToday: boolean;
++  daysOffset: number;
++}
+ 
++export default function CollectionsView() {
+   return (
+     <div style={{
+       width: '100%',
+       height: '100%',
+       display: 'flex',
+       fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
+-      paddingTop: '2rem'
++      background: '#f8f0e6',
++      overflow: 'hidden'
+     }}>
+-      {/* Left sidebar - Page tabs */}
+-      <div style={{
+-        width: 200,
+-        background: 'transparent',
+-        alignSelf: 'stretch',
+-        paddingTop: '1rem',
+-        borderRight: '1px solid #d0c4b0'
+-      }}>
+-        {pages.map(page => (
+-          <div
+-            key={page.id}
+-            onClick={() => setCurrentPage(page.id)}
+-            style={{
+-              padding: '0.75rem 1.5rem',
+-              cursor: 'pointer',
+-              background: currentPage === page.id ? 'rgba(44, 44, 44, 0.05)' : 'transparent',
+-              borderLeft: currentPage === page.id ? '3px solid #333' : '3px solid transparent',
+-              fontWeight: currentPage === page.id ? 600 : 400,
+-              color: currentPage === page.id ? '#333' : '#888',
+-              transition: 'all 0.2s',
+-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+-              fontSize: 14
+-            }}
+-            onMouseEnter={e => {
+-              if (currentPage !== page.id) {
+-                e.currentTarget.style.color = '#555';
+-                e.currentTarget.style.background = 'rgba(44, 44, 44, 0.03)';
+-              }
+-            }}
+-            onMouseLeave={e => {
+-              if (currentPage !== page.id) {
+-                e.currentTarget.style.color = '#888';
+-                e.currentTarget.style.background = 'transparent';
+-              }
+-            }}
+-          >
+-            {page.name}
+-          </div>
+-        ))}
+-      </div>
+-
+-      {/* Right content area */}
+-      <div style={{
+-        flex: 1,
+-        padding: '2rem',
+-        overflowY: 'auto',
+-        background: '#f8f0e6'
+-      }}>
+-        {currentPage === 0 && <StarredCommentsPage />}
+-        {currentPage === 1 && <DailyPicturesPage />}
+-      </div>
++      <TimelinePage />
+     </div>
+   );
+ }
+ 
+-// @@@ Starred Comments Page
+-function StarredCommentsPage() {
++// @@@ Helper to get icon emoji
++function getIconForVoice(icon: string): string {
++  const iconMap: Record<string, string> = {
++    brain: '🧠',
++    heart: '❤️',
++    question: '❓',
++    cloud: '☁️',
++    masks: '🎭',
++    eye: '👁️',
++    fist: '✊',
++    lightbulb: '💡',
++    shield: '🛡️',
++    wind: '💨',
++    fire: '🔥',
++    compass: '🧭'
++  };
++  return iconMap[icon] || '💭';
++}
++
++// @@@ Helper to format dates consistently
++function formatDate(date: Date | string): string {
++  return new Date(date).toLocaleDateString('en-US', {
++    year: 'numeric',
++    month: 'short',
++    day: 'numeric'
++  });
++}
++
++// @@@ Generate timeline days (7 past + today + 7 future)
++function generateTimelineDays(): TimelineDay[] {
++  const today = new Date();
++  const todayStr = formatDate(today);
++  const allTimelineDays: TimelineDay[] = [];
++
++  // Add past 7 days
++  for (let i = 7; i >= 1; i--) {
++    const pastDate = new Date(today);
++    pastDate.setDate(today.getDate() - i);
++    allTimelineDays.push({
++      date: formatDate(pastDate),
++      isPast: true,
++      isFuture: false,
++      isToday: false,
++      daysOffset: -i
++    });
++  }
++
++  // Add today
++  allTimelineDays.push({
++    date: todayStr,
++    isPast: false,
++    isFuture: false,
++    isToday: true,
++    daysOffset: 0
++  });
++
++  // Add future 7 days
++  for (let i = 1; i <= 7; i++) {
++    const futureDate = new Date(today);
++    futureDate.setDate(today.getDate() + i);
++    allTimelineDays.push({
++      date: formatDate(futureDate),
++      isPast: false,
++      isFuture: true,
++      isToday: false,
++      daysOffset: i
++    });
++  }
++
++  return allTimelineDays;
++}
++
++// @@@ Helper function for interesting placeholders
++function getPlaceholderText(daysOffset: number): string {
++  if (daysOffset === 0) return 'Click to generate';
++
++  const placeholders: Record<string, string> = {
++    '-7': 'taste buds renew every 10 days',
++    '-6': 'the liver regenerates in 6 weeks',
++    '-5': 'stomach lining replaces itself every 5 days',
++    '-4': 'skin cells shed every 2-4 weeks',
++    '-3': 'red blood cells live for 120 days',
++    '-2': 'the heart beats 100,000 times a day',
++    '-1': 'neurons can form new connections',
++    '1': 'tomorrow is unwritten',
++    '2': 'the future is a blank page',
++    '3': 'time flows forward',
++    '4': 'days ahead unknown',
++    '5': 'yet to unfold',
++    '6': 'still becoming',
++    '7': 'awaiting experience'
++  };
++
++  return placeholders[daysOffset.toString()] || (daysOffset < 0 ? 'what was has passed' : 'yet to be written');
++}
++
++// @@@ Get all notes from all sessions in localStorage
++function getAllNotesFromSessions(): string {
++  const allText: string[] = [];
++  const keys = Object.keys(localStorage);
++
++  for (const key of keys) {
++    if (key === 'ink_memory_state' || key.startsWith('ink_memory_state_')) {
++      try {
++        const state = JSON.parse(localStorage.getItem(key) || '{}');
++        if (state.cells) {
++          const text = state.cells
++            .filter((c: any) => c.type === 'text')
++            .map((c: any) => c.content)
++            .join('\n\n');
++          if (text.trim()) {
++            allText.push(text);
++          }
++        }
++      } catch (e) {
++        console.error('Failed to parse session:', key, e);
++      }
++    }
++  }
++
++  return allText.join('\n\n---\n\n');
++}
++
++// @@@ Timeline page - combines pictures and starred comments by date
++function TimelinePage() {
+   const [starredComments, setStarredComments] = useState<Commentor[]>([]);
++  const [pictures, setPictures] = useState<Array<{ date: string; base64: string; prompt: string }>>([]);
++  const [generatingForDate, setGeneratingForDate] = useState<string | null>(null);
++  const [viewingImage, setViewingImage] = useState<{ base64: string; prompt: string; date: string } | null>(null);
++  const [initialLoading, setInitialLoading] = useState(true);
++  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+ 
+   useEffect(() => {
+-    // Load starred comments from localStorage
++    // Load starred comments
+     const savedState = localStorage.getItem('ink_memory_state');
+     if (savedState) {
+       try {
+@@ -88,219 +169,584 @@ function StarredCommentsPage() {
+         console.error('Failed to load starred comments:', e);
+       }
+     }
++
++    // Load pictures
++    const savedPictures = localStorage.getItem('daily-pictures');
++    if (savedPictures) {
++      try {
++        setPictures(JSON.parse(savedPictures));
++      } catch (e) {
++        console.error('Failed to load pictures:', e);
++      }
++    }
++
++    setInitialLoading(false);
+   }, []);
+ 
+-  if (starredComments.length === 0) {
+-    return (
+-      <div style={{
+-        textAlign: 'center',
+-        padding: '4rem 2rem',
+-        color: '#999'
+-      }}>
+-        <div style={{ fontSize: '48px', marginBottom: '1rem' }}>⭐</div>
+-        <div style={{ fontSize: '18px', marginBottom: '0.5rem' }}>No starred comments yet</div>
+-        <div style={{ fontSize: '14px' }}>Star comments in your writing to collect them here</div>
+-      </div>
+-    );
++  // @@@ Group items by date
++  const timelineByDate = new Map<string, { picture?: any; comments: Commentor[] }>();
++
++  starredComments.forEach(comment => {
++    const date = formatDate(new Date(comment.appliedAt || comment.computedAt));
++    if (!timelineByDate.has(date)) {
++      timelineByDate.set(date, { comments: [] });
++    }
++    timelineByDate.get(date)!.comments.push(comment);
++  });
++
++  pictures.forEach(pic => {
++    const date = formatDate(pic.date);
++    if (!timelineByDate.has(date)) {
++      timelineByDate.set(date, { comments: [] });
++    }
++    timelineByDate.get(date)!.picture = pic;
++  });
++
++  // @@@ Set initial scroll position to center on today's card
++  useEffect(() => {
++    // Double RAF to ensure layout is complete
++    requestAnimationFrame(() => {
++      requestAnimationFrame(() => {
++        if (scrollContainerRef.current) {
++          // Today is at index 7 (after 7 past days)
++          // Each card is 500px + 4rem gap (64px) = 564px
++          // Plus left padding of 4rem (64px)
++          const cardWidth = 500 + 64;
++          const todayIndex = 7;
++          const leftPadding = 64;
++          const containerWidth = scrollContainerRef.current.clientWidth;
++
++          // Center today's card
++          const scrollLeft = leftPadding + (todayIndex * cardWidth) - (containerWidth / 2) + (250);
++          scrollContainerRef.current.scrollLeft = scrollLeft;
++        }
++      });
++    });
++  }, []);
++
++  const handleGenerateForDate = async (dateStr: string) => {
++    setGeneratingForDate(dateStr);
++
++    try {
++      const allNotes = getAllNotesFromSessions();
++      if (!allNotes.trim()) {
++        alert('Write some notes first to generate an image!');
++        return;
++      }
++
++      const { generateDailyPicture } = await import('../api/voiceApi');
++      const { image_base64, prompt } = await generateDailyPicture(allNotes);
++
++      const newPicture = {
++        date: new Date().toISOString(),
++        base64: image_base64,
++        prompt: prompt
++      };
++
++      // @@@ Overwrite existing picture for this date instead of adding new
++      const normalizedNewDate = formatDate(newPicture.date);
++
++      const updated = pictures.filter(p => formatDate(p.date) !== normalizedNewDate);
++
++      updated.unshift(newPicture);
++      setPictures(updated);
++      localStorage.setItem('daily-pictures', JSON.stringify(updated));
++    } catch (error) {
++      console.error('Image generation failed:', error);
++      alert('Failed to generate image. Please try again.');
++    } finally {
++      setGeneratingForDate(null);
++    }
++  };
++
++  if (initialLoading) {
++    return null;
+   }
+ 
++  // @@@ Generate all timeline days using helper function (always show timeline structure)
++  const allTimelineDays = generateTimelineDays();
++
+   return (
+-    <div style={{
+-      maxWidth: '800px',
+-      margin: '0 auto'
+-    }}>
+-      <h2 style={{
+-        fontSize: '24px',
+-        fontWeight: 600,
+-        color: '#333',
+-        marginBottom: '1.5rem',
++    <div
++      ref={scrollContainerRef}
++      style={{
++        width: '100%',
++        height: '100%',
++        background: '#f8f0e6',
++        overflowX: 'auto',
++        overflowY: 'hidden',
+         display: 'flex',
+-        alignItems: 'center',
+-        gap: '0.5rem'
++        flexDirection: 'column',
++        padding: '3rem 0'
+       }}>
+-        <span>⭐</span>
+-        <span>Starred Comments</span>
+-        <span style={{ fontSize: '14px', fontWeight: 400, color: '#999' }}>
+-          ({starredComments.length})
+-        </span>
+-      </h2>
+-
++      {/* @@@ Horizontal scrolling timeline - cards side by side */}
+       <div style={{
+         display: 'flex',
+-        flexDirection: 'column',
+-        gap: '1rem'
++        flexDirection: 'row',
++        gap: '4rem',
++        padding: '0 4rem',
++        minHeight: 0,
++        flex: 1
+       }}>
+-        {starredComments.map((comment) => (
+-          <div
+-            key={comment.id}
+-            style={{
+-              background: '#fff',
+-              border: '1px solid #d0c4b0',
+-              borderRadius: '8px',
+-              padding: '1.5rem',
+-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+-              transition: 'all 0.2s'
+-            }}
+-            onMouseEnter={e => {
+-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+-            }}
+-            onMouseLeave={e => {
+-              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+-            }}
+-          >
+-            {/* Header */}
+-            <div style={{
+-              display: 'flex',
+-              alignItems: 'center',
+-              gap: '0.75rem',
+-              marginBottom: '0.75rem',
+-              paddingBottom: '0.75rem',
+-              borderBottom: '1px solid #f0f0f0'
+-            }}>
++        {allTimelineDays.map((day, index) => {
++          const dayData = timelineByDate.get(day.date);
++          const hasData = !!dayData;
++          const isGenerating = generatingForDate === day.date;
++
++          return (
++            <div
++              key={day.date}
++              style={{
++                display: 'flex',
++                flexDirection: 'column',
++                minWidth: '500px',
++                maxWidth: '500px',
++                position: 'relative'
++              }}>
++              {/* Timeline node and line */}
+               <div style={{
+-                fontSize: '20px'
++                display: 'flex',
++                alignItems: 'center',
++                marginBottom: '2rem',
++                position: 'relative'
+               }}>
+-                {getIconForVoice(comment.icon)}
++                {/* Line before node */}
++                {index > 0 && (
++                  <div style={{
++                    position: 'absolute',
++                    right: 'calc(50% + 12px)',
++                    width: 'calc(4rem + 50%)',
++                    height: '3px',
++                    background: '#d0c4b0'
++                  }} />
++                )}
++
++                {/* Timeline node */}
++                <div style={{
++                  width: '24px',
++                  height: '24px',
++                  borderRadius: '50%',
++                  background: hasData ? '#4CAF50' : (day.isToday ? '#888' : '#ddd'),
++                  border: '3px solid #f8f0e6',
++                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
++                  margin: '0 auto',
++                  position: 'relative',
++                  zIndex: 2
++                }} />
++
++                {/* Line after node */}
++                {index < allTimelineDays.length - 1 && (
++                  <div style={{
++                    position: 'absolute',
++                    left: 'calc(50% + 12px)',
++                    width: 'calc(4rem + 50%)',
++                    height: '3px',
++                    background: '#d0c4b0'
++                  }} />
++                )}
+               </div>
++
++              {/* Date header */}
+               <div style={{
+-                flex: 1,
+                 fontSize: '16px',
+                 fontWeight: 600,
+-                color: '#333'
++                color: day.isToday ? '#2c2c2c' : '#666',
++                textAlign: 'center',
++                marginBottom: '1.5rem'
+               }}>
+-                {comment.voice}
++                {day.isToday ? 'Today' : day.date}
+               </div>
++
++              {/* Card content */}
+               <div style={{
+-                fontSize: '12px',
+-                color: '#999'
++                display: 'flex',
++                flexDirection: 'column',
++                gap: '1rem',
++                flex: 1
+               }}>
+-                {new Date(comment.appliedAt || comment.computedAt).toLocaleDateString()}
++                {/* Image */}
++                <div style={{ flexShrink: 0 }}>
++                  {dayData?.picture ? (
++                    <div style={{
++                      position: 'relative',
++                      background: '#fff',
++                      border: '1px solid #d0c4b0',
++                      borderRadius: '8px',
++                      overflow: 'hidden',
++                      cursor: 'pointer',
++                      transition: 'all 0.2s'
++                    }}
++                    onClick={() => setViewingImage(dayData.picture)}
++                    onMouseEnter={e => {
++                      e.currentTarget.style.transform = 'scale(1.02)';
++                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
++                    }}
++                    onMouseLeave={e => {
++                      e.currentTarget.style.transform = 'scale(1)';
++                      e.currentTarget.style.boxShadow = 'none';
++                    }}
++                    >
++                      <img
++                        src={`data:image/png;base64,${dayData.picture.base64}`}
++                        alt={dayData.picture.prompt}
++                        style={{
++                          width: '100%',
++                          aspectRatio: '1',
++                          objectFit: 'cover'
++                        }}
++                      />
++                      <button
++                        onClick={(e) => {
++                          e.stopPropagation();
++                          if (!isGenerating) handleGenerateForDate(day.date);
++                        }}
++                        disabled={isGenerating}
++                        style={{
++                          position: 'absolute',
++                          top: '0.75rem',
++                          right: '0.75rem',
++                          width: '32px',
++                          height: '32px',
++                          borderRadius: '50%',
++                          background: 'rgba(255, 255, 255, 0.95)',
++                          border: 'none',
++                          cursor: isGenerating ? 'wait' : 'pointer',
++                          display: 'flex',
++                          alignItems: 'center',
++                          justifyContent: 'center',
++                          opacity: 0.9,
++                          transition: 'all 0.2s'
++                        }}
++                        onMouseEnter={e => {
++                          if (!isGenerating) e.currentTarget.style.opacity = '1';
++                        }}
++                        onMouseLeave={e => {
++                          e.currentTarget.style.opacity = '0.9';
++                        }}
++                        title="Redraw image"
++                      >
++                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
++                          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
++                        </svg>
++                      </button>
++                    </div>
++                  ) : (
++                    <div
++                      onClick={() => day.isToday && !isGenerating && handleGenerateForDate(day.date)}
++                      style={{
++                        width: '100%',
++                        aspectRatio: '1',
++                        background: day.isFuture ? 'linear-gradient(135deg, #f8f0e6 0%, #ede3d5 100%)' : 'linear-gradient(135deg, #f0e8de 0%, #e5dbc9 100%)',
++                        border: day.isFuture ? '2px dashed #d0c4b0' : '2px dashed #b8a896',
++                        borderRadius: '8px',
++                        display: 'flex',
++                        flexDirection: 'column',
++                        alignItems: 'center',
++                        justifyContent: 'center',
++                        cursor: day.isToday ? (isGenerating ? 'wait' : 'pointer') : 'default',
++                        gap: '0.75rem',
++                        opacity: day.isPast || day.isFuture ? 0.4 : 1,
++                        transition: 'all 0.2s'
++                      }}
++                      onMouseEnter={e => {
++                        if (day.isToday && !isGenerating) {
++                          e.currentTarget.style.opacity = '1';
++                        }
++                      }}
++                      onMouseLeave={e => {
++                        if (day.isToday && !isGenerating) {
++                          e.currentTarget.style.opacity = '1';
++                        } else if (day.isPast) {
++                          e.currentTarget.style.opacity = '0.4';
++                        }
++                      }}
++                    >
++                      <div style={{
++                        fontSize: '15px',
++                        color: '#999',
++                        fontWeight: 500,
++                        fontStyle: 'italic',
++                        textAlign: 'center',
++                        lineHeight: '1.8',
++                        padding: '0 3rem'
++                      }}>
++                        {isGenerating ? 'Generating...' : getPlaceholderText(day.daysOffset)}
++                      </div>
++                    </div>
++                  )}
++                </div>
++
++                {/* Simple metadata */}
++                {(dayData?.comments && dayData.comments.length > 0) && (
++                  <div style={{
++                    textAlign: 'center',
++                    padding: '1rem',
++                    background: 'rgba(255, 255, 255, 0.5)',
++                    borderRadius: '6px',
++                    fontSize: '13px',
++                    color: '#888',
++                    fontStyle: 'italic'
++                  }}>
++                    {dayData.comments.length} {dayData.comments.length === 1 ? 'entry' : 'entries'}
++                  </div>
++                )}
+               </div>
+             </div>
++          );
++        })}
++      </div>
+ 
+-            {/* Phrase */}
++      {/* Image Lightbox Modal */}
++      {viewingImage && (
++        <div
++          style={{
++            position: 'fixed',
++            top: 0,
++            left: 0,
++            right: 0,
++            bottom: 0,
++            background: 'rgba(0, 0, 0, 0.6)',
++            display: 'flex',
++            alignItems: 'center',
++            justifyContent: 'center',
++            zIndex: 9999,
++            padding: '3rem'
++          }}
++          onClick={() => setViewingImage(null)}
++        >
++          <div
++            style={{
++              display: 'flex',
++              flexDirection: 'column',
++              maxWidth: '1400px',
++              width: '100%',
++              maxHeight: '90vh',
++              background: '#fff',
++              borderRadius: '12px',
++              overflow: 'hidden',
++              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
++              marginTop: '2rem'
++            }}
++            onClick={(e) => e.stopPropagation()}
++          >
++            {/* Main content: Image + Comments */}
+             <div style={{
+-              padding: '0.75rem',
+-              background: '#f8f0e6',
+-              borderLeft: '3px solid #d0c4b0',
+-              marginBottom: '0.75rem',
+-              fontSize: '14px',
+-              fontStyle: 'italic',
+-              color: '#666'
++              display: 'flex',
++              flex: 1,
++              minHeight: 0,
++              overflow: 'hidden'
+             }}>
+-              "{comment.phrase}"
++              {/* Image on left */}
++              <div style={{
++                flex: '0 0 55%',
++                display: 'flex',
++                alignItems: 'center',
++                justifyContent: 'center',
++                background: '#000',
++                position: 'relative'
++              }}>
++                <img
++                  src={`data:image/png;base64,${viewingImage.base64}`}
++                  alt="Generated image"
++                  style={{
++                    maxWidth: '100%',
++                    maxHeight: '100%',
++                    objectFit: 'contain'
++                  }}
++                />
++                {/* Close button */}
++                <button
++                  onClick={() => setViewingImage(null)}
++                  style={{
++                    position: 'absolute',
++                    top: '1.5rem',
++                    right: '1.5rem',
++                    background: 'rgba(255, 255, 255, 0.95)',
++                    border: 'none',
++                    borderRadius: '50%',
++                    width: '36px',
++                    height: '36px',
++                    cursor: 'pointer',
++                    display: 'flex',
++                    alignItems: 'center',
++                    justifyContent: 'center',
++                    fontSize: '22px',
++                    color: '#333',
++                    fontWeight: 'bold',
++                    transition: 'all 0.2s',
++                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
++                  }}
++                  onMouseEnter={e => {
++                    e.currentTarget.style.background = '#f0f0f0';
++                    e.currentTarget.style.transform = 'scale(1.1)';
++                  }}
++                  onMouseLeave={e => {
++                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
++                    e.currentTarget.style.transform = 'scale(1)';
++                  }}
++                >
++                  ×
++                </button>
++              </div>
++
++              {/* Starred comments on right */}
++              <div style={{
++                flex: '0 0 45%',
++                background: '#f9f7f4',
++                display: 'flex',
++                flexDirection: 'column',
++                overflow: 'hidden',
++                minWidth: 0
++              }}>
++                {/* Header */}
++                <div style={{
++                  padding: '2rem 2rem 1rem',
++                  borderBottom: '1px solid #e0d8cc',
++                  flexShrink: 0
++                }}>
++                  <div style={{
++                    fontSize: '13px',
++                    color: '#aaa',
++                    fontWeight: 600,
++                    textTransform: 'uppercase',
++                    letterSpacing: '0.1em'
++                  }}>
++                    Starred Comments
++                  </div>
++                </div>
++
++                {/* Comments list - scrollable */}
++                <div style={{
++                  flex: 1,
++                  overflowY: 'auto',
++                  overflowX: 'hidden',
++                  padding: '1.5rem 2rem',
++                  minWidth: 0,
++                  width: '100%',
++                  boxSizing: 'border-box'
++                }}>
++                  {(() => {
++                    const dateData = Array.from(timelineByDate.entries()).find(([_, data]) =>
++                      data.picture?.base64 === viewingImage.base64
++                    );
++                    const comments = dateData?.[1]?.comments || [];
++
++                    if (comments.length === 0) {
++                      return (
++                        <div style={{
++                          textAlign: 'center',
++                          color: '#999',
++                          fontSize: '14px',
++                          fontStyle: 'italic',
++                          padding: '2rem 1rem'
++                        }}>
++                          No starred comments for this day
++                        </div>
++                      );
++                    }
++
++                    return (
++                      <div style={{
++                        display: 'flex',
++                        flexDirection: 'column',
++                        gap: '1rem',
++                        minWidth: 0
++                      }}>
++                        {comments.map((comment) => (
++                          <div
++                            key={comment.id}
++                            style={{
++                              background: '#fff',
++                              border: '1px solid #e0d8cc',
++                              borderRadius: '8px',
++                              padding: '1rem',
++                              transition: 'all 0.2s',
++                              minWidth: 0
++                            }}
++                          >
++                            <div style={{
++                              display: 'flex',
++                              alignItems: 'center',
++                              gap: '0.5rem',
++                              marginBottom: '0.75rem',
++                              minWidth: 0
++                            }}>
++                              <span style={{ fontSize: '18px', flexShrink: 0 }}>{getIconForVoice(comment.icon)}</span>
++                              <span style={{ fontWeight: 600, fontSize: '14px', color: '#333', flexShrink: 0 }}>{comment.voice}</span>
++                              <span style={{ fontSize: '14px', marginLeft: 'auto', flexShrink: 0 }}>⭐</span>
++                            </div>
++                            <div style={{
++                              fontSize: '12px',
++                              fontStyle: 'italic',
++                              color: '#999',
++                              marginBottom: '0.75rem',
++                              paddingLeft: '1.5rem',
++                              borderLeft: '2px solid #e0d8cc',
++                              wordBreak: 'break-word',
++                              overflowWrap: 'anywhere',
++                              minWidth: 0
++                            }}>
++                              "{comment.phrase}"
++                            </div>
++                            <div style={{
++                              fontSize: '13px',
++                              color: '#555',
++                              lineHeight: '1.7',
++                              paddingLeft: '0.5rem',
++                              wordBreak: 'break-word',
++                              overflowWrap: 'anywhere',
++                              whiteSpace: 'pre-wrap',
++                              minWidth: 0
++                            }}>
++                              {comment.comment}
++                            </div>
++                          </div>
++                        ))}
++                      </div>
++                    );
++                  })()}
++                </div>
++              </div>
+             </div>
+ 
+-            {/* Comment */}
++            {/* Bottom metadata bar */}
+             <div style={{
+-              fontSize: '15px',
+-              lineHeight: '1.6',
+-              color: '#333'
++              borderTop: '1px solid #e0d8cc',
++              background: '#f0e8de',
++              padding: '1rem 2rem',
++              display: 'flex',
++              alignItems: 'center',
++              justifyContent: 'space-between',
++              flexShrink: 0
+             }}>
+-              {comment.comment}
+-            </div>
+-
+-            {/* Chat history preview if exists */}
+-            {comment.chatHistory && comment.chatHistory.length > 1 && (
+               <div style={{
+-                marginTop: '0.75rem',
+-                paddingTop: '0.75rem',
+-                borderTop: '1px solid #f0f0f0',
+                 fontSize: '13px',
+-                color: '#999'
++                color: '#666'
+               }}>
+-                💬 {comment.chatHistory.length - 1} conversation{comment.chatHistory.length - 1 === 1 ? '' : 's'}
++                {new Date(viewingImage.date).toLocaleDateString('en-US', {
++                  year: 'numeric',
++                  month: 'long',
++                  day: 'numeric'
++                })}
+               </div>
+-            )}
+-          </div>
+-        ))}
+-      </div>
+-    </div>
+-  );
+-}
+-
+-// @@@ Daily Pictures Page (Placeholder)
+-function DailyPicturesPage() {
+-  return (
+-    <div style={{
+-      maxWidth: '1000px',
+-      margin: '0 auto'
+-    }}>
+-      <h2 style={{
+-        fontSize: '24px',
+-        fontWeight: 600,
+-        color: '#333',
+-        marginBottom: '1.5rem',
+-        display: 'flex',
+-        alignItems: 'center',
+-        gap: '0.5rem'
+-      }}>
+-        <span>📷</span>
+-        <span>Daily Pictures</span>
+-      </h2>
+-
+-      {/* Placeholder gallery grid */}
+-      <div style={{
+-        display: 'grid',
+-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+-        gap: '1rem'
+-      }}>
+-        {[1, 2, 3, 4, 5, 6].map(i => (
+-          <div
+-            key={i}
+-            style={{
+-              aspectRatio: '1',
+-              background: 'linear-gradient(135deg, #f8f0e6 0%, #e8e0d6 100%)',
+-              borderRadius: '8px',
+-              display: 'flex',
+-              alignItems: 'center',
+-              justifyContent: 'center',
+-              border: '2px dashed #d0c4b0',
+-              fontSize: '48px',
+-              cursor: 'pointer',
+-              transition: 'all 0.2s'
+-            }}
+-            onMouseEnter={e => {
+-              e.currentTarget.style.transform = 'scale(1.05)';
+-              e.currentTarget.style.borderStyle = 'solid';
+-            }}
+-            onMouseLeave={e => {
+-              e.currentTarget.style.transform = 'scale(1)';
+-              e.currentTarget.style.borderStyle = 'dashed';
+-            }}
+-          >
+-            📷
++              <div style={{
++                fontSize: '13px',
++                color: '#888'
++              }}>
++                {(() => {
++                  const dateData = Array.from(timelineByDate.entries()).find(([_, data]) =>
++                    data.picture?.base64 === viewingImage.base64
++                  );
++                  const commentCount = dateData?.[1]?.comments?.length || 0;
++                  return `${commentCount} ${commentCount === 1 ? 'entry' : 'entries'}`;
++                })()}
++              </div>
++            </div>
+           </div>
+-        ))}
+-      </div>
+-
+-      <div style={{
+-        textAlign: 'center',
+-        padding: '3rem 2rem',
+-        color: '#999',
+-        fontSize: '14px'
+-      }}>
+-        This feature will allow you to save daily snapshots and memories
+-      </div>
++        </div>
++      )}
+     </div>
+   );
+ }
+ 
+-// @@@ Helper to get icon emoji
+-function getIconForVoice(icon: string): string {
+-  const iconMap: Record<string, string> = {
+-    brain: '🧠',
+-    heart: '❤️',
+-    question: '❓',
+-    cloud: '☁️',
+-    masks: '🎭',
+-    eye: '👁️',
+-    fist: '✊',
+-    lightbulb: '💡',
+-    shield: '🛡️',
+-    wind: '💨',
+-    fire: '🔥',
+-    compass: '🧭'
+-  };
+-  return iconMap[icon] || '💭';
+-}
++// @@@ Analysis Page (placeholder for echoes/traits/patterns)
+
+*** MODIFIED: frontend/src/components/LeftSidebar.tsx (+10/-10) ***
+@@ -1,6 +1,6 @@
+ interface Props {
+-  currentView: 'writing' | 'settings' | 'collections' | 'analysis' | 'about';
+-  onViewChange: (view: 'writing' | 'settings' | 'collections' | 'analysis' | 'about') => void;
++  currentView: 'writing' | 'settings' | 'timeline' | 'analysis' | 'about';
++  onViewChange: (view: 'writing' | 'settings' | 'timeline' | 'analysis' | 'about') => void;
+ }
+ 
+ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+@@ -93,27 +93,27 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+         </button>
+ 
+         <button
+-          onClick={() => onViewChange('collections')}
+-          style={buttonStyle(currentView === 'collections')}
+-          title="Collections"
++          onClick={() => onViewChange('timeline')}
++          style={buttonStyle(currentView === 'timeline')}
++          title="Timeline"
+           onMouseEnter={e => {
+-            if (currentView !== 'collections') {
++            if (currentView !== 'timeline') {
+               e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
+             }
+           }}
+           onMouseLeave={e => {
+-            if (currentView !== 'collections') {
++            if (currentView !== 'timeline') {
+               e.currentTarget.style.background = 'transparent';
+             }
+           }}
+         >
+-          Collections
++          Timeline
+         </button>
+ 
+         <button
+           onClick={() => onViewChange('analysis')}
+           style={buttonStyle(currentView === 'analysis')}
+-          title="Analysis"
++          title="Reflections"
+           onMouseEnter={e => {
+             if (currentView !== 'analysis') {
+               e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
+@@ -125,7 +125,7 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+             }
+           }}
+         >
+-          Analysis
++          Reflections
+         </button>
+ 
+         <button
+
+*** MODIFIED: frontend/src/components/VoiceSettings.tsx (+685/-268) ***
+@@ -1,6 +1,10 @@
+ import { useState, useEffect, useRef } from 'react';
+ import type { VoiceConfig, StateConfig, UserState } from '../types/voice';
+ import { getVoices, saveVoices, clearVoices, getMetaPrompt, saveMetaPrompt, getStateConfig, saveStateConfig } from '../utils/voiceStorage';
++import {
++  FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
++  FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
++} from 'react-icons/fa';
+ 
+ // @@@ Display mappings (text name → visual)
+ const COLORS = {
+@@ -11,10 +15,36 @@ const COLORS = {
+   'yellow': { hex: '#f39c12', label: 'Yellow' }
+ };
+ 
+-const ICONS = {
+-  'brain': '🧠', 'lightbulb': '💡', 'masks': '🎭', 'cloud': '☁️',
+-  'shield': '🛡️', 'compass': '🧭', 'heart': '❤️', 'fist': '✊',
+-  'fire': '🔥', 'wind': '💨', 'question': '❓', 'eye': '👁️'
++// @@@ Icon map with React Icons (matching App.tsx)
++const iconMap = {
++  brain: FaBrain,
++  heart: FaHeart,
++  question: FaQuestion,
++  cloud: FaCloud,
++  masks: FaTheaterMasks,
++  eye: FaEye,
++  fist: FaFistRaised,
++  lightbulb: FaLightbulb,
++  shield: FaShieldAlt,
++  wind: FaWind,
++  fire: FaFire,
++  compass: FaCompass,
++};
++
++// @@@ Icon labels for dropdown display (emoji for visual reference)
++const ICON_LABELS = {
++  'brain': '🧠 brain',
++  'lightbulb': '💡 lightbulb',
++  'masks': '🎭 masks',
++  'cloud': '☁️ cloud',
++  'shield': '🛡️ shield',
++  'compass': '🧭 compass',
++  'heart': '❤️ heart',
++  'fist': '✊ fist',
++  'fire': '🔥 fire',
++  'wind': '💨 wind',
++  'question': '❓ question',
++  'eye': '👁️ eye'
+ };
+ 
+ interface Props {
+@@ -172,310 +202,697 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+     });
+   };
+ 
++  const [activeTab, setActiveTab] = useState<'voices' | 'meta' | 'states'>('voices');
++
+   return (
+     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f8f0e6', overflow: 'hidden' }}>
+-      {/* Fixed Header - Function Bar */}
++      {/* Fixed Header */}
+       <div style={{
+-        padding: '16px 24px',
+-        background: '#fff',
+-        borderBottom: '2px solid #d0c4b0',
+-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
++        padding: '24px 32px 0',
++        background: '#f8f0e6',
+         flexShrink: 0
+       }}>
+-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+-          <button onClick={handleAdd} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>+ Add Voice</button>
+-          <button onClick={handleImport} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Import</button>
+-          <button onClick={handleExport} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Export</button>
+-          <button onClick={handleDefault} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Use Default</button>
+-          <div style={{ flex: 1 }} />
+-          <button
+-            onClick={handleSave}
+-            style={{
+-              padding: '8px 20px',
+-              border: saveStatus === 'saved' ? '1px solid #27ae60' : '1px solid #666',
+-              background: saveStatus === 'saved' ? '#27ae60' : '#333',
+-              color: '#fff',
+-              borderRadius: 4,
+-              cursor: 'pointer',
+-              fontWeight: 'bold',
+-              fontSize: 13,
+-              transition: 'all 0.3s'
+-            }}
+-          >
+-            {saveStatus === 'saved' ? '✓ Saved!' : 'Save'}
+-          </button>
+-        </div>
+-      </div>
+-
+-      {/* Scrollable Content Area */}
+-      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f8f0e6' }}>
+-        {/* Meta Prompt Section */}
+-        <div style={{
+-          marginBottom: 24,
+-          padding: 20,
+-          background: '#fffef9',
+-          border: '1px solid #d0c4b0',
+-          borderRadius: 6,
+-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+-        }}>
+-          <h3 style={{
+-            margin: '0 0 12px 0',
+-            fontSize: 15,
+-            fontWeight: 600,
+-            color: '#333',
+-            letterSpacing: '-0.01em'
++        {/* Title */}
++        <div style={{ marginBottom: 20 }}>
++          <h1 style={{
++            margin: 0,
++            fontSize: 28,
++            fontWeight: 700,
++            color: '#2c2c2c',
++            fontFamily: 'Georgia, serif',
++            letterSpacing: '-0.5px'
+           }}>
+-            Meta Prompt
+-          </h3>
++            The Voice Council
++          </h1>
+           <p style={{
+-            margin: '0 0 12px 0',
+-            fontSize: 12,
++            margin: '6px 0 0',
++            fontSize: 14,
+             color: '#666',
+-            lineHeight: 1.5
++            fontStyle: 'italic'
+           }}>
+-            Global instructions applied to all voice personas (affects both comments and chat)
++            Configure your inner voices, the ones that comment on everything you write
+           </p>
+-          <textarea
+-            value={metaPrompt}
+-            onChange={e => setMetaPrompt(e.target.value)}
+-            placeholder="e.g., Be honest and pragmatic. Prioritize mental well-being over theatrical commentary..."
+-            style={{
+-              width: '100%',
+-              minHeight: 100,
+-              padding: 12,
+-              fontSize: 13,
+-              fontFamily: 'monospace',
+-              border: '1px solid #d0c4b0',
+-              borderRadius: 4,
+-              background: '#fff',
+-              resize: 'vertical',
+-              boxSizing: 'border-box',
+-              lineHeight: 1.6
+-            }}
+-          />
+         </div>
+ 
+-        {/* User States Section */}
++        {/* Tabs */}
+         <div style={{
+-          marginBottom: 24,
+-          padding: 20,
+-          background: '#fffef9',
+-          border: '1px solid #d0c4b0',
+-          borderRadius: 6,
+-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
++          display: 'flex',
++          gap: 8,
++          borderBottom: '2px solid #d0c4b0'
+         }}>
+-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+-            <h3 style={{
+-              margin: 0,
+-              fontSize: 15,
+-              fontWeight: 600,
+-              color: '#333',
+-              letterSpacing: '-0.01em'
+-            }}>
+-              User States
+-            </h3>
++          {['voices', 'meta', 'states'].map((tab) => (
+             <button
+-              onClick={handleAddState}
++              key={tab}
++              onClick={() => setActiveTab(tab as any)}
+               style={{
+-                padding: '4px 12px',
+-                fontSize: 12,
+-                border: '1px solid #d0c4b0',
+-                background: '#fff',
+-                borderRadius: 4,
+-                cursor: 'pointer'
++                padding: '12px 24px',
++                border: 'none',
++                background: activeTab === tab ? '#fff' : 'transparent',
++                borderRadius: '8px 8px 0 0',
++                cursor: 'pointer',
++                fontSize: 14,
++                fontWeight: activeTab === tab ? 600 : 400,
++                color: activeTab === tab ? '#2c2c2c' : '#888',
++                transition: 'all 0.2s',
++                borderBottom: activeTab === tab ? '2px solid #2c2c2c' : 'none',
++                marginBottom: '-2px'
++              }}
++              onMouseEnter={(e) => {
++                if (activeTab !== tab) {
++                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)';
++                }
++              }}
++              onMouseLeave={(e) => {
++                if (activeTab !== tab) {
++                  e.currentTarget.style.background = 'transparent';
++                }
+               }}
+             >
+-              + Add State
++              {tab === 'voices' && '🎭 Voices'}
++              {tab === 'meta' && '📜 Meta Prompt'}
++              {tab === 'states' && '💭 User States'}
+             </button>
+-          </div>
+-          <p style={{
+-            margin: '0 0 16px 0',
+-            fontSize: 12,
+-            color: '#666',
+-            lineHeight: 1.5
+-          }}>
+-            Configure states shown at startup, each with a specific prompt context
+-          </p>
++          ))}
+ 
+-          {/* Greeting */}
+-          <div style={{ marginBottom: 16 }}>
+-            <label style={{
+-              display: 'block',
+-              fontSize: 12,
+-              fontWeight: 600,
+-              color: '#333',
+-              marginBottom: 6
+-            }}>
+-              Greeting Message
+-            </label>
+-            <input
+-              type="text"
+-              value={stateConfig.greeting}
+-              onChange={e => setStateConfig({ ...stateConfig, greeting: e.target.value })}
+-              placeholder="e.g., How are you feeling today?"
+-              style={{
+-                width: '100%',
+-                padding: 8,
+-                fontSize: 13,
++          {/* Action buttons on the right */}
++          <div style={{ flex: 1 }} />
++          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', paddingBottom: 8 }}>
++            {activeTab === 'voices' && (
++              <>
++                <button onClick={handleAdd} style={{
++                  padding: '6px 14px',
++                  border: '1px solid #d0c4b0',
++                  background: '#fff',
++                  borderRadius: 6,
++                  cursor: 'pointer',
++                  fontSize: 12,
++                  fontWeight: 500,
++                  transition: 'all 0.2s',
++                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
++                }}
++                onMouseEnter={(e) => {
++                  e.currentTarget.style.transform = 'translateY(-1px)';
++                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
++                }}
++                onMouseLeave={(e) => {
++                  e.currentTarget.style.transform = 'translateY(0)';
++                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
++                }}
++                >+ Add Voice</button>
++                <button onClick={handleImport} style={{
++                  padding: '6px 14px',
++                  border: '1px solid #d0c4b0',
++                  background: '#fff',
++                  borderRadius: 6,
++                  cursor: 'pointer',
++                  fontSize: 12,
++                  transition: 'all 0.2s',
++                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
++                }}
++                onMouseEnter={(e) => {
++                  e.currentTarget.style.transform = 'translateY(-1px)';
++                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
++                }}
++                onMouseLeave={(e) => {
++                  e.currentTarget.style.transform = 'translateY(0)';
++                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
++                }}
++                >Import</button>
++                <button onClick={handleExport} style={{
++                  padding: '6px 14px',
++                  border: '1px solid #d0c4b0',
++                  background: '#fff',
++                  borderRadius: 6,
++                  cursor: 'pointer',
++                  fontSize: 12,
++                  transition: 'all 0.2s',
++                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
++                }}
++                onMouseEnter={(e) => {
++                  e.currentTarget.style.transform = 'translateY(-1px)';
++                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
++                }}
++                onMouseLeave={(e) => {
++                  e.currentTarget.style.transform = 'translateY(0)';
++                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
++                }}
++                >Export</button>
++                <button onClick={handleDefault} style={{
++                  padding: '6px 14px',
++                  border: '1px solid #d0c4b0',
++                  background: '#fff',
++                  borderRadius: 6,
++                  cursor: 'pointer',
++                  fontSize: 12,
++                  transition: 'all 0.2s',
++                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
++                }}
++                onMouseEnter={(e) => {
++                  e.currentTarget.style.transform = 'translateY(-1px)';
++                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
++                }}
++                onMouseLeave={(e) => {
++                  e.currentTarget.style.transform = 'translateY(0)';
++                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
++                }}
++                >Reset to Default</button>
++              </>
++            )}
++            {activeTab === 'states' && (
++              <button onClick={handleAddState} style={{
++                padding: '6px 14px',
+                 border: '1px solid #d0c4b0',
+-                borderRadius: 4,
+                 background: '#fff',
+-                boxSizing: 'border-box'
++                borderRadius: 6,
++                cursor: 'pointer',
++                fontSize: 12,
++                fontWeight: 500,
++                transition: 'all 0.2s',
++                boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
++              }}
++              onMouseEnter={(e) => {
++                e.currentTarget.style.transform = 'translateY(-1px)';
++                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
++              }}
++              onMouseLeave={(e) => {
++                e.currentTarget.style.transform = 'translateY(0)';
++                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
++              }}
++              >+ Add State</button>
++            )}
++            <button
++              onClick={handleSave}
++              style={{
++                padding: '6px 18px',
++                border: 'none',
++                background: saveStatus === 'saved' ? '#27ae60' : '#2c2c2c',
++                color: '#fff',
++                borderRadius: 6,
++                cursor: 'pointer',
++                fontWeight: 600,
++                fontSize: 12,
++                transition: 'all 0.3s',
++                boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
++              }}
++              onMouseEnter={(e) => {
++                if (saveStatus !== 'saved') {
++                  e.currentTarget.style.transform = 'translateY(-1px)';
++                  e.currentTarget.style.boxShadow = '0 3px 8px rgba(0,0,0,0.2)';
++                }
+               }}
+-            />
++              onMouseLeave={(e) => {
++                e.currentTarget.style.transform = 'translateY(0)';
++                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
++              }}
++            >
++              {saveStatus === 'saved' ? '✓ Saved!' : 'Save Changes'}
++            </button>
+           </div>
++        </div>
++      </div>
+ 
+-          {/* States */}
+-          <div style={{ display: 'grid', gap: 12 }}>
+-            {Object.entries(stateConfig.states).map(([id, state]) => (
+-              <div key={id} style={{
+-                padding: 12,
+-                background: '#f8f0e6',
+-                border: '1px solid #d0c4b0',
+-                borderRadius: 4,
+-                position: 'relative'
+-              }}>
+-                <button
+-                  onClick={() => handleDeleteState(id)}
++      {/* Scrollable Content Area */}
++      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#f8f0e6' }}>
++
++        {/* VOICES TAB */}
++        {activeTab === 'voices' && (
++          <div style={{
++            display: 'grid',
++            gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
++            gap: 24,
++            alignContent: 'start'
++          }}>
++            {Object.entries(voices).map(([id, voice]) => {
++              const colorHex = COLORS[voice.color as keyof typeof COLORS]?.hex || '#4a90e2';
++              const Icon = iconMap[voice.icon as keyof typeof iconMap] || FaBrain;
++
++              return (
++                <div
++                  key={id}
+                   style={{
+-                    position: 'absolute',
+-                    top: 8,
+-                    right: 8,
+-                    background: 'none',
+-                    border: 'none',
+-                    cursor: 'pointer',
+-                    fontSize: 14
++                    background: '#fff',
++                    border: `2px solid ${voice.enabled ? colorHex : '#ddd'}`,
++                    borderRadius: 12,
++                    padding: 20,
++                    position: 'relative',
++                    boxShadow: voice.enabled ? '0 4px 12px rgba(0,0,0,0.1)' : '0 2px 6px rgba(0,0,0,0.05)',
++                    transition: 'all 0.3s',
++                    opacity: voice.enabled ? 1 : 0.6
++                  }}
++                  onMouseEnter={(e) => {
++                    e.currentTarget.style.transform = 'translateY(-2px)';
++                    e.currentTarget.style.boxShadow = voice.enabled ? '0 6px 16px rgba(0,0,0,0.15)' : '0 3px 8px rgba(0,0,0,0.08)';
++                  }}
++                  onMouseLeave={(e) => {
++                    e.currentTarget.style.transform = 'translateY(0)';
++                    e.currentTarget.style.boxShadow = voice.enabled ? '0 4px 12px rgba(0,0,0,0.1)' : '0 2px 6px rgba(0,0,0,0.05)';
+                   }}
+-                  title="Delete"
+                 >
+-                  🗑️
+-                </button>
+-
+-                <div style={{ marginBottom: 8 }}>
+-                  <label style={{
+-                    display: 'block',
+-                    fontSize: 11,
+-                    fontWeight: 600,
+-                    color: '#666',
+-                    marginBottom: 4
+-                  }}>
+-                    State Name (shown to user)
+-                  </label>
+-                  <input
+-                    type="text"
+-                    value={state.name}
+-                    onChange={e => handleUpdateState(id, 'name', e.target.value)}
+-                    placeholder="e.g., Happy"
++                  {/* Delete button */}
++                  <button
++                    onClick={() => handleDelete(id)}
+                     style={{
+-                      width: '100%',
+-                      padding: 6,
+-                      fontSize: 13,
+-                      border: '1px solid #d0c4b0',
+-                      borderRadius: 4,
+-                      background: '#fff',
+-                      boxSizing: 'border-box'
++                      position: 'absolute',
++                      top: 12,
++                      right: 12,
++                      background: 'rgba(255, 255, 255, 0.9)',
++                      border: '1px solid #ddd',
++                      borderRadius: 6,
++                      width: 28,
++                      height: 28,
++                      display: 'flex',
++                      alignItems: 'center',
++                      justifyContent: 'center',
++                      cursor: 'pointer',
++                      fontSize: 14,
++                      transition: 'all 0.2s'
+                     }}
+-                  />
+-                </div>
+-
+-                <div>
+-                  <label style={{
+-                    display: 'block',
+-                    fontSize: 11,
+-                    fontWeight: 600,
+-                    color: '#666',
+-                    marginBottom: 4
+-                  }}>
+-                    State Prompt (added to voice context)
+-                  </label>
+-                  <textarea
+-                    value={state.prompt}
+-                    onChange={e => handleUpdateState(id, 'prompt', e.target.value)}
+-                    placeholder="e.g., The user is feeling positive and energized..."
+-                    style={{
+-                      width: '100%',
+-                      minHeight: 60,
+-                      padding: 8,
+-                      fontSize: 12,
+-                      fontFamily: 'monospace',
+-                      border: '1px solid #d0c4b0',
+-                      borderRadius: 4,
+-                      background: '#fff',
+-                      resize: 'vertical',
+-                      boxSizing: 'border-box',
+-                      lineHeight: 1.4
++                    onMouseEnter={(e) => {
++                      e.currentTarget.style.background = '#fee';
++                      e.currentTarget.style.borderColor = '#fcc';
+                     }}
+-                  />
++                    onMouseLeave={(e) => {
++                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
++                      e.currentTarget.style.borderColor = '#ddd';
++                    }}
++                    title="Delete"
++                  >
++                    ×
++                  </button>
++
++                  {/* Voice Header */}
++                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
++                    {/* Icon Circle */}
++                    <div style={{
++                      width: 56,
++                      height: 56,
++                      borderRadius: 28,
++                      background: `linear-gradient(135deg, ${colorHex} 0%, ${colorHex}cc 100%)`,
++                      display: 'flex',
++                      alignItems: 'center',
++                      justifyContent: 'center',
++                      color: '#fff',
++                      flexShrink: 0,
++                      boxShadow: `0 3px 8px ${colorHex}40`
++                    }}>
++                      <Icon size={28} />
++                    </div>
++
++                    {/* Name + Toggle */}
++                    <div style={{ flex: 1, minWidth: 0 }}>
++                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
++                        <input
++                          type="checkbox"
++                          checked={voice.enabled}
++                          onChange={e => handleUpdate(id, 'enabled', e.target.checked)}
++                          style={{
++                            width: 18,
++                            height: 18,
++                            cursor: 'pointer',
++                            accentColor: colorHex
++                          }}
++                        />
++                        <input
++                          type="text"
++                          value={voice.name}
++                          onChange={e => handleRename(id, e.target.value)}
++                          placeholder="Voice Name"
++                          style={{
++                            flex: 1,
++                            border: 'none',
++                            borderBottom: '2px solid transparent',
++                            fontSize: 18,
++                            fontWeight: 700,
++                            background: 'transparent',
++                            padding: '4px 0',
++                            color: '#2c2c2c',
++                            outline: 'none',
++                            transition: 'border-color 0.2s'
++                          }}
++                          onFocus={(e) => {
++                            e.currentTarget.style.borderBottomColor = colorHex;
++                          }}
++                          onBlur={(e) => {
++                            e.currentTarget.style.borderBottomColor = 'transparent';
++                          }}
++                        />
++                      </div>
++
++                      {/* Icon + Color Selectors */}
++                      <div style={{ display: 'flex', gap: 8 }}>
++                        <select
++                          value={voice.icon}
++                          onChange={e => handleUpdate(id, 'icon', e.target.value)}
++                          style={{
++                            flex: 1,
++                            padding: '6px 8px',
++                            border: '1px solid #e0e0e0',
++                            borderRadius: 6,
++                            background: '#f9f9f9',
++                            fontSize: 12,
++                            cursor: 'pointer'
++                          }}
++                        >
++                          {Object.entries(ICON_LABELS).map(([name, label]) => (
++                            <option key={name} value={name}>{label}</option>
++                          ))}
++                        </select>
++                        <select
++                          value={voice.color}
++                          onChange={e => handleUpdate(id, 'color', e.target.value)}
++                          style={{
++                            flex: 1,
++                            padding: '6px 8px',
++                            border: '1px solid #e0e0e0',
++                            borderRadius: 6,
++                            background: '#f9f9f9',
++                            fontSize: 12,
++                            cursor: 'pointer'
++                          }}
++                        >
++                          {Object.entries(COLORS).map(([name, { label }]) => (
++                            <option key={name} value={name}>
++                              {label}
++                            </option>
++                          ))}
++                        </select>
++                      </div>
++                    </div>
++                  </div>
++
++                  {/* System Prompt */}
++                  <div>
++                    <label style={{
++                      display: 'block',
++                      fontSize: 11,
++                      fontWeight: 600,
++                      color: '#666',
++                      marginBottom: 6,
++                      textTransform: 'uppercase',
++                      letterSpacing: '0.5px'
++                    }}>
++                      Personality Prompt
++                    </label>
++                    <textarea
++                      value={voice.systemPrompt}
++                      onChange={e => handleUpdate(id, 'systemPrompt', e.target.value)}
++                      placeholder="Describe this voice's personality, tone, and perspective..."
++                      style={{
++                        width: '100%',
++                        minHeight: 120,
++                        padding: 12,
++                        fontSize: 13,
++                        fontFamily: 'monospace',
++                        border: '1px solid #e0e0e0',
++                        borderRadius: 6,
++                        background: '#fafafa',
++                        resize: 'vertical',
++                        boxSizing: 'border-box',
++                        lineHeight: 1.6,
++                        transition: 'all 0.2s'
++                      }}
++                      onFocus={(e) => {
++                        e.currentTarget.style.borderColor = colorHex;
++                        e.currentTarget.style.background = '#fff';
++                      }}
++                      onBlur={(e) => {
++                        e.currentTarget.style.borderColor = '#e0e0e0';
++                        e.currentTarget.style.background = '#fafafa';
++                      }}
++                    />
++                  </div>
+                 </div>
+-              </div>
+-            ))}
++              );
++            })}
+           </div>
+-        </div>
++        )}
+ 
+-        {/* Voice Personas Grid */}
+-        <div style={{
+-          display: 'grid',
+-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+-          gap: 20,
+-          alignContent: 'start'
+-        }}>
+-        {Object.entries(voices).map(([id, voice]) => (
+-          <div key={id} style={{ padding: 12, border: '1px solid #d0c4b0', borderRadius: 4, position: 'relative', background: '#fffef9' }}>
+-            <button
+-              onClick={() => handleDelete(id)}
+-              style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}
+-              title="Delete"
+-            >
+-              🗑️
+-            </button>
++        {/* META TAB */}
++        {activeTab === 'meta' && (
++          <div style={{ maxWidth: 800, margin: '0 auto' }}>
++            <div style={{
++              padding: 24,
++              background: '#fff',
++              border: '2px solid #d0c4b0',
++              borderRadius: 12,
++              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
++            }}>
++              <h3 style={{
++                margin: '0 0 8px 0',
++                fontSize: 20,
++                fontWeight: 600,
++                color: '#2c2c2c'
++              }}>
++                Meta Prompt
++              </h3>
++              <p style={{
++                margin: '0 0 20px 0',
++                fontSize: 14,
++                color: '#666',
++                lineHeight: 1.6
++              }}>
++                Global instructions applied to all voice personas. These instructions affect both voice comments and chat conversations. Use this to set a consistent tone or add context that all voices should be aware of.
++              </p>
++              <textarea
++                value={metaPrompt}
++                onChange={e => setMetaPrompt(e.target.value)}
++                placeholder="e.g., Be honest and pragmatic. Prioritize mental well-being over theatrical commentary. Focus on actionable insights rather than abstract philosophizing..."
++                style={{
++                  width: '100%',
++                  minHeight: 200,
++                  padding: 16,
++                  fontSize: 14,
++                  fontFamily: 'monospace',
++                  border: '2px solid #e0e0e0',
++                  borderRadius: 8,
++                  background: '#fafafa',
++                  resize: 'vertical',
++                  boxSizing: 'border-box',
++                  lineHeight: 1.7,
++                  transition: 'all 0.2s'
++                }}
++                onFocus={(e) => {
++                  e.currentTarget.style.borderColor = '#2c2c2c';
++                  e.currentTarget.style.background = '#fff';
++                }}
++                onBlur={(e) => {
++                  e.currentTarget.style.borderColor = '#e0e0e0';
++                  e.currentTarget.style.background = '#fafafa';
++                }}
++              />
++            </div>
++          </div>
++        )}
+ 
+-            <div style={{ marginBottom: 8 }}>
+-              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+-                <input
+-                  type="checkbox"
+-                  checked={voice.enabled}
+-                  onChange={e => handleUpdate(id, 'enabled', e.target.checked)}
+-                />
+-                <input
+-                  type="text"
+-                  value={voice.name}
+-                  onChange={e => handleRename(id, e.target.value)}
+-                  placeholder="Voice Name"
+-                  style={{ flex: 1, border: 'none', borderBottom: '1px solid #d0c4b0', fontSize: 14, fontWeight: 'bold', background: 'transparent', padding: '4px 0' }}
+-                />
+-              </label>
++        {/* STATES TAB */}
++        {activeTab === 'states' && (
++          <div style={{ maxWidth: 900, margin: '0 auto' }}>
++            {/* Greeting Section */}
++            <div style={{
++              marginBottom: 24,
++              padding: 24,
++              background: '#fff',
++              border: '2px solid #d0c4b0',
++              borderRadius: 12,
++              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
++            }}>
++              <h3 style={{
++                margin: '0 0 8px 0',
++                fontSize: 20,
++                fontWeight: 600,
++                color: '#2c2c2c'
++              }}>
++                Greeting Message
++              </h3>
++              <p style={{
++                margin: '0 0 16px 0',
++                fontSize: 14,
++                color: '#666',
++                lineHeight: 1.6
++              }}>
++                The message shown when you start writing. This appears at the top of the page.
++              </p>
++              <input
++                type="text"
++                value={stateConfig.greeting}
++                onChange={e => setStateConfig({ ...stateConfig, greeting: e.target.value })}
++                placeholder="e.g., How are you feeling today?"
++                style={{
++                  width: '100%',
++                  padding: 12,
++                  fontSize: 15,
++                  border: '2px solid #e0e0e0',
++                  borderRadius: 8,
++                  background: '#fafafa',
++                  boxSizing: 'border-box',
++                  transition: 'all 0.2s'
++                }}
++                onFocus={(e) => {
++                  e.currentTarget.style.borderColor = '#2c2c2c';
++                  e.currentTarget.style.background = '#fff';
++                }}
++                onBlur={(e) => {
++                  e.currentTarget.style.borderColor = '#e0e0e0';
++                  e.currentTarget.style.background = '#fafafa';
++                }}
++              />
+             </div>
+ 
+-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+-              <select
+-                value={voice.icon}
+-                onChange={e => handleUpdate(id, 'icon', e.target.value)}
+-                style={{ flex: 1, padding: 4, border: '1px solid #d0c4b0', borderRadius: 4, background: '#fff' }}
+-              >
+-                {Object.entries(ICONS).map(([name, emoji]) => (
+-                  <option key={name} value={name}>{emoji} {name}</option>
+-                ))}
+-              </select>
+-              <select
+-                value={voice.color}
+-                onChange={e => handleUpdate(id, 'color', e.target.value)}
+-                style={{ flex: 1, padding: 4, border: '1px solid #d0c4b0', borderRadius: 4, background: '#fff' }}
+-              >
+-                {Object.entries(COLORS).map(([name, { hex, label }]) => (
+-                  <option key={name} value={name} style={{ color: hex }}>● {label}</option>
++            {/* States List */}
++            <div style={{
++              padding: 24,
++              background: '#fff',
++              border: '2px solid #d0c4b0',
++              borderRadius: 12,
++              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
++            }}>
++              <h3 style={{
++                margin: '0 0 8px 0',
++                fontSize: 20,
++                fontWeight: 600,
++                color: '#2c2c2c'
++              }}>
++                User States
++              </h3>
++              <p style={{
++                margin: '0 0 24px 0',
++                fontSize: 14,
++                color: '#666',
++                lineHeight: 1.6
++              }}>
++                Define emotional states that users can select. Each state has a prompt that influences how AI voices respond.
++              </p>
++
++              {/* States Grid */}
++              <div style={{ display: 'grid', gap: 16 }}>
++                {Object.entries(stateConfig.states).map(([id, state]) => (
++                  <div key={id} style={{
++                    padding: 16,
++                    background: '#f9f9f9',
++                    border: '2px solid #e0e0e0',
++                    borderRadius: 8,
++                    position: 'relative',
++                    transition: 'all 0.2s'
++                  }}
++                  onMouseEnter={(e) => {
++                    e.currentTarget.style.borderColor = '#d0c4b0';
++                  }}
++                  onMouseLeave={(e) => {
++                    e.currentTarget.style.borderColor = '#e0e0e0';
++                  }}
++                  >
++                    <button
++                      onClick={() => handleDeleteState(id)}
++                      style={{
++                        position: 'absolute',
++                        top: 12,
++                        right: 12,
++                        background: 'rgba(255, 255, 255, 0.9)',
++                        border: '1px solid #ddd',
++                        borderRadius: 6,
++                        width: 28,
++                        height: 28,
++                        display: 'flex',
++                        alignItems: 'center',
++                        justifyContent: 'center',
++                        cursor: 'pointer',
++                        fontSize: 14,
++                        transition: 'all 0.2s'
++                      }}
++                      onMouseEnter={(e) => {
++                        e.currentTarget.style.background = '#fee';
++                        e.currentTarget.style.borderColor = '#fcc';
++                      }}
++                      onMouseLeave={(e) => {
++                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
++                        e.currentTarget.style.borderColor = '#ddd';
++                      }}
++                      title="Delete"
++                    >
++                      ×
++                    </button>
++
++                    <div style={{ marginBottom: 12 }}>
++                      <label style={{
++                        display: 'block',
++                        fontSize: 11,
++                        fontWeight: 600,
++                        color: '#666',
++                        marginBottom: 6,
++                        textTransform: 'uppercase',
++                        letterSpacing: '0.5px'
++                      }}>
++                        State Name
++                      </label>
++                      <input
++                        type="text"
++                        value={state.name}
++                        onChange={e => handleUpdateState(id, 'name', e.target.value)}
++                        placeholder="e.g., Happy, Anxious, Reflective..."
++                        style={{
++                          width: '100%',
++                          padding: 10,
++                          fontSize: 15,
++                          fontWeight: 600,
++                          border: '2px solid #e0e0e0',
++                          borderRadius: 6,
++                          background: '#fff',
++                          boxSizing: 'border-box',
++                          transition: 'all 0.2s'
++                        }}
++                        onFocus={(e) => {
++                          e.currentTarget.style.borderColor = '#2c2c2c';
++                        }}
++                        onBlur={(e) => {
++                          e.currentTarget.style.borderColor = '#e0e0e0';
++                        }}
++                      />
++                    </div>
++
++                    <div>
++                      <label style={{
++                        display: 'block',
++                        fontSize: 11,
++                        fontWeight: 600,
++                        color: '#666',
++                        marginBottom: 6,
++                        textTransform: 'uppercase',
++                        letterSpacing: '0.5px'
++                      }}>
++                        State Prompt
++                      </label>
++                      <textarea
++                        value={state.prompt}
++                        onChange={e => handleUpdateState(id, 'prompt', e.target.value)}
++                        placeholder="e.g., The user is feeling anxious and overthinking things. Be gentle and help them ground themselves in the present moment..."
++                        style={{
++                          width: '100%',
++                          minHeight: 80,
++                          padding: 10,
++                          fontSize: 13,
++                          fontFamily: 'monospace',
++                          border: '2px solid #e0e0e0',
++                          borderRadius: 6,
++                          background: '#fff',
++                          resize: 'vertical',
++                          boxSizing: 'border-box',
++                          lineHeight: 1.6,
++                          transition: 'all 0.2s'
++                        }}
++                        onFocus={(e) => {
++                          e.currentTarget.style.borderColor = '#2c2c2c';
++                        }}
++                        onBlur={(e) => {
++                          e.currentTarget.style.borderColor = '#e0e0e0';
++                        }}
++                      />
++                    </div>
++                  </div>
+                 ))}
+-              </select>
++              </div>
+             </div>
+-
+-            <textarea
+-              value={voice.systemPrompt}
+-              onChange={e => handleUpdate(id, 'systemPrompt', e.target.value)}
+-              placeholder="Voice prompt..."
+-              style={{ width: '100%', minHeight: 100, padding: 8, fontSize: 13, fontFamily: 'monospace', border: '1px solid #d0c4b0', borderRadius: 4, background: '#fff', resize: 'none', boxSizing: 'border-box' }}
+-            />
+           </div>
+-        ))}
+-        </div>
++        )}
+       </div>
+     </div>
+   );
+
+*** MODIFIED: frontend/src/engine/EditorEngine.ts (+31/-6) ***
+@@ -166,7 +166,16 @@ export class EditorEngine {
+     this.checkAnalysisTrigger(combinedText, energy);
+ 
+     // Check if we can apply commentors
+-    this.checkCommentorApplication(combinedText, energy);
++    const result = this.checkCommentorApplication(combinedText, energy);
++
++    // @@@ If comments were skipped, invalidate cache to allow fresh request
++    if (result.skippedAny && !result.appliedAny) {
++      console.log(`🔄 Comments were skipped, invalidating cache to allow fresh request`);
++      const completedSentences = getCompletedSentences(combinedText);
++      if (completedSentences) {
++        this.sentCache.delete(completedSentences);
++      }
++    }
+ 
+     this.notifyChange();
+   }
+@@ -212,8 +221,9 @@ export class EditorEngine {
+   }
+ 
+   // @@@ Check if we can apply commentors from waitlist
+-  private checkCommentorApplication(text: string, currentEnergy: number): boolean {
++  private checkCommentorApplication(text: string, currentEnergy: number): { appliedAny: boolean; skippedAny: boolean } {
+     let appliedAny = false;
++    let skippedAny = false;
+ 
+     // Apply ONE commentor at a time when we have enough energy
+     while (this.commentorWaitlist.length > 0) {
+@@ -229,13 +239,15 @@ export class EditorEngine {
+       // Check if text still matches (current text starts with snapshot)
+       if (!text.startsWith(commentor.textSnapshot)) {
+         console.log(`⏭️ Skipped outdated commentor: ${commentor.voice}`);
++        skippedAny = true;
+         continue;
+       }
+ 
+       // @@@ Check for overlap with existing highlights
+       const phraseIndex = text.toLowerCase().indexOf(commentor.phrase.toLowerCase());
+       if (phraseIndex === -1) {
+         console.log(`⏭️ Skipped commentor (phrase not found): ${commentor.voice}`);
++        skippedAny = true;
+         continue;
+       }
+ 
+@@ -260,6 +272,7 @@ export class EditorEngine {
+       }
+ 
+       if (hasOverlap) {
++        skippedAny = true;
+         continue;
+       }
+ 
+@@ -276,7 +289,7 @@ export class EditorEngine {
+       this.notifyChange();
+     }
+ 
+-    return appliedAny;
++    return { appliedAny, skippedAny };
+   }
+ 
+   // @@@ Request analysis from backend
+@@ -376,10 +389,22 @@ export class EditorEngine {
+     const currentEnergy = lastEntry?.energy || 0;
+ 
+     // Try to apply comments from waitlist
+-    const appliedAny = this.checkCommentorApplication(text, currentEnergy);
+-
++    const result = this.checkCommentorApplication(text, currentEnergy);
++
++    // @@@ If comments were skipped but not applied, invalidate cache
++    if (result.skippedAny && !result.appliedAny) {
++      console.log(`🔄 All pending comments were skipped, invalidating cache`);
++      const completedSentences = getCompletedSentences(text);
++      if (completedSentences) {
++        this.sentCache.delete(completedSentences);
++        // Trigger a fresh request immediately
++        setTimeout(() => {
++          this.checkAnalysisTrigger(text, currentEnergy);
++        }, 50);
++      }
++    }
+     // If we applied comments, hash changed, so check if we need another request
+-    if (appliedAny) {
++    else if (result.appliedAny) {
+       // Give a small delay to let the UI update
+       setTimeout(() => {
+         this.checkAnalysisTrigger(text, currentEnergy);

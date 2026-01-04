@@ -1,0 +1,85 @@
+{
+  "sha": "fc203bf679b5bcd3430162815da289cb78719d35",
+  "node_id": "C_kwDOP2Zrm9oAKGZjMjAzYmY2NzliNWJjZDM0MzAxNjI4MTVkYTI4OWNiNzg3MTlkMzU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T14:41:23Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T14:41:23Z"
+    },
+    "message": "add proxy to deployment workflow",
+    "tree": {
+      "sha": "79bed5cfad1262ee5026666b0315504f7e17e596",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/79bed5cfad1262ee5026666b0315504f7e17e596"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/fc203bf679b5bcd3430162815da289cb78719d35",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fc203bf679b5bcd3430162815da289cb78719d35",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fc203bf679b5bcd3430162815da289cb78719d35",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fc203bf679b5bcd3430162815da289cb78719d35/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "f44a7e5d653cf443e288b910bf315e2d14aed7d7",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f44a7e5d653cf443e288b910bf315e2d14aed7d7",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f44a7e5d653cf443e288b910bf315e2d14aed7d7"
+    }
+  ],
+  "stats": {
+    "total": 53,
+    "additions": 41,
+    "deletions": 12
+  },
+  "files": [
+    {
+      "sha": "f2a04f4abe210f120306b9eaf312548d4c6810d0",
+      "filename": ".github/workflows/deploy-backend.yml",
+      "status": "modified",
+      "additions": 7,
+      "deletions": 0,
+      "changes": 7,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fc203bf679b5bcd3430162815da289cb78719d35/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fc203bf679b5bcd3430162815da289cb78719d35/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.github%2Fworkflows%2Fdeploy-backend.yml?ref=fc203bf679b5bcd3430162815da289cb78719d35",
+      "patch": "@@ -88,6 +88,13 @@ jobs:\n               -p 127.0.0.1:8765:8765 \\\n               -v /root/ink-and-memory/backend/data:/app/data \\\n               -v /root/ink-and-memory/backend/models.json:/app/models.json:ro \\\n+              --add-host host.docker.internal:host-gateway \\\n+              -e HTTP_PROXY=http://host.docker.internal:7890 \\\n+              -e HTTPS_PROXY=http://host.docker.internal:7890 \\\n+              -e NO_PROXY=localhost,127.0.0.1,::1 \\\n+              -e http_proxy=http://host.docker.internal:7890 \\\n+              -e https_proxy=http://host.docker.internal:7890 \\\n+              -e no_proxy=localhost,127.0.0.1,::1 \\\n               -e BACKEND_VERSION=${IMAGE_TAG} \\\n               ${IMAGE_TAG}\n             tmux kill-session -t ink-and-memory-docker 2>/dev/null || true"
+    },
+    {
+      "sha": "b2d2972fc97340a80168fa31a3ab42d3a7dddca1",
+      "filename": "backend/config.py",
+      "status": "modified",
+      "additions": 12,
+      "deletions": 12,
+      "changes": 24,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fc203bf679b5bcd3430162815da289cb78719d35/backend%2Fconfig.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fc203bf679b5bcd3430162815da289cb78719d35/backend%2Fconfig.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fconfig.py?ref=fc203bf679b5bcd3430162815da289cb78719d35",
+      "patch": "@@ -7,23 +7,23 @@\n # VOICE_ANALYSIS_MODEL = \"deepseek-v3.2\"\n # VOICE_ANALYSIS_MODEL = \"gemini-3-pro-preview\"\n # VOICE_ANALYSIS_MODEL = \"mistral-small-creative\"\n-# VOICE_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n-VOICE_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n+# VOICE_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n+VOICE_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n \n-# VOICE_INSPIRATION_MODEL = \"gemini-3-flash-preview\"\n-VOICE_INSPIRATION_MODEL = \"claude-sonnet-4.5\"\n+# VOICE_INSPIRATION_MODEL = \"claude-sonnet-4.5\"\n+VOICE_INSPIRATION_MODEL = \"gemini-3-flash-preview\"\n \n-# VOICE_CHAT_MODEL = \"gemini-3-flash-preview\"\n-VOICE_CHAT_MODEL = \"claude-sonnet-4.5\"\n+# VOICE_CHAT_MODEL = \"claude-sonnet-4.5\"\n+VOICE_CHAT_MODEL = \"gemini-3-flash-preview\"\n \n-# ECHO_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n-ECHO_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n+# ECHO_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n+ECHO_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n \n-# TRAIT_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n-TRAIT_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n+# TRAIT_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n+TRAIT_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n \n-# PATTERN_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n-PATTERN_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n+# PATTERN_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n+PATTERN_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n \n # @@@ Sparsity control\n MAX_VOICES = 5"
+    },
+    {
+      "sha": "b7bc55c01506fc65eb701b7540e8ecdf1465fb4e",
+      "filename": "backend/docker-compose.yml",
+      "status": "added",
+      "additions": 22,
+      "deletions": 0,
+      "changes": 22,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fc203bf679b5bcd3430162815da289cb78719d35/backend%2Fdocker-compose.yml",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fc203bf679b5bcd3430162815da289cb78719d35/backend%2Fdocker-compose.yml",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdocker-compose.yml?ref=fc203bf679b5bcd3430162815da289cb78719d35",
+      "patch": "@@ -0,0 +1,22 @@\n+version: \"3.8\"\n+\n+services:\n+  ink-backend:\n+    image: ghcr.io/shuxueshuxue/ink-backend:latest\n+    container_name: ink-backend\n+    restart: unless-stopped\n+    extra_hosts:\n+      - \"host.docker.internal:host-gateway\"\n+    ports:\n+      - \"127.0.0.1:8765:8765\"\n+    volumes:\n+      - ./data:/app/data\n+      - ./models.json:/app/models.json:ro\n+    environment:\n+      BACKEND_VERSION: ghcr.io/shuxueshuxue/ink-backend:latest\n+      HTTP_PROXY: http://host.docker.internal:7890\n+      HTTPS_PROXY: http://host.docker.internal:7890\n+      NO_PROXY: localhost,127.0.0.1,::1\n+      http_proxy: http://host.docker.internal:7890\n+      https_proxy: http://host.docker.internal:7890\n+      no_proxy: localhost,127.0.0.1,::1"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+name: Check Backend (CI)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci-backend.yml"
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # We build, but we DO NOT push. This verifies the build succeeds.
+      - name: Build Docker Image (Dry Run)
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -t test-build \
+            --load \
+            backend

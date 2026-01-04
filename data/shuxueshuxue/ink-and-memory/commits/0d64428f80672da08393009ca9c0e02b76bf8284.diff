@@ -1,0 +1,366 @@
+*** FILE: docs/voice-customization.md ***
+@@ -0,0 +1,277 @@
++# Voice Customization System
++
++## Architecture
++
++### Source of Truth
++- **Server**: Owns default voice configurations
++- **localStorage**: Stores user customizations (complete replacement, not merge)
++
++### Rule: No Merging
++- User either uses server defaults OR their own customizations
++- Never merge the two
++- Clear ownership prevents conflicts
++
++## Data Flow
++
++```
++┌─────────────────────────────────────────────────────────┐
++│ 1. App Init: GET /api/sessions/analyze_text            │
++│    Server returns default voices                        │
++└────────────────┬────────────────────────────────────────┘
++                 │
++┌────────────────▼────────────────────────────────────────┐
++│ 2. Check localStorage['voice-customizations']          │
++│    EXISTS    → Use customizations (ignore server)       │
++│    NOT EXIST → Use server defaults                      │
++└────────────────┬────────────────────────────────────────┘
++                 │
++┌────────────────▼────────────────────────────────────────┐
++│ 3. User edits in Settings Panel                        │
++│    [Save]        → Write to localStorage                │
++│    [Use Default] → Delete from localStorage             │
++│    [Export]      → Download JSON file                   │
++│    [Import]      → Read JSON → Write to localStorage    │
++└─────────────────────────────────────────────────────────┘
++```
++
++## API Contract
++
++### GET /api/sessions/{session_id}
++
++**Response:**
++```json
++{
++  "id": "analyze_text",
++  "name": "Analyze Voices",
++  "description": "Detect inner voices in writing",
++  "defaultVoices": {
++    "logic": {
++      "name": "Logic",
++      "systemPrompt": "You are Logic. Analyze for patterns and inconsistencies...",
++      "icon": "🧠",
++      "color": "#4a5568",
++      "highlightColor": "blue"
++    },
++    "empathy": {
++      "name": "Empathy",
++      "systemPrompt": "You are Empathy. Focus on emotional depth...",
++      "icon": "❤️",
++      "color": "#e53e3e",
++      "highlightColor": "pink"
++    },
++    "creativity": { /* ... */ },
++    "criticism": { /* ... */ }
++  }
++}
++```
++
++### POST /api/trigger
++
++**Request:**
++```json
++{
++  "text": "The protagonist walked slowly...",
++  "voices": {
++    "logic": {
++      "name": "Logic",
++      "systemPrompt": "You are Logic...",
++      "enabled": true,
++      "icon": "🧠",
++      "color": "#4a5568",
++      "highlightColor": "blue"
++    }
++  }
++}
++```
++
++**Notes:**
++- Frontend sends complete voice configs (not IDs)
++- Backend uses provided systemPrompt (doesn't look up)
++- Only enabled voices are sent
++
++## Type Definitions
++
++### TypeScript
++```typescript
++// src/types/voice.ts
++export interface VoiceConfig {
++  name: string;
++  systemPrompt: string;
++  enabled: boolean;
++  icon: string;
++  color: string;
++  highlightColor: string;
++}
++
++export type VoicesPayload = Record<string, VoiceConfig>;
++```
++
++### Python
++```python
++# backend/types.py
++from pydantic import BaseModel
++
++class VoiceConfig(BaseModel):
++    name: str
++    systemPrompt: str
++    enabled: bool
++    icon: str
++    color: str
++    highlightColor: str
++```
++
++## localStorage Schema
++
++**Key:** `voice-customizations`
++
++**Value:**
++```json
++{
++  "version": "1.0.0",
++  "voices": {
++    "logic": {
++      "name": "My Logic",
++      "systemPrompt": "Custom prompt...",
++      "enabled": true,
++      "icon": "🧠",
++      "color": "#4a5568",
++      "highlightColor": "blue"
++    }
++  }
++}
++```
++
++**Important:** If key exists, use it completely. Don't merge with server defaults.
++
++## Settings Panel UI
++
++```
++┌────────────────────────────────────┐
++│ Voice Settings              [Close]│
++├────────────────────────────────────┤
++│                                    │
++│ [Import] [Export] [Use Default]    │
++│                                    │
++│ ┌──────────────────────────────┐  │
++│ │ ☑ 🧠 Logic                   │  │
++│ │ System Prompt:                │  │
++│ │ ┌──────────────────────────┐ │  │
++│ │ │You are Logic. Analyze... │ │  │
++│ │ │                          │ │  │
++│ │ └──────────────────────────┘ │  │
++│ │ Color: [#4a5568 ▼]           │  │
++│ └──────────────────────────────┘  │
++│                                    │
++│ ┌──────────────────────────────┐  │
++│ │ ☑ ❤️ Empathy                  │  │
++│ │ ...                           │  │
++│ └──────────────────────────────┘  │
++│                                    │
++│              [Save Changes]        │
++└────────────────────────────────────┘
++```
++
++### Buttons
++
++**[Import]**
++- Opens file picker
++- Reads JSON file
++- Validates schema
++- Writes to localStorage
++- Reloads app state
++
++**[Export]**
++- Reads current voices (from state, not localStorage)
++- Downloads as `voice-config-{timestamp}.json`
++- No server interaction
++
++**[Use Default]**
++- Deletes `voice-customizations` from localStorage
++- Fetches server defaults again
++- Reloads app state
++
++**[Save Changes]**
++- Writes current form state to localStorage
++- No server interaction
++- Shows confirmation toast
++
++## Implementation Checklist
++
++### Backend
++- [ ] Add `defaultVoices` to session response
++- [ ] Update `/api/trigger` to accept `voices` parameter
++- [ ] Remove hardcoded voice lookups
++
++### Frontend
++- [ ] Create `VoiceConfig` type
++- [ ] Create `SettingsPanel` component
++- [ ] Create `VoiceEditor` component
++- [ ] Implement localStorage manager
++- [ ] Add import/export functions
++- [ ] Update API calls to send voices
++- [ ] Add settings toggle button
++
++### Testing
++- [ ] Test: Use server defaults (no localStorage)
++- [ ] Test: Save customizations
++- [ ] Test: Export → Import
++- [ ] Test: Use Default (clears localStorage)
++- [ ] Test: Invalid import JSON (error handling)
++
++## Edge Cases
++
++### Server defaults change
++- User has old customizations in localStorage
++- **Decision:** User customizations take precedence
++- User must manually "Use Default" to get new server voices
++- Alternative: Show notification "Server voices updated" with option to review
++
++### Invalid localStorage data
++- Corrupted JSON
++- Missing required fields
++- **Decision:** Delete and fall back to server defaults
++- Log error to console for debugging
++
++### Voice disabled mid-analysis
++- User disables voice while analysis running
++- **Decision:** Let current analysis finish
++- Next trigger respects new enabled state
++
++## Migration Plan
++
++### Phase 1: Backend changes
++1. Add `defaultVoices` to session endpoint
++2. Accept `voices` in trigger endpoint
++3. Deploy backend
++
++### Phase 2: Frontend changes (compatible)
++1. Add Settings Panel UI (hidden behind flag)
++2. Add localStorage logic
++3. Update trigger to send voices
++4. Deploy frontend
++
++### Phase 3: Enable feature
++1. Remove feature flag
++2. Show Settings button
++3. Add onboarding tooltip
++
++## Future Enhancements
++
++### Voice Templates
++- Share voice configs via URL
++- Community voice library
++- One-click install presets
++
++### Validation
++- Max prompt length (prevent token overflow)
++- Required fields validation
++- Color format validation
++
++### Analytics
++- Track which voices are most used
++- Track customization adoption rate
++- Track default vs custom usage
++
++---
++
++**Last Updated:** 2025-10-16
+
+*** FILE: frontend/src/App.tsx ***
+@@ -32,6 +32,12 @@ function App() {
+       : generateUUID()
+   ).current;
+ 
++  // @@@ Version logging for cache debugging
++  useEffect(() => {
++    console.log('🎭 Ink & Memory - Version: v1.1.0-weighted-40');
++    console.log('📊 Analysis trigger threshold: 40 weight units (~40 English chars OR ~13 Chinese chars)');
++  }, []);
++
+   const [voices, setVoices] = useState<Voice[]>([]);
+   const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>([]);
+   const [currentText, setCurrentText] = useState<string>('');
+@@ -80,25 +86,47 @@ function App() {
+     setFocusedVoiceIndex(closestIndex);
+   }, [cursorPosition, voices]);
+ 
++  // @@@ weighted-character-counting - English chars = 1 weight, CJK chars = 3 weight
++  // This elegantly balances both languages: ~30 English chars OR ~10 Chinese chars to trigger
++  const getWeightedLength = (text: string): number => {
++    let weight = 0;
++
++    for (const char of text) {
++      // CJK characters (Chinese, Japanese, Korean)
++      if (/[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff]/.test(char)) {
++        weight += 3;  // Chinese character = 3 weight
++      } else {
++        weight += 1;  // English/other = 1 weight
++      }
++    }
++
++    return weight;
++  };
++
+   const analyzeIfNeeded = async () => {
+     // Skip if already analyzing
+     if (isAnalyzingRef.current) {
+       return;
+     }
+ 
+     const currentTextValue = currentTextRef.current;
+-    const textDiff = Math.abs(currentTextValue.length - lastAnalyzedTextRef.current.length);
++    const lastTextValue = lastAnalyzedTextRef.current;
++
++    const currentWeight = getWeightedLength(currentTextValue);
++    const lastWeight = getWeightedLength(lastTextValue);
++    const weightDiff = Math.abs(currentWeight - lastWeight);
+ 
+-    // Only analyze if text changed by >10 characters
+-    if (textDiff <= 10) {
++    // Only analyze if text changed by >40 weight
++    // (~40 English chars OR ~13 Chinese chars OR mixed)
++    if (weightDiff <= 40) {
+       return;
+     }
+ 
+     isAnalyzingRef.current = true;
+     lastAnalyzedTextRef.current = currentTextValue;
+ 
+     try {
+-      console.log(`🔍 Calling backend analysis (${textDiff} chars changed)...`);
++      console.log(`🔍 Calling backend analysis (${weightDiff} weight units changed)...`);
+       const backendVoices = await analyzeText(currentTextValue, sessionId);
+       console.log(`✅ Got ${backendVoices.length} voices from backend`);
+ 
+
+*** FILE: frontend/src/api/voiceApi.ts ***
+@@ -2,7 +2,8 @@
+  * API client for voice analysis backend
+  */
+ 
+-const API_BASE = 'http://101.201.227.31:8765';
++// nginx proxies /ink-and-memory/api/* to backend (8765)
++const API_BASE = '/ink-and-memory';
+ 
+ interface TriggerResponse {
+   success: boolean;
+
+*** FILE: frontend/vite.config.ts ***
+@@ -4,4 +4,5 @@ import react from '@vitejs/plugin-react'
+ // https://vite.dev/config/
+ export default defineConfig({
+   plugins: [react()],
++  base: '/ink-and-memory/',  // Deploy at lexicalmathical.com/ink-and-memory/
+ })

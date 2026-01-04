@@ -1,0 +1,72 @@
+commit 9b384932b9fe0f85a80c4373acdd33b60d418e3b
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Oct 8 09:03:02 2025 +0800
+
+    Add SINGLE_COMMENT_MODE with dedicated schema for gradual accumulation
+
+diff --git a/backend/config.py b/backend/config.py
+index 9cfb830..a7fde02 100644
+--- a/backend/config.py
++++ b/backend/config.py
+@@ -6,6 +6,7 @@ MODEL = "gpt-4o-dou"
+ # @@@ Sparsity control
+ MAX_VOICES = 5
+ MIN_TEXT_LENGTH = 20
++SINGLE_COMMENT_MODE = True  # If True, only add 1 comment per request (gradual accumulation)
+ 
+ # Voice archetypes (Disco Elysium skills adapted for general writing)
+ VOICE_ARCHETYPES = {
+diff --git a/backend/stateful_analyzer.py b/backend/stateful_analyzer.py
+index a7286c3..45eb560 100644
+--- a/backend/stateful_analyzer.py
++++ b/backend/stateful_analyzer.py
+@@ -18,6 +18,9 @@ class VoiceTrigger(BaseModel):
+ class VoiceAnalysis(BaseModel):
+     voices: list[VoiceTrigger] = Field(description="Detected voice triggers")
+ 
++class SingleVoiceAnalysis(BaseModel):
++    voice: VoiceTrigger | None = Field(description="Single voice trigger", default=None)
++
+ class StatefulVoiceAnalyzer:
+     """
+     Stateful analyzer that:
+@@ -201,11 +204,23 @@ IMPORTANT:
+ """
+ 
+         print("🤖 Calling LLM for new comments...")
++
++        # Choose schema based on config
++        if config.SINGLE_COMMENT_MODE:
++            schema_cls = SingleVoiceAnalysis
++            max_voices_for_prompt = 1
++        else:
++            schema_cls = VoiceAnalysis
++            max_voices_for_prompt = config.MAX_VOICES
++
++        # Update prompt with correct max_voices
++        prompt = prompt.replace(f"Maximum {config.MAX_VOICES} NEW voices", f"Maximum {max_voices_for_prompt} NEW voices")
++
+         result = agent.run(
+             prompt,
+             model=config.MODEL,
+             cli="no-tools",
+-            schema_cls=VoiceAnalysis,
++            schema_cls=schema_cls,
+             tracked=True
+         )
+ 
+@@ -213,7 +228,13 @@ IMPORTANT:
+             print("❌ LLM failed, returning existing comments")
+             return self.comments
+ 
+-        new_voices = result.data.get("voices", [])
++        # Extract voices based on schema type
++        if config.SINGLE_COMMENT_MODE:
++            voice = result.data.get("voice")
++            new_voices = [voice] if voice else []
++        else:
++            new_voices = result.data.get("voices", [])
++
+         print(f"✅ LLM returned {len(new_voices)} new comments")
+ 
+         # Step 4: Enforce density rules

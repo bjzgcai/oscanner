@@ -1,0 +1,23 @@
+{
+  "sha": "5f3ec4a902b5399f2eedb1160903048361e1d299",
+  "message": "Add multi-user support with session isolation and TTL cleanup\n\nBackend:\n- Replace global analyzer with session-based storage (_user_analyzers dict)\n- Add session_id parameter to analyze_text() API\n- Implement automatic cleanup of sessions inactive >1 hour\n- Track last access time per session to prevent memory leaks\n\nFrontend:\n- Generate unique session_id on mount using crypto.randomUUID()\n- Pass session_id in all API requests\n- Each browser tab gets isolated voice comment state\n\nAdditional improvements:\n- Increase icon diversity (lightbulb, masks, shield, compass, eye, fist, fire, wind)\n- Add cursor-based auto-scroll to focused voice comment\n- Fix text overflow with word-wrap\n- Hide scrollbar while maintaining scroll functionality\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-09T11:12:40Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-09T11:12:40Z"
+  },
+  "stats": {
+    "total": 281,
+    "additions": 162,
+    "deletions": 119
+  },
+  "files_count": 11,
+  "parents": [
+    "a86b58408f7e9dd6b7d494ff02cb0a606195cdaf"
+  ]
+}

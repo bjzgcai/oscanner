@@ -1,0 +1,23 @@
+{
+  "sha": "73de158e178ece1f10ac2d1d7f6e603366c6c1fb",
+  "message": "Add mobile-responsive view with cursor-based comment popups\n\nMobile-specific changes (viewport < 768px):\n- Hide global header (LeftSidebar) on mobile devices\n- Hide left toolbar with Start Fresh and @ buttons\n- Disable horizontal scrolling (overflowX: hidden, touchAction: pan-y)\n- Replace desktop side comments with bottom popup\n- Show comment only when cursor enters highlighted text area\n- Popup appears at bottom with smooth slide-in animation\n\nDesktop behavior unchanged:\n- All existing features work as before\n- Side comments remain visible and positioned correctly\n- Left sidebar and toolbar still accessible\n\nTechnical implementation:\n- Added useMobile() hook for responsive detection\n- Mobile detection based on viewport width (<768px) and user agent\n- Track mobileActiveComment state for cursor-based display\n- Modified cursor change handler to detect highlighted area entry\n- Added slideInFromBottom CSS animation for popup\n- Conditional rendering based on isMobile flag throughout\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T12:51:30Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T12:51:30Z"
+  },
+  "stats": {
+    "total": 185,
+    "additions": 152,
+    "deletions": 33
+  },
+  "files_count": 3,
+  "parents": [
+    "7ac4a9f8d96df689c34a755f56f74c2f1520a933"
+  ]
+}

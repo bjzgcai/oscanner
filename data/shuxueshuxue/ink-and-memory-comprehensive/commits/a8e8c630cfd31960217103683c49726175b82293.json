@@ -1,0 +1,61 @@
+{
+  "sha": "a8e8c630cfd31960217103683c49726175b82293",
+  "node_id": "C_kwDOP2Zrm9oAKGE4ZThjNjMwY2ZkMzE5NjAyMTcxMDM2ODNjNDk3MjYxNzViODIyOTM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-09T13:28:41Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-09T13:28:41Z"
+    },
+    "message": "change image generation apikey to load from models.json",
+    "tree": {
+      "sha": "83c78a178f034a85f2d4b11d29973a17ab0f49fe",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/83c78a178f034a85f2d4b11d29973a17ab0f49fe"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/a8e8c630cfd31960217103683c49726175b82293",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a8e8c630cfd31960217103683c49726175b82293",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/a8e8c630cfd31960217103683c49726175b82293",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/a8e8c630cfd31960217103683c49726175b82293/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "30be7c68037af9b5ba3bfc9993bcfc4c83fe7169",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/30be7c68037af9b5ba3bfc9993bcfc4c83fe7169",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/30be7c68037af9b5ba3bfc9993bcfc4c83fe7169"
+    }
+  ],
+  "stats": {
+    "total": 35,
+    "additions": 34,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "c06269d1fff05d27a21a38346ed5d3d3a7784049",
+      "filename": "backend/config.py",
+      "status": "modified",
+      "additions": 34,
+      "deletions": 1,
+      "changes": 35,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/a8e8c630cfd31960217103683c49726175b82293/backend%2Fconfig.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/a8e8c630cfd31960217103683c49726175b82293/backend%2Fconfig.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fconfig.py?ref=a8e8c630cfd31960217103683c49726175b82293",
+      "patch": "@@ -1,5 +1,6 @@\n \"\"\"Voice archetypes configuration - Echo system.\"\"\"\n \n+import json\n import os\n \n # Model to use for voice analysis\n@@ -14,7 +15,39 @@\n )\n \n # @@@ Image generation configuration\n-IMAGE_API_KEY = \"sk-yz0JLc7sGbCHnwam70Bc9e29Dc684bAe904102C95dF32fB1\"\n+def _load_image_api_key() -> str:\n+    \"\"\"\n+    Load image API key from backend/models.json; fail loudly if missing.\n+\n+    Expected shape:\n+    {\n+      \"models\": {\n+        \"gpt-5\": {\n+          \"endpoint\": \"...\",\n+          \"api_key\": \"...\",\n+          \"model\": \"...\"\n+        },\n+        ...\n+      }\n+    }\n+    \"\"\"\n+    models_path = os.path.join(os.path.dirname(__file__), \"models.json\")\n+    if not os.path.exists(models_path):\n+        raise RuntimeError(\"models.json not found; image API key unavailable\")\n+\n+    with open(models_path, \"r\", encoding=\"utf-8\") as f:\n+        data = json.load(f)\n+\n+    models = data.get(\"models\") or {}\n+    for _, cfg in models.items():\n+        key = cfg.get(\"api_key\")\n+        if key:\n+            return key\n+\n+    raise RuntimeError(\"No api_key found under models.* in models.json\")\n+\n+\n+IMAGE_API_KEY = _load_image_api_key()\n IMAGE_API_ENDPOINT = \"https://api.dou.chat/v1\"\n IMAGE_DESCRIPTION_MODEL = \"anthropic/claude-haiku-4.5\"\n IMAGE_GENERATION_MODEL = \"google/gemini-2.5-flash-image-preview\""
+    }
+  ]
+}

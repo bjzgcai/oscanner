@@ -1,0 +1,47 @@
+{
+  "hash": "2d3d70520cee9077fdc27b77ccff340a7e14093a",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Oct 26 14:08:20 2025 +0800",
+  "subject": "Integrate new engine as main App",
+  "files": [
+    "frontend/src/App.old.tsx",
+    "frontend/src/App.tsx",
+    "frontend/src/AppSimplified.tsx",
+    "frontend/src/engine/EditorEngine.ts",
+    "frontend/src/main.tsx"
+  ],
+  "diff": "commits/2d3d70520cee9077fdc27b77ccff340a7e14093a/2d3d70520cee9077fdc27b77ccff340a7e14093a.diff",
+  "related_files": {
+    "frontend/src/App.old.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/AppSimplified.tsx",
+      "frontend/src/engine/EditorEngine.ts",
+      "frontend/src/main.tsx"
+    ],
+    "frontend/src/App.tsx": [
+      "frontend/src/App.old.tsx",
+      "frontend/src/AppSimplified.tsx",
+      "frontend/src/engine/EditorEngine.ts",
+      "frontend/src/main.tsx"
+    ],
+    "frontend/src/AppSimplified.tsx": [
+      "frontend/src/App.old.tsx",
+      "frontend/src/App.tsx",
+      "frontend/src/engine/EditorEngine.ts",
+      "frontend/src/main.tsx"
+    ],
+    "frontend/src/engine/EditorEngine.ts": [
+      "frontend/src/App.old.tsx",
+      "frontend/src/App.tsx",
+      "frontend/src/AppSimplified.tsx",
+      "frontend/src/main.tsx"
+    ],
+    "frontend/src/main.tsx": [
+      "frontend/src/App.old.tsx",
+      "frontend/src/App.tsx",
+      "frontend/src/AppSimplified.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ]
+  }
+}

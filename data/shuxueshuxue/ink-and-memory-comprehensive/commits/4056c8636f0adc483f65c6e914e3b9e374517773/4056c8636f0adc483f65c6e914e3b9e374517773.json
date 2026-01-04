@@ -1,0 +1,20 @@
+{
+  "hash": "4056c8636f0adc483f65c6e914e3b9e374517773",
+  "author": "zhuchenyu2008",
+  "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+  "date": "Sun Dec 28 20:49:05 2025 +0800",
+  "subject": "Frontend Energy Accumulation Visualization",
+  "files": [
+    "frontend/src/App.css",
+    "frontend/src/App.tsx"
+  ],
+  "diff": "commits/4056c8636f0adc483f65c6e914e3b9e374517773/4056c8636f0adc483f65c6e914e3b9e374517773.diff",
+  "related_files": {
+    "frontend/src/App.css": [
+      "frontend/src/App.tsx"
+    ],
+    "frontend/src/App.tsx": [
+      "frontend/src/App.css"
+    ]
+  }
+}

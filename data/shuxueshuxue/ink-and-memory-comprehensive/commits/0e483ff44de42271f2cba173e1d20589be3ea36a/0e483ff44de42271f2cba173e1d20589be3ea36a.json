@@ -1,0 +1,14 @@
+{
+  "hash": "0e483ff44de42271f2cba173e1d20589be3ea36a",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Dec 16 17:23:50 2025 +0800",
+  "subject": "switch to sonnet model",
+  "files": [
+    "backend/config.py"
+  ],
+  "diff": "commits/0e483ff44de42271f2cba173e1d20589be3ea36a/0e483ff44de42271f2cba173e1d20589be3ea36a.diff",
+  "related_files": {
+    "backend/config.py": []
+  }
+}

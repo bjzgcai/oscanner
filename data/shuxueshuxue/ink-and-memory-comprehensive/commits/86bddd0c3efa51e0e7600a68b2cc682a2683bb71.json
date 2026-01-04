@@ -1,0 +1,61 @@
+{
+  "sha": "86bddd0c3efa51e0e7600a68b2cc682a2683bb71",
+  "node_id": "C_kwDOP2Zrm9oAKDg2YmRkZDBjM2VmYTUxZTBlNzYwMGE2OGIyY2M2ODJhMjY4M2JiNzE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-20T02:31:01Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-20T02:31:01Z"
+    },
+    "message": "fix open new session in new day",
+    "tree": {
+      "sha": "d5e29392a8cc0aef9ff8dc5702e56da5d21fe901",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/d5e29392a8cc0aef9ff8dc5702e56da5d21fe901"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/86bddd0c3efa51e0e7600a68b2cc682a2683bb71",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/86bddd0c3efa51e0e7600a68b2cc682a2683bb71",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/86bddd0c3efa51e0e7600a68b2cc682a2683bb71",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/86bddd0c3efa51e0e7600a68b2cc682a2683bb71/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "cd67692fd974da2f15b1c4daf1ccae5935a4c100",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cd67692fd974da2f15b1c4daf1ccae5935a4c100",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cd67692fd974da2f15b1c4daf1ccae5935a4c100"
+    }
+  ],
+  "stats": {
+    "total": 6,
+    "additions": 3,
+    "deletions": 3
+  },
+  "files": [
+    {
+      "sha": "ee3083b099baa28106f94e3f04b1f99dc4b6712d",
+      "filename": "frontend/src/hooks/useSessionLifecycle.ts",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 3,
+      "changes": 6,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/86bddd0c3efa51e0e7600a68b2cc682a2683bb71/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/86bddd0c3efa51e0e7600a68b2cc682a2683bb71/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts?ref=86bddd0c3efa51e0e7600a68b2cc682a2683bb71",
+      "patch": "@@ -356,9 +356,9 @@ export function useSessionLifecycle({\n                   setLocalTexts(new Map());\n                   ensuredSessionForDayRef.current = today;\n                   startedFreshForToday = true;\n-                  // @@@ New Day Guard - clear any previously chosen session so we don't overwrite the blank state below\n-                  sessionToLoad = null;\n-                  loadedSessionId = undefined;\n+                  // @@@ New Day Guard - hand the fresh state to the loader so nothing older overwrites it below\n+                  sessionToLoad = blankState;\n+                  loadedSessionId = blankState.id;\n \n                   await persistSessionImmediately(blankState);\n                 } else {"
+    }
+  ]
+}

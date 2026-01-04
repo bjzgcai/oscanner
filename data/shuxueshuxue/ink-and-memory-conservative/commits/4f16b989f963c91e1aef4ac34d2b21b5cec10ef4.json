@@ -1,0 +1,23 @@
+{
+  "sha": "4f16b989f963c91e1aef4ac34d2b21b5cec10ef4",
+  "message": "Remove unused TipTap extension file\n\n- Deleted frontend/src/extensions/VoiceHighlight.ts (143 lines)\n- Removed empty extensions/ directory\n- This file was from old TipTap editor implementation\n- App now uses plain textareas, so TipTap extension is obsolete\n- No imports found anywhere in codebase\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:51:33Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:51:33Z"
+  },
+  "stats": {
+    "total": 142,
+    "additions": 0,
+    "deletions": 142
+  },
+  "files_count": 1,
+  "parents": [
+    "adda5e7288db885babac02005215aedaa9c50221"
+  ]
+}

@@ -1,0 +1,10 @@
+*** FILE: backend/config.py ***
+@@ -58,7 +58,7 @@ def _load_image_api_key() -> str:
+ IMAGE_RETRY_TIMEOUT_INCREMENT = 30
+ IMAGE_MAX_TOKENS = 1000
+ IMAGE_DESCRIPTION_MAX_TOKENS = 500
+-IMAGE_DESCRIPTION_TIMEOUT = 30
++IMAGE_DESCRIPTION_TIMEOUT = 120
+ 
+ 
+ # @@@ Helper function to load voice prompts from files

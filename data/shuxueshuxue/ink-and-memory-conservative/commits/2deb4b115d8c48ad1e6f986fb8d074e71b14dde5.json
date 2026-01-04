@@ -1,0 +1,23 @@
+{
+  "sha": "2deb4b115d8c48ad1e6f986fb8d074e71b14dde5",
+  "message": "create websocket endpoint for speech recognition",
+  "author": {
+    "name": "Shaobin-Jiang",
+    "email": "shaobin-jiang@outlook.com",
+    "date": "2025-11-28T03:23:56Z"
+  },
+  "committer": {
+    "name": "Shaobin-Jiang",
+    "email": "shaobin-jiang@outlook.com",
+    "date": "2025-11-28T03:23:56Z"
+  },
+  "stats": {
+    "total": 82,
+    "additions": 81,
+    "deletions": 1
+  },
+  "files_count": 2,
+  "parents": [
+    "9eccd63da64da70f8e813dc684cc60afab2805d7"
+  ]
+}

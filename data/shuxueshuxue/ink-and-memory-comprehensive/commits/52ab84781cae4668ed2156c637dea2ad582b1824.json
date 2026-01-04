@@ -1,0 +1,61 @@
+{
+  "sha": "52ab84781cae4668ed2156c637dea2ad582b1824",
+  "node_id": "C_kwDOP2Zrm9oAKDUyYWI4NDc4MWNhZTQ2NjhlZDIxNTZjNjM3ZGVhMmFkNTgyYjE4MjQ",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T10:10:05Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T10:10:05Z"
+    },
+    "message": "remove friends system",
+    "tree": {
+      "sha": "c9310ca82a9e54f10e299ba39dd73daafaeaab3e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/c9310ca82a9e54f10e299ba39dd73daafaeaab3e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/52ab84781cae4668ed2156c637dea2ad582b1824",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/52ab84781cae4668ed2156c637dea2ad582b1824",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/52ab84781cae4668ed2156c637dea2ad582b1824",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/52ab84781cae4668ed2156c637dea2ad582b1824/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "071b7137b446696a9bb72134bee1b5e76d5a36d5",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/071b7137b446696a9bb72134bee1b5e76d5a36d5",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/071b7137b446696a9bb72134bee1b5e76d5a36d5"
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "additions": 1,
+    "deletions": 19
+  },
+  "files": [
+    {
+      "sha": "d58ec2a47bd3036dbe500e582a9786f145a7c1a3",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 19,
+      "changes": 20,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/52ab84781cae4668ed2156c637dea2ad582b1824/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/52ab84781cae4668ed2156c637dea2ad582b1824/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=52ab84781cae4668ed2156c637dea2ad582b1824",
+      "patch": "@@ -17,7 +17,6 @@ import { type CalendarEntry } from './utils/calendarStorage';\n import CollectionsView from './components/CollectionsView';\n import AnalysisView from './components/AnalysisView';\n import AboutView from './components/AboutView';\n-import FriendsView from './components/FriendsView';\n import AgentDropdown from './components/AgentDropdown';\n import ChatWidgetUI from './components/ChatWidgetUI';\n import StateChooser from './components/StateChooser';\n@@ -99,7 +98,7 @@ export default function App() {\n     }\n   }, [currentLanguage, i18n]);\n \n-  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks' | 'friends'>('writing');\n+  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks'>('writing');\n   const [showCalendarPopup, setShowCalendarPopup] = useState(false);\n   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});\n \n@@ -2285,23 +2284,6 @@ export default function App() {\n         </div>\n       )}\n \n-      {currentView === 'friends' && (\n-        <div style={{\n-          position: 'fixed',\n-          top: 48,\n-          left: 0,\n-          right: 0,\n-          bottom: 0,\n-          background: '#f8f0e6',\n-          display: 'flex',\n-          overflow: 'hidden'\n-        }}>\n-          <FriendsView\n-            isVisible={currentView === 'friends'}\n-          />\n-        </div>\n-      )}\n-\n       {/* Warning Dialog */}\n       {showWarning && (\n         <div style={{"
+    }
+  ]
+}

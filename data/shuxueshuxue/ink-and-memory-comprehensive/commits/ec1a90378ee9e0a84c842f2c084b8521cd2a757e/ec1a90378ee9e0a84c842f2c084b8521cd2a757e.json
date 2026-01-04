@@ -1,0 +1,20 @@
+{
+  "hash": "ec1a90378ee9e0a84c842f2c084b8521cd2a757e",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Thu Oct 30 09:30:37 2025 +0800",
+  "subject": "ui update",
+  "files": [
+    "backend/proxy_config.py",
+    "test_simplified.sh"
+  ],
+  "diff": "commits/ec1a90378ee9e0a84c842f2c084b8521cd2a757e/ec1a90378ee9e0a84c842f2c084b8521cd2a757e.diff",
+  "related_files": {
+    "backend/proxy_config.py": [
+      "test_simplified.sh"
+    ],
+    "test_simplified.sh": [
+      "backend/proxy_config.py"
+    ]
+  }
+}

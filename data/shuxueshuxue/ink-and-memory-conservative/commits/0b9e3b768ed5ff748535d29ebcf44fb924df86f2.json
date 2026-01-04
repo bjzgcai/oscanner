@@ -1,0 +1,23 @@
+{
+  "sha": "0b9e3b768ed5ff748535d29ebcf44fb924df86f2",
+  "message": "Fix timeline empty state and increase image generation timeout\n\nFrontend changes:\n- Increase API polling timeout from 30s to 2 minutes (accommodate China network latency)\n- Add generateDailyPicture API function\n- Remove timeline empty state check (always show timeline structure)\n- Rename \"Collections\" to \"Timeline\" in navigation\n- Fix TypeScript errors (date formatting, unused variables, type assertions)\n- Rename \"Analysis\" tab to \"Reflections\"\n\nBackend changes:\n- Add retry logic for image generation (3 attempts with 60s/90s/120s timeouts)\n- Total backend timeout: up to 270 seconds\n- Handles intermittent API slowness from Beijing server location\n\nRoot cause: Server in Beijing experiences 5.4x slower API responses (87s vs 16s locally)\ndue to Great Firewall latency when calling international image generation APIs.\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-29T16:18:43Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-29T16:18:43Z"
+  },
+  "stats": {
+    "total": 3834,
+    "additions": 2856,
+    "deletions": 978
+  },
+  "files_count": 10,
+  "parents": [
+    "2ac3fb07874d341f21c49fdb8e3cbb4158ad99ac"
+  ]
+}

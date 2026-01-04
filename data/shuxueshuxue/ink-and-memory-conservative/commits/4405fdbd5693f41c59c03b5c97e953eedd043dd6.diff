@@ -1,0 +1,126 @@
+*** MODIFIED: frontend/src/components/DeckManager.tsx (+99/-12) ***
+@@ -74,6 +74,7 @@ export default function DeckManager({ onUpdate }: Props) {
+   const [error, setError] = useState<string | null>(null);
+   const [editingVoice, setEditingVoice] = useState<string | null>(null);
+   const [editingField, setEditingField] = useState<'name' | 'prompt' | null>(null);
++  const [iconPickerOpen, setIconPickerOpen] = useState<string | null>(null); // @@@ Track which voice's icon picker is open
+   const [creatingDeck, setCreatingDeck] = useState(false);
+   const [creatingVoice, setCreatingVoice] = useState<string | null>(null);
+   const [publishWarning, setPublishWarning] = useState<string | null>(null);
+@@ -681,18 +682,104 @@ export default function DeckManager({ onUpdate }: Props) {
+                           >
+                             {/* Voice Header */}
+                             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+-                              <div style={{
+-                                width: 40,
+-                                height: 40,
+-                                borderRadius: 20,
+-                                background: `linear-gradient(135deg, ${voiceColor} 0%, ${voiceColor}cc 100%)`,
+-                                display: 'flex',
+-                                alignItems: 'center',
+-                                justifyContent: 'center',
+-                                color: '#fff',
+-                                flexShrink: 0
+-                              }}>
+-                                <VoiceIcon size={20} />
++                              {/* @@@ Icon badge with picker */}
++                              <div style={{ position: 'relative' }}>
++                                <div
++                                  onClick={() => {
++                                    if (!isSystem) {
++                                      setIconPickerOpen(iconPickerOpen === voice.id ? null : voice.id);
++                                    }
++                                  }}
++                                  style={{
++                                    width: 40,
++                                    height: 40,
++                                    borderRadius: 20,
++                                    background: `linear-gradient(135deg, ${voiceColor} 0%, ${voiceColor}cc 100%)`,
++                                    display: 'flex',
++                                    alignItems: 'center',
++                                    justifyContent: 'center',
++                                    color: '#fff',
++                                    flexShrink: 0,
++                                    cursor: isSystem ? 'default' : 'pointer',
++                                    transition: 'transform 0.2s, box-shadow 0.2s'
++                                  }}
++                                  onMouseEnter={(e) => {
++                                    if (!isSystem) {
++                                      e.currentTarget.style.transform = 'scale(1.1)';
++                                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
++                                    }
++                                  }}
++                                  onMouseLeave={(e) => {
++                                    if (!isSystem) {
++                                      e.currentTarget.style.transform = 'scale(1)';
++                                      e.currentTarget.style.boxShadow = 'none';
++                                    }
++                                  }}
++                                  title={isSystem ? '' : 'Click to change icon'}
++                                >
++                                  <VoiceIcon size={20} />
++                                </div>
++
++                                {/* Icon Picker Dropdown */}
++                                {iconPickerOpen === voice.id && (
++                                  <div
++                                    style={{
++                                      position: 'absolute',
++                                      top: 45,
++                                      left: 0,
++                                      background: '#fff',
++                                      border: '2px solid #4a90e2',
++                                      borderRadius: 8,
++                                      padding: 8,
++                                      boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
++                                      zIndex: 1000,
++                                      display: 'grid',
++                                      gridTemplateColumns: 'repeat(4, 1fr)',
++                                      gap: 4,
++                                      minWidth: 180
++                                    }}
++                                  >
++                                    {Object.entries(iconMap).map(([iconName, IconComponent]) => {
++                                      const isSelected = voice.icon === iconName;
++                                      return (
++                                        <div
++                                          key={iconName}
++                                          onClick={() => {
++                                            handleUpdateVoice(voice.id, { icon: iconName });
++                                            setIconPickerOpen(null);
++                                          }}
++                                          style={{
++                                            width: 40,
++                                            height: 40,
++                                            borderRadius: 8,
++                                            background: isSelected ? voiceColor : '#f0f0f0',
++                                            display: 'flex',
++                                            alignItems: 'center',
++                                            justifyContent: 'center',
++                                            color: isSelected ? '#fff' : '#666',
++                                            cursor: 'pointer',
++                                            transition: 'all 0.2s'
++                                          }}
++                                          onMouseEnter={(e) => {
++                                            if (!isSelected) {
++                                              e.currentTarget.style.background = '#e0e0e0';
++                                              e.currentTarget.style.transform = 'scale(1.1)';
++                                            }
++                                          }}
++                                          onMouseLeave={(e) => {
++                                            if (!isSelected) {
++                                              e.currentTarget.style.background = '#f0f0f0';
++                                              e.currentTarget.style.transform = 'scale(1)';
++                                            }
++                                          }}
++                                          title={iconName}
++                                        >
++                                          <IconComponent size={20} />
++                                        </div>
++                                      );
++                                    })}
++                                  </div>
++                                )}
+                               </div>
+ 
+                               <div style={{ flex: 1, minWidth: 0 }}>

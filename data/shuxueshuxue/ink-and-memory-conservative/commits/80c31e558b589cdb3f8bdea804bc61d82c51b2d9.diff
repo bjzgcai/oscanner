@@ -1,0 +1,666 @@
+*** MODIFIED: backend/server.py (+46/-6) ***
+@@ -18,6 +18,34 @@
+ import database
+ import auth
+ 
++SUPPORTED_LANGUAGES = {"en", "zh"}
++DEFAULT_LANGUAGE = "en"
++
++def normalize_language_code(language: Optional[str]) -> str:
++    if not language:
++        return DEFAULT_LANGUAGE
++    language = language.lower()
++    if language.startswith("zh"):
++        return "zh"
++    return "en"
++
++def resolve_language(_user_id: int, requested_language: Optional[str] = None) -> str:
++    """Return a supported language code, falling back to default."""
++    if requested_language:
++        code = normalize_language_code(requested_language)
++        if code in SUPPORTED_LANGUAGES:
++            return code
++    return DEFAULT_LANGUAGE
++
++def language_instruction(language_code: str, detail: str = "") -> str:
++    if language_code == "zh":
++        base = "请使用简体中文输出所有内容。"
++    else:
++        base = "Respond in English."
++    if detail:
++        return f"{base} {detail}".strip()
++    return base
++
+ # ========== Session Definitions (PolyCLI) ==========
+ 
+ @session_def(
+@@ -270,15 +298,18 @@ def analyze_text(text: str, editor_session_id: str, user_id: int, applied_commen
+     description="Find recurring themes and topics in all user notes",
+     params={
+         "all_notes": {"type": "str"},
+-        "user_id": {"type": "int"}
++        "user_id": {"type": "int"},
++        "language": {"type": "str"}
+     },
+     category="Analysis"
+ )
+-def analyze_echoes(all_notes: str, user_id: int):
++def analyze_echoes(all_notes: str, user_id: int, language: str = "en"):
+     """Analyze recurring themes and topics across all notes."""
+     print(f"\n{'='*60}")
+     print(f"🔄 analyze_echoes() called")
+     print(f"   Notes length: {len(all_notes)} chars")
++    language_code = normalize_language_code(language)
++    print(f"   Language: {language_code}")
+     print(f"{'='*60}\n")
+ 
+     agent = PolyAgent(id="echoes-analyzer")
+@@ -302,6 +333,7 @@ def analyze_echoes(all_notes: str, user_id: int):
+ ]
+ 
+ Return ONLY the JSON array, no other text."""
++    prompt += f"\n\n{language_instruction(language_code, 'All titles, descriptions, and examples should use this language. Keep the JSON keys the same.')}"
+ 
+     result = agent.run(prompt, model="gpt-4o-dou", cli="no-tools", tracked=True)
+ 
+@@ -320,15 +352,18 @@ def analyze_echoes(all_notes: str, user_id: int):
+     description="Identify personality traits and characteristics from user notes",
+     params={
+         "all_notes": {"type": "str"},
+-        "user_id": {"type": "int"}
++        "user_id": {"type": "int"},
++        "language": {"type": "str"}
+     },
+     category="Analysis"
+ )
+-def analyze_traits(all_notes: str, user_id: int):
++def analyze_traits(all_notes: str, user_id: int, language: str = "en"):
+     """Analyze personality traits from all notes."""
+     print(f"\n{'='*60}")
+     print(f"👤 analyze_traits() called")
+     print(f"   Notes length: {len(all_notes)} chars")
++    language_code = normalize_language_code(language)
++    print(f"   Language: {language_code}")
+     print(f"{'='*60}\n")
+ 
+     agent = PolyAgent(id="traits-analyzer")
+@@ -352,6 +387,7 @@ def analyze_traits(all_notes: str, user_id: int):
+ ]
+ 
+ Return ONLY the JSON array, no other text."""
++    prompt += f"\n\n{language_instruction(language_code, 'Use this language for trait names, explanations, and evidence (JSON keys stay in English).')}"
+ 
+     result = agent.run(prompt, model="gpt-4o-dou", cli="no-tools", tracked=True)
+ 
+@@ -370,15 +406,18 @@ def analyze_traits(all_notes: str, user_id: int):
+     description="Identify behavioral patterns and habits from user notes",
+     params={
+         "all_notes": {"type": "str"},
+-        "user_id": {"type": "int"}
++        "user_id": {"type": "int"},
++        "language": {"type": "str"}
+     },
+     category="Analysis"
+ )
+-def analyze_patterns(all_notes: str, user_id: int):
++def analyze_patterns(all_notes: str, user_id: int, language: str = "en"):
+     """Analyze behavioral patterns from all notes."""
+     print(f"\n{'='*60}")
+     print(f"🔍 analyze_patterns() called")
+     print(f"   Notes length: {len(all_notes)} chars")
++    language_code = normalize_language_code(language)
++    print(f"   Language: {language_code}")
+     print(f"{'='*60}\n")
+ 
+     agent = PolyAgent(id="patterns-analyzer")
+@@ -402,6 +441,7 @@ def analyze_patterns(all_notes: str, user_id: int):
+ ]
+ 
+ Return ONLY the JSON array, no other text."""
++    prompt += f"\n\n{language_instruction(language_code, 'Use this language for pattern names, descriptions, and frequency notes (JSON keys stay in English).')}"
+ 
+     result = agent.run(prompt, model="gpt-4o-dou", cli="no-tools", tracked=True)
+ 
+
+*** MODIFIED: frontend/src/api/voiceApi.ts (+12/-3) ***
+@@ -3,6 +3,7 @@
+  */
+ 
+ import { STORAGE_KEYS } from '../constants/storageKeys';
++import { LANGUAGE_STORAGE_KEY } from '../i18n';
+ 
+ // ========== Inline Types (workaround for Vite bug) ==========
+ export interface VoiceConfig {
+@@ -64,6 +65,11 @@ export interface Deck {
+ // nginx proxies /ink-and-memory/api/* to backend (8765)
+ const API_BASE = '/ink-and-memory';
+ 
++function getUILanguage(): 'en' | 'zh' {
++  const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
++  return stored === 'zh' ? 'zh' : 'en';
++}
++
+ /**
+  * Get auth headers for authenticated requests
+  */
+@@ -201,6 +207,7 @@ export async function chatWithVoice(
+  */
+ export async function analyzeEchoes(allNotes: string): Promise<any[]> {
+   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
++  const language = getUILanguage();
+ 
+   const response = await fetch(`${API_BASE}/polycli/api/trigger-sync`, {
+     method: 'POST',
+@@ -210,7 +217,7 @@ export async function analyzeEchoes(allNotes: string): Promise<any[]> {
+     },
+     body: JSON.stringify({
+       session_id: 'analyze_echoes',
+-      params: { all_notes: allNotes },
++      params: { all_notes: allNotes, language },
+       timeout: 60
+     })
+   });
+@@ -229,6 +236,7 @@ export async function analyzeEchoes(allNotes: string): Promise<any[]> {
+  */
+ export async function analyzeTraits(allNotes: string): Promise<any[]> {
+   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
++  const language = getUILanguage();
+ 
+   const response = await fetch(`${API_BASE}/polycli/api/trigger-sync`, {
+     method: 'POST',
+@@ -238,7 +246,7 @@ export async function analyzeTraits(allNotes: string): Promise<any[]> {
+     },
+     body: JSON.stringify({
+       session_id: 'analyze_traits',
+-      params: { all_notes: allNotes },
++      params: { all_notes: allNotes, language },
+       timeout: 60
+     })
+   });
+@@ -257,6 +265,7 @@ export async function analyzeTraits(allNotes: string): Promise<any[]> {
+  */
+ export async function analyzePatterns(allNotes: string): Promise<any[]> {
+   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
++  const language = getUILanguage();
+ 
+   const response = await fetch(`${API_BASE}/polycli/api/trigger-sync`, {
+     method: 'POST',
+@@ -266,7 +275,7 @@ export async function analyzePatterns(allNotes: string): Promise<any[]> {
+     },
+     body: JSON.stringify({
+       session_id: 'analyze_patterns',
+-      params: { all_notes: allNotes },
++      params: { all_notes: allNotes, language },
+       timeout: 60
+     })
+   });
+
+*** MODIFIED: frontend/src/components/AnalysisView.tsx (+17/-13) ***
+@@ -72,6 +72,9 @@ export default function AnalysisView() {
+   const { isAuthenticated } = useAuth();
+   const { t, i18n } = useTranslation();
+   const dateLocale = getDateLocale(i18n.language);
++  const formatDaysLabel = (count: number) => t('analysis.statsLabels.daysCount', { count });
++  const formatEntriesLabel = (count: number) => t('analysis.statsLabels.entriesCount', { count });
++  const formatWordsLabel = (value: number) => t('analysis.statsLabels.wordsCount', { value: value.toLocaleString() });
+   const [allNotes, setAllNotes] = useState('');
+   const [echoes, setEchoes] = useState<Echo[]>([]);
+   const [traits, setTraits] = useState<Trait[]>([]);
+@@ -556,7 +559,7 @@ export default function AnalysisView() {
+                         textTransform: 'uppercase',
+                         letterSpacing: '0.5px'
+                       }}>
+-                        Latest
++                        {t('analysis.report.latest')}
+                       </div>
+                     )}
+                   </div>
+@@ -567,11 +570,11 @@ export default function AnalysisView() {
+                     color: '#6b5d4f',
+                     marginBottom: '0.75rem'
+                   }}>
+-                    <div>{report.stats?.days || 0} days</div>
++                    <div>{formatDaysLabel(report.stats?.days || 0)}</div>
+                     <div>·</div>
+-                    <div>{report.stats?.entries || 0} entries</div>
++                    <div>{formatEntriesLabel(report.stats?.entries || 0)}</div>
+                     <div>·</div>
+-                    <div>{(report.stats?.words || 0).toLocaleString()} words</div>
++                    <div>{formatWordsLabel(report.stats?.words || 0)}</div>
+                   </div>
+                   <div style={{
+                     display: 'flex',
+@@ -586,7 +589,7 @@ export default function AnalysisView() {
+                         borderRadius: '12px',
+                         color: '#5d4a3a'
+                       }}>
+-                        {report.echoes.length} echoes
++                        {t('analysis.reportCounts.echoes', { count: report.echoes.length })}
+                       </span>
+                     )}
+                     {report.traits?.length > 0 && (
+@@ -597,7 +600,7 @@ export default function AnalysisView() {
+                         borderRadius: '12px',
+                         color: '#5d4a3a'
+                       }}>
+-                        {report.traits.length} traits
++                        {t('analysis.reportCounts.traits', { count: report.traits.length })}
+                       </span>
+                     )}
+                     {report.patterns?.length > 0 && (
+@@ -608,7 +611,7 @@ export default function AnalysisView() {
+                         borderRadius: '12px',
+                         color: '#5d4a3a'
+                       }}>
+-                        {t('analysis.report.patternCount', { count: report.patterns.length })}
++                        {t('analysis.reportCounts.patterns', { count: report.patterns.length })}
+                       </span>
+                     )}
+                   </div>
+@@ -774,13 +777,14 @@ function PaperStack({
+   currentPaper: number;
+   onPaperChange: (index: number) => void;
+ }) {
++  const { t } = useTranslation();
+   // @@@ Build papers array (only include non-empty ones)
+   const papers = [];
+ 
+   if (echoes.length > 0) {
+     papers.push({
+-      title: 'Recurring Themes',
+-      subtitle: 'Echoes',
++      title: t('analysis.papers.echoes.title'),
++      subtitle: t('analysis.papers.echoes.subtitle'),
+       icon: '🔄',
+       content: (
+         <div style={{
+@@ -801,8 +805,8 @@ function PaperStack({
+ 
+   if (traits.length > 0) {
+     papers.push({
+-      title: 'Character Traits',
+-      subtitle: 'Personality',
++      title: t('analysis.papers.traits.title'),
++      subtitle: t('analysis.papers.traits.subtitle'),
+       icon: '⭐',
+       content: (
+         <div style={{
+@@ -823,8 +827,8 @@ function PaperStack({
+ 
+   if (patterns.length > 0) {
+     papers.push({
+-      title: 'Behavioral Patterns',
+-      subtitle: 'Habits',
++      title: t('analysis.papers.patterns.title'),
++      subtitle: t('analysis.papers.patterns.subtitle'),
+       icon: '🌀',
+       content: (
+         <div style={{
+
+*** MODIFIED: frontend/src/components/CalendarPopup.tsx (+42/-22) ***
+@@ -1,4 +1,6 @@
+ import { useState, useEffect } from 'react';
++import { useTranslation } from 'react-i18next';
++import { getDateLocale } from '../i18n';
+ import {
+   getCalendarData,
+   getDateKey,
+@@ -15,6 +17,8 @@ interface Props {
+ 
+ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+   const { isAuthenticated } = useAuth();
++  const { t, i18n } = useTranslation();
++  const dateLocale = getDateLocale(i18n.language);
+   const [currentMonth, setCurrentMonth] = useState(new Date());
+   const [selectedDate, setSelectedDate] = useState<string | null>(getTodayKey());
+   const [calendarData, setCalendarData] = useState<Record<string, CalendarEntry[]>>({});
+@@ -114,9 +118,11 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+   const handleDateClick = (dateKey: string) => {
+     setSelectedDate(dateKey);
+   };
++  const weekdayFormatter = new Intl.DateTimeFormat(dateLocale, { weekday: 'short' });
++  const weekdayLabels = Array.from({ length: 7 }, (_, idx) => weekdayFormatter.format(new Date(Date.UTC(2023, 0, idx + 1))));
+ 
+   const handleDeleteEntry = async (dateKey: string, entryId: string) => {
+-    if (confirm('Delete this entry?')) {
++    if (confirm(t('calendar.deleteConfirm'))) {
+       if (isAuthenticated) {
+         try {
+           // Delete from database
+@@ -154,7 +160,7 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+           setCalendarData(grouped);
+         } catch (error) {
+           console.error('Failed to delete from database:', error);
+-          alert('Failed to delete entry');
++          alert(t('calendar.deleteError'));
+         }
+       } else {
+         // Guest mode: delete from localStorage
+@@ -203,16 +209,22 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+           borderBottom: '1px solid #e0d4c0',
+           display: 'flex',
+           justifyContent: 'space-between',
+-          alignItems: 'center'
++          alignItems: 'center',
++          gap: '12px'
+         }}>
+-          <h2 style={{
+-            margin: 0,
+-            fontSize: '18px',
+-            fontWeight: 600,
+-            color: '#333'
+-          }}>
+-            Calendar
+-          </h2>
++          <div style={{ flex: 1 }}>
++            <h2 style={{
++              margin: 0,
++              fontSize: '18px',
++              fontWeight: 600,
++              color: '#333'
++            }}>
++              {t('calendar.title')}
++            </h2>
++            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#777' }}>
++              {t('calendar.subtitle')}
++            </p>
++          </div>
+           <button
+             onClick={onClose}
+             style={{
+@@ -249,14 +261,14 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                 fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
+               }}
+             >
+-              ← Prev
++              {t('calendar.prev')}
+             </button>
+             <div style={{
+               fontSize: '16px',
+               fontWeight: 600,
+               color: '#333'
+             }}>
+-              {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
++              {currentMonth.toLocaleDateString(dateLocale, { month: 'long', year: 'numeric' })}
+             </div>
+             <button
+               onClick={handleNextMonth}
+@@ -270,7 +282,7 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                 fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
+               }}
+             >
+-              Next →
++              {t('calendar.next')}
+             </button>
+           </div>
+ 
+@@ -282,15 +294,15 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+             marginBottom: '20px'
+           }}>
+             {/* Day headers */}
+-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+-              <div key={day} style={{
++            {weekdayLabels.map((label, idx) => (
++              <div key={`${label}-${idx}`} style={{
+                 textAlign: 'center',
+                 fontSize: '12px',
+                 fontWeight: 600,
+                 color: '#888',
+                 padding: '4px 0'
+               }}>
+-                {day}
++                {label}
+               </div>
+             ))}
+ 
+@@ -361,8 +373,15 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                 borderBottom: '1px solid #e0d4c0',
+                 paddingBottom: '8px'
+               }}>
+-                {selectedDate === today ? 'Today' : selectedDate}
+-                {selectedEntries.length > 0 && ` (${selectedEntries.length} ${selectedEntries.length === 1 ? 'entry' : 'entries'})`}
++                {selectedDate === today
++                  ? t('calendar.todayLabel')
++                  : new Date(selectedDate + 'T00:00:00').toLocaleDateString(dateLocale, {
++                      year: 'numeric',
++                      month: 'long',
++                      day: 'numeric',
++                      weekday: 'long'
++                    })}
++                {selectedEntries.length > 0 && ` (${t('calendar.entriesLabel', { count: selectedEntries.length })})`}
+               </div>
+ 
+               {selectedEntries.length === 0 ? (
+@@ -372,7 +391,7 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                   padding: '20px',
+                   fontSize: '14px'
+                 }}>
+-                  No entries for this date
++                  {t('calendar.noEntriesForDate')}
+                 </div>
+               ) : (
+                 <div style={{
+@@ -383,7 +402,7 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                   overflow: 'auto'
+                 }}>
+                   {selectedEntries.map((entry) => {
+-                    const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
++                    const time = new Date(entry.timestamp).toLocaleTimeString(dateLocale, {
+                       hour: '2-digit',
+                       minute: '2-digit'
+                     });
+@@ -403,6 +422,7 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                         }}
+                       >
+                         <button
++                          title={t('calendar.openButton')}
+                           onClick={() => onLoadEntry(entry)}
+                           style={{
+                             flex: 1,
+@@ -450,7 +470,7 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                             e.currentTarget.style.color = '#d44';
+                           }}
+                         >
+-                          Delete
++                          {t('calendar.deleteButton')}
+                         </button>
+                       </div>
+                     );
+
+*** MODIFIED: frontend/src/components/CollectionsView.tsx (+11/-22) ***
+@@ -149,27 +149,16 @@ function generateTimelineDays(): TimelineDay[] {
+ }
+ 
+ // @@@ Helper function for interesting placeholders
+-function getPlaceholderText(daysOffset: number): string {
+-  if (daysOffset === 0) return 'Generates automatically overnight';
+-
+-  const placeholders: Record<string, string> = {
+-    '-7': 'taste buds renew every 10 days',
+-    '-6': 'the liver regenerates in 6 weeks',
+-    '-5': 'stomach lining replaces itself every 5 days',
+-    '-4': 'skin cells shed every 2-4 weeks',
+-    '-3': 'red blood cells live for 120 days',
+-    '-2': 'the heart beats 100,000 times a day',
+-    '-1': 'neurons can form new connections',
+-    '1': 'tomorrow is unwritten',
+-    '2': 'the future is a blank page',
+-    '3': 'time flows forward',
+-    '4': 'days ahead unknown',
+-    '5': 'yet to unfold',
+-    '6': 'still becoming',
+-    '7': 'awaiting experience'
+-  };
++function getPlaceholderText(t: (key: string, options?: any) => string, daysOffset: number): string {
++  if (daysOffset === 0) return t('timelinePlaceholders.today');
++
++  const key = `timelinePlaceholders.${daysOffset}`;
++  const translation = t(key, { defaultValue: '' });
++  if (translation && translation !== key) {
++    return translation;
++  }
+ 
+-  return placeholders[daysOffset.toString()] || (daysOffset < 0 ? 'what was has passed' : 'yet to be written');
++  return daysOffset < 0 ? t('timelinePlaceholders.default') : t('timelinePlaceholders.default');
+ }
+ 
+ // @@@ Extract and truncate beginning of text for timeline preview
+@@ -754,12 +743,12 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+                   }}>
+                     {isGenerating ? t('timeline.generating') :
+                      day.isToday && !dayData?.picture ?
+-                       getPlaceholderText(day.daysOffset) :
++                       getPlaceholderText(t, day.daysOffset) :
+                      textByDate.get(day.date) ?
+                        getTextPreview(textByDate.get(day.date)!) :
+                      dayData?.comments?.length ?
+                        t('timeline.entryCount', { count: dayData.comments.length }) :
+-                       getPlaceholderText(day.daysOffset)}
++                       getPlaceholderText(t, day.daysOffset)}
+                   </div>
+                 </div>
+               </div>
+
+*** MODIFIED: frontend/src/i18n.ts (+100/-0) ***
+@@ -44,6 +44,7 @@ const resources = {
+         },
+         pastReflections: 'Past Reflections',
+         report: {
++          latest: 'Latest',
+           patternCount: '{{count}} patterns'
+         },
+         actions: {
+@@ -53,6 +54,26 @@ const resources = {
+         empty: {
+           title: 'Your story awaits analysis',
+           description: 'Begin the journey to discover the patterns, themes, and essence woven through your words'
++        },
++        papers: {
++          echoes: { title: 'Recurring Themes', subtitle: 'Echoes' },
++          traits: { title: 'Character Traits', subtitle: 'Personality' },
++          patterns: { title: 'Behavioral Patterns', subtitle: 'Habits' }
++        },
++        statsLabels: {
++          daysCount_one: '{{count}} day',
++          daysCount_other: '{{count}} days',
++          entriesCount_one: '{{count}} entry',
++          entriesCount_other: '{{count}} entries',
++          wordsCount: '{{value}} words'
++        },
++        reportCounts: {
++          echoes_one: '{{count}} echo',
++          echoes_other: '{{count}} echoes',
++          traits_one: '{{count}} trait',
++          traits_other: '{{count}} traits',
++          patterns_one: '{{count}} pattern',
++          patterns_other: '{{count}} patterns'
+         }
+       },
+       deck: {
+@@ -92,6 +113,35 @@ const resources = {
+         generating: 'Generating...',
+         entryCount_one: '{{count}} entry',
+         entryCount_other: '{{count}} entries'
++      },
++      timelinePlaceholders: {
++        today: 'Generates automatically overnight',
++        '-7': 'Taste buds renew every 10 days',
++        '-6': 'The liver regenerates in 6 weeks',
++        '-5': 'Stomach lining replaces itself every 5 days',
++        '-4': 'Skin cells shed every 2–4 weeks',
++        '-3': 'Red blood cells live for 120 days',
++        '-2': 'The heart beats 100,000 times a day',
++        '-1': 'Neurons can form new connections',
++        '1': 'Tomorrow is unwritten',
++        '2': 'The future is a blank page',
++        default: 'Nothing captured yet'
++      },
++      calendar: {
++        title: 'Calendar',
++        subtitle: 'Select a day to revisit your entries',
++        empty: 'No entries yet. Start writing to fill this calendar.',
++        deleteConfirm: 'Delete this entry?',
++        entriesLabel_one: '{{count}} entry',
++        entriesLabel_other: '{{count}} entries',
++        openButton: 'Open',
++        deleteButton: 'Delete',
++        close: 'Close',
++        prev: '← Prev',
++        next: 'Next →',
++        noEntriesForDate: 'No entries for this date',
++        todayLabel: 'Today',
++        deleteError: 'Failed to delete entry'
+       }
+     }
+   },
+@@ -135,6 +185,7 @@ const resources = {
+         },
+         pastReflections: '历史回顾',
+         report: {
++          latest: '最新',
+           patternCount: '{{count}} 个模式'
+         },
+         actions: {
+@@ -144,6 +195,26 @@ const resources = {
+         empty: {
+           title: '等待解析的故事',
+           description: '开始探索文字里反复出现的主题、情绪与线索'
++        },
++        papers: {
++          echoes: { title: '重复回响', subtitle: '主题回声' },
++          traits: { title: '性格折射', subtitle: '个性印象' },
++          patterns: { title: '行为轨迹', subtitle: '惯性与习惯' }
++        },
++        statsLabels: {
++          daysCount_one: '{{count}} 天',
++          daysCount_other: '{{count}} 天',
++          entriesCount_one: '{{count}} 篇章',
++          entriesCount_other: '{{count}} 篇章',
++          wordsCount: '{{value}} 字'
++        },
++        reportCounts: {
++          echoes_one: '{{count}} 个回声',
++          echoes_other: '{{count}} 个回声',
++          traits_one: '{{count}} 个性格',
++          traits_other: '{{count}} 个性格',
++          patterns_one: '{{count}} 个模式',
++          patterns_other: '{{count}} 个模式'
+         }
+       },
+       deck: {
+@@ -183,6 +254,35 @@ const resources = {
+         generating: '生成中...',
+         entryCount_one: '{{count}} 条记录',
+         entryCount_other: '{{count}} 条记录'
++      },
++      timelinePlaceholders: {
++        today: '夜里自动生成你的时间线',
++        '-7': '味蕾每 10 天更新一次',
++        '-6': '肝脏在 6 周内自我修复',
++        '-5': '胃黏膜大约 5 天换新',
++        '-4': '皮肤每 2-4 周脱落再生',
++        '-3': '红细胞寿命约 120 天',
++        '-2': '心脏每天跳动 10 万次',
++        '-1': '神经元随时能建立新连接',
++        '1': '明天还没被书写',
++        '2': '未来是一张空白页',
++        default: '这里还没有记录'
++      },
++      calendar: {
++        title: '日历',
++        subtitle: '选择任意一天重新回到当时的文字',
++        empty: '这里还没有记录，动笔就会留下足迹。',
++        deleteConfirm: '确定删除这篇记录？',
++        entriesLabel_one: '{{count}} 篇',
++        entriesLabel_other: '{{count}} 篇',
++        openButton: '打开',
++        deleteButton: '删除',
++        close: '关闭',
++        prev: '← 上个月',
++        next: '下个月 →',
++        noEntriesForDate: '这一天暂无记录',
++        todayLabel: '今天',
++        deleteError: '删除失败'
+       }
+     }
+   }

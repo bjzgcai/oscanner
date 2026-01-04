@@ -1,0 +1,1038 @@
+*** FILE: backend/database.py ***
+@@ -13,6 +13,7 @@
+ import os
+ from pathlib import Path
+ from datetime import datetime, timedelta
++from typing import Optional, Union
+ import json
+ 
+ # Database location
+@@ -1024,18 +1025,28 @@ def get_user_by_id(user_id: int):
+ 
+ # ========== Session Storage ==========
+ 
+-def save_session(user_id: int, session_id: str, editor_state: dict, name: str = None):
++def _normalize_created_at(created_at: Optional[Union[str, datetime]]) -> Optional[str]:
++    if created_at is None:
++        return None
++    if isinstance(created_at, datetime):
++        return created_at.strftime("%Y-%m-%d %H:%M:%S")
++    return str(created_at)
++
++
++def save_session(user_id: int, session_id: str, editor_state: dict, name: str = None,
++                 created_at: Optional[Union[str, datetime]] = None):
+     """Save or update a user session."""
+     db = get_db()
+     try:
++        created_at_value = _normalize_created_at(created_at)
+         db.execute("""
+-        INSERT INTO user_sessions (id, user_id, name, editor_state_json, updated_at)
+-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
++        INSERT INTO user_sessions (id, user_id, name, editor_state_json, created_at, updated_at)
++        VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
+         ON CONFLICT(id) DO UPDATE SET
+           editor_state_json = excluded.editor_state_json,
+-          name = COALESCE(excluded.name, name),
++          name = COALESCE(excluded.name, user_sessions.name),
+           updated_at = CURRENT_TIMESTAMP
+-        """, (session_id, user_id, name, json.dumps(editor_state)))
++        """, (session_id, user_id, name, json.dumps(editor_state), created_at_value))
+         db.commit()
+     finally:
+         db.close()
+
+*** FILE: backend/tools/session_inserter.py ***
+@@ -0,0 +1,93 @@
++#!/usr/bin/env python3
++"""
++Create synthetic sessions for a specific user/day.
++
++Useful for timezone sanity checks and regression testing.
++"""
++
++from __future__ import annotations
++
++import argparse
++import uuid
++from datetime import datetime, timezone
++from zoneinfo import ZoneInfo
++
++import database
++
++
++def parse_args() -> argparse.Namespace:
++    parser = argparse.ArgumentParser(description="Insert a session for a specific user/day.")
++    parser.add_argument("--email", help="User email (alternative to --user-id)")
++    parser.add_argument("--user-id", type=int, help="User ID (alternative to --email)")
++    parser.add_argument("--date", required=True, help="Local date in YYYY-MM-DD")
++    parser.add_argument("--time", default="09:00", help="Local time in HH:MM (default 09:00)")
++    parser.add_argument("--timezone", default="UTC", help="IANA timezone name (default UTC)")
++    parser.add_argument("--title", help="Optional session title")
++    parser.add_argument("--text", default="", help="Optional text content for the first text cell")
++    parser.add_argument("--session-id", help="Optional explicit session id (default random UUID)")
++    return parser.parse_args()
++
++
++def resolve_user_id(email: str | None, user_id: int | None) -> int:
++    if user_id:
++        user = database.get_user_by_id(user_id)
++        if not user:
++            raise SystemExit(f"User ID {user_id} not found")
++        return user["id"]
++
++    if email:
++        user = database.get_user_by_email(email)
++        if not user:
++            raise SystemExit(f"User with email {email} not found")
++        return user["id"]
++
++    raise SystemExit("Either --email or --user-id is required.")
++
++
++def local_timestamp(date: str, time_str: str, tz_name: str) -> tuple[str, str]:
++    tz = ZoneInfo(tz_name)
++    local_dt = datetime.strptime(f"{date} {time_str}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
++    utc_dt = local_dt.astimezone(timezone.utc)
++    created_at_db = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
++    created_at_state = utc_dt.isoformat().replace("+00:00", "Z")
++    return created_at_db, created_at_state
++
++
++def build_editor_state(session_id: str, text: str, created_at_iso: str) -> dict:
++    text_cell_id = uuid.uuid4().hex[:12]
++    return {
++        "cells": [
++            {"id": text_cell_id, "type": "text", "content": text}
++        ],
++        "commentors": [],
++        "tasks": [],
++        "weightPath": [],
++        "overlappedPhrases": [],
++        "sessionId": session_id,
++        "currentEntryId": session_id,
++        "selectedState": None,
++        "createdAt": created_at_iso
++    }
++
++
++def main() -> None:
++    args = parse_args()
++    user_id = resolve_user_id(args.email, args.user_id)
++    created_at_db, created_at_state = local_timestamp(args.date, args.time, args.timezone)
++    session_id = args.session_id or str(uuid.uuid4())
++    text_content = args.text.strip()
++    title = args.title or (text_content.splitlines()[0][:60] if text_content else f"Session {args.date}")
++
++    editor_state = build_editor_state(session_id, text_content, created_at_state)
++    database.save_session(
++        user_id,
++        session_id,
++        editor_state,
++        name=title,
++        created_at=created_at_db,
++    )
++    print(f"✅ Inserted session {session_id} for user {user_id} at {created_at_db} UTC.")
++
++
++if __name__ == "__main__":
++    main()
+
+*** FILE: backend/tools/session_inspector.py ***
+@@ -0,0 +1,118 @@
++#!/usr/bin/env python3
++"""
++Inspect and rebuild sessions for a specific user/day.
++
++This utility lists every session that lands within the requested local day,
++prints their metadata, deletes each row, and recreates it using the same
++`database.save_session()` helper so we can verify our understanding of the schema.
++"""
++
++from __future__ import annotations
++
++import argparse
++import json
++from datetime import datetime, timedelta, timezone
++from zoneinfo import ZoneInfo
++
++import database
++
++
++def parse_args() -> argparse.Namespace:
++    parser = argparse.ArgumentParser(description="Inspect and rebuild sessions for a given day.")
++    parser.add_argument("--email", help="User email (alternative to --user-id)")
++    parser.add_argument("--user-id", type=int, help="User ID (alternative to --email)")
++    parser.add_argument("--date", required=True, help="Local date in YYYY-MM-DD")
++    parser.add_argument("--timezone", default="UTC", help="IANA timezone name (default: UTC)")
++    return parser.parse_args()
++
++
++def resolve_user_id(email: str | None, user_id: int | None) -> int:
++    if user_id:
++        user = database.get_user_by_id(user_id)
++        if not user:
++            raise SystemExit(f"User ID {user_id} not found")
++        return user["id"]
++
++    if email:
++        user = database.get_user_by_email(email)
++        if not user:
++            raise SystemExit(f"User with email {email} not found")
++        return user["id"]
++
++    raise SystemExit("Either --email or --user-id is required.")
++
++
++def local_day_bounds(day: str, tz_name: str) -> tuple[str, str]:
++    tz = ZoneInfo(tz_name)
++    local_start = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=tz)
++    local_end = local_start + timedelta(days=1)
++    utc_start = local_start.astimezone(timezone.utc)
++    utc_end = local_end.astimezone(timezone.utc)
++    return (
++        utc_start.strftime("%Y-%m-%d %H:%M:%S"),
++        utc_end.strftime("%Y-%m-%d %H:%M:%S"),
++    )
++
++
++def fetch_sessions(user_id: int, utc_start: str, utc_end: str) -> list[dict]:
++    db = database.get_db()
++    try:
++        rows = db.execute(
++            """
++            SELECT id, name, editor_state_json, created_at, updated_at
++            FROM user_sessions
++            WHERE user_id = ?
++              AND created_at >= ?
++              AND created_at < ?
++            ORDER BY created_at ASC
++            """,
++            (user_id, utc_start, utc_end),
++        ).fetchall()
++        return [dict(row) for row in rows]
++    finally:
++        db.close()
++
++
++def rebuild_sessions(user_id: int, sessions: list[dict]) -> None:
++    if not sessions:
++        print("⚠️  No sessions found for the requested window.")
++        return
++
++    for session in sessions:
++        session_id = session["id"]
++        created_at = session["created_at"]
++        updated_at = session["updated_at"]
++        name = session.get("name")
++        editor_state = json.loads(session["editor_state_json"])
++        first_line = editor_state.get("cells", [{}])[0].get("content", "").split("\n")[0]
++
++        print("------------------------------------------------------------")
++        print(f"🗂  Session ID:   {session_id}")
++        print(f"📅  Created At:   {created_at}")
++        print(f"🕒  Updated At:   {updated_at}")
++        print(f"🏷️   Name:         {name or '(none)'}")
++        print(f"📝  First Line:   {first_line or '(empty)'}")
++        print("🔁 Rebuilding row through database.save_session()...")
++
++        database.delete_session(user_id, session_id)
++        database.save_session(
++            user_id,
++            session_id,
++            editor_state,
++            name=name,
++            created_at=created_at,
++        )
++        print("✅ Recreated successfully.")
++
++
++def main() -> None:
++    args = parse_args()
++    user_id = resolve_user_id(args.email, args.user_id)
++    utc_start, utc_end = local_day_bounds(args.date, args.timezone)
++    sessions = fetch_sessions(user_id, utc_start, utc_end)
++    print(f"Found {len(sessions)} session(s) for user {user_id} between {utc_start} and {utc_end} UTC.")
++    rebuild_sessions(user_id, sessions)
++
++
++if __name__ == "__main__":
++    main()
+
+*** FILE: frontend/src/App.tsx ***
+@@ -32,6 +32,14 @@ import { useAuth } from './contexts/AuthContext';
+ import LoginForm from './components/Auth/LoginForm';
+ import RegisterForm from './components/Auth/RegisterForm';
+ import { STORAGE_KEYS } from './constants/storageKeys';
++import { getLocalDayKey, getTodayKeyInTimezone } from './utils/timezone';
++
++function createSessionId() {
++  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
++    return crypto.randomUUID();
++  }
++  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
++}
+ 
+ // @@@ Left Toolbar Component - floating toolbelt within left margin
+ function LeftToolbar({
+@@ -307,20 +315,26 @@ export default function App() {
+     }
+   }, []);
+   const timezoneSyncRef = useRef<string | null>(null);
++  const [userTimezone, setUserTimezone] = useState(browserTimezone);
++  const ensuredSessionForDayRef = useRef<string | null>(null);
++  const userTimezoneRef = useRef(userTimezone);
++
++  useEffect(() => {
++    userTimezoneRef.current = userTimezone;
++  }, [userTimezone]);
+ 
+   const ensureStateForPersistence = useCallback((): EditorState | null => {
+     if (engineRef.current) {
+       const engineState = engineRef.current.getState();
+       if (!engineState.createdAt) {
+-        engineState.createdAt = new Date().toISOString().split('T')[0];
++        engineState.createdAt = new Date().toISOString();
+         setState({ ...engineState });
+       }
+       return engineState;
+     }
+ 
+     if (state && !state.createdAt) {
+-      const today = new Date().toISOString().split('T')[0];
+-      const nextState = { ...state, createdAt: today };
++      const nextState = { ...state, createdAt: new Date().toISOString() };
+       setState(nextState);
+       return nextState;
+     }
+@@ -344,6 +358,16 @@ export default function App() {
+     return sessionId;
+   }, [getFirstLineFromState]);
+ 
++  const persistSessionImmediately = useCallback(async (editorState: EditorState) => {
++    if (!isAuthenticated) return;
++    try {
++      const firstLine = getFirstLineFromState(editorState);
++      await saveSessionToDatabase(editorState, firstLine);
++    } catch (error) {
++      console.error('Failed to persist session immediately:', error);
++    }
++  }, [getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);
++
+   // @@@ Detect if this is a new inspiration appearing (different from previous)
+   // Only check appearing when NOT disappearing (to avoid conflict)
+   const inspirationAppearing = !inspirationDisappearing &&
+@@ -388,6 +412,7 @@ export default function App() {
+     }
+   }, [selectedState]);
+ 
++
+   // @@@ Handle inspiration disappearing animation
+   useEffect(() => {
+     if (inspirationDisappearing) {
+@@ -508,9 +533,15 @@ export default function App() {
+   }, [isAuthenticated, isLoading]);
+ 
+   useEffect(() => {
+-    if (!isAuthenticated) return;
+     const timezone = browserTimezone || 'UTC';
+     if (!timezone) return;
++
++    if (!isAuthenticated) {
++      setUserTimezone(timezone);
++      timezoneSyncRef.current = timezone;
++      return;
++    }
++
+     if (timezoneSyncRef.current === timezone) return;
+ 
+     const syncTimezone = async () => {
+@@ -519,6 +550,9 @@ export default function App() {
+         const prefs = await getPreferences();
+         if ((prefs?.timezone || 'UTC') !== timezone) {
+           await savePreferences({ timezone });
++          setUserTimezone(timezone);
++        } else {
++          setUserTimezone(prefs?.timezone || timezone);
+         }
+       } catch (error) {
+         console.error('Failed to sync timezone preference:', error);
+@@ -539,7 +573,7 @@ export default function App() {
+     // @@@ Initialize createdAt for new session
+     const initialState = engine.getState();
+     if (!initialState.createdAt) {
+-      initialState.createdAt = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
++      initialState.createdAt = new Date().toISOString();
+       setState(initialState);
+     }
+ 
+@@ -550,6 +584,11 @@ export default function App() {
+         localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(newState));
+       }
+     });
++    const unsubscribeBlankReset = engine.onBlankReset(async () => {
++      if (!isAuthenticated) return;
++      const blankState = engine.getState();
++      await persistSessionImmediately(blankState);
++    });
+ 
+     // Load initial state
+     const loadInitialState = async () => {
+@@ -579,8 +618,9 @@ export default function App() {
+             )[0];
+ 
+             // @@@ Daily reset check - same logic as StateChooser
+-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+-            const sessionDate = mostRecent.updated_at.split(' ')[0]; // Extract date from "YYYY-MM-DD HH:MM:SS"
++            const timezoneForDay = userTimezoneRef.current || 'UTC';
++            const today = getTodayKeyInTimezone(timezoneForDay);
++            const sessionDate = getLocalDayKey(mostRecent.updated_at, timezoneForDay);
+ 
+             if (sessionDate === today) {
+               // Same day - load the session
+@@ -623,13 +663,17 @@ export default function App() {
+             if (prefs.state_config) {
+               setStateConfig(prefs.state_config);
+             }
++            if (prefs.timezone) {
++              setUserTimezone(prefs.timezone);
++            }
+ 
+             // @@@ Load selectedState with daily reset check for authenticated users
+             if (prefs.selected_state !== undefined && prefs.selected_state !== null) {
+-              const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+-
+-              // Extract date from database's updated_at timestamp (format: "YYYY-MM-DD HH:MM:SS")
+-              const updatedAtDate = prefs.updated_at ? prefs.updated_at.split(' ')[0] : null;
++              const timezoneForDay = userTimezoneRef.current || 'UTC';
++              const today = getTodayKeyInTimezone(timezoneForDay);
++              const updatedAtDate = prefs.updated_at
++                ? getLocalDayKey(prefs.updated_at, timezoneForDay)
++                : null;
+ 
+               // Check if state was updated today
+               if (updatedAtDate === today) {
+@@ -672,7 +716,7 @@ export default function App() {
+         // @@@ Load selectedState with daily reset check
+         const savedState = localStorage.getItem(STORAGE_KEYS.SELECTED_STATE);
+         const savedDate = localStorage.getItem('selected-state-date');
+-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
++        const today = getTodayKeyInTimezone(userTimezoneRef.current || browserTimezone);
+ 
+         // Reset state if it's a new day
+         if (savedState && savedDate === today) {
+@@ -684,10 +728,17 @@ export default function App() {
+           setSelectedState(null);
+         }
+       }
++      if (!isAuthenticated) {
++        setUserTimezone(browserTimezone);
++      }
+     };
+ 
+     loadInitialState();
+-  }, [isAuthenticated]);
++
++    return () => {
++      unsubscribeBlankReset();
++    };
++  }, [isAuthenticated, persistSessionImmediately]);
+ 
+   // @@@ Sync localTexts from state when not composing
+   useEffect(() => {
+@@ -1114,6 +1165,57 @@ export default function App() {
+     setShowWarning(true);
+   }, []);
+ 
++  const buildBlankState = useCallback((): EditorState | null => {
++    const preservedSelectedState = engineRef.current?.getState().selectedState ?? selectedState ?? null;
++    const newSessionId = createSessionId();
++    return {
++      cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
++      commentors: [],
++      tasks: [],
++      weightPath: [],
++      overlappedPhrases: [],
++      sessionId: newSessionId,
++      currentEntryId: newSessionId,
++      selectedState: preservedSelectedState,
++      createdAt: new Date().toISOString()
++    };
++  }, [selectedState]);
++
++  const startDetachedBlankSession = useCallback((persistImmediately: boolean = false) => {
++    if (!engineRef.current) return;
++    const blankState = buildBlankState();
++    if (!blankState) return;
++
++    engineRef.current.loadState(blankState);
++    setState(blankState);
++    setLocalTexts(new Map());
++
++    if (!isAuthenticated) {
++      localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(blankState));
++    } else if (persistImmediately) {
++      persistSessionImmediately(blankState);
++    }
++  }, [buildBlankState, isAuthenticated, persistSessionImmediately]);
++
++  useEffect(() => {
++    if (!isAuthenticated) return;
++    if (!engineRef.current) return;
++    if (selectedState !== null) return;
++    const todayKey = getTodayKeyInTimezone(userTimezone);
++    if (!todayKey) return;
++
++    const currentState = engineRef.current.getState();
++    const currentKey = currentState.createdAt
++      ? getLocalDayKey(currentState.createdAt, userTimezone)
++      : null;
++
++    if (currentKey === todayKey) return;
++    if (ensuredSessionForDayRef.current === todayKey) return;
++
++    ensuredSessionForDayRef.current = todayKey;
++    startDetachedBlankSession(true);
++  }, [isAuthenticated, selectedState, startDetachedBlankSession, userTimezone]);
++
+   // @@@ New session: save current, then create fresh (no data loss, no warning)
+   const handleNewSession = useCallback(async () => {
+     if (!state || !engineRef.current) return;
+@@ -1150,15 +1252,16 @@ export default function App() {
+     }
+ 
+     // @@@ Create empty state with NEW sessionId
+-    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
++    const newSessionId = createSessionId();
+     const emptyState: EditorState = {
+       cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
+       commentors: [],
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
+       sessionId: newSessionId,
+-      currentEntryId: newSessionId
++      currentEntryId: newSessionId,
++      createdAt: new Date().toISOString()
+     };
+ 
+     // @@@ Load empty state directly into engine (immediate UI update)
+@@ -1182,15 +1285,16 @@ export default function App() {
+     if (!engineRef.current) return;
+ 
+     // @@@ Create empty state with NEW sessionId
+-    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
++    const newSessionId = createSessionId();
+     const emptyState: EditorState = {
+       cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
+       commentors: [],
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
+       sessionId: newSessionId,
+-      currentEntryId: newSessionId  // @@@ Set currentEntryId to maintain invariant I5
++      currentEntryId: newSessionId,  // @@@ Set currentEntryId to maintain invariant I5
++      createdAt: new Date().toISOString()
+     };
+ 
+     // @@@ Load empty state directly into engine (immediate UI update)
+@@ -1292,7 +1396,7 @@ export default function App() {
+       }
+ 
+       if (!loadedState.createdAt) {
+-        loadedState.createdAt = new Date().toISOString().split('T')[0];
++        loadedState.createdAt = new Date().toISOString();
+         engineRef.current.loadState(loadedState);
+       }
+ 
+@@ -1312,17 +1416,25 @@ export default function App() {
+     setTimelineFriendToSelect(null);
+   }, []);
+ 
++  const handleCalendarEntryDeleted = useCallback((entryId: string) => {
++    if (!entryId || !engineRef.current) return;
++    const currentId = engineRef.current.getState().currentEntryId;
++    if (currentId === entryId) {
++      startDetachedBlankSession();
++    }
++  }, [startDetachedBlankSession]);
++
+   const handleStateChoose = useCallback(async (stateId: string) => {
+     setSelectedState(stateId);
+-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
++    const todayKey = getTodayKeyInTimezone(userTimezone);
+ 
+     // @@@ NEW: Save to EditorState (per-session storage)
+     if (engineRef.current) {
+       const currentState = engineRef.current.getState();
+       currentState.selectedState = stateId;
+       // Set createdAt only if not already set
+       if (!currentState.createdAt) {
+-        currentState.createdAt = today;
++        currentState.createdAt = new Date().toISOString();
+       }
+       setState(currentState);
+     }
+@@ -1338,9 +1450,9 @@ export default function App() {
+       }
+     } else {
+       localStorage.setItem(STORAGE_KEYS.SELECTED_STATE, stateId);
+-      localStorage.setItem('selected-state-date', today);
++      localStorage.setItem('selected-state-date', todayKey);
+     }
+-  }, [isAuthenticated]);
++  }, [isAuthenticated, userTimezone]);
+ 
+   // @@@ Insert @ character at the end of last text cell
+   const handleInsertAgent = useCallback(() => {
+@@ -2517,6 +2629,7 @@ export default function App() {
+           voiceConfigs={voiceConfigs}
+           friendToSelect={timelineFriendToSelect}
+           onFriendSelectionHandled={handleFriendSelectionHandled}
++          timezone={userTimezone}
+         />
+       </div>
+       {currentView === 'analysis' && (
+@@ -2650,8 +2763,10 @@ export default function App() {
+       {showCalendarPopup && (
+         <CalendarPopup
+           onLoadEntry={handleLoadEntry}
+-          currentEntryId={state.currentEntryId}
++          currentEntryId={state?.currentEntryId}
++          onEntryDeleted={handleCalendarEntryDeleted}
+           onClose={() => setShowCalendarPopup(false)}
++          timezone={userTimezone}
+         />
+       )}
+     </>
+
+*** FILE: frontend/src/components/AnalysisView.tsx ***
+@@ -501,7 +501,7 @@ export default function AnalysisView() {
+               gap: '1.5rem',
+               marginBottom: '2rem'
+             }}>
+-              {savedReports.map((report, idx) => (
++              {savedReports.slice(0, 3).map((report, idx) => (
+                 <div
+                   key={report.id}
+                   onClick={() => {
+
+*** FILE: frontend/src/components/CalendarPopup.tsx ***
+@@ -1,4 +1,4 @@
+-import { useState, useEffect } from 'react';
++import { useState, useEffect, useCallback } from 'react';
+ import { useTranslation } from 'react-i18next';
+ import { getDateLocale } from '../i18n';
+ import {
+@@ -15,38 +15,40 @@ interface Props {
+   onLoadEntry: (entry: CalendarEntry) => void;
+   onClose: () => void;
+   currentEntryId?: string | null;
++  onEntryDeleted?: (entryId: string) => void;
++  timezone: string;
+ }
+ 
+-export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId }: Props) {
++export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, onEntryDeleted, timezone }: Props) {
+   const { isAuthenticated } = useAuth();
+   const { t, i18n } = useTranslation();
+   const dateLocale = getDateLocale(i18n.language);
+   const [currentMonth, setCurrentMonth] = useState(new Date());
+   const [selectedDate, setSelectedDate] = useState<string | null>(getTodayKey());
+   const [calendarData, setCalendarData] = useState<Record<string, CalendarEntry[]>>({});
+ 
+-  // @@@ Load calendar data from database if authenticated, localStorage if guest
+-  useEffect(() => {
+-    const loadData = async () => {
+-      if (isAuthenticated) {
+-        try {
+-          // Load from database - sessions imported during migration
+-          const { listSessions, getSession } = await import('../api/voiceApi');
+-          const grouped = await loadSessionsGroupedByDate(listSessions, getSession, { requireName: true });
+-          setCalendarData(grouped);
+-        } catch (error) {
+-          console.error('Failed to load calendar from database:', error);
+-          // Fallback to localStorage
+-          setCalendarData(getCalendarData());
+-        }
+-      } else {
+-        // Guest mode: load from localStorage
+-        setCalendarData(getCalendarData());
++  // @@@ Shared loader for calendar data (DB or localStorage)
++  const refreshCalendarData = useCallback(async () => {
++    if (isAuthenticated) {
++      try {
++        const { listSessions, getSession } = await import('../api/voiceApi');
++        const grouped = await loadSessionsGroupedByDate(listSessions, getSession, {
++          requireName: true,
++          timezone
++        });
++        setCalendarData(grouped);
++        return;
++      } catch (error) {
++        console.error('Failed to load calendar from database:', error);
+       }
+-    };
++    }
++    setCalendarData(getCalendarData());
++  }, [isAuthenticated, timezone]);
+ 
+-    loadData();
+-  }, [isAuthenticated]);
++  // @@@ Initial load
++  useEffect(() => {
++    refreshCalendarData();
++  }, [refreshCalendarData]);
+ 
+   const today = getTodayKey();
+   const datesWithEntries = Object.keys(calendarData);
+@@ -100,35 +102,8 @@ export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId }:
+           const { deleteSession } = await import('../api/voiceApi');
+           await deleteSession(entryId);
+ 
+-          // Reload calendar data
+-          const { listSessions, getSession } = await import('../api/voiceApi');
+-          const sessions = await listSessions();
+-          const grouped: Record<string, CalendarEntry[]> = {};
+-
+-          for (const session of sessions) {
+-            // @@@ Skip unnamed sessions (same check as initial load)
+-            if (!session.name) continue;
+-
+-            const fullSession = await getSession(session.id);
+-            // @@@ Extract date from created_at timestamp (format: "2025-11-02 10:42:17")
+-            let dateKey = session.created_at?.substring(0, 10) || getTodayKey();
+-
+-            // Legacy: if name starts with YYYY-MM-DD format, use that
+-            if (session.name && /^\d{4}-\d{2}-\d{2}/.test(session.name)) {
+-              dateKey = session.name.split(' - ')[0];
+-            }
+-
+-            if (!grouped[dateKey]) {
+-              grouped[dateKey] = [];
+-            }
+-            grouped[dateKey].push({
+-              id: session.id,
+-              timestamp: new Date(session.created_at || Date.now()).getTime(),
+-              state: fullSession.editor_state,
+-              firstLine: session.name
+-            });
+-          }
+-          setCalendarData(grouped);
++          await refreshCalendarData();
++          onEntryDeleted?.(entryId);
+         } catch (error) {
+           console.error('Failed to delete from database:', error);
+           alert(t('calendar.deleteError'));
+@@ -137,6 +112,7 @@ export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId }:
+         // Guest mode: delete from localStorage
+         deleteEntry(dateKey, entryId);
+         setCalendarData(getCalendarData());
++        onEntryDeleted?.(entryId);
+       }
+     }
+   };
+
+*** FILE: frontend/src/components/CollectionsView.tsx ***
+@@ -35,9 +35,10 @@ interface CollectionsViewProps {
+   voiceConfigs: Record<string, any>;
+   friendToSelect?: number | null;
+   onFriendSelectionHandled?: () => void;
++  timezone: string;
+ }
+ 
+-export default function CollectionsView({ isVisible, voiceConfigs, friendToSelect, onFriendSelectionHandled }: CollectionsViewProps) {
++export default function CollectionsView({ isVisible, voiceConfigs, friendToSelect, onFriendSelectionHandled, timezone }: CollectionsViewProps) {
+   const { i18n } = useTranslation();
+   const dateLocale = getDateLocale(i18n.language);
+   return (
+@@ -55,6 +56,7 @@ export default function CollectionsView({ isVisible, voiceConfigs, friendToSelec
+         dateLocale={dateLocale}
+         friendToSelect={friendToSelect}
+         onFriendSelectionHandled={onFriendSelectionHandled}
++        timezone={timezone}
+       />
+     </div>
+   );
+@@ -455,9 +457,10 @@ interface TimelinePageProps {
+   dateLocale: string;
+   friendToSelect?: number | null;
+   onFriendSelectionHandled?: () => void;
++  timezone: string;
+ }
+ 
+-function TimelinePage({ isVisible, voiceConfigs, dateLocale, friendToSelect, onFriendSelectionHandled }: TimelinePageProps) {
++function TimelinePage({ isVisible, voiceConfigs, dateLocale, friendToSelect, onFriendSelectionHandled, timezone }: TimelinePageProps) {
+   const { t } = useTranslation();
+   const { isAuthenticated } = useAuth();
+   const [starredComments, setStarredComments] = useState<Commentor[]>([]);
+@@ -584,7 +587,10 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, friendToSelect, onF
+       if (isAuthenticated) {
+         try {
+           const { listSessions, getSession } = await import('../api/voiceApi');
+-          const groupedEntries = await loadSessionsGroupedByDate(listSessions, getSession, { requireName: true });
++          const groupedEntries = await loadSessionsGroupedByDate(listSessions, getSession, {
++            requireName: true,
++            timezone
++          });
+ 
+           const allStarred: Commentor[] = [];
+           const commentsByDate = new Map<string, Commentor[]>();
+@@ -773,7 +779,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, friendToSelect, onF
+ 
+     loadTimelineData();
+     loadFriendsList();
+-  }, [isAuthenticated]);
++  }, [isAuthenticated, timezone, dateLocale]);
+ 
+   // @@@ Group items by date (using YYYY-MM-DD format to match timeline days)
+   const timelineByDate = new Map<string, TimelineEntryData>();
+
+*** FILE: frontend/src/components/StateChooser.tsx ***
+@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
+ import { StateCube } from './StateCube';
+ import type { StateConfig } from '../api/voiceApi';
+ import { getDateLocale } from '../i18n';
++import { parseFlexibleTimestamp } from '../utils/timezone';
+ 
+ interface Props {
+   stateConfig: StateConfig;
+   selectedState: string | null;
+-  createdAt?: string;  // @@@ Optional creation date (YYYY-MM-DD)
++  createdAt?: string;  // ISO timestamp recorded when the session was created
+   onChoose: (stateId: string) => void;
+ }
+ 
+@@ -31,9 +32,8 @@ export default function StateChooser({ stateConfig, selectedState, createdAt, on
+   const selectedStateData = selectedState ? stateConfig.states[selectedState] : null;
+ 
+   // @@@ Use createdAt if provided, otherwise use today
+-  const displayDate = createdAt
+-    ? new Date(createdAt + 'T00:00:00')
+-    : new Date();
++  const timestamp = createdAt ? parseFlexibleTimestamp(createdAt) : null;
++  const displayDate = timestamp ?? new Date();
+ 
+   const dateLocale = getDateLocale(i18n.language);
+   const dateString = displayDate.toLocaleDateString(dateLocale, {
+
+*** FILE: frontend/src/engine/EditorEngine.ts ***
+@@ -16,7 +16,7 @@ export interface EditorState {
+   sessionId: string;
+   currentEntryId?: string;  // Track which calendar entry is being edited (for overwrite on save)
+   selectedState?: string | null;  // @@@ Emotional state for this session (stored per-session)
+-  createdAt?: string;  // @@@ ISO date when session was created (YYYY-MM-DD)
++  createdAt?: string;  // @@@ ISO timestamp when session was created
+ }
+ 
+ export type Cell = TextCell | WidgetCell;
+@@ -123,6 +123,7 @@ export class EditorEngine {
+   private sentCache: Map<string, string> = new Map(); // Track sent sentences -> commentor hash
+   private onStateChange?: (state: EditorState) => void;
+   private isRequesting: boolean = false; // Track if request in progress
++  private blankResetSubscribers: Set<() => void> = new Set();
+ 
+   constructor(sessionId: string) {
+     this.state = {
+@@ -136,6 +137,21 @@ export class EditorEngine {
+     };
+   }
+ 
++  onBlankReset(callback: () => void) {
++    this.blankResetSubscribers.add(callback);
++    return () => this.blankResetSubscribers.delete(callback);
++  }
++
++  private notifyBlankReset() {
++    this.blankResetSubscribers.forEach(cb => {
++      try {
++        cb();
++      } catch (error) {
++        console.error('Blank reset subscriber failed', error);
++      }
++    });
++  }
++
+   // @@@ Update voice configurations from settings
+   // No-op: Backend now loads voice configs from database, not from frontend
+   setVoiceConfigs(_configs: Record<string, any>) {
+@@ -216,9 +232,10 @@ export class EditorEngine {
+     return combinedText.trim().length === 0;
+   }
+ 
+-  // @@@ Restore editor to pristine state while preserving session metadata
++  // @@@ Restore editor to pristine state while starting a fresh session
+   private resetEditorToBlank() {
+-    const { sessionId, currentEntryId, selectedState, createdAt } = this.state;
++    const { selectedState, sessionId, currentEntryId, createdAt } = this.state;
++    const preservedTimestamp = createdAt ?? new Date().toISOString();
+ 
+     this.state = {
+       cells: [{ id: generateId(), type: 'text', content: '' }],
+@@ -227,9 +244,9 @@ export class EditorEngine {
+       weightPath: [],
+       overlappedPhrases: [],
+       sessionId,
+-      currentEntryId,
++      currentEntryId: currentEntryId ?? sessionId,
+       selectedState,
+-      createdAt
++      createdAt: preservedTimestamp
+     };
+ 
+     this.usedEnergy = 0;
+@@ -238,6 +255,7 @@ export class EditorEngine {
+     this.isRequesting = false;
+ 
+     this.notifyChange();
++    this.notifyBlankReset();
+   }
+ 
+ 
+
+*** FILE: frontend/src/utils/sessionGrouping.ts ***
+@@ -1,37 +1,29 @@
+ import type { CalendarEntry } from './calendarStorage';
+ import { extractFirstLine, getTodayKey } from './calendarStorage';
+ import type { EditorState } from '../engine/EditorEngine';
++import { getLocalDayKey, parseFlexibleTimestamp } from './timezone';
+ 
+ type ListSessionsFn = () => Promise<any[]>;
+ type GetSessionFn = (id: string) => Promise<any>;
+ 
+-function normalizeTimestamp(raw?: string | null): Date | null {
+-  if (!raw) return null;
+-  const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+-  const withZone = /[zZ]$/.test(normalized) ? normalized : `${normalized}Z`;
+-  const parsed = Date.parse(withZone);
+-  if (Number.isNaN(parsed)) {
+-    return null;
+-  }
+-  return new Date(parsed);
+-}
++function getSessionTimestamp(sessionMeta: any, fullSession: any): Date | null {
++  const stateTimestamp = parseFlexibleTimestamp(fullSession?.editor_state?.createdAt);
++  if (stateTimestamp) return stateTimestamp;
+ 
+-export function getSessionDateKey(session: any, state?: EditorState): string {
+-  const name = session?.name;
+-  if (name && /^\d{4}-\d{2}-\d{2}/.test(name)) {
+-    return name.split(' - ')[0];
+-  }
++  const createdAt = parseFlexibleTimestamp(fullSession?.created_at || sessionMeta?.created_at);
++  if (createdAt) return createdAt;
+ 
+-  if (state?.createdAt) {
+-    return state.createdAt;
+-  }
++  const updatedAt = parseFlexibleTimestamp(fullSession?.updated_at || sessionMeta?.updated_at);
++  return updatedAt;
++}
+ 
+-  const timestamp = normalizeTimestamp(session?.updated_at || session?.created_at);
+-  if (timestamp) {
+-    return timestamp.toISOString().substring(0, 10);
++function getSessionDateKey(session: any, fullSession: any, timezone: string): string {
++  const timestamp = getSessionTimestamp(session, fullSession);
++  if (!timestamp) {
++    console.warn('Session missing timestamp data', session?.id);
++    return getTodayKey();
+   }
+-
+-  return getTodayKey();
++  return getLocalDayKey(timestamp, timezone) ?? getTodayKey();
+ }
+ 
+ function getEntryFirstLine(sessionName: string | undefined, state?: EditorState): string {
+@@ -47,9 +39,9 @@ function getEntryFirstLine(sessionName: string | undefined, state?: EditorState)
+ export async function loadSessionsGroupedByDate(
+   listSessions: ListSessionsFn,
+   getSession: GetSessionFn,
+-  options: { requireName?: boolean } = {}
++  options: { requireName?: boolean; timezone?: string } = {}
+ ): Promise<Record<string, CalendarEntry[]>> {
+-  const { requireName = false } = options;
++  const { requireName = false, timezone = 'UTC' } = options;
+   const sessions = await listSessions();
+   const grouped: Record<string, CalendarEntry[]> = {};
+ 
+@@ -60,13 +52,13 @@ export async function loadSessionsGroupedByDate(
+       const fullSession = await getSession(session.id);
+       if (!fullSession?.editor_state) continue;
+ 
+-      const dateKey = getSessionDateKey(session, fullSession.editor_state);
++      const dateKey = getSessionDateKey(session, fullSession, timezone);
+       const firstLine = getEntryFirstLine(session.name, fullSession.editor_state);
+       if (!grouped[dateKey]) {
+         grouped[dateKey] = [];
+       }
+ 
+-      const timestamp = normalizeTimestamp(session?.created_at || session?.updated_at);
++      const timestamp = getSessionTimestamp(session, fullSession);
+       const displayTimestamp = timestamp ? timestamp.getTime() : Date.now();
+ 
+       grouped[dateKey].push({
+
+*** FILE: frontend/src/utils/timezone.ts ***
+@@ -0,0 +1,61 @@
++const CANONICAL_LOCALE = 'en-CA';
++
++function ensureDate(value?: string | number | Date | null): Date | null {
++  if (!value && value !== 0) return null;
++  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
++  if (typeof value === 'number') {
++    const parsed = new Date(value);
++    return Number.isNaN(parsed.getTime()) ? null : parsed;
++  }
++  if (typeof value === 'string') {
++    const normalized = value.includes('T') ? value : `${value}T00:00:00Z`;
++    const parsed = new Date(normalized);
++    return Number.isNaN(parsed.getTime()) ? null : parsed;
++  }
++  return null;
++}
++
++export function formatDateInTimeZone(date: Date, timeZone: string): string {
++  return new Intl.DateTimeFormat(CANONICAL_LOCALE, {
++    timeZone,
++    year: 'numeric',
++    month: '2-digit',
++    day: '2-digit'
++  }).format(date);
++}
++
++export function getLocalDayKey(value: Date | string | number | null | undefined, timeZone: string): string | null {
++  const date = ensureDate(value ?? null);
++  if (!date) return null;
++  return formatDateInTimeZone(date, timeZone);
++}
++
++export function parseFlexibleTimestamp(value?: string | null): Date | null {
++  if (!value) return null;
++  return ensureDate(value);
++}
++
++export function getTodayKeyInTimezone(timeZone: string): string {
++  return formatDateInTimeZone(new Date(), timeZone);
++}
++
++export function areDatesSameLocalDay(a?: string, b?: string, timeZone: string = 'UTC'): boolean {
++  if (!a || !b) return false;
++  const dayA = getLocalDayKey(a, timeZone);
++  const dayB = getLocalDayKey(b, timeZone);
++  return Boolean(dayA && dayB && dayA === dayB);
++}
++
++export function convertLocalDayToUtcRange(dayKey: string, timeZone: string): { start: Date; end: Date } {
++  const [year, month, day] = dayKey.split('-').map(Number);
++  const local = new Date(Date.UTC(year, month - 1, day));
++  const tzDate = new Date(local.toLocaleString('en-US', { timeZone }));
++  const start = new Date(tzDate);
++  start.setHours(0, 0, 0, 0);
++  const end = new Date(start);
++  end.setDate(end.getDate() + 1);
++  return {
++    start: new Date(start.toLocaleString('en-US', { timeZone: 'UTC' })),
++    end: new Date(end.toLocaleString('en-US', { timeZone: 'UTC' }))
++  };
++}

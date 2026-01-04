@@ -1,0 +1,23 @@
+{
+  "sha": "e52dce84a0e23360ace13562b31d1e67eea36f56",
+  "message": "new layout for deck manager",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-10T09:32:18Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-10T09:32:18Z"
+  },
+  "stats": {
+    "total": 1667,
+    "additions": 765,
+    "deletions": 902
+  },
+  "files_count": 3,
+  "parents": [
+    "f803659ce6307c43c299013aa89674519a1428a3"
+  ]
+}

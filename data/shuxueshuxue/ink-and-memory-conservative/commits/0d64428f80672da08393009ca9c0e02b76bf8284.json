@@ -1,0 +1,23 @@
+{
+  "sha": "0d64428f80672da08393009ca9c0e02b76bf8284",
+  "message": "Add deployment support and voice customization design\n\nDeployment Changes:\n- Configure Vite base path for /ink-and-memory/ subdirectory\n- Update API_BASE to use relative path for nginx proxying\n- Enable production deployment at lexicalmathical.com/ink-and-memory\n\nFeatures:\n- Add weighted character counting (CJK = 3x, Latin = 1x)\n- Threshold: 40 weight units (~40 English OR ~13 Chinese chars)\n- Version logging for cache debugging (v1.1.0-weighted-40)\n\nDocumentation:\n- Add voice customization design doc\n- Define localStorage-based customization system\n- Document no-merge rule and upload/download pattern\n- Specify TypeScript/Python type contract\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-19T15:27:13Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-19T15:27:13Z"
+  },
+  "stats": {
+    "total": 317,
+    "additions": 312,
+    "deletions": 5
+  },
+  "files_count": 4,
+  "parents": [
+    "32cb8e834fba996aac0047e2a24027fc45f87b2d"
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "hash": "0b9e3b768ed5ff748535d29ebcf44fb924df86f2",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Thu Oct 30 00:18:43 2025 +0800",
+  "subject": "Fix timeline empty state and increase image generation timeout",
+  "files": [
+    "backend/proxy_config.py",
+    "backend/server.py",
+    "backend/test_image_gen.py",
+    "frontend/src/App.tsx",
+    "frontend/src/api/voiceApi.ts",
+    "frontend/src/components/AnalysisView.tsx",
+    "frontend/src/components/CollectionsView.tsx",
+    "frontend/src/components/LeftSidebar.tsx",
+    "frontend/src/components/VoiceSettings.tsx",
+    "frontend/src/engine/EditorEngine.ts"
+  ],
+  "diff": "commits/0b9e3b768ed5ff748535d29ebcf44fb924df86f2/0b9e3b768ed5ff748535d29ebcf44fb924df86f2.diff",
+  "related_files": {
+    "backend/proxy_config.py": [
+      "backend/server.py",
+      "backend/test_image_gen.py",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "backend/server.py": [
+      "backend/proxy_config.py",
+      "backend/test_image_gen.py",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "backend/test_image_gen.py": [
+      "backend/proxy_config.py",
+      "backend/server.py",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/App.tsx": [
+      "backend/proxy_config.py",
+      "backend/server.py",
+      "backend/test_image_gen.py",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/api/voiceApi.ts": [
+      "backend/proxy_config.py",
+      "backend/server.py",
+      "backend/test_image_gen.py",
+      "frontend/src/App.tsx",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/components/AnalysisView.tsx": [
+      "backend/proxy_config.py",
+      "backend/server.py",
+      "backend/test_image_gen.py",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/components/CollectionsView.tsx": [
+      "backend/proxy_config.py",
+      "backend/server.py",
+      "backend/test_image_gen.py",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/components/LeftSidebar.tsx": [
+      "backend/proxy_config.py",
+      "backend/server.py",
+      "backend/test_image_gen.py",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/components/VoiceSettings.tsx": [
+      "backend/proxy_config.py",
+      "backend/server.py",
+      "backend/test_image_gen.py",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/engine/EditorEngine.ts": [
+      "backend/proxy_config.py",
+      "backend/server.py",
+      "backend/test_image_gen.py",
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/components/LeftSidebar.tsx",
+      "frontend/src/components/VoiceSettings.tsx"
+    ]
+  }
+}

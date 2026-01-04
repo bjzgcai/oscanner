@@ -1,0 +1,40 @@
+{
+  "models": {
+    "gemini-3-flash-preview": {
+      "endpoint": "https://openrouter.ai/api/v1",
+      "api_key": "sk-or-your-key",
+      "model": "google/gemini-3-flash-preview"
+    },
+    "claude-haiku-4.5": {
+      "endpoint": "https://api.your-provider.com/v1",
+      "api_key": "sk-your-key",
+      "model": "anthropic/claude-haiku-4.5"
+    },
+    "gemini-2.5-flash-image-preview": {
+      "endpoint": "https://api.your-provider.com/v1",
+      "api_key": "sk-your-key",
+      "model": "google/gemini-2.5-flash-image-preview"
+    }
+  },
+  "roles": {
+    "voice_analysis": "gemini-3-flash-preview",
+    "voice_inspiration": "gemini-3-flash-preview",
+    "voice_chat": "gemini-3-flash-preview",
+    "echo_analysis": "gemini-3-flash-preview",
+    "trait_analysis": "gemini-3-flash-preview",
+    "pattern_analysis": "gemini-3-flash-preview",
+    "image_description": "claude-haiku-4.5",
+    "image_generation": "gemini-2.5-flash-image-preview"
+  },
+  "image_api": {
+    "endpoint": "https://api.your-provider.com/v1"
+  },
+  "image_retry": {
+    "max_attempts": 3,
+    "base_timeout": 90,
+    "timeout_increment": 30,
+    "max_tokens": 1000,
+    "description_max_tokens": 500,
+    "description_timeout": 120
+  }
+}

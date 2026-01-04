@@ -1,0 +1,27 @@
+{
+  "hash": "73a3187a708e5a9282fc0de3904f2aec4ac5347b",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Nov 18 11:01:22 2025 +0800",
+  "subject": "Add timeline auto-generation scheduler with asyncio.run() fix",
+  "files": [
+    "backend/database.py",
+    "backend/scheduler.py",
+    "backend/server.py"
+  ],
+  "diff": "commits/73a3187a708e5a9282fc0de3904f2aec4ac5347b/73a3187a708e5a9282fc0de3904f2aec4ac5347b.diff",
+  "related_files": {
+    "backend/database.py": [
+      "backend/scheduler.py",
+      "backend/server.py"
+    ],
+    "backend/scheduler.py": [
+      "backend/database.py",
+      "backend/server.py"
+    ],
+    "backend/server.py": [
+      "backend/database.py",
+      "backend/scheduler.py"
+    ]
+  }
+}

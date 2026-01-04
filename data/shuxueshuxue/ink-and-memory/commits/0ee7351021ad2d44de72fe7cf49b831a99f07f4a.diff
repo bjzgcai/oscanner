@@ -1,0 +1,234 @@
+*** FILE: frontend/src/components/DeckManager.tsx ***
+@@ -433,9 +433,10 @@ export default function DeckManager({ onUpdate }: Props) {
+           </h3>
+ 
+           <div style={{
+-            display: 'grid',
+-            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+-            gap: 14
++            display: 'flex',
++            flexWrap: 'wrap',
++            gap: 14,
++            alignItems: 'stretch'
+           }}>
+             {decks.map(deck => {
+               const isSystem = !!deck.is_system;
+@@ -458,7 +459,10 @@ export default function DeckManager({ onUpdate }: Props) {
+                     flexDirection: 'column',
+                     gap: 10,
+                     cursor: 'pointer',
+-                    transition: 'transform 0.15s, box-shadow 0.15s'
++                    transition: 'transform 0.15s, box-shadow 0.15s',
++                    flex: '0 0 360px',
++                    minWidth: 320,
++                    maxWidth: '100%'
+                   }}
+                   onMouseEnter={(e) => {
+                     e.currentTarget.style.transform = 'translateY(-1px)';
+@@ -653,9 +657,14 @@ export default function DeckManager({ onUpdate }: Props) {
+               {t('deck.communityEmpty')}
+             </p>
+           ) : (
+-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
++            <div style={{
++              display: 'flex',
++              flexWrap: 'wrap',
++              gap: 14,
++              alignItems: 'stretch'
++            }}>
+               {communityDecks.map(deck => {
+-            const Icon = iconMap[deck.icon as keyof typeof iconMap] || iconMap.brain;
++                const Icon = iconMap[deck.icon as keyof typeof iconMap] || iconMap.brain;
+                 const colorHex = COLORS[deck.color as keyof typeof COLORS]?.hex || '#4a90e2';
+ 
+                 return (
+@@ -664,83 +673,93 @@ export default function DeckManager({ onUpdate }: Props) {
+                     style={{
+                       background: '#fff',
+                       border: `2px solid ${colorHex}`,
+-                      borderRadius: 12,
+-                      padding: 20,
+-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+-                      transition: 'all 0.3s'
++                      borderRadius: 10,
++                      padding: 12,
++                      boxShadow: '0 3px 10px rgba(0,0,0,0.08)',
++                      transition: 'transform 0.15s, box-shadow 0.15s',
++                      display: 'flex',
++                      flexDirection: 'column',
++                      gap: 10,
++                      flex: '0 0 360px',
++                      minWidth: 320,
++                      maxWidth: '100%'
++                    }}
++                    onMouseEnter={(e) => {
++                      (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)';
++                      (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 14px rgba(0,0,0,0.12)';
++                    }}
++                    onMouseLeave={(e) => {
++                      (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
++                      (e.currentTarget as HTMLDivElement).style.boxShadow = '0 3px 10px rgba(0,0,0,0.08)';
+                     }}
+                   >
+-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
+-                        {/* Deck Icon */}
++                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
++                      <div style={{
++                        width: 50,
++                        height: 50,
++                        borderRadius: 25,
++                        background: `linear-gradient(135deg, ${colorHex} 0%, ${colorHex}cc 100%)`,
++                        display: 'flex',
++                        alignItems: 'center',
++                        justifyContent: 'center',
++                        color: '#fff',
++                        flexShrink: 0,
++                        boxShadow: `0 3px 8px ${colorHex}40`
++                      }}>
++                        <Icon size={24} />
++                      </div>
++
++                      <div style={{ flex: 1, minWidth: 0 }}>
+                         <div style={{
+-                          width: 56,
+-                          height: 56,
+-                          borderRadius: 28,
+-                          background: `linear-gradient(135deg, ${colorHex} 0%, ${colorHex}cc 100%)`,
+-                          display: 'flex',
+-                          alignItems: 'center',
+-                          justifyContent: 'center',
+-                          color: '#fff',
+-                          flexShrink: 0,
+-                          boxShadow: `0 3px 8px ${colorHex}40`
++                          fontSize: 17,
++                          fontWeight: 700,
++                          color: '#2c2c2c',
++                          marginBottom: 4,
++                          overflow: 'hidden',
++                          textOverflow: 'ellipsis',
++                          whiteSpace: 'nowrap'
+                         }}>
+-                          <Icon size={28} />
++                          {deck.name}
+                         </div>
+-
+-                        <div style={{ flex: 1, minWidth: 0 }}>
+-                          <div style={{
+-                            fontSize: 18,
+-                            fontWeight: 700,
+-                            color: '#2c2c2c',
+-                            marginBottom: 4
+-                          }}>
+-                            {deck.name}
+-                          </div>
+-                          <div style={{
+-                            fontSize: 14,
+-                            color: '#666',
+-                            marginBottom: 4
+-                          }}>
+-                            {deck.description || 'No description'}
+-                          </div>
+-                          <div style={{
+-                            fontSize: 12,
+-                            color: '#999'
+-                          }}>
+-                            {t('deck.communityMeta', {
+-                              author: deck.author_name || t('deck.labels.anonymous'),
+-                              voices: deck.voice_count || 0,
+-                              installs: deck.install_count || 0
+-                            })}
+-                          </div>
++                        <div style={{
++                          fontSize: 12,
++                          color: '#555',
++                          marginBottom: 4,
++                          lineHeight: 1.4,
++                          maxHeight: 32,
++                          overflow: 'hidden'
++                        }}>
++                          {deck.description || 'No description'}
++                        </div>
++                        <div style={{
++                          fontSize: 11,
++                          color: '#888'
++                        }}>
++                          {t('deck.communityMeta', {
++                            author: deck.author_name || t('deck.labels.anonymous'),
++                            voices: deck.voice_count || 0,
++                            installs: deck.install_count || 0
++                          })}
+                         </div>
+                       </div>
++                    </div>
+ 
++                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-start' }}>
+                       <button
+                         onClick={() => handleInstallDeck(deck.id)}
+                         style={{
+-                          padding: '8px 16px',
++                          padding: '6px 12px',
+                           background: '#27ae60',
+                           color: '#fff',
+                           border: 'none',
+                           borderRadius: 6,
+-                          fontSize: 13,
++                          fontSize: 12,
+                           fontWeight: 600,
+                           cursor: 'pointer',
+-                          transition: 'all 0.2s',
+-                          flexShrink: 0
+-                        }}
+-                        onMouseEnter={(e) => {
+-                          e.currentTarget.style.transform = 'translateY(-1px)';
+-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(39, 174, 96, 0.4)';
+-                        }}
+-                        onMouseLeave={(e) => {
+-                          e.currentTarget.style.transform = 'translateY(0)';
+-                          e.currentTarget.style.boxShadow = 'none';
++                          transition: 'all 0.2s'
+                         }}
+                       >
+-                        {t('deck.actions.install')}
++                        Install
+                       </button>
+                     </div>
+                   </div>
+
+*** FILE: frontend/src/components/TopNavBar.tsx ***
+@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
+ import { useAuth } from '../contexts/AuthContext';
+ 
+ interface Props {
+-  currentView: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks' | 'friends';
+-  onViewChange: (view: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks' | 'friends') => void;
++  currentView: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks';
++  onViewChange: (view: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks') => void;
+ }
+ 
+ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+@@ -152,24 +152,6 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+         >
+           {t('nav.decks')}
+         </button>
+-
+-        <button
+-          onClick={() => onViewChange('friends')}
+-          style={buttonStyle(currentView === 'friends')}
+-          title={t('nav.friends')}
+-          onMouseEnter={e => {
+-            if (currentView !== 'friends') {
+-              e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
+-            }
+-          }}
+-          onMouseLeave={e => {
+-            if (currentView !== 'friends') {
+-              e.currentTarget.style.background = 'transparent';
+-            }
+-          }}
+-        >
+-          {t('nav.friends') || 'Friends'}
+-        </button>
+       </div>
+ 
+       <div style={{ flex: 1 }} />

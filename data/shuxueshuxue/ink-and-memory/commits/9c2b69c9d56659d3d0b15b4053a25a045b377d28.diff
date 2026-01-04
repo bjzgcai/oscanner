@@ -1,0 +1,10 @@
+*** FILE: backend/server.py ***
+@@ -778,6 +778,8 @@ def generate_daily_picture(all_notes: str, user_id: int, target_date: str = None
+     version="2.0.0",
+ )
+ 
++print(f"🧾 Backend version: {BACKEND_VERSION}")
++
+ # Add CORS middleware
+ app.add_middleware(
+     CORSMiddleware,

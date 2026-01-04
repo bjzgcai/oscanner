@@ -1,0 +1,36 @@
+{
+  "hash": "bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 23 16:50:24 2025 +0800",
+  "subject": "Unify session identity and drop currentEntryId",
+  "files": [
+    "backend/tools/session_inserter.py",
+    "frontend/src/App.tsx",
+    "frontend/src/engine/EditorEngine.ts",
+    "frontend/src/utils/calendarStorage.ts"
+  ],
+  "diff": "commits/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e/bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e.diff",
+  "related_files": {
+    "backend/tools/session_inserter.py": [
+      "frontend/src/App.tsx",
+      "frontend/src/engine/EditorEngine.ts",
+      "frontend/src/utils/calendarStorage.ts"
+    ],
+    "frontend/src/App.tsx": [
+      "backend/tools/session_inserter.py",
+      "frontend/src/engine/EditorEngine.ts",
+      "frontend/src/utils/calendarStorage.ts"
+    ],
+    "frontend/src/engine/EditorEngine.ts": [
+      "backend/tools/session_inserter.py",
+      "frontend/src/App.tsx",
+      "frontend/src/utils/calendarStorage.ts"
+    ],
+    "frontend/src/utils/calendarStorage.ts": [
+      "backend/tools/session_inserter.py",
+      "frontend/src/App.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ]
+  }
+}

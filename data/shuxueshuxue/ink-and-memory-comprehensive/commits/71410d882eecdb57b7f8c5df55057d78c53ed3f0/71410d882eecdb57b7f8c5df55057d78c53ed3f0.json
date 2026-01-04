@@ -1,0 +1,14 @@
+{
+  "hash": "71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Fri Nov 7 15:32:12 2025 +0800",
+  "subject": "Combine effects for better ordering: resize then restore scroll",
+  "files": [
+    "frontend/src/App.tsx"
+  ],
+  "diff": "commits/71410d882eecdb57b7f8c5df55057d78c53ed3f0/71410d882eecdb57b7f8c5df55057d78c53ed3f0.diff",
+  "related_files": {
+    "frontend/src/App.tsx": []
+  }
+}

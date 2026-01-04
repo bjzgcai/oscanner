@@ -1,0 +1,74 @@
+[
+  {
+    "sha": "a8b17ff463e413e0279ea375a080b4b1a98c22fd",
+    "filename": "README.md",
+    "status": "modified",
+    "additions": 3,
+    "deletions": 0,
+    "changes": 3,
+    "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f9e574da9a6d02b376c84808ff64baf0197ed831/README.md",
+    "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f9e574da9a6d02b376c84808ff64baf0197ed831/README.md",
+    "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=f9e574da9a6d02b376c84808ff64baf0197ed831",
+    "patch": "@@ -90,6 +90,8 @@ source .venv/bin/activate  # Windows: .venv\\Scripts\\activate\n uv pip install -r requirements.txt\n ```\n \n+PolyCLI is provided by the PyPI package `polyagent` (installed via the requirements above).\n+\n Create a `models.json` file for your LLM:\n \n ```json\n@@ -104,6 +106,7 @@ Create a `models.json` file for your LLM:\n }\n ```\n \n+\n Then start the server:\n \n ```bash"
+  },
+  {
+    "sha": "c08ba088f37e351704230b0523d63f5ab086e3f6",
+    "filename": "README.zh.md",
+    "status": "modified",
+    "additions": 1,
+    "deletions": 0,
+    "changes": 1,
+    "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f9e574da9a6d02b376c84808ff64baf0197ed831/README.zh.md",
+    "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f9e574da9a6d02b376c84808ff64baf0197ed831/README.zh.md",
+    "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.zh.md?ref=f9e574da9a6d02b376c84808ff64baf0197ed831",
+    "patch": "@@ -104,6 +104,7 @@ uv pip install -r requirements.txt\n }\n ```\n \n+\n \u7136\u540e\u542f\u52a8\u670d\u52a1\u5668\uff1a\n \n ```bash"
+  },
+  {
+    "sha": "bd153f4b54090ddb7438ea59cd99f1990a57ca5a",
+    "filename": "backend/config.py",
+    "status": "modified",
+    "additions": 6,
+    "deletions": 6,
+    "changes": 12,
+    "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f9e574da9a6d02b376c84808ff64baf0197ed831/backend%2Fconfig.py",
+    "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f9e574da9a6d02b376c84808ff64baf0197ed831/backend%2Fconfig.py",
+    "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fconfig.py?ref=f9e574da9a6d02b376c84808ff64baf0197ed831",
+    "patch": "@@ -8,22 +8,22 @@\n # VOICE_ANALYSIS_MODEL = \"gemini-3-pro-preview\"\n # VOICE_ANALYSIS_MODEL = \"mistral-small-creative\"\n # VOICE_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n-VOICE_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n+VOICE_ANALYSIS_MODEL = \"default\"\n \n # VOICE_INSPIRATION_MODEL = \"claude-sonnet-4.5\"\n-VOICE_INSPIRATION_MODEL = \"gemini-3-flash-preview\"\n+VOICE_INSPIRATION_MODEL = \"default\"\n \n # VOICE_CHAT_MODEL = \"claude-sonnet-4.5\"\n-VOICE_CHAT_MODEL = \"gemini-3-flash-preview\"\n+VOICE_CHAT_MODEL = \"default\"\n \n # ECHO_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n-ECHO_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n+ECHO_ANALYSIS_MODEL = \"default\"\n \n # TRAIT_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n-TRAIT_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n+TRAIT_ANALYSIS_MODEL = \"default\"\n \n # PATTERN_ANALYSIS_MODEL = \"claude-sonnet-4.5\"\n-PATTERN_ANALYSIS_MODEL = \"gemini-3-flash-preview\"\n+PATTERN_ANALYSIS_MODEL = \"default\"\n \n # @@@ Sparsity control\n MAX_VOICES = 5"
+  },
+  {
+    "sha": "b227d942ca23fe7f152cfa88cdba6296e9f8f5e2",
+    "filename": "backend/server.py",
+    "status": "modified",
+    "additions": 2,
+    "deletions": 1,
+    "changes": 3,
+    "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f9e574da9a6d02b376c84808ff64baf0197ed831/backend%2Fserver.py",
+    "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f9e574da9a6d02b376c84808ff64baf0197ed831/backend%2Fserver.py",
+    "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=f9e574da9a6d02b376c84808ff64baf0197ed831",
+    "patch": "@@ -15,7 +15,7 @@\n from fastapi.middleware.cors import CORSMiddleware\n from polycli.orchestration.session_registry import session_def, get_registry\n from polycli.integrations.fastapi import mount_control_panel\n-from polycli import PolyAgent\n+from polycli.polyagent import PolyAgent\n from stateless_analyzer import analyze_stateless\n from speech_recognition import init_speech_recognition\n import config\n@@ -904,6 +904,7 @@ def generate_daily_picture(\n @app.on_event(\"startup\")\n async def startup_scheduler():\n     \"\"\"Start the timeline auto-generation scheduler on app startup.\"\"\"\n+    database.init_db()\n     print(\"\\n\" + \"=\" * 60)\n     print(\"\ud83d\udcc5 Starting Timeline Auto-Generation Scheduler\")\n     print(\"   Schedule: Daily at 00:00 (midnight, Asia/Shanghai timezone)\")"
+  },
+  {
+    "sha": "8527f341c371996d2c79cca668254f583910c625",
+    "filename": "backend/stateless_analyzer.py",
+    "status": "modified",
+    "additions": 1,
+    "deletions": 1,
+    "changes": 2,
+    "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f9e574da9a6d02b376c84808ff64baf0197ed831/backend%2Fstateless_analyzer.py",
+    "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f9e574da9a6d02b376c84808ff64baf0197ed831/backend%2Fstateless_analyzer.py",
+    "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateless_analyzer.py?ref=f9e574da9a6d02b376c84808ff64baf0197ed831",
+    "patch": "@@ -3,7 +3,7 @@\n \n from typing import Optional, List\n from pydantic import BaseModel, Field\n-from polycli import PolyAgent\n+from polycli.polyagent import PolyAgent\n import config\n \n "
+  },
+  {
+    "sha": "0f287c259dfe1ac3426e7be720f108cf8fafa2f7",
+    "filename": "backend/tests/README.md",
+    "status": "modified",
+    "additions": 1,
+    "deletions": 1,
+    "changes": 2,
+    "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f9e574da9a6d02b376c84808ff64baf0197ed831/backend%2Ftests%2FREADME.md",
+    "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f9e574da9a6d02b376c84808ff64baf0197ed831/backend%2Ftests%2FREADME.md",
+    "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Ftests%2FREADME.md?ref=f9e574da9a6d02b376c84808ff64baf0197ed831",
+    "patch": "@@ -86,4 +86,4 @@ python tests/test_api_endpoints.py\n \n **\"API tests return 502\"**\n - Server may have crashed - check `/tmp/test_server.log`\n-- Verify PolyCLI is installed: `pip show polycli`\n+- Verify PolyCLI is installed: `pip show polyagent`"
+  }
+]

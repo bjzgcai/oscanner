@@ -1,0 +1,176 @@
+*** FILE: frontend/src/App.tsx ***
+@@ -287,9 +287,16 @@ export default function App() {
+   // @@@ Writing suggestion state
+   const [currentInspiration, setCurrentInspiration] = useState<VoiceInspiration | null>(null);
+   const [inspirationDisappearing, setInspirationDisappearing] = useState(false);
++  const prevInspirationRef = useRef<VoiceInspiration | null>(null);
+   const [_suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');  // Not used yet
+   const suggestionTimerRef = useRef<number | null>(null);
+ 
++  // @@@ Detect if this is a new inspiration appearing (different from previous)
++  // Only check appearing when NOT disappearing (to avoid conflict)
++  const inspirationAppearing = !inspirationDisappearing &&
++    currentInspiration !== null &&
++    currentInspiration !== prevInspirationRef.current;
++
+   // @@@ CRITICAL: Resize textareas then restore scroll position
+   // Order matters: resize first (changes content height), then restore scroll
+   // Triggers: on mount (refsReady) and when cells added/deleted (cells.length)
+@@ -340,10 +347,17 @@ export default function App() {
+     }
+   }, [inspirationDisappearing]);
+ 
+-  // @@@ Reset disappearing state when new inspiration arrives
++  // @@@ Update prevInspiration ref after render to trigger appearing animation
+   useEffect(() => {
+     if (currentInspiration) {
+       setInspirationDisappearing(false);
++
++      // Wait for next frame to allow CSS transition to detect the change
++      requestAnimationFrame(() => {
++        prevInspirationRef.current = currentInspiration;
++        // @@@ Force re-render to show the appeared state (opacity 1)
++        setRefsReady(prev => prev + 1);
++      });
+     }
+   }, [currentInspiration]);
+ 
+@@ -1178,6 +1192,9 @@ export default function App() {
+         setSelectedState(loadedState.selectedState);
+       }
+ 
++      // @@@ Trigger textarea resize after loading entry
++      setRefsReady(prev => prev + 1);
++
+       setShowCalendarPopup(false);
+     }
+   }, []);
+@@ -2085,9 +2102,14 @@ export default function App() {
+                       fontStyle: 'italic',
+                       pointerEvents: 'none',
+                       transition: 'all 0.8s cubic-bezier(0.4, 0, 0.6, 1)',
+-                      opacity: inspirationDisappearing ? 0 : 1,
+-                      transform: inspirationDisappearing ? 'scale(0.95) translateY(-3px)' : 'scale(1) translateY(0)',
+-                      filter: inspirationDisappearing ? 'blur(2px)' : 'blur(0)',
++                      // @@@ Appearing animation: reverse of disappearing (emerge from paper)
++                      opacity: inspirationDisappearing ? 0 : (inspirationAppearing ? 0 : 1),
++                      transform: inspirationDisappearing
++                        ? 'scale(0.95) translateY(-3px)'
++                        : (inspirationAppearing ? 'scale(0.95) translateY(-3px)' : 'scale(1) translateY(0)'),
++                      filter: inspirationDisappearing
++                        ? 'blur(2px)'
++                        : (inspirationAppearing ? 'blur(2px)' : 'blur(0)'),
+                     }}
+                     >
+                       {/* Voice Icon */}
+
+*** FILE: frontend/src/components/CommentCard.tsx ***
+@@ -1,5 +1,5 @@
+ import React from 'react';
+-import { FaStar, FaTrash, FaChevronLeft, FaChevronRight, FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye, FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass } from 'react-icons/fa';
++import { FaStar, FaTrash, FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye, FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass } from 'react-icons/fa';
+ import type { Commentor } from '../engine/EditorEngine';
+ 
+ const iconMap = {
+@@ -140,19 +140,46 @@ export function CommentGroupCard({
+             justifyContent: 'space-between',
+             alignItems: 'center'
+           }}>
++            {/* @@@ Tab navigation on left side */}
+             <div style={{
+-              fontSize: '10px',
+-              color: colors.text,
+-              opacity: 0.6,
+-              fontWeight: 600
++              display: 'flex',
++              gap: '4px',
++              alignItems: 'center',
+             }}>
+-              {comments.length > 1 && (
+-                <span>
+-                  {safeIndex + 1}/{comments.length}
+-                </span>
++              {comments.length > 1 ? (
++                comments.map((_, idx) => (
++                  <React.Fragment key={idx}>
++                    <button
++                      onClick={(e) => {
++                        e.stopPropagation();
++                        onNavigate(idx);
++                      }}
++                      style={{
++                        background: idx === safeIndex ? colors.text : 'transparent',
++                        color: idx === safeIndex ? '#fff' : colors.text,
++                        border: 'none',
++                        borderRadius: '3px',
++                        padding: '2px 6px',
++                        cursor: 'pointer',
++                        fontSize: '10px',
++                        fontWeight: 600,
++                        opacity: idx === safeIndex ? 1 : 0.5,
++                        transition: 'all 0.2s',
++                      }}
++                    >
++                      {idx + 1}
++                    </button>
++                    {idx < comments.length - 1 && (
++                      <span style={{ color: colors.text, opacity: 0.3, fontSize: '10px' }}>|</span>
++                    )}
++                  </React.Fragment>
++                ))
++              ) : (
++                <div style={{ width: '1px' }} /> // Empty placeholder when single comment
+               )}
+             </div>
+ 
++            {/* @@@ Action buttons on right side */}
+             <div style={{
+               display: 'flex',
+               gap: '4px',
+@@ -195,46 +222,6 @@ export function CommentGroupCard({
+               >
+                 <FaTrash size={10} color={currentComment.feedback === 'kill' ? '#fff' : colors.text} style={{ opacity: currentComment.feedback === 'kill' ? 1 : 0.5 }} />
+               </button>
+-              {comments.length > 1 && (
+-                <>
+-                  <button
+-                    onClick={(e) => {
+-                      e.stopPropagation();
+-                      onNavigate((safeIndex - 1 + comments.length) % comments.length);
+-                    }}
+-                    style={{
+-                      background: 'transparent',
+-                      border: 'none',
+-                      borderRadius: '3px',
+-                      padding: '3px 5px',
+-                      cursor: 'pointer',
+-                      display: 'flex',
+-                      alignItems: 'center',
+-                      justifyContent: 'center',
+-                    }}
+-                  >
+-                    <FaChevronLeft size={10} color={colors.text} style={{ opacity: 0.5 }} />
+-                  </button>
+-                  <button
+-                    onClick={(e) => {
+-                      e.stopPropagation();
+-                      onNavigate((safeIndex + 1) % comments.length);
+-                    }}
+-                    style={{
+-                      background: 'transparent',
+-                      border: 'none',
+-                      borderRadius: '3px',
+-                      padding: '3px 5px',
+-                      cursor: 'pointer',
+-                      display: 'flex',
+-                      alignItems: 'center',
+-                      justifyContent: 'center',
+-                    }}
+-                  >
+-                    <FaChevronRight size={10} color={colors.text} style={{ opacity: 0.5 }} />
+-                  </button>
+-                </>
+-              )}
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation();

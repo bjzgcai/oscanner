@@ -1,0 +1,22 @@
+*** MODIFIED: frontend/src/utils/timezone.ts (+13/-1) ***
+@@ -8,7 +8,19 @@ function ensureDate(value?: string | number | Date | null): Date | null {
+     return Number.isNaN(parsed.getTime()) ? null : parsed;
+   }
+   if (typeof value === 'string') {
+-    const normalized = value.includes('T') ? value : `${value}T00:00:00Z`;
++    const trimmed = value.trim();
++    let normalized = trimmed;
++    const hasT = trimmed.includes('T');
++    const hasSpace = trimmed.includes(' ');
++    const hasZone = /([zZ]|[+-]\d{2}:\d{2})$/.test(trimmed);
++    if (!hasT && hasSpace) {
++      normalized = trimmed.replace(' ', 'T');
++    } else if (!hasT && !hasSpace) {
++      normalized = `${trimmed}T00:00:00`;
++    }
++    if (!hasZone) {
++      normalized = `${normalized}Z`;
++    }
+     const parsed = new Date(normalized);
+     return Number.isNaN(parsed.getTime()) ? null : parsed;
+   }

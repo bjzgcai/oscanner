@@ -1,0 +1,14 @@
+{
+  "hash": "6c8f531c57bab85fca175dd0c7b21363a4c8767c",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Thu Nov 13 17:37:10 2025 +0800",
+  "subject": "Simplify database.py: replace migrations with direct table creation",
+  "files": [
+    "backend/database.py"
+  ],
+  "diff": "commits/6c8f531c57bab85fca175dd0c7b21363a4c8767c/6c8f531c57bab85fca175dd0c7b21363a4c8767c.diff",
+  "related_files": {
+    "backend/database.py": []
+  }
+}

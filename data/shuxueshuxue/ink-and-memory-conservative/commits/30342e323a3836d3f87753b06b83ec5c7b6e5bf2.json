@@ -1,0 +1,23 @@
+{
+  "sha": "30342e323a3836d3f87753b06b83ec5c7b6e5bf2",
+  "message": "Switch to control the energy bar display.\n\n  - 在 frontend/src/App.tsx 新增 showEnergyBar 状态并持久化到 localStorage（默认\r\n    开启）。\r\n  - 设置页的语言卡片里追加 “Energy Bar / 能量条” 开关（同一套字体/边框/配色）。\r\n  - 底部 debug stats 的能量条用 showEnergyBar 控制显示。",
+  "author": {
+    "name": "zhuchenyu2008",
+    "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+    "date": "2026-01-01T04:40:11Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2026-01-01T04:40:11Z"
+  },
+  "stats": {
+    "total": 1859,
+    "additions": 1859,
+    "deletions": 0
+  },
+  "files_count": 1,
+  "parents": [
+    "df8483970531b42de442b60843852fd6882cf381"
+  ]
+}

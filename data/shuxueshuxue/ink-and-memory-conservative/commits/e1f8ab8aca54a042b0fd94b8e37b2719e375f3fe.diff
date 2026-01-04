@@ -1,0 +1,35 @@
+*** MODIFIED: .github/workflows/deploy-backend.yml (+22/-5) ***
+@@ -61,11 +61,28 @@ jobs:
+             cd /root/ink-and-memory/backend
+             mkdir -p /root/ink-and-memory/backend/data
+             # Write models.json from secret for runtime mounting
+-            cat > /root/ink-and-memory/backend/models.json <<'EOF'
+-            ${{ secrets.MODELS_JSON }}
+-            EOF
+-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u shuxueshuxue --password-stdin >/dev/null
+-            docker pull "${IMAGE_TAG}"
++          cat > /root/ink-and-memory/backend/models.json <<'EOF'
++          ${{ secrets.MODELS_JSON }}
++          EOF
++          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u shuxueshuxue --password-stdin >/dev/null
++            echo "Pulling image ${IMAGE_TAG} with retries..."
++            attempt=1
++            while true; do
++              if docker pull "${IMAGE_TAG}"; then
++                echo "Image pull succeeded on attempt ${attempt}"
++                break
++              fi
++              if [ "${attempt}" -ge 3 ]; then
++                echo "Image pull failed after ${attempt} attempts"
++                exit 1
++              fi
++              case "${attempt}" in
++                1) sleep 15 ;;
++                2) sleep 30 ;;
++                *) sleep 45 ;;
++              esac
++              attempt=$((attempt + 1))
++            done
+             docker rm -f ink-backend || true
+             docker run -d --name ink-backend --restart unless-stopped \
+               -p 127.0.0.1:8765:8765 \

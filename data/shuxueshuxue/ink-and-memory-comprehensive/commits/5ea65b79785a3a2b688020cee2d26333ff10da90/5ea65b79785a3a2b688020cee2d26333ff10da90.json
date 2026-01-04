@@ -1,0 +1,20 @@
+{
+  "hash": "5ea65b79785a3a2b688020cee2d26333ff10da90",
+  "author": "zhuchenyu2008",
+  "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+  "date": "Sun Dec 28 21:06:18 2025 +0800",
+  "subject": "Add manual database initialization steps",
+  "files": [
+    "README.md",
+    "README.zh.md"
+  ],
+  "diff": "commits/5ea65b79785a3a2b688020cee2d26333ff10da90/5ea65b79785a3a2b688020cee2d26333ff10da90.diff",
+  "related_files": {
+    "README.md": [
+      "README.zh.md"
+    ],
+    "README.zh.md": [
+      "README.md"
+    ]
+  }
+}

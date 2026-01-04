@@ -1,0 +1,40 @@
+*** MODIFIED: backend/config.py (+17/-7) ***
+@@ -7,14 +7,23 @@
+ # VOICE_ANALYSIS_MODEL = "deepseek-v3.2"
+ # VOICE_ANALYSIS_MODEL = "gemini-3-pro-preview"
+ # VOICE_ANALYSIS_MODEL = "mistral-small-creative"
+-# VOICE_ANALYSIS_MODEL = "claude-sonnet-4.5"
+-VOICE_ANALYSIS_MODEL = "gemini-3-flash-preview"
++# VOICE_ANALYSIS_MODEL = "gemini-3-flash-preview"
++VOICE_ANALYSIS_MODEL = "claude-sonnet-4.5"
+ 
+-VOICE_INSPIRATION_MODEL = "gemini-3-flash-preview"
+-VOICE_CHAT_MODEL = "gemini-3-flash-preview"
+-ECHO_ANALYSIS_MODEL = "gemini-3-flash-preview"
+-TRAIT_ANALYSIS_MODEL = "gemini-3-flash-preview"
+-PATTERN_ANALYSIS_MODEL = "gemini-3-flash-preview"
++# VOICE_INSPIRATION_MODEL = "gemini-3-flash-preview"
++VOICE_INSPIRATION_MODEL = "claude-sonnet-4.5"
++
++# VOICE_CHAT_MODEL = "gemini-3-flash-preview"
++VOICE_CHAT_MODEL = "claude-sonnet-4.5"
++
++# ECHO_ANALYSIS_MODEL = "gemini-3-flash-preview"
++ECHO_ANALYSIS_MODEL = "claude-sonnet-4.5"
++
++# TRAIT_ANALYSIS_MODEL = "gemini-3-flash-preview"
++TRAIT_ANALYSIS_MODEL = "claude-sonnet-4.5"
++
++# PATTERN_ANALYSIS_MODEL = "gemini-3-flash-preview"
++PATTERN_ANALYSIS_MODEL = "claude-sonnet-4.5"
+ 
+ # @@@ Sparsity control
+ MAX_VOICES = 5
+@@ -60,6 +69,7 @@ def _load_image_api_key() -> str:
+ IMAGE_API_KEY = _load_image_api_key()
+ IMAGE_API_ENDPOINT = "https://api.dou.chat/v1"
+ IMAGE_DESCRIPTION_MODEL = "anthropic/claude-haiku-4.5"
++# IMAGE_GENERATION_MODEL = "google/gemini-2.5-flash-image-preview"
+ IMAGE_GENERATION_MODEL = "google/gemini-2.5-flash-image-preview"
+ 
+ # Retry configuration for image generation

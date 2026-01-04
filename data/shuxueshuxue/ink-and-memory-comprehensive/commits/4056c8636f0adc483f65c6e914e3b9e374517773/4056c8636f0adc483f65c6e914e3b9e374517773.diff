@@ -1,0 +1,154 @@
+commit 4056c8636f0adc483f65c6e914e3b9e374517773
+Author: zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com>
+Date:   Sun Dec 28 20:49:05 2025 +0800
+
+    Frontend Energy Accumulation Visualization
+    
+      - Added an Energy progress bar to the writing view’s bottom debug stats bar
+        and made it animate when crossing each energy threshold.
+      - Implemented threshold-based progress calculation (per 50 energy) with a
+        brief full-fill flash before rolling into the next cycle.
+      - Enhanced the pulse animation for clearer visual feedback.
+    
+      Changes
+    
+      - frontend/src/App.tsx Added energy threshold/progress logic, pulse trigger,
+        and the UI for Energy: + progress bar in the bottom stats bar.
+      - frontend/src/App.css Added @keyframes energyPulse with stronger glow/
+        scale/brightness.
+
+diff --git a/frontend/src/App.css b/frontend/src/App.css
+index 5977385..0fece1a 100644
+--- a/frontend/src/App.css
++++ b/frontend/src/App.css
+@@ -134,6 +134,26 @@
+   }
+ }
+ 
++@keyframes energyPulse {
++  0% {
++    box-shadow: 0 0 0 rgba(102, 102, 102, 0);
++    transform: scale(1);
++    filter: brightness(1);
++  }
++  50% {
++    box-shadow:
++      0 0 12px rgba(102, 102, 102, 0.75),
++      0 0 20px rgba(102, 102, 102, 0.45);
++    transform: scale(1.06);
++    filter: brightness(1.15);
++  }
++  100% {
++    box-shadow: 0 0 0 rgba(102, 102, 102, 0);
++    transform: scale(1);
++    filter: brightness(1);
++  }
++}
++
+ /* @@@ Comment expansion animations */
+ @keyframes slideDownFadeIn {
+   from {
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 6e30fcc..fbe1ebe 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -228,6 +228,44 @@ export default function App() {
+     engineRef,
+   });
+ 
++  const energyThreshold = 50;
++  const appliedComments = state?.commentors.filter(c => c.appliedAt) ?? [];
++  const lastEntry = state?.weightPath[state.weightPath.length - 1];
++  const currentEnergy = lastEntry?.energy || 0;
++  const usedEnergy = appliedComments.length * energyThreshold;
++  const unusedEnergy = currentEnergy - usedEnergy;
++  const safeUnusedEnergy = Math.max(unusedEnergy, 0);
++  const energyLevel = Math.floor(safeUnusedEnergy / energyThreshold);
++  const energyRemainder = safeUnusedEnergy % energyThreshold;
++  const [energyPulseKey, setEnergyPulseKey] = useState(0);
++  const energyLevelRef = useRef(0);
++  const [showFullEnergy, setShowFullEnergy] = useState(false);
++  const fullEnergyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
++  const energyProgress = showFullEnergy ? 1 : energyRemainder / energyThreshold;
++
++  useEffect(() => {
++    const prevLevel = energyLevelRef.current;
++    if (energyLevel > prevLevel) {
++      setEnergyPulseKey((key) => key + 1);
++      setShowFullEnergy(true);
++      if (fullEnergyTimeoutRef.current) {
++        clearTimeout(fullEnergyTimeoutRef.current);
++      }
++      fullEnergyTimeoutRef.current = setTimeout(() => {
++        setShowFullEnergy(false);
++      }, 200);
++    }
++    energyLevelRef.current = energyLevel;
++  }, [energyLevel]);
++
++  useEffect(() => {
++    return () => {
++      if (fullEnergyTimeoutRef.current) {
++        clearTimeout(fullEnergyTimeoutRef.current);
++      }
++    };
++  }, []);
++
+   // @@@ CRITICAL: Resize textareas then restore scroll position
+   // Order matters: resize first (changes content height), then restore scroll
+   // Triggers: on mount (refsReady) and when cells added/deleted (cells.length)
+@@ -929,11 +967,6 @@ export default function App() {
+     return <div>Loading...</div>;
+   }
+ 
+-  const lastEntry = state.weightPath[state.weightPath.length - 1];
+-  const currentEnergy = lastEntry?.energy || 0;
+-  const usedEnergy = state.commentors.filter(c => c.appliedAt).length * 50;
+-  const unusedEnergy = currentEnergy - usedEnergy;
+-  const appliedComments = state.commentors.filter(c => c.appliedAt);
+ 
+   return (
+     <>
+@@ -1442,10 +1475,41 @@ export default function App() {
+                 backgroundColor: '#fafafa',
+                 zIndex: 50
+               }}>
+-                <span>Energy: {unusedEnergy}/{currentEnergy}</span>
+                 <span>Weight: {lastEntry?.weight || 0}</span>
+                 <span>Applied: {appliedComments.length}</span>
+                 <span>Groups: {commentGroups.size}</span>
++                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
++                  <span>Energy:</span>
++                  <span
++                    key={energyPulseKey}
++                    style={{
++                      display: 'inline-flex',
++                      padding: '2px',
++                      borderRadius: '999px',
++                      animation: energyPulseKey > 0 ? 'energyPulse 0.6s ease-out' : 'none'
++                    }}
++                  >
++                    <span style={{
++                      width: '120px',
++                      height: '8px',
++                      borderRadius: '999px',
++                      background: 'rgba(102, 102, 102, 0.2)',
++                      overflow: 'hidden',
++                      display: 'block'
++                    }}>
++                    <span
++                      style={{
++                        display: 'block',
++                        height: '100%',
++                        width: `${Math.round(energyProgress * 100)}%`,
++                        background: '#666',
++                        borderRadius: '999px',
++                        transition: 'width 0.25s ease',
++                      }}
++                    />
++                    </span>
++                  </span>
++                </span>
+               </div>
+             </div>
+           </div>

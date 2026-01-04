@@ -1,0 +1,23 @@
+{
+  "sha": "8053a8a180c9b1fb8c60f5c436db476ce5111838",
+  "message": "Fix voice key/name confusion - use key as single source of truth\n\nProblem: Custom voice comments failed when replying with error\n\"Voice config not found for ComposureAI\" because backend returned\ndisplay name but frontend expected key for voiceConfigs lookup.\n\nSolution: Establish key as single source of truth throughout system.\n\nBackend changes:\n- stateless_analyzer.py: Return archetype_key instead of name\n- server.py: Add database session persistence and authentication\n- database.py: Add user authentication schema\n\nFrontend changes:\n- App.tsx: Pass voiceConfigs to CommentCard and CollectionsView\n- CommentCard.tsx: Accept voiceConfigs, display names via lookup\n- CollectionsView.tsx: Accept voiceConfigs, display names in timeline\n- EditorEngine.ts: Update Commentor.voice comment to clarify key usage\n- voiceApi.ts: Update API endpoints\n- AnalysisView.tsx, CalendarPopup.tsx: Minor updates\n- VoiceSettings.tsx: Voice management updates\n\nNow comment.voice stores key, frontend looks up name for display.\nFixes reply functionality for custom voices.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-04T15:50:15Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-04T15:50:15Z"
+  },
+  "stats": {
+    "total": 628,
+    "additions": 516,
+    "deletions": 112
+  },
+  "files_count": 11,
+  "parents": [
+    "9cc1c217bbec2341af2597442fd758c96fa92a8a"
+  ]
+}

@@ -1,0 +1,14 @@
+# Python
+backend/.venv/
+backend/models.json
+backend/.polycache/
+backend/benchmark/
+__pycache__/
+*.pyc
+
+# Node
+frontend/node_modules/
+
+# IDE
+.vscode/
+.idea/

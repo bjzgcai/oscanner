@@ -1,0 +1,111 @@
+{
+  "hash": "dca7234449c4c380dcf332ea6cc9677016a65888",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 16 19:47:37 2025 +0800",
+  "subject": "Add deck system UI and navigation reorganization",
+  "files": [
+    "frontend/src/App.tsx",
+    "frontend/src/api/voiceApi.ts",
+    "frontend/src/components/AgentDropdown.tsx",
+    "frontend/src/components/DeckManager.tsx",
+    "frontend/src/components/StateChooser.tsx",
+    "frontend/src/components/TopNavBar.tsx",
+    "frontend/src/components/VoiceSettings.tsx",
+    "frontend/src/types/voice.ts",
+    "frontend/src/utils/voiceStorage.ts"
+  ],
+  "diff": "commits/dca7234449c4c380dcf332ea6cc9677016a65888/dca7234449c4c380dcf332ea6cc9677016a65888.diff",
+  "related_files": {
+    "frontend/src/App.tsx": [
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AgentDropdown.tsx",
+      "frontend/src/components/DeckManager.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/TopNavBar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/types/voice.ts",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/api/voiceApi.ts": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/AgentDropdown.tsx",
+      "frontend/src/components/DeckManager.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/TopNavBar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/types/voice.ts",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/components/AgentDropdown.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/DeckManager.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/TopNavBar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/types/voice.ts",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/components/DeckManager.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AgentDropdown.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/TopNavBar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/types/voice.ts",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/components/StateChooser.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AgentDropdown.tsx",
+      "frontend/src/components/DeckManager.tsx",
+      "frontend/src/components/TopNavBar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/types/voice.ts",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/components/TopNavBar.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AgentDropdown.tsx",
+      "frontend/src/components/DeckManager.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/types/voice.ts",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/components/VoiceSettings.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AgentDropdown.tsx",
+      "frontend/src/components/DeckManager.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/TopNavBar.tsx",
+      "frontend/src/types/voice.ts",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/types/voice.ts": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AgentDropdown.tsx",
+      "frontend/src/components/DeckManager.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/TopNavBar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/utils/voiceStorage.ts": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/AgentDropdown.tsx",
+      "frontend/src/components/DeckManager.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/TopNavBar.tsx",
+      "frontend/src/components/VoiceSettings.tsx",
+      "frontend/src/types/voice.ts"
+    ]
+  }
+}

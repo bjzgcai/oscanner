@@ -1,0 +1,23 @@
+{
+  "sha": "1ce3b33ea7170210c58eabd481e7b31694c630a5",
+  "message": "Add seed_system_decks() to populate 3 decks with 16 voices\n\n- Deck 1: Introspection (6 voices from existing config.py)\n- Deck 2: Scholar (6 academic voices with placeholder prompts)\n- Deck 3: Philosophy (4 philosophical voices with placeholder prompts)\n- Idempotent seeding (safe to run multiple times)\n- Called automatically from init_db()",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-13T09:52:19Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-13T09:52:19Z"
+  },
+  "stats": {
+    "total": 109,
+    "additions": 109,
+    "deletions": 0
+  },
+  "files_count": 1,
+  "parents": [
+    "6c8f531c57bab85fca175dd0c7b21363a4c8767c"
+  ]
+}

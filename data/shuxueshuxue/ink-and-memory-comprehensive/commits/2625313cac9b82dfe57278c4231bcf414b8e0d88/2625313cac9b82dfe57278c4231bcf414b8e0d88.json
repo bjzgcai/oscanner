@@ -1,0 +1,20 @@
+{
+  "hash": "2625313cac9b82dfe57278c4231bcf414b8e0d88",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Dec 3 22:24:26 2025 +0800",
+  "subject": "readme improvement",
+  "files": [
+    "README.md",
+    "README.zh.md"
+  ],
+  "diff": "commits/2625313cac9b82dfe57278c4231bcf414b8e0d88/2625313cac9b82dfe57278c4231bcf414b8e0d88.diff",
+  "related_files": {
+    "README.md": [
+      "README.zh.md"
+    ],
+    "README.zh.md": [
+      "README.md"
+    ]
+  }
+}

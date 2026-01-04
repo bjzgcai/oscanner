@@ -1,0 +1,23 @@
+{
+  "sha": "32cb8e834fba996aac0047e2a24027fc45f87b2d",
+  "message": "Fix LLM loop bugs: show used personas and clarify phrase length\n\nThe LLM was getting stuck in loops due to two issues:\n\n1. Persona loop: LLM didn't know which personas were already used,\n   so it kept suggesting the same ones (which got filtered silently).\n   Fix: Show explicit \"ALREADY USED PERSONAS\" list in prompt.\n\n2. Sentence occupation confusion: LLM saw short trigger phrases but\n   didn't understand the entire sentence was off-limits, so it tried\n   to comment on different parts of occupied sentences.\n   Fix: Show full sentences with explanation of phrase vs. sentence.\n\n3. Phrase length issue: LLM was returning whole sentences as phrases,\n   making highlights too long and cluttered.\n   Fix: Add explicit guidance for SHORT phrases (2-6 words) with\n   examples and UI context (\"This will be HIGHLIGHTED\").\n\nChanges:\n- backend/stateful_analyzer.py: Add used persona tracking, full\n  sentence display with trigger phrase mapping, phrase-vs-sentence\n  distinction explanation, and SHORT phrase emphasis with examples\n- frontend/src/api/voiceApi.ts: Debug logging (from previous session)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-14T12:37:56Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-14T12:37:56Z"
+  },
+  "stats": {
+    "total": 83,
+    "additions": 78,
+    "deletions": 5
+  },
+  "files_count": 2,
+  "parents": [
+    "14a17a5f3b66ba672ae505ada7ae6984e2b94e8e"
+  ]
+}

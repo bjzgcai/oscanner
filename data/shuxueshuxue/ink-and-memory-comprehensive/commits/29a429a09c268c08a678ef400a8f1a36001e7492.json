@@ -1,0 +1,118 @@
+{
+  "sha": "29a429a09c268c08a678ef400a8f1a36001e7492",
+  "node_id": "C_kwDOP2Zrm9oAKDI5YTQyOWEwOWMyNjhjMDhhNjc4ZWY0MDBhOGYxYTM2MDAxZTc0OTI",
+  "commit": {
+    "author": {
+      "name": "F2J",
+      "email": "98064968+shuxueshuxue@users.noreply.github.com",
+      "date": "2025-12-28T13:29:54Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2025-12-28T13:29:54Z"
+    },
+    "message": "Merge pull request #27 from zhuchenyu2008/readme-update-Database-initialization\n\nReadme update database initialization",
+    "tree": {
+      "sha": "764b767de5f7f07e0c31d199d06ada63858f475f",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/764b767de5f7f07e0c31d199d06ada63858f475f"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/29a429a09c268c08a678ef400a8f1a36001e7492",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJpUTDSCRC1aQ7uu5UhlAAAorsQAC4cRF5s3aSb96Y9PaaT5la+\nnyEacr6aOZ7pA/YV3zZ6FU2908IAYB0XQTcNQ7oB6c7At4lUQhXFIOmPtyUZQ1MC\nHXKoB7TgOcHQggYpquj4lbcxWhTPVg8ALr3HAytxLVrrHa9dYw5LZ/KUfn5hIAEv\n3zwNJjmvGAk8Ti7aV7Q99ca+U78xyhh2sds16SlO1l5euMtn7BEpd9g8FqqDgXJG\niFlEQgvupQhBHCtGzpRdATn29T8FMSBneo3DU3dzNSTij5cw6/VXII3VzrjdjlnP\nL+ahNsI8YfkbQ4Z2vOl9k91MhpmhNwQnkqbVW/pkeuEqMwA43xooJdJAZbdGLl71\nbFUBEaFiPQC2t45aPUxxyhUzMD+whNT48LOoIewR72XZDYi4ES4xlbXsKhpUW5MV\nx5JCL4uc0972+0bS4R3p+L0UjlNhpDsQUNQgFTUcnQGvpnVxMPxRKhsXuXhPF2Nl\nI0jcqB6s+oFFcH8ZqEbxJVvKJR/sKSZnR5OUhdOIEv64IEAe6+8wIGdBqja1BU9b\nPR/YDl8sc1JE1SygLzyxuBL7QBgc79qHSuebIB+rL1bDEdbU//kWaDoZtrCvOTXp\nflebivW8slue1xLRnyjl4i779P+xkgmX9OhU9bLyRwEXRJVCbFPrY8TYkxWqQsxR\naBLV9eOJmeVsS8RFxixp\n=YdLz\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 764b767de5f7f07e0c31d199d06ada63858f475f\nparent dd81fd7e271183515eab9b4220c7b5602e0fcbe9\nparent 9810bbff477dbc29bc8e5f5f06af0d30445f8a21\nauthor F2J <98064968+shuxueshuxue@users.noreply.github.com> 1766928594 -0800\ncommitter GitHub <noreply@github.com> 1766928594 -0800\n\nMerge pull request #27 from zhuchenyu2008/readme-update-Database-initialization\n\nReadme update database initialization ",
+      "verified_at": "2025-12-28T13:29:54Z"
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/29a429a09c268c08a678ef400a8f1a36001e7492",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/29a429a09c268c08a678ef400a8f1a36001e7492",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/29a429a09c268c08a678ef400a8f1a36001e7492/comments",
+  "author": {
+    "login": "shuxueshuxue",
+    "id": 98064968,
+    "node_id": "U_kgDOBdhaSA",
+    "avatar_url": "https://avatars.githubusercontent.com/u/98064968?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/shuxueshuxue",
+    "html_url": "https://github.com/shuxueshuxue",
+    "followers_url": "https://api.github.com/users/shuxueshuxue/followers",
+    "following_url": "https://api.github.com/users/shuxueshuxue/following{/other_user}",
+    "gists_url": "https://api.github.com/users/shuxueshuxue/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/shuxueshuxue/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/shuxueshuxue/subscriptions",
+    "organizations_url": "https://api.github.com/users/shuxueshuxue/orgs",
+    "repos_url": "https://api.github.com/users/shuxueshuxue/repos",
+    "events_url": "https://api.github.com/users/shuxueshuxue/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/shuxueshuxue/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "dd81fd7e271183515eab9b4220c7b5602e0fcbe9",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/dd81fd7e271183515eab9b4220c7b5602e0fcbe9",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/dd81fd7e271183515eab9b4220c7b5602e0fcbe9"
+    },
+    {
+      "sha": "9810bbff477dbc29bc8e5f5f06af0d30445f8a21",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/9810bbff477dbc29bc8e5f5f06af0d30445f8a21",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/9810bbff477dbc29bc8e5f5f06af0d30445f8a21"
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "additions": 19,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "b3aa698d052b5f31ac6d766a994ee0e8e162f790",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 0,
+      "changes": 9,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/29a429a09c268c08a678ef400a8f1a36001e7492/README.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/29a429a09c268c08a678ef400a8f1a36001e7492/README.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.md?ref=29a429a09c268c08a678ef400a8f1a36001e7492",
+      "patch": "@@ -116,6 +116,15 @@ Then start the server:\n python server.py  # Runs on http://localhost:8765\n ```\n \n+### Manual database initialization\n+\n+If you need to create the SQLite tables before first launch, run:\n+\n+```bash\n+cd backend\n+python database.py\n+```\n+\n ### Frontend Setup\n \n ```bash"
+    },
+    {
+      "sha": "f8a9482526b7449f026d0e6635ad9975c198d67f",
+      "filename": "README.zh.md",
+      "status": "modified",
+      "additions": 10,
+      "deletions": 1,
+      "changes": 11,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/29a429a09c268c08a678ef400a8f1a36001e7492/README.zh.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/29a429a09c268c08a678ef400a8f1a36001e7492/README.zh.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/README.zh.md?ref=29a429a09c268c08a678ef400a8f1a36001e7492",
+      "patch": "@@ -90,7 +90,7 @@ source .venv/bin/activate  # Windows: .venv\\Scripts\\activate\n uv pip install -r requirements.txt\n ```\n \n-\u521b\u5efa `models.json` \u6587\u4ef6\u914d\u7f6e\u4f60\u7684\u5927\u8bed\u8a00\u6a21\u578b\uff1a\n+\u590d\u5236 `models.json` \u6587\u4ef6\u5e76\u914d\u7f6e\u4f60\u7684\u5927\u8bed\u8a00\u6a21\u578b\uff1a\n \n ```json\n {\n@@ -116,6 +116,15 @@ uv pip install -r requirements.txt\n python server.py  # \u8fd0\u884c\u5728 http://localhost:8765\n ```\n \n+### \u624b\u52a8\u521d\u59cb\u5316\u6570\u636e\u5e93\n+\n+\u9996\u6b21\u542f\u52a8\u524d\u9700\u8981\u624b\u52a8\u521b\u5efa SQLite \u8868\u7ed3\u6784\uff1a\n+\n+```bash\n+cd backend\n+python database.py\n+```\n+\n ### \u524d\u7aef\u8bbe\u7f6e\n \n ```bash"
+    }
+  ]
+}

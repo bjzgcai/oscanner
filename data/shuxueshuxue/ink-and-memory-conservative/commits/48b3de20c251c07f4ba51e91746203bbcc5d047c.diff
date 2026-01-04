@@ -1,0 +1,21 @@
+*** MODIFIED: frontend/src/App.tsx (+7/-1) ***
+@@ -398,12 +398,18 @@ export default function App() {
+       // @@@ TEMPORARY: Force re-migration if calendar entries exist but weren't imported
+       // Check if calendar entries exist but no sessions in database (migration failed)
+       const hasCalendar = !!localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES);
++      let shouldShowDialog = false;
++
+       if (hasCalendar && migrationDone) {
+         console.warn('⚠️ Found calendar entries but migration was marked done - forcing re-migration');
+         localStorage.removeItem(STORAGE_KEYS.MIGRATION_COMPLETED);
++        // Re-check immediately after clearing flag
++        shouldShowDialog = !!hasLocalData; // Migration is now not done
++      } else {
++        shouldShowDialog = !!hasLocalData && !migrationDone;
+       }
+ 
+-      if (hasLocalData && !migrationDone) {
++      if (shouldShowDialog) {
+         console.log('✅ Showing migration dialog');
+         setShowMigrationDialog(true);
+       }

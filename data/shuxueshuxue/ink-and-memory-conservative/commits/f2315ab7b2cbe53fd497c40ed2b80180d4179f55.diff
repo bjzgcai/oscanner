@@ -1,0 +1,10 @@
+*** MODIFIED: README.md (+1/-1) ***
+@@ -2,7 +2,7 @@
+ 
+ A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.
+ 
+-![Demo](assets/demo.mov)
++<video src="https://github.com/user-attachments/assets/demo.mov" width="100%" controls></video>
+ 
+ ## ✨ Features
+ 

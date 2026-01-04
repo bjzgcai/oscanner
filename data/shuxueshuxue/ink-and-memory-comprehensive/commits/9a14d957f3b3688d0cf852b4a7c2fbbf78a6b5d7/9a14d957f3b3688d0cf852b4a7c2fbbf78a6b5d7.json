@@ -1,0 +1,47 @@
+{
+  "hash": "9a14d957f3b3688d0cf852b4a7c2fbbf78a6b5d7",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Dec 10 13:49:45 2025 +0800",
+  "subject": "more efficient timeline fetching logic",
+  "files": [
+    "backend/database.py",
+    "backend/server.py",
+    "frontend/src/api/voiceApi.ts",
+    "frontend/src/components/CollectionsView.tsx",
+    "frontend/src/utils/sessionGrouping.ts"
+  ],
+  "diff": "commits/9a14d957f3b3688d0cf852b4a7c2fbbf78a6b5d7/9a14d957f3b3688d0cf852b4a7c2fbbf78a6b5d7.diff",
+  "related_files": {
+    "backend/database.py": [
+      "backend/server.py",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/utils/sessionGrouping.ts"
+    ],
+    "backend/server.py": [
+      "backend/database.py",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/utils/sessionGrouping.ts"
+    ],
+    "frontend/src/api/voiceApi.ts": [
+      "backend/database.py",
+      "backend/server.py",
+      "frontend/src/components/CollectionsView.tsx",
+      "frontend/src/utils/sessionGrouping.ts"
+    ],
+    "frontend/src/components/CollectionsView.tsx": [
+      "backend/database.py",
+      "backend/server.py",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/utils/sessionGrouping.ts"
+    ],
+    "frontend/src/utils/sessionGrouping.ts": [
+      "backend/database.py",
+      "backend/server.py",
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/components/CollectionsView.tsx"
+    ]
+  }
+}

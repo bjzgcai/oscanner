@@ -1,0 +1,14 @@
+{
+  "hash": "43e01d30e0c47cc87db8af6959eb6d59b65d3516",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Oct 21 22:46:54 2025 +0800",
+  "subject": "Fix voice triggers not reappearing after config change",
+  "files": [
+    "frontend/src/App.tsx"
+  ],
+  "diff": "commits/43e01d30e0c47cc87db8af6959eb6d59b65d3516/43e01d30e0c47cc87db8af6959eb6d59b65d3516.diff",
+  "related_files": {
+    "frontend/src/App.tsx": []
+  }
+}

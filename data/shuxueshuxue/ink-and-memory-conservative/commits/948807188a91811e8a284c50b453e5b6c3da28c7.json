@@ -1,0 +1,23 @@
+{
+  "sha": "948807188a91811e8a284c50b453e5b6c3da28c7",
+  "message": "Add energy refund mechanism and comprehensive fixes\n\nFeatures:\n- Energy refund: 20 energy back when LLM returns no new voices\n- Backend returns metadata: new_voices_added field\n- Frontend uses metadata for accurate refund logic\n\nFixes:\n- Persistence bugs: conversations, voiceConfig serialization, energy on view switch\n- Voice name mapping: user-defined names (e.g., \"吕布\") shown correctly\n- Strict LLM prompt: prevents hallucinating new characters\n- Writing area context: chat includes original text\n\nArchitecture:\n- Stateful analyzer returns dict with voices + new_voices_added\n- Frontend API updated to handle metadata\n- Session isolation with TTL cleanup\n\n🤖 Generated with Claude Code\nhttps://claude.com/claude-code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T02:07:07Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T02:07:07Z"
+  },
+  "stats": {
+    "total": 1505,
+    "additions": 1323,
+    "deletions": 182
+  },
+  "files_count": 16,
+  "parents": [
+    "11b58d52a42a06d844a18bc33172747f19cba505"
+  ]
+}

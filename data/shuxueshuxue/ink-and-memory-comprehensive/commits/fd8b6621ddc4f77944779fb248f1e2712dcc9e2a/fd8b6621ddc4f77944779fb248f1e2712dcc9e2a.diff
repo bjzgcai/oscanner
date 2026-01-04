@@ -1,0 +1,277 @@
+commit fd8b6621ddc4f77944779fb248f1e2712dcc9e2a
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Fri Dec 19 01:21:23 2025 +0800
+
+    Track not-found phrases and harden analyzer reasoning
+
+diff --git a/backend/server.py b/backend/server.py
+index 793f61d..569d18f 100644
+--- a/backend/server.py
++++ b/backend/server.py
+@@ -314,6 +314,7 @@ User's current state:
+         "meta_prompt": {"type": "str"},
+         "state_prompt": {"type": "str"},
+         "overlapped_phrases": {"type": "list"},
++        "not_found_phrases": {"type": "list"},
+     },
+     category="Analysis",
+ )
+@@ -325,6 +326,7 @@ def analyze_text(
+     meta_prompt: str = "",
+     state_prompt: str = "",
+     overlapped_phrases: list = None,
++    not_found_phrases: list = None,
+ ):
+     """Stateless analysis - returns ONE new comment based on text and applied comments."""
+     print(f"\n{'=' * 60}")
+@@ -333,6 +335,7 @@ def analyze_text(
+     print(f"   Text: {text[:100]}...")
+     print(f"   Applied comments: {len(applied_comments or [])}")
+     print(f"   Overlapped phrases: {len(overlapped_phrases or [])}")
++    print(f"   Not found phrases: {len(not_found_phrases or [])}")
+     print(f"   Meta prompt: {repr(meta_prompt)[:100]}")
+     print(f"   State prompt: {repr(state_prompt)[:100]}")
+     print(f"{'=' * 60}\n")
+@@ -354,6 +357,7 @@ def analyze_text(
+         meta_prompt,
+         state_prompt,
+         overlapped_phrases or [],
++        not_found_phrases or [],
+     )
+ 
+     print(f"✅ Returning {result['new_voices_added']} new voice(s)")
+diff --git a/backend/stateless_analyzer.py b/backend/stateless_analyzer.py
+index 181dd7f..cb9176a 100644
+--- a/backend/stateless_analyzer.py
++++ b/backend/stateless_analyzer.py
+@@ -8,18 +8,16 @@ import config
+ 
+ 
+ class VoiceTrigger(BaseModel):
++    reasoning: str = Field(
++        description="Deliberate selection log: candidate phrases considered, verification steps, blacklist checks"
++    )
+     phrase: str = Field(
+         description="Exact trigger phrase from text (verbatim, 2-4 words, avoid punctuation)"
+     )
+     voice_id: str = Field(
+         description="Voice ID from the available list (e.g., 'holder', 'mirror', 'starter')"
+     )
+-    voice_name: str = Field(
+-        description="Voice display name (will be auto-filled, LLM should not generate this)"
+-    )
+     comment: str = Field(description="What this voice is saying (as if speaking)")
+-    icon: str = Field(description="Icon identifier")
+-    color: str = Field(description="Color identifier")
+ 
+ 
+ class SingleVoiceAnalysis(BaseModel):
+@@ -36,6 +34,7 @@ def analyze_stateless(
+     meta_prompt: str = "",
+     state_prompt: str = "",
+     overlapped_phrases: List[str] = None,
++    not_found_phrases: List[str] = None,
+ ) -> dict:
+     """
+     Stateless analysis - receives applied comments, returns ONE new comment.
+@@ -48,15 +47,19 @@ def analyze_stateless(
+         meta_prompt: Additional instructions that apply to all voices
+         state_prompt: User's current emotional state prompt
+         overlapped_phrases: Phrases that were rejected due to overlap (feedback loop)
++        not_found_phrases: Phrases that could not be found in text (LLM extraction errors)
+ 
+     Returns:
+         Dict with single new voice (or empty list if none)
+     """
+     overlapped_phrases = overlapped_phrases or []
++    not_found_phrases = not_found_phrases or []
+     print(f"\n{'=' * 60}")
+     print(f"📊 Stateless Analysis")
+     print(f"   Text: {text[:100]}...")
+     print(f"   Applied comments: {len(applied_comments)}")
++    print(f"   Overlapped phrases: {len(overlapped_phrases)}")
++    print(f"   Not found phrases: {len(not_found_phrases)}")
+     print(f"{'=' * 60}\n")
+ 
+     # Use provided voices or defaults
+@@ -109,6 +112,23 @@ def analyze_stateless(
+             rejected_section += f'  ✗ "{phrase}" - REJECTED, do NOT suggest again\n'
+         rejected_section += f"\n⚠️ Do NOT suggest any variation of these phrases!\n"
+ 
++    not_found_section = ""
++    if not_found_phrases:
++        not_found_section = (
++            "\n\n════════════════════════════════════════════════════════════════\n"
++        )
++        not_found_section += "HARD BLACKLIST - NOT FOUND (extraction errors, never suggest):\n"
++        not_found_section += (
++            "════════════════════════════════════════════════════════════════\n"
++        )
++        for phrase in not_found_phrases:
++            not_found_section += (
++                f'  ✗ "{phrase}" - NOT FOUND IN TEXT (LLM extraction failure), do NOT suggest again\n'
++            )
++        not_found_section += (
++            "\n⚠️ These phrases failed character-by-character verification. Treat them as forbidden even if they look present. If you cannot find a safe phrase, return null.\n"
++        )
++
+     prompt = f"""You are analyzing internal dialogue as distinct inner voice personas.
+ 
+ ════════════════════════════════════════════════════════════════
+@@ -124,6 +144,7 @@ AVAILABLE VOICE PERSONAS (choose ONE from this list):
+ {voice_list}
+ {conversation_context}
+ {rejected_section}
++{not_found_section}
+ 
+ ════════════════════════════════════════════════════════════════
+ YOUR TASK:
+@@ -131,6 +152,7 @@ YOUR TASK:
+ 
+ Find ONE NEW voice to comment:
+ 
++0. Reasoning (think first): list 1-3 candidate substrings from the text, verify each is an exact substring, drop any that appear in rejected/not-found lists, then choose exactly ONE safest remaining candidate. If all are filtered out, generate another small batch and repeat. Only return null when you have exhausted reasonable candidates from the text.
+ 1. Extract a SHORT phrase (2-4 words) from the "TEXT TO ANALYZE" section above
+    - MUST be EXACT substring from the quoted text
+    - Do NOT extract from the conversation context or rejected phrases
+@@ -148,6 +170,8 @@ CRITICAL RULES:
+ - DO NOT extract phrases from the "EXISTING CONVERSATION" section
+ - DO NOT overlap with already highlighted phrases: {highlighted_phrases}
+ - DO NOT suggest any rejected phrases: {overlapped_phrases}
++- DO NOT suggest any not-found phrases: {not_found_phrases}
++- HARD BLACKLIST: If a phrase is in either list above, you must not output it. If no safe phrase exists, return null.
+ - DO NOT CREATE NEW VOICE NAMES - Only use from the available list
+ - Return null if nothing is worth commenting on
+ - Write your comment in the EXACT SAME LANGUAGE as the user's text
+@@ -171,6 +195,15 @@ Additional instructions:
+ User's current state:
+ {state_prompt.strip()}"""
+ 
++    # Re-emphasize hard constraints at the end (higher priority than softer instructions)
++    prompt += f"""
++
++FINAL REMINDER (hard constraints):
++- DO NOT suggest rejected phrases: {overlapped_phrases}
++- DO NOT suggest not-found phrases (extraction failures): {not_found_phrases}
++These are hard blacklists. If you cannot comply, return null. These override any softer guidance above.
++- Reasoning must show the candidate list, exact-match check, blacklist check, and retries when all candidates are filtered. Only return null after exhausting reasonable options."""
++
+     print("🤖 Calling LLM for one new comment...")
+ 
+     result = agent.run(
+diff --git a/frontend/src/api/voiceApi.ts b/frontend/src/api/voiceApi.ts
+index 2863f3f..b2409d1 100644
+--- a/frontend/src/api/voiceApi.ts
++++ b/frontend/src/api/voiceApi.ts
+@@ -125,7 +125,15 @@ interface SyncResponse {
+  * Analyze text and return voices with metadata (PolyCLI direct call)
+  * Backend loads voice configs from database using user_id from JWT token
+  */
+-export async function analyzeText(text: string, sessionId: string, appliedComments?: any[], metaPrompt?: string, statePrompt?: string, overlappedPhrases?: string[]) {
++export async function analyzeText(
++  text: string,
++  sessionId: string,
++  appliedComments?: any[],
++  metaPrompt?: string,
++  statePrompt?: string,
++  overlappedPhrases?: string[],
++  notFoundPhrases?: string[]
++) {
+   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+ 
+   const response = await fetch(`${API_BASE}/polycli/api/trigger-sync`, {
+@@ -142,7 +150,8 @@ export async function analyzeText(text: string, sessionId: string, appliedCommen
+         applied_comments: appliedComments || [],
+         meta_prompt: metaPrompt || '',
+         state_prompt: statePrompt || '',
+-        overlapped_phrases: overlappedPhrases || []
++        overlapped_phrases: overlappedPhrases || [],
++        not_found_phrases: notFoundPhrases || []
+       },
+       timeout: 90
+     })
+diff --git a/frontend/src/engine/EditorEngine.ts b/frontend/src/engine/EditorEngine.ts
+index 8a7e76b..f62938c 100644
+--- a/frontend/src/engine/EditorEngine.ts
++++ b/frontend/src/engine/EditorEngine.ts
+@@ -14,6 +14,7 @@ export interface EditorState {
+   tasks: Task[];
+   weightPath: WeightEntry[];
+   overlappedPhrases: string[];  // @@@ Phrases rejected due to overlap (feedback to backend)
++  notFoundPhrases: string[];  // @@@ Phrases LLM suggested that were not found in text
+   id: string;
+   selectedState?: string | null;  // @@@ Emotional state for this session (stored per-session)
+   createdAt?: string;  // @@@ ISO timestamp when session was created
+@@ -132,6 +133,7 @@ export class EditorEngine {
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
++      notFoundPhrases: [],
+       id: sessionId
+     };
+   }
+@@ -243,6 +245,7 @@ export class EditorEngine {
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
++      notFoundPhrases: [],
+       id: preservedId,
+       selectedState,
+       createdAt: preservedTimestamp
+@@ -333,6 +336,9 @@ export class EditorEngine {
+           textSnippet: textSnippet,
+           textCharCodes: textChars
+         });
++        if (!this.state.notFoundPhrases.includes(commentor.phrase)) {
++          this.state.notFoundPhrases.push(commentor.phrase);
++        }
+         skippedAny = true;
+         continue;
+       }
+@@ -432,7 +438,15 @@ export class EditorEngine {
+         ? stateConfig.states[selectedState].prompt
+         : '';
+ 
+-      const result = await analyzeText(text, this.state.id, appliedCommentors, metaPrompt, statePrompt, this.state.overlappedPhrases);
++      const result = await analyzeText(
++        text,
++        this.state.id,
++        appliedCommentors,
++        metaPrompt,
++        statePrompt,
++        this.state.overlappedPhrases,
++        this.state.notFoundPhrases
++      );
+ 
+       // Backend returns at most ONE voice
+       if (result.voices.length > 0) {
+@@ -712,6 +726,9 @@ export class EditorEngine {
+     if (!this.state.overlappedPhrases) {
+       this.state.overlappedPhrases = [];
+     }
++    if (!this.state.notFoundPhrases) {
++      this.state.notFoundPhrases = [];
++    }
+     // Recompute used energy from applied commentors
+     this.usedEnergy = this.state.commentors.filter(c => c.appliedAt).length * this.threshold;
+     this.notifyChange();
+diff --git a/frontend/src/hooks/useSessionLifecycle.ts b/frontend/src/hooks/useSessionLifecycle.ts
+index 1a23a61..9894536 100644
+--- a/frontend/src/hooks/useSessionLifecycle.ts
++++ b/frontend/src/hooks/useSessionLifecycle.ts
+@@ -109,6 +109,7 @@ export function useSessionLifecycle({
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
++      notFoundPhrases: [],
+       id: newSessionId,
+       selectedState: resolvedSelectedState ?? undefined,
+       createdAt: new Date().toISOString()
+@@ -344,6 +345,7 @@ export function useSessionLifecycle({
+                     tasks: [],
+                     weightPath: [],
+                     overlappedPhrases: [],
++                    notFoundPhrases: [],
+                     id: createSessionId(),
+                     selectedState: undefined,
+                     createdAt: new Date().toISOString()

@@ -1,0 +1,3623 @@
+commit a4eb52998c60b0de1bbf875423f681091b5eb39a
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Sun Oct 26 18:14:48 2025 +0800
+
+    Add chat widget feature and cleanup backend
+    
+    - Add chat widget feature: users can now chat 1-to-1 with voice agents
+      - New ChatWidget engine class for managing conversation state
+      - AgentDropdown component for selecting agents
+      - ChatWidgetUI component with auto-scroll and delete functionality
+      - @ trigger to insert chat widgets inline with writing
+    
+    - Update voice settings: hide internal keys, show only display names
+      - Voice names now used in prompts instead of keys
+      - Simplified UX for voice configuration
+    
+    - Add custom warning dialog for "Start Fresh" action
+      - Replace browser confirm with styled modal
+      - Better alignment and visual consistency
+    
+    - Backend cleanup: consolidate to single server implementation
+      - Rename server_stateless.py to server.py
+      - Remove old unused backend files (server_simple, stateful_analyzer, etc.)
+      - Keep only: server.py, stateless_analyzer.py, config.py
+    
+    🤖 Generated with [Claude Code](https://claude.com/claude-code)
+    
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+diff --git a/backend/server.py b/backend/server.py
+index aee071d..1148492 100644
+--- a/backend/server.py
++++ b/backend/server.py
+@@ -1,10 +1,10 @@
+ #!/usr/bin/env python3
+-"""Voice analysis server using PolyCLI Session Registry."""
++"""Stateless voice analysis server - no state tracking, just returns new comments."""
+ 
+ import time
+ from polycli.orchestration.session_registry import session_def, get_registry
+ from polycli import PolyAgent
+-from stateful_analyzer import analyze_stateful
++from stateless_analyzer import analyze_stateless
+ import config
+ 
+ @session_def(
+@@ -28,6 +28,7 @@ def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: l
+         voice_config: Voice configuration with tagline, icon, color
+         conversation_history: Previous messages in the conversation
+         user_message: The user's new message
++        original_text: The user's original writing text
+ 
+     Returns:
+         Dictionary with assistant's response
+@@ -41,7 +42,7 @@ def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: l
+ 
+     agent = PolyAgent(id=f"voice-chat-{voice_name.lower()}")
+ 
+-    # @@@ Ensure voice_config is a dict (defensive check)
++    # Ensure voice_config is a dict
+     if not isinstance(voice_config, dict):
+         print(f"⚠️  voice_config is not a dict: {type(voice_config)}, using default")
+         voice_config = {"tagline": f"{voice_name} voice from Disco Elysium"}
+@@ -54,7 +55,7 @@ Your character: {voice_config.get('tagline', '')}
+ Respond in character as {voice_name}. Be concise (1-3 sentences). Stay true to your archetype.
+ Use the conversation context but focus on your unique perspective."""
+ 
+-    # @@@ Add original writing area text if available
++    # Add original writing area text if available
+     if original_text and original_text.strip():
+         system_prompt += f"""
+ 
+@@ -93,68 +94,57 @@ Your initial comment was about this text. Keep this context in mind when respond
+ 
+ @session_def(
+     name="Analyze Voices",
+-    description="Detect inner voices in text using Disco Elysium archetypes",
++    description="Get one new voice comment for text",
+     params={
+         "text": {"type": "str"},
+         "session_id": {"type": "str"},
+-        "voices": {"type": "dict"}
++        "voices": {"type": "dict"},
++        "applied_comments": {"type": "list"}
+     },
+     category="Analysis"
+ )
+-def analyze_text(text: str, session_id: str, voices: dict = None):
++def analyze_text(text: str, session_id: str, voices: dict = None, applied_comments: list = None):
+     """
+-    Analyze text and detect inner voice triggers.
++    Stateless analysis - returns ONE new comment based on text and applied comments.
+ 
+     Args:
+-        text: Text to analyze
++        text: Text to analyze (should be complete sentences only)
++        session_id: Session ID (for future use)
++        voices: Voice configuration
++        applied_comments: List of already applied comments (to avoid duplicates)
+ 
+     Returns:
+-        Dictionary with voices array and status
++        Dictionary with single new voice (or empty list)
+     """
+     print(f"\n{'='*60}")
+-    print(f"🎯 analyze_text() called")
+-    print(f"   Session ID: {session_id}")
+-    print(f"   Text length: {len(text)}")
+-    print(f"   Text preview: {text[:100]}...")
++    print(f"🎯 Stateless analyze_text() called")
++    print(f"   Text: {text[:100]}...")
++    print(f"   Applied comments: {len(applied_comments or [])}")
+     print(f"{'='*60}\n")
+ 
+-    print("Creating PolyAgent...")
+     agent = PolyAgent(id="voice-analyzer")
+ 
+-    print("Calling analyze_stateful pattern...")
+-    custom_voices = voices or config.VOICE_ARCHETYPES
+-    analysis_result = analyze_stateful(agent, text, session_id, custom_voices)
++    # Get voices from stateless analyzer
++    result = analyze_stateless(agent, text, applied_comments or [], voices)
+ 
+-    # @@@ analyze_stateful now returns dict with 'voices' and 'new_voices_added'
+-    result_voices = analysis_result["voices"]
+-    new_voices_added = analysis_result["new_voices_added"]
++    print(f"✅ Returning {result['new_voices_added']} new voice(s)")
+ 
+-    print(f"✅ Got {len(result_voices)} total voices ({new_voices_added} new from this LLM call)")
+-    for i, v in enumerate(result_voices):
+-        print(f"   {i+1}. {v.get('voice', 'unknown')}: {v.get('comment', '')[:50]}...")
+-
+-    result = {
+-        "voices": result_voices,
+-        "new_voices_added": new_voices_added,  # Frontend uses this for energy refund
+-        "status": "completed",
+-        "text_length": len(text)
++    return {
++        "voices": result["voices"],
++        "new_voices_added": result["new_voices_added"],
++        "status": "completed"
+     }
+ 
+-    print(f"Returning result: {result}")
+-    print(f"{'='*60}\n")
+-
+-    return result
+-
+ if __name__ == "__main__":
+-    # Get the global registry (session auto-registered via decorator)
++    # Get the global registry
+     registry = get_registry()
+ 
+     # Start the control panel
+     print("\n" + "="*60)
+-    print("🎭 Voice Analysis Server")
++    print("🎭 Stateless Voice Analysis Server")
+     print("="*60)
+ 
+-    # Monkey-patch the handler to add /api/default-voices endpoint
++    # Monkey-patch to add /api/default-voices endpoint
+     server, thread = registry.serve_control_panel(port=8765)
+ 
+     original_do_get = server.RequestHandlerClass.do_GET
+@@ -174,10 +164,9 @@ if __name__ == "__main__":
+ 
+     print("\n📚 Available endpoints:")
+     print("  - POST /api/trigger")
+-    print("    Body: {\"session_id\": \"analyze_text\", \"params\": {\"text\": \"...\"}}")
+-    print("  - GET /api/sessions (list all sessions)")
+-    print("  - GET /api/running (list running sessions)")
+-    print("  - GET /api/status/{exec_id} (get session status)")
++    print("    Body: {\"session_id\": \"analyze_text\", \"params\": {\"text\": \"...\", \"applied_comments\": [...]}}")
++    print("    Body: {\"session_id\": \"chat_with_voice\", \"params\": {\"voice_name\": \"...\", \"user_message\": \"...\", ...}}")
++    print("  - GET /api/default-voices")
+     print("\n" + "="*60 + "\n")
+ 
+     # Keep server running
+@@ -185,4 +174,4 @@ if __name__ == "__main__":
+         while True:
+             time.sleep(1)
+     except KeyboardInterrupt:
+-        print("\n\n👋 Shutting down...")
++        print("\n\n👋 Shutting down...")
+\ No newline at end of file
+diff --git a/backend/server_simple.py b/backend/server_simple.py
+deleted file mode 100644
+index 99d4000..0000000
+--- a/backend/server_simple.py
++++ /dev/null
+@@ -1,146 +0,0 @@
+-#!/usr/bin/env python3
+-"""
+-Simplified voice analysis server - stateless, clean API
+-"""
+-
+-import time
+-from polycli.orchestration.session_registry import session_def, get_registry
+-from polycli import PolyAgent
+-from simple_analyzer import analyze_simple
+-import config
+-
+-@session_def(
+-    name="Analyze Text Simple",
+-    description="Simple stateless voice analysis",
+-    params={
+-        "text": {"type": "str"},
+-        "session_id": {"type": "str"},
+-        "voices": {"type": "dict"}
+-    },
+-    category="Analysis"
+-)
+-def analyze_text(text: str, session_id: str, voices: dict = None):
+-    """
+-    Simple stateless analysis - returns voices for given text
+-
+-    Args:
+-        text: Text to analyze (should be complete sentences only)
+-        session_id: Session ID (for future use)
+-        voices: Voice configuration
+-
+-    Returns:
+-        Dictionary with voices array
+-    """
+-    print(f"\n{'='*60}")
+-    print(f"📝 Simple analysis called")
+-    print(f"   Text length: {len(text)}")
+-    print(f"   Text: {text[:100]}...")
+-    print(f"{'='*60}\n")
+-
+-    agent = PolyAgent(id="voice-analyzer")
+-
+-    # Get voices from simple analyzer
+-    result_voices = analyze_simple(agent, text, voices)
+-
+-    print(f"✅ Found {len(result_voices)} voices")
+-
+-    return {
+-        "voices": result_voices,
+-        "new_voices_added": len(result_voices),  # All are new in stateless mode
+-        "status": "completed"
+-    }
+-
+-@session_def(
+-    name="Chat with Voice",
+-    description="Have a conversation with a voice persona",
+-    params={
+-        "voice_name": {"type": "str"},
+-        "voice_config": {"type": "dict"},
+-        "conversation_history": {"type": "list"},
+-        "user_message": {"type": "str"},
+-        "original_text": {"type": "str"}
+-    },
+-    category="Chat"
+-)
+-def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: list, user_message: str, original_text: str = ""):
+-    """
+-    Chat with a specific voice persona (unchanged from original)
+-    """
+-    agent = PolyAgent(id=f"voice-chat-{voice_name.lower()}")
+-
+-    # Build system prompt for this voice
+-    system_prompt = f"""You are {voice_name}, an inner voice archetype.
+-
+-Your character: {voice_config.get('tagline', '')}
+-
+-Respond in character as {voice_name}. Be concise (1-3 sentences). Stay true to your archetype."""
+-
+-    if original_text and original_text.strip():
+-        system_prompt += f"""
+-
+-Context: The user is writing this text:
+----
+-{original_text.strip()}
+----"""
+-
+-    # Build full prompt with conversation history
+-    prompt = system_prompt + "\n\nConversation history:\n"
+-
+-    for msg in conversation_history:
+-        role_label = "User" if msg["role"] == "user" else voice_name
+-        prompt += f"\n{role_label}: {msg['content']}"
+-
+-    prompt += f"\n\nUser: {user_message}\n\n{voice_name}:"
+-
+-    # Get response from LLM
+-    result = agent.run(prompt, model="gpt-4o-dou", cli="no-tools", tracked=True)
+-
+-    if not result.is_success or not result.content:
+-        response = "..."
+-    else:
+-        response = result.content
+-
+-    return {
+-        "response": response,
+-        "voice_name": voice_name
+-    }
+-
+-if __name__ == "__main__":
+-    # Get the global registry
+-    registry = get_registry()
+-
+-    # Start the control panel
+-    print("\n" + "="*60)
+-    print("🎭 Simple Voice Analysis Server")
+-    print("="*60)
+-
+-    # Monkey-patch to add /api/default-voices endpoint
+-    server, thread = registry.serve_control_panel(port=8765)
+-
+-    original_do_get = server.RequestHandlerClass.do_GET
+-    def patched_do_get(handler_self):
+-        if handler_self.path == "/api/default-voices":
+-            import json
+-            body = json.dumps(config.VOICE_ARCHETYPES).encode("utf-8")
+-            handler_self.send_response(200)
+-            handler_self.send_header("Content-Type", "application/json")
+-            handler_self.send_header("Access-Control-Allow-Origin", "*")
+-            handler_self.end_headers()
+-            handler_self.wfile.write(body)
+-        else:
+-            original_do_get(handler_self)
+-
+-    server.RequestHandlerClass.do_GET = patched_do_get
+-
+-    print("\n📚 Available endpoints:")
+-    print("  - POST /api/trigger")
+-    print("    Body: {\"session_id\": \"analyze_text\", \"params\": {\"text\": \"...\"}}")
+-    print("  - GET /api/default-voices")
+-    print("\n" + "="*60 + "\n")
+-
+-    # Keep server running
+-    try:
+-        while True:
+-            time.sleep(1)
+-    except KeyboardInterrupt:
+-        print("\n\n👋 Shutting down...")
+\ No newline at end of file
+diff --git a/backend/server_simpler.py b/backend/server_simpler.py
+deleted file mode 100644
+index a947f99..0000000
+--- a/backend/server_simpler.py
++++ /dev/null
+@@ -1,100 +0,0 @@
+-#!/usr/bin/env python3
+-"""Voice analysis server using PolyCLI Session Registry - simplified version."""
+-
+-import time
+-from polycli.orchestration.session_registry import session_def, get_registry
+-from polycli import PolyAgent
+-from stateful_analyzer_simple import analyze_stateful
+-import config
+-
+-@session_def(
+-    name="Analyze Voices",
+-    description="Detect inner voices in text using Disco Elysium archetypes",
+-    params={
+-        "text": {"type": "str"},
+-        "session_id": {"type": "str"},
+-        "voices": {"type": "dict"}
+-    },
+-    category="Analysis"
+-)
+-def analyze_text(text: str, session_id: str, voices: dict = None):
+-    """
+-    Analyze text and detect inner voice triggers.
+-    Uses stateful analyzer but with SINGLE_COMMENT_MODE.
+-    """
+-    print(f"\n{'='*60}")
+-    print(f"🎯 analyze_text() called")
+-    print(f"   Session ID: {session_id}")
+-    print(f"   Text length: {len(text)}")
+-    print(f"   Text preview: {text[:100]}...")
+-    print(f"{'='*60}\n")
+-
+-    print("Creating PolyAgent...")
+-    agent = PolyAgent(id="voice-analyzer")
+-
+-    print("Calling analyze_stateful pattern...")
+-    custom_voices = voices or config.VOICE_ARCHETYPES
+-
+-    # Simplified analyzer returns only one comment at a time
+-    analysis_result = analyze_stateful(agent, text, session_id, custom_voices)
+-
+-    # analyze_stateful returns dict with 'voices' and 'new_voices_added'
+-    result_voices = analysis_result["voices"]
+-    new_voices_added = analysis_result["new_voices_added"]
+-
+-    print(f"✅ Got {len(result_voices)} total voices ({new_voices_added} new from this LLM call)")
+-    for i, v in enumerate(result_voices):
+-        print(f"   {i+1}. {v.get('voice', 'unknown')}: {v.get('comment', '')[:50]}...")
+-
+-    result = {
+-        "voices": result_voices,
+-        "new_voices_added": new_voices_added,
+-        "status": "completed",
+-        "text_length": len(text)
+-    }
+-
+-    print(f"Returning result: {result}")
+-    print(f"{'='*60}\n")
+-
+-    return result
+-
+-if __name__ == "__main__":
+-    # Get the global registry (session auto-registered via decorator)
+-    registry = get_registry()
+-
+-    # Start the control panel
+-    print("\n" + "="*60)
+-    print("🎭 Voice Analysis Server (Simplified)")
+-    print("="*60)
+-
+-    # Monkey-patch the handler to add /api/default-voices endpoint
+-    server, thread = registry.serve_control_panel(port=8765)
+-
+-    original_do_get = server.RequestHandlerClass.do_GET
+-    def patched_do_get(handler_self):
+-        if handler_self.path == "/api/default-voices":
+-            import json
+-            body = json.dumps(config.VOICE_ARCHETYPES).encode("utf-8")
+-            handler_self.send_response(200)
+-            handler_self.send_header("Content-Type", "application/json")
+-            handler_self.send_header("Access-Control-Allow-Origin", "*")
+-            handler_self.end_headers()
+-            handler_self.wfile.write(body)
+-        else:
+-            original_do_get(handler_self)
+-
+-    server.RequestHandlerClass.do_GET = patched_do_get
+-
+-    print("\n📚 Available endpoints:")
+-    print("  - POST /api/trigger")
+-    print("    Body: {\"session_id\": \"analyze_text\", \"params\": {\"text\": \"...\"}}")
+-    print("  - GET /api/sessions (list all sessions)")
+-    print("  - GET /api/default-voices")
+-    print("\n" + "="*60 + "\n")
+-
+-    # Keep server running
+-    try:
+-        while True:
+-            time.sleep(1)
+-    except KeyboardInterrupt:
+-        print("\n\n👋 Shutting down...")
+\ No newline at end of file
+diff --git a/backend/server_stateless.py b/backend/server_stateless.py
+deleted file mode 100644
+index 07f16aa..0000000
+--- a/backend/server_stateless.py
++++ /dev/null
+@@ -1,91 +0,0 @@
+-#!/usr/bin/env python3
+-"""Stateless voice analysis server - no state tracking, just returns new comments."""
+-
+-import time
+-from polycli.orchestration.session_registry import session_def, get_registry
+-from polycli import PolyAgent
+-from stateless_analyzer import analyze_stateless
+-import config
+-
+-@session_def(
+-    name="Analyze Voices",
+-    description="Get one new voice comment for text",
+-    params={
+-        "text": {"type": "str"},
+-        "session_id": {"type": "str"},
+-        "voices": {"type": "dict"},
+-        "applied_comments": {"type": "list"}
+-    },
+-    category="Analysis"
+-)
+-def analyze_text(text: str, session_id: str, voices: dict = None, applied_comments: list = None):
+-    """
+-    Stateless analysis - returns ONE new comment based on text and applied comments.
+-
+-    Args:
+-        text: Text to analyze (should be complete sentences only)
+-        session_id: Session ID (for future use)
+-        voices: Voice configuration
+-        applied_comments: List of already applied comments (to avoid duplicates)
+-
+-    Returns:
+-        Dictionary with single new voice (or empty list)
+-    """
+-    print(f"\n{'='*60}")
+-    print(f"🎯 Stateless analyze_text() called")
+-    print(f"   Text: {text[:100]}...")
+-    print(f"   Applied comments: {len(applied_comments or [])}")
+-    print(f"{'='*60}\n")
+-
+-    agent = PolyAgent(id="voice-analyzer")
+-
+-    # Get voices from stateless analyzer
+-    result = analyze_stateless(agent, text, applied_comments or [], voices)
+-
+-    print(f"✅ Returning {result['new_voices_added']} new voice(s)")
+-
+-    return {
+-        "voices": result["voices"],
+-        "new_voices_added": result["new_voices_added"],
+-        "status": "completed"
+-    }
+-
+-if __name__ == "__main__":
+-    # Get the global registry
+-    registry = get_registry()
+-
+-    # Start the control panel
+-    print("\n" + "="*60)
+-    print("🎭 Stateless Voice Analysis Server")
+-    print("="*60)
+-
+-    # Monkey-patch to add /api/default-voices endpoint
+-    server, thread = registry.serve_control_panel(port=8765)
+-
+-    original_do_get = server.RequestHandlerClass.do_GET
+-    def patched_do_get(handler_self):
+-        if handler_self.path == "/api/default-voices":
+-            import json
+-            body = json.dumps(config.VOICE_ARCHETYPES).encode("utf-8")
+-            handler_self.send_response(200)
+-            handler_self.send_header("Content-Type", "application/json")
+-            handler_self.send_header("Access-Control-Allow-Origin", "*")
+-            handler_self.end_headers()
+-            handler_self.wfile.write(body)
+-        else:
+-            original_do_get(handler_self)
+-
+-    server.RequestHandlerClass.do_GET = patched_do_get
+-
+-    print("\n📚 Available endpoints:")
+-    print("  - POST /api/trigger")
+-    print("    Body: {\"session_id\": \"analyze_text\", \"params\": {\"text\": \"...\", \"applied_comments\": [...]}}")
+-    print("  - GET /api/default-voices")
+-    print("\n" + "="*60 + "\n")
+-
+-    # Keep server running
+-    try:
+-        while True:
+-            time.sleep(1)
+-    except KeyboardInterrupt:
+-        print("\n\n👋 Shutting down...")
+\ No newline at end of file
+diff --git a/backend/simple_analyzer.py b/backend/simple_analyzer.py
+deleted file mode 100644
+index 3df8873..0000000
+--- a/backend/simple_analyzer.py
++++ /dev/null
+@@ -1,101 +0,0 @@
+-#!/usr/bin/env python3
+-"""
+-Simplified voice analyzer - stateless, no density enforcement
+-Just returns voices for given text
+-"""
+-
+-from typing import List, Optional
+-from pydantic import BaseModel, Field
+-from polycli import PolyAgent
+-import config
+-
+-class VoiceTrigger(BaseModel):
+-    phrase: str = Field(description="Exact trigger phrase from text (verbatim, 2-6 words ideal)")
+-    voice: str = Field(description="Voice archetype name from the available list")
+-    comment: str = Field(description="What this voice is saying (as if speaking)")
+-    icon: str = Field(description="Icon identifier")
+-    color: str = Field(description="Color identifier")
+-
+-class SingleVoice(BaseModel):
+-    voice: Optional[VoiceTrigger] = Field(description="Single voice trigger, or None if nothing to comment")
+-
+-def analyze_simple(agent: PolyAgent, text: str, voices: dict = None) -> List[dict]:
+-    """
+-    Simple stateless analysis - just return voices for the given text
+-
+-    Args:
+-        agent: PolyAgent instance
+-        text: Text to analyze
+-        voices: Voice configuration
+-
+-    Returns:
+-        List of voice dictionaries
+-    """
+-    # Skip if text too short
+-    if len(text.strip()) < 20:
+-        return []
+-
+-    # Use provided voices or defaults
+-    voice_archetypes = voices or config.VOICE_ARCHETYPES
+-
+-    # Build voice list for prompt
+-    voice_list = "\n".join([
+-        f"- {v.get('name', name)} ({v['icon']}, {v['color']}): {v['tagline']}"
+-        for name, v in voice_archetypes.items()
+-    ])
+-
+-    prompt = f"""You are analyzing internal dialogue as distinct inner voice personas.
+-
+-Analyze this text and identify ONE voice that wants to comment:
+-
+-"{text}"
+-
+-Available voice personas (ONLY use these):
+-{voice_list}
+-
+-Find ONE voice to comment:
+-1. Extract a SHORT phrase (2-6 words) that triggered it - MUST be EXACT text from above
+-2. Choose the matching voice persona from the list
+-3. Write what this voice is saying (1-2 sentences)
+-4. Use the voice's designated icon and color
+-
+-Rules:
+-- Return ONLY ONE voice comment (the most interesting/relevant one)
+-- Quality over quantity - be selective
+-- Phrase MUST be exact substring from text
+-- Only comment on complete sentences (ending with .!?。！？)
+-- Return null if nothing is worth commenting on
+-- Respond in the SAME LANGUAGE as the text"""
+-
+-    # Get analysis from LLM
+-    result = agent.run(
+-        prompt,
+-        model=config.MODEL,
+-        cli="no-tools",
+-        schema_cls=SingleVoice,
+-        tracked=True
+-    )
+-
+-    if not result.is_success or not result.has_data():
+-        return []
+-
+-    voice = result.data.get("voice")
+-    voices = [voice] if voice else []
+-
+-    # Map user-defined names back to get correct icon/color
+-    name_to_key = {}
+-    for key, v in voice_archetypes.items():
+-        user_name = v.get("name", key)
+-        name_to_key[user_name] = key
+-
+-    # Update icon/color from config
+-    for v in voices:
+-        if v:
+-            llm_voice_name = v.get("voice")
+-            archetype_key = name_to_key.get(llm_voice_name)
+-            if archetype_key and archetype_key in voice_archetypes:
+-                v["icon"] = voice_archetypes[archetype_key]["icon"]
+-                v["color"] = voice_archetypes[archetype_key]["color"]
+-                v["voice"] = llm_voice_name  # Keep user-defined name
+-
+-    return voices
+\ No newline at end of file
+diff --git a/backend/stateful_analyzer.py b/backend/stateful_analyzer.py
+deleted file mode 100644
+index 4e25921..0000000
+--- a/backend/stateful_analyzer.py
++++ /dev/null
+@@ -1,374 +0,0 @@
+-#!/usr/bin/env python3
+-"""Stateful voice analyzer that tracks comments across continuous writing."""
+-
+-from pathlib import Path
+-from typing import Optional
+-from pydantic import BaseModel, Field
+-from polycli import PolyAgent
+-from polycli.orchestration import pattern
+-import config
+-import re
+-import time
+-
+-class VoiceTrigger(BaseModel):
+-    phrase: str = Field(description="Exact trigger phrase from text (verbatim)")
+-    voice: str = Field(description="Voice archetype name from the available list")
+-    comment: str = Field(description="What this voice is saying (as if speaking)")
+-    icon: str = Field(description="Icon: brain, heart, question, cloud, masks, eye, fist, lightbulb, shield, wind, fire, compass")
+-    color: str = Field(description="Color: blue, pink, yellow, green, purple")
+-
+-class VoiceAnalysis(BaseModel):
+-    voices: list[VoiceTrigger] = Field(description="Detected voice triggers")
+-
+-class SingleVoiceAnalysis(BaseModel):
+-    voice: Optional[VoiceTrigger] = Field(description="Single voice trigger", default=None)
+-
+-class StatefulVoiceAnalyzer:
+-    """
+-    Stateful analyzer that:
+-    1. Tracks existing comments
+-    2. Prunes comments when trigger text is deleted
+-    3. Only asks LLM for new comments
+-    4. Enforces density rules (1 per persona, 1 per sentence)
+-    """
+-
+-    def __init__(self):
+-        self.comments = []  # List of dicts: {phrase, voice, comment, icon, color}
+-        self.last_text = ""
+-
+-    def _prune_deleted_comments(self, text: str):
+-        """Remove comments whose trigger phrases no longer exist in text."""
+-        self.comments = [
+-            c for c in self.comments
+-            if c["phrase"].lower() in text.lower()
+-        ]
+-
+-    def _get_sentences(self, text: str) -> list[str]:
+-        """Split text into sentences (supports English and Chinese)."""
+-        # @@@ multilingual-sentence-split - English: .!? Chinese: 。！？，
+-        # Also treat newlines as sentence boundaries
+-        sentences = re.split(r'[.!?。！？，]+|\n+', text)
+-        return [s.strip() for s in sentences if s.strip()]
+-
+-    def _get_commented_regions(self, text: str) -> list[tuple[int, int]]:
+-        """Get character ranges that already have comments."""
+-        regions = []
+-        for comment in self.comments:
+-            phrase = comment["phrase"]
+-            # Find all occurrences (case-insensitive)
+-            text_lower = text.lower()
+-            phrase_lower = phrase.lower()
+-            start = 0
+-            while True:
+-                pos = text_lower.find(phrase_lower, start)
+-                if pos == -1:
+-                    break
+-                regions.append((pos, pos + len(phrase)))
+-                start = pos + 1
+-        return regions
+-
+-    def _enforce_density(self, new_comments: list[dict], text: str) -> list[dict]:
+-        """
+-        Enforce density rules:
+-        1. Max 1 persona per sentence
+-        """
+-        # Get sentence boundaries
+-        sentences = self._get_sentences(text)
+-        sentence_positions = []
+-        pos = 0
+-        for sent in sentences:
+-            start = text.lower().find(sent.lower(), pos)
+-            if start != -1:
+-                sentence_positions.append((start, start + len(sent), sent))
+-                pos = start + len(sent)
+-
+-        # Track which sentences have comments
+-        sentence_has_comment = [False] * len(sentence_positions)
+-        for comment in self.comments:
+-            phrase_pos = text.lower().find(comment["phrase"].lower())
+-            if phrase_pos != -1:
+-                for i, (start, end, _) in enumerate(sentence_positions):
+-                    if start <= phrase_pos < end:
+-                        sentence_has_comment[i] = True
+-                        break
+-
+-        # Filter new comments
+-        filtered = []
+-        for comment in new_comments:
+-            voice = comment["voice"]
+-            phrase = comment["phrase"]
+-
+-            # Rule: Only 1 comment per sentence
+-            phrase_pos = text.lower().find(phrase.lower())
+-            if phrase_pos == -1:
+-                continue
+-
+-            # Find which sentence this belongs to
+-            comment_sentence_idx = None
+-            for i, (start, end, _) in enumerate(sentence_positions):
+-                if start <= phrase_pos < end:
+-                    comment_sentence_idx = i
+-                    break
+-
+-            if comment_sentence_idx is not None and sentence_has_comment[comment_sentence_idx]:
+-                continue
+-
+-            # Accept this comment
+-            filtered.append(comment)
+-            if comment_sentence_idx is not None:
+-                sentence_has_comment[comment_sentence_idx] = True
+-
+-        return filtered
+-
+-    @pattern
+-    def analyze(self, agent: PolyAgent, text: str, voices: dict = None) -> dict:
+-        """
+-        Analyze text and return ALL comments (existing + new) plus metadata.
+-
+-        Args:
+-            agent: PolyAgent instance
+-            text: Current text
+-
+-        Returns:
+-            Dict with 'voices' (complete list) and 'new_voices_added' (count of new voices from this LLM call)
+-        """
+-        print(f"\n{'='*60}")
+-        print(f"📊 Stateful Analysis")
+-        print(f"   Text length: {len(text)}")
+-        print(f"   Existing comments: {len(self.comments)}")
+-        print(f"{'='*60}\n")
+-
+-        # Step 1: Prune deleted comments
+-        old_count = len(self.comments)
+-        self._prune_deleted_comments(text)
+-        if len(self.comments) < old_count:
+-            print(f"🗑️  Pruned {old_count - len(self.comments)} deleted comments")
+-
+-        # Step 2: Check if we need new analysis
+-        if len(text.strip()) < config.MIN_TEXT_LENGTH:
+-            print("⏭️  Text too short, returning existing comments")
+-            return {"voices": self.comments, "new_voices_added": 0}
+-
+-        # @@@ Removed debouncing - allow multiple LLM calls on same text
+-        # This enables energy pool to trigger multiple times and get different comments
+-        # The LLM prompt includes existing comments, so it will return new ones
+-
+-        # Step 3: Build prompt with existing comments
+-        voice_archetypes = voices or config.VOICE_ARCHETYPES
+-        # @@@ Use user-defined 'name' (e.g., "吕布") instead of key (e.g., "Composure")
+-        # This prevents LLM from hallucinating Disco Elysium characters
+-        voice_list = "\n".join([
+-            f"- {v.get('name', name)} ({v['icon']}, {v['color']}): {v['tagline']}"
+-            for name, v in voice_archetypes.items()
+-        ])
+-
+-        # @@@ Build list of occupied sentences AND used personas to guide LLM
+-        existing_summary = ""
+-        if self.comments:
+-            # Get sentence boundaries
+-            sentences = self._get_sentences(text)
+-            sentence_positions = []
+-            pos = 0
+-            for sent in sentences:
+-                start = text.lower().find(sent.lower(), pos)
+-                if start != -1:
+-                    sentence_positions.append((start, start + len(sent), sent))
+-                    pos = start + len(sent)
+-
+-            # Find which sentences are occupied
+-            occupied_sentences = set()
+-            for comment in self.comments:
+-                phrase_pos = text.lower().find(comment["phrase"].lower())
+-                if phrase_pos != -1:
+-                    for i, (start, end, sent) in enumerate(sentence_positions):
+-                        if start <= phrase_pos < end:
+-                            occupied_sentences.add(i)
+-                            break
+-
+-            # Build summary with occupied sentences
+-            existing_summary = "\n\nEXISTING COMMENTS:\n"
+-            for c in self.comments:
+-                existing_summary += f"- {c['voice']} commented on phrase \"{c['phrase']}\": {c['comment']}\n"
+-
+-            if occupied_sentences:
+-                # @@@ phrase-vs-sentence - LLM must understand that even though only a phrase is highlighted,
+-                # the ENTIRE sentence containing that phrase is off-limits for new comments
+-                existing_summary += f"\n⚠️  OCCUPIED SENTENCES (already have comments, CANNOT comment anywhere in these sentences):\n"
+-                existing_summary += "NOTE: Even though only a PHRASE is highlighted/commented, the rule is that the ENTIRE SENTENCE containing that phrase is now occupied.\n"
+-                existing_summary += "You cannot add any new comment to any part of these full sentences:\n\n"
+-                for i in sorted(occupied_sentences):
+-                    if i < len(sentence_positions):
+-                        full_sentence = sentence_positions[i][2]  # Show FULL sentence, no truncation
+-                        # Find which comment triggered this sentence
+-                        trigger_phrase = None
+-                        for c in self.comments:
+-                            phrase_pos = text.lower().find(c["phrase"].lower())
+-                            if phrase_pos != -1:
+-                                start, end, _ = sentence_positions[i]
+-                                if start <= phrase_pos < end:
+-                                    trigger_phrase = c["phrase"]
+-                                    break
+-
+-                        existing_summary += f"  Sentence {i+1} (triggered by phrase \"{trigger_phrase}\"):\n"
+-                        existing_summary += f"  \"{full_sentence}\"\n\n"
+-                existing_summary += "👉 Focus your analysis on NEW/UNCOMMENTED sentences only!\n"
+-
+-        prompt = f"""You are analyzing internal dialogue as distinct inner voice personas.
+-
+-Analyze this text and identify NEW voices that want to comment:
+-
+-"{text}"
+-
+-Available voice personas (THESE ARE THE ONLY VOICES YOU CAN USE - DO NOT CREATE NEW ONES):
+-{voice_list}
+-{existing_summary}
+-
+-For each NEW voice you detect:
+-1. Extract a SHORT phrase that triggered it (**MUST be EXACT verbatim text from the user's writing, character-by-character match**)
+-   - The phrase should be SMALL - typically 2-6 words, the most essential/striking part
+-   - This phrase will be HIGHLIGHTED in the UI - keep it concise!
+-   - ✅ Good examples: "contemplative walk", "thinking about meaning", "life and death"
+-   - ❌ Bad examples: (whole sentences, too long, not focused)
+-   - **CRITICAL: The phrase MUST exist EXACTLY as written in the text. Do not paraphrase, rearrange, or modify ANY characters.**
+-2. Choose the matching voice persona **FROM THE AVAILABLE LIST ABOVE ONLY**
+-3. Write what this voice is saying (as if the voice itself is speaking)
+-4. Use the voice's designated icon and color
+-
+-CRITICAL DISTINCTION:
+-- **Phrase** = SHORT essential words you return (what gets highlighted, 2-6 words ideal)
+-- **Sentence** = The occupation boundary (you can't comment anywhere else in that sentence)
+-- Even though your phrase is short, it occupies the ENTIRE sentence it appears in
+-
+-STRICT RULES:
+-- Maximum {config.MAX_VOICES} NEW voices
+-- **DO NOT CREATE OR INVENT NEW VOICE NAMES** - Only use the exact voice names from the available list above
+-- **It's perfectly fine to return NO comment (null) if nothing is worth commenting on**
+-- Only identify clearly present voices - quality over quantity
+-- **Phrase MUST be EXACT verbatim substring from text** (character-by-character match, no changes allowed)
+-- Each voice should be distinct
+-- DO NOT comment on parts that already have comments
+-- Avoid commenting too close to existing comments
+-- DO NOT comment on the last sentence if it appears incomplete (no ending punctuation like .!?。！？)
+-- **If all available sentences are already occupied or incomplete, return null**
+-- Write comments in the SAME LANGUAGE as the text being analyzed (if text is Chinese, respond in Chinese; if English, respond in English)
+-"""
+-
+-        print("🤖 Calling LLM for new comments...")
+-
+-        # Choose schema based on config
+-        if config.SINGLE_COMMENT_MODE:
+-            schema_cls = SingleVoiceAnalysis
+-            max_voices_for_prompt = 1
+-        else:
+-            schema_cls = VoiceAnalysis
+-            max_voices_for_prompt = config.MAX_VOICES
+-
+-        # Update prompt with correct max_voices
+-        prompt = prompt.replace(f"Maximum {config.MAX_VOICES} NEW voices", f"Maximum {max_voices_for_prompt} NEW voices")
+-
+-        result = agent.run(
+-            prompt,
+-            model=config.MODEL,
+-            cli="no-tools",
+-            schema_cls=schema_cls,
+-            tracked=True
+-        )
+-
+-        if not result.is_success or not result.has_data():
+-            print("❌ LLM failed, returning existing comments")
+-            return {"voices": self.comments, "new_voices_added": 0}
+-
+-        # Extract voices based on schema type
+-        if config.SINGLE_COMMENT_MODE:
+-            voice = result.data.get("voice")
+-            new_voices = [voice] if voice else []
+-        else:
+-            new_voices = result.data.get("voices", [])
+-
+-        print(f"✅ LLM returned {len(new_voices)} new comments")
+-
+-        # @@@ Build name → key mapping (e.g., "吕布" → "Composure")
+-        # LLM now returns user-defined names, we need to find the corresponding key
+-        name_to_key = {}
+-        for key, v in voice_archetypes.items():
+-            user_name = v.get("name", key)
+-            name_to_key[user_name] = key
+-
+-        # @@@ Override LLM's icon/color with actual config values
+-        # LLM returns user-defined name (e.g., "吕布"), we map back to key (e.g., "Composure")
+-        for v in new_voices:
+-            if v:
+-                llm_voice_name = v.get("voice")
+-                # Find the key for this name
+-                archetype_key = name_to_key.get(llm_voice_name)
+-                if archetype_key and archetype_key in voice_archetypes:
+-                    v["icon"] = voice_archetypes[archetype_key]["icon"]
+-                    v["color"] = voice_archetypes[archetype_key]["color"]
+-                    # Keep the user-defined name (already correct from LLM)
+-                    v["voice"] = llm_voice_name
+-
+-        # Step 4: Enforce density rules
+-        filtered_voices = self._enforce_density(new_voices, text)
+-        print(f"📏 After density filter: {len(filtered_voices)} comments")
+-
+-        # Step 5: Merge with existing comments
+-        self.comments.extend(filtered_voices)
+-        self.last_text = text
+-
+-        print(f"📝 Total comments: {len(self.comments)}")
+-        for i, c in enumerate(self.comments):
+-            print(f"   {i+1}. {c['voice']}: \"{c['phrase'][:30]}...\"")
+-        print(f"{'='*60}\n")
+-
+-        # @@@ Return both voices and metadata about new voices added
+-        return {
+-            "voices": self.comments,
+-            "new_voices_added": len(filtered_voices)
+-        }
+-
+-# @@@ Multi-user support - Session-based storage
+-# Each user gets their own analyzer instance, keyed by session_id
+-_user_analyzers = {}  # session_id -> StatefulVoiceAnalyzer
+-_last_access = {}     # session_id -> timestamp
+-
+-# @@@ Session cleanup config
+-SESSION_TTL = 3600  # 1 hour - sessions inactive for this long will be cleaned up
+-
+-def cleanup_stale_sessions():
+-    """Remove sessions that haven't been accessed in SESSION_TTL seconds."""
+-    now = time.time()
+-    stale_sessions = [
+-        sid for sid, last_time in _last_access.items()
+-        if now - last_time > SESSION_TTL
+-    ]
+-
+-    for sid in stale_sessions:
+-        print(f"🗑️  Cleaning up stale session: {sid} (inactive for {SESSION_TTL}s)")
+-        del _user_analyzers[sid]
+-        del _last_access[sid]
+-
+-    if stale_sessions:
+-        print(f"📊 Active sessions: {len(_user_analyzers)}")
+-
+-def get_analyzer(session_id: str) -> StatefulVoiceAnalyzer:
+-    """Get or create analyzer for this user session."""
+-    if session_id not in _user_analyzers:
+-        print(f"🆕 Creating new analyzer for session: {session_id}")
+-        _user_analyzers[session_id] = StatefulVoiceAnalyzer()
+-
+-    # Update last access time
+-    _last_access[session_id] = time.time()
+-
+-    return _user_analyzers[session_id]
+-
+-def analyze_stateful(agent: PolyAgent, text: str, session_id: str, voices: dict = None) -> dict:
+-    """Analyze text using session-isolated analyzer.
+-
+-    Returns:
+-        Dict with 'voices' (list of all comments) and 'new_voices_added' (count of new voices from this LLM call)
+-    """
+-    # Cleanup stale sessions before processing
+-    cleanup_stale_sessions()
+-
+-    analyzer = get_analyzer(session_id)
+-    return analyzer.analyze(agent, text, voices)
+diff --git a/backend/stateful_analyzer_simple.py b/backend/stateful_analyzer_simple.py
+deleted file mode 100644
+index c17c0d1..0000000
+--- a/backend/stateful_analyzer_simple.py
++++ /dev/null
+@@ -1,200 +0,0 @@
+-#!/usr/bin/env python3
+-"""Simplified stateful voice analyzer - tracks comments but with fewer constraints."""
+-
+-from pathlib import Path
+-from typing import Optional
+-from pydantic import BaseModel, Field
+-from polycli import PolyAgent
+-from polycli.orchestration import pattern
+-import config
+-import re
+-import time
+-
+-class VoiceTrigger(BaseModel):
+-    phrase: str = Field(description="Exact trigger phrase from text (verbatim)")
+-    voice: str = Field(description="Voice archetype name from the available list")
+-    comment: str = Field(description="What this voice is saying (as if speaking)")
+-    icon: str = Field(description="Icon: brain, heart, question, cloud, masks, eye, fist, lightbulb, shield, wind, fire, compass")
+-    color: str = Field(description="Color: blue, pink, yellow, green, purple")
+-
+-class SingleVoiceAnalysis(BaseModel):
+-    voice: Optional[VoiceTrigger] = Field(description="Single voice trigger", default=None)
+-
+-class StatefulVoiceAnalyzer:
+-    """
+-    Simplified stateful analyzer that:
+-    1. Tracks APPLIED comments only
+-    2. Only asks LLM for new comments
+-    3. Returns ONE comment at a time
+-    """
+-
+-    def __init__(self):
+-        self.applied_comments = []  # List of APPLIED comments only
+-        self.last_text = ""
+-
+-    def _prune_deleted_comments(self, text: str):
+-        """Remove comments whose trigger phrases no longer exist in text."""
+-        self.comments = [
+-            c for c in self.comments
+-            if c["phrase"].lower() in text.lower()
+-        ]
+-
+-    @pattern
+-    def analyze(self, agent: PolyAgent, text: str, voices: dict = None) -> dict:
+-        """
+-        Analyze text and return ALL comments (existing + new) plus metadata.
+-        Simplified version - just returns ONE new comment at a time.
+-        """
+-        print(f"\n{'='*60}")
+-        print(f"📊 Simplified Stateful Analysis")
+-        print(f"   Text length: {len(text)}")
+-        print(f"   Existing comments: {len(self.comments)}")
+-        print(f"{'='*60}\n")
+-
+-        # Step 1: Prune deleted comments
+-        old_count = len(self.comments)
+-        self._prune_deleted_comments(text)
+-        if len(self.comments) < old_count:
+-            print(f"🗑️  Pruned {old_count - len(self.comments)} deleted comments")
+-
+-        # Step 2: Build prompt with existing comments
+-        voice_archetypes = voices or config.VOICE_ARCHETYPES
+-        # Use user-defined 'name' (e.g., "吕布") instead of key (e.g., "Composure")
+-        voice_list = "\n".join([
+-            f"- {v.get('name', name)} ({v['icon']}, {v['color']}): {v['tagline']}"
+-            for name, v in voice_archetypes.items()
+-        ])
+-
+-        # Build list of existing comments
+-        existing_summary = ""
+-        if self.comments:
+-            existing_summary = "\n\nEXISTING COMMENTS (do not repeat these):\n"
+-            for c in self.comments:
+-                existing_summary += f"- {c['voice']} commented on \"{c['phrase']}\": {c['comment']}\n"
+-            existing_summary += "\n👉 Find something NEW to comment on!\n"
+-
+-        prompt = f"""You are analyzing internal dialogue as distinct inner voice personas.
+-
+-Analyze this text and identify ONE NEW voice that wants to comment:
+-
+-"{text}"
+-
+-Available voice personas (THESE ARE THE ONLY VOICES YOU CAN USE):
+-{voice_list}
+-{existing_summary}
+-
+-Find ONE NEW voice to comment:
+-1. Extract a SHORT phrase (2-6 words ideal) that triggered it - MUST be EXACT text from above
+-2. Choose the matching voice persona from the list
+-3. Write what this voice is saying (1-2 sentences)
+-4. Use the voice's designated icon and color
+-
+-RULES:
+-- Return ONLY ONE comment (the most interesting/relevant one)
+-- DO NOT repeat existing comments
+-- DO NOT CREATE NEW VOICE NAMES - Only use the exact voice names from the available list
+-- It's perfectly fine to return null if nothing new is worth commenting on
+-- Phrase MUST be EXACT verbatim substring from text
+-- Only comment on complete sentences (ending with .!?。！？)
+-- Write comments in the SAME LANGUAGE as the text"""
+-
+-        print("🤖 Calling LLM for ONE new comment...")
+-
+-        result = agent.run(
+-            prompt,
+-            model=config.MODEL,
+-            cli="no-tools",
+-            schema_cls=SingleVoiceAnalysis,
+-            tracked=True
+-        )
+-
+-        if not result.is_success or not result.has_data():
+-            print("❌ LLM failed, returning existing comments")
+-            return {"voices": self.comments, "new_voices_added": 0}
+-
+-        # Extract single voice
+-        voice = result.data.get("voice")
+-        new_voices = [voice] if voice else []
+-
+-        print(f"✅ LLM returned {'1 new comment' if voice else 'no new comment'}")
+-
+-        if new_voices:
+-            # Build name → key mapping (e.g., "吕布" → "Composure")
+-            name_to_key = {}
+-            for key, v in voice_archetypes.items():
+-                user_name = v.get("name", key)
+-                name_to_key[user_name] = key
+-
+-            # Override LLM's icon/color with actual config values
+-            for v in new_voices:
+-                if v:
+-                    llm_voice_name = v.get("voice")
+-                    # Find the key for this name
+-                    archetype_key = name_to_key.get(llm_voice_name)
+-                    if archetype_key and archetype_key in voice_archetypes:
+-                        v["icon"] = voice_archetypes[archetype_key]["icon"]
+-                        v["color"] = voice_archetypes[archetype_key]["color"]
+-                        # Keep the user-defined name (already correct from LLM)
+-                        v["voice"] = llm_voice_name
+-
+-            # Add to our comments
+-            self.comments.extend(new_voices)
+-
+-        self.last_text = text
+-
+-        print(f"📝 Total comments: {len(self.comments)}")
+-        for i, c in enumerate(self.comments):
+-            print(f"   {i+1}. {c['voice']}: \"{c['phrase'][:30]}...\"")
+-        print(f"{'='*60}\n")
+-
+-        # Return both voices and metadata about new voices added
+-        return {
+-            "voices": self.comments,
+-            "new_voices_added": len(new_voices)
+-        }
+-
+-# Multi-user support - Session-based storage
+-_user_analyzers = {}  # session_id -> StatefulVoiceAnalyzer
+-_last_access = {}     # session_id -> timestamp
+-
+-# Session cleanup config
+-SESSION_TTL = 3600  # 1 hour - sessions inactive for this long will be cleaned up
+-
+-def cleanup_stale_sessions():
+-    """Remove sessions that haven't been accessed in SESSION_TTL seconds."""
+-    now = time.time()
+-    stale_sessions = [
+-        sid for sid, last_time in _last_access.items()
+-        if now - last_time > SESSION_TTL
+-    ]
+-
+-    for sid in stale_sessions:
+-        print(f"🗑️  Cleaning up stale session: {sid} (inactive for {SESSION_TTL}s)")
+-        del _user_analyzers[sid]
+-        del _last_access[sid]
+-
+-    if stale_sessions:
+-        print(f"📊 Active sessions: {len(_user_analyzers)}")
+-
+-def get_analyzer(session_id: str) -> StatefulVoiceAnalyzer:
+-    """Get or create analyzer for this user session."""
+-    if session_id not in _user_analyzers:
+-        print(f"🆕 Creating new analyzer for session: {session_id}")
+-        _user_analyzers[session_id] = StatefulVoiceAnalyzer()
+-
+-    # Update last access time
+-    _last_access[session_id] = time.time()
+-
+-    return _user_analyzers[session_id]
+-
+-def analyze_stateful(agent: PolyAgent, text: str, session_id: str, voices: dict = None) -> dict:
+-    """Analyze text using session-isolated analyzer.
+-
+-    Returns:
+-        Dict with 'voices' (list of all comments) and 'new_voices_added' (count of new voices from this LLM call)
+-    """
+-    # Cleanup stale sessions before processing
+-    cleanup_stale_sessions()
+-
+-    analyzer = get_analyzer(session_id)
+-    return analyzer.analyze(agent, text, voices)
+\ No newline at end of file
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 0f48d1b..6d8d3d7 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -1,6 +1,8 @@
+ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+ import { EditorEngine } from './engine/EditorEngine';
+ import type { EditorState, Commentor, TextCell } from './engine/EditorEngine';
++import { ChatWidget } from './engine/ChatWidget';
++import type { ChatWidgetData } from './engine/ChatWidget';
+ import './App.css';
+ import {
+   FaSync, FaBold, FaItalic, FaUnderline, FaAlignLeft, FaAlignCenter,
+@@ -8,84 +10,93 @@ import {
+   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
+ } from 'react-icons/fa';
+-
+-// @@@ Left Toolbar Component
+-function LeftToolbar({ onStartFresh }: { onStartFresh: () => void }) {
+-  const tools = [
+-    { icon: FaSync, tooltip: 'Start Fresh', action: onStartFresh, functional: true, separator: true },
+-    { icon: FaBold, tooltip: 'Bold', functional: false, separator: false },
+-    { icon: FaItalic, tooltip: 'Italic', functional: false, separator: false },
+-    { icon: FaUnderline, tooltip: 'Underline', functional: false, separator: true },
+-    { icon: FaAlignLeft, tooltip: 'Align Left', functional: false, separator: false },
+-    { icon: FaAlignCenter, tooltip: 'Align Center', functional: false, separator: false },
+-    { icon: FaAlignRight, tooltip: 'Align Right', functional: false, separator: true },
+-    { icon: FaListUl, tooltip: 'Bullet List', functional: false, separator: false },
+-    { icon: FaListOl, tooltip: 'Numbered List', functional: false, separator: true },
+-    { icon: FaQuoteRight, tooltip: 'Quote', functional: false, separator: false },
+-    { icon: FaTable, tooltip: 'Insert Table', functional: false, separator: false },
+-    { icon: FaLink, tooltip: 'Insert Link', functional: false, separator: false },
+-    { icon: FaImage, tooltip: 'Insert Image', functional: false, separator: false },
+-  ];
+-
++import LeftSidebar from './components/LeftSidebar';
++import VoiceSettings from './components/VoiceSettings';
++import CalendarView from './components/CalendarView';
++import AnalysisView from './components/AnalysisView';
++import AboutView from './components/AboutView';
++import AgentDropdown from './components/AgentDropdown';
++import ChatWidgetUI from './components/ChatWidgetUI';
++import type { VoiceConfig } from './types/voice';
++import { getVoices } from './utils/voiceStorage';
++import { getDefaultVoices, chatWithVoice } from './api/voiceApi';
++
++// @@@ Left Toolbar Component - floating toolbelt within left margin
++function LeftToolbar({ onStartFresh, onInsertAgent }: { onStartFresh: () => void; onInsertAgent: () => void }) {
+   return (
+     <div style={{
+-      width: '48px',
+-      borderRight: '1px solid #e0e0e0',
+-      backgroundColor: '#fafafa',
++      position: 'sticky',
++      top: '80px',
++      width: '40px',
++      margin: '30px auto 0',
++      backgroundColor: '#fff',
++      border: '1px solid #e0e0e0',
++      borderRadius: '8px',
++      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+       display: 'flex',
+       flexDirection: 'column',
+       alignItems: 'center',
+-      paddingTop: '10px',
++      padding: '10px 0',
+       gap: '4px'
+     }}>
+-      {tools.map((tool, idx) => (
+-        <React.Fragment key={idx}>
+-          <button
+-            onClick={tool.functional ? tool.action : undefined}
+-            disabled={!tool.functional}
+-            title={tool.tooltip}
+-            style={{
+-              width: '36px',
+-              height: '36px',
+-              border: 'none',
+-              borderRadius: '4px',
+-              backgroundColor: tool.functional ? '#fff' : 'transparent',
+-              cursor: tool.functional ? 'pointer' : 'not-allowed',
+-              display: 'flex',
+-              alignItems: 'center',
+-              justifyContent: 'center',
+-              opacity: tool.functional ? 1 : 0.3,
+-              transition: 'all 0.2s ease',
+-              ...(tool.functional && {
+-                ':hover': {
+-                  backgroundColor: '#f0f0f0'
+-                }
+-              })
+-            }}
+-            onMouseEnter={tool.functional ? (e) => {
+-              e.currentTarget.style.backgroundColor = '#f0f0f0';
+-            } : undefined}
+-            onMouseLeave={tool.functional ? (e) => {
+-              e.currentTarget.style.backgroundColor = '#fff';
+-            } : undefined}
+-          >
+-            <tool.icon size={18} color={tool.functional ? '#333' : '#999'} />
+-          </button>
+-          {tool.separator && idx < tools.length - 1 && (
+-            <div style={{
+-              width: '30px',
+-              height: '1px',
+-              backgroundColor: '#e0e0e0',
+-              margin: '4px 0'
+-            }} />
+-          )}
+-        </React.Fragment>
+-      ))}
++      <button
++        onClick={onStartFresh}
++        title="Start Fresh"
++        style={{
++          width: '36px',
++          height: '36px',
++          border: 'none',
++          borderRadius: '4px',
++          backgroundColor: '#fff',
++          cursor: 'pointer',
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'center',
++          transition: 'all 0.2s ease'
++        }}
++        onMouseEnter={(e) => {
++          e.currentTarget.style.backgroundColor = '#f0f0f0';
++        }}
++        onMouseLeave={(e) => {
++          e.currentTarget.style.backgroundColor = '#fff';
++        }}
++      >
++        <FaSync size={18} color="#333" />
++      </button>
++
++      <button
++        onClick={onInsertAgent}
++        title="Insert Agent Chat"
++        style={{
++          width: '36px',
++          height: '36px',
++          border: 'none',
++          borderRadius: '4px',
++          backgroundColor: '#fff',
++          cursor: 'pointer',
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'center',
++          transition: 'all 0.2s ease',
++          fontSize: '20px',
++          fontWeight: 600,
++          color: '#333',
++          fontFamily: 'monospace'
++        }}
++        onMouseEnter={(e) => {
++          e.currentTarget.style.backgroundColor = '#f0f0f0';
++        }}
++        onMouseLeave={(e) => {
++          e.currentTarget.style.backgroundColor = '#fff';
++        }}
++      >
++        @
++      </button>
+     </div>
+   );
+ }
+ 
+-// @@@ Icon map with React Icons (matching original)
++// @@@ Icon map with React Icons
+ const iconMap = {
+   brain: FaBrain,
+   heart: FaHeart,
+@@ -101,7 +112,7 @@ const iconMap = {
+   compass: FaCompass,
+ };
+ 
+-// @@@ Color map with gradient colors for watercolor effect (right to left fade)
++// @@@ Color map with gradient colors for watercolor effect
+ const colorMap: Record<string, { gradient: string; text: string; glow: string }> = {
+   blue: {
+     gradient: 'linear-gradient(90deg, rgba(77,159,255,0) 0%, rgba(77,159,255,0.05) 30%, rgba(77,159,255,0.12) 60%, rgba(77,159,255,0.25) 100%)',
+@@ -130,7 +141,7 @@ const colorMap: Record<string, { gradient: string; text: string; glow: string }>
+   },
+ };
+ 
+-// @@@ Group Comment Card Component - elegant gradient watercolor style
++// @@@ Group Comment Card Component
+ function CommentGroupCard({
+   comments,
+   currentIndex,
+@@ -146,7 +157,6 @@ function CommentGroupCard({
+ 
+   if (comments.length === 0) return null;
+ 
+-  // @@@ Bounds check - ensure currentIndex is valid
+   const safeIndex = Math.min(Math.max(0, currentIndex), comments.length - 1);
+   const currentComment = comments[safeIndex];
+ 
+@@ -164,7 +174,7 @@ function CommentGroupCard({
+         transform: `translateY(-50%) ${isHovered ? 'scale(1.02)' : 'scale(1)'}`,
+         minWidth: '200px',
+         maxWidth: '400px',
+-        height: '54px', // Fixed 3 rows: ~18px per row
++        height: '54px',
+         padding: '8px 12px',
+         background: colors.gradient,
+         borderLeft: `2px solid ${colors.glow}`,
+@@ -174,12 +184,11 @@ function CommentGroupCard({
+         zIndex: 10,
+         cursor: comments.length > 1 ? 'pointer' : 'default',
+         transition: 'all 0.2s ease',
+-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
++        fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
+         boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+         animation: 'slideInFromRight 0.3s ease-out',
+       }}
+       onClick={() => {
+-        // Click to cycle through comments (only if multiple)
+         if (comments.length > 1) {
+           onNavigate((safeIndex + 1) % comments.length);
+         }
+@@ -193,7 +202,6 @@ function CommentGroupCard({
+         height: '100%',
+         alignItems: 'center'
+       }}>
+-        {/* Icon with pagination counter below */}
+         <div style={{
+           display: 'flex',
+           flexDirection: 'column',
+@@ -216,7 +224,6 @@ function CommentGroupCard({
+           )}
+         </div>
+ 
+-        {/* Voice name inline with comment */}
+         <div style={{
+           flex: 1,
+           overflow: 'hidden',
+@@ -236,15 +243,88 @@ function CommentGroupCard({
+ 
+ // @@@ Main App Component
+ export default function App() {
++  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'calendar' | 'analysis' | 'about'>('writing');
++  const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
++  const [defaultVoiceConfigs, setDefaultVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
++
+   const engineRef = useRef<EditorEngine | null>(null);
+   const [state, setState] = useState<EditorState | null>(null);
+-  const [localText, setLocalText] = useState(''); // Local text for textarea
+-  const [isComposing, setIsComposing] = useState(false);
+-  const [groupPages, setGroupPages] = useState<Map<number, number>>(new Map());
++  // @@@ Track local text per cell ID for IME composition
++  const [localTexts, setLocalTexts] = useState<Map<string, string>>(new Map());
++  const [composingCells, setComposingCells] = useState<Set<string>>(new Set());
++  const [groupPages, setGroupPages] = useState<Map<string, number>>(new Map());
+   const [cursorPosition, setCursorPosition] = useState<number>(0);
++  const [cursorCellId, setCursorCellId] = useState<string | null>(null);
++
++  // @@@ Chat widget state
++  const [dropdownVisible, setDropdownVisible] = useState(false);
++  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
++  const [dropdownTriggerCellId, setDropdownTriggerCellId] = useState<string | null>(null);
++  const [chatProcessing, setChatProcessing] = useState<Set<string>>(new Set());
++
++  // @@@ Warning dialog state
++  const [showWarning, setShowWarning] = useState(false);
+ 
+-  const textareaRef = useRef<HTMLTextAreaElement>(null);
++  // @@@ Per-cell textarea refs for positioning and style calculations
++  const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+   const containerRef = useRef<HTMLDivElement>(null);
++  // @@@ Force re-render when refs are ready
++  const [refsReady, setRefsReady] = useState(0);
++  const refsReadyTriggered = useRef(false);
++
++  // @@@ Reset refs ready flag when returning to writing view and focus last text cell
++  useEffect(() => {
++    if (currentView === 'writing') {
++      refsReadyTriggered.current = false;
++
++      // Auto-focus last text cell after a short delay to ensure DOM is ready
++      setTimeout(() => {
++        if (!state) return;
++        const lastTextCell = [...state.cells].reverse().find(c => c.type === 'text');
++        if (!lastTextCell) return;
++
++        const textarea = textareaRefs.current.get(lastTextCell.id);
++        if (textarea) {
++          textarea.focus();
++          // Move cursor to end
++          textarea.selectionStart = textarea.value.length;
++          textarea.selectionEnd = textarea.value.length;
++        }
++      }, 100);
++    }
++  }, [currentView, state]);
++
++  // @@@ Fetch default voices from backend
++  useEffect(() => {
++    getDefaultVoices().then(backendVoices => {
++      const converted: Record<string, VoiceConfig> = {};
++      for (const [name, data] of Object.entries(backendVoices)) {
++        const v = data as any;
++        converted[name] = {
++          name,
++          systemPrompt: v.tagline,
++          enabled: true,
++          icon: v.icon,
++          color: v.color
++        };
++      }
++      setDefaultVoiceConfigs(converted);
++      const configs = getVoices() || converted;
++      setVoiceConfigs(configs);
++
++      // Update engine with voice configs
++      if (engineRef.current) {
++        engineRef.current.setVoiceConfigs(configs);
++      }
++    });
++  }, []);
++
++  // @@@ Update engine when voice configs change
++  useEffect(() => {
++    if (engineRef.current && Object.keys(voiceConfigs).length > 0) {
++      engineRef.current.setVoiceConfigs(voiceConfigs);
++    }
++  }, [voiceConfigs]);
+ 
+   // Initialize engine
+   useEffect(() => {
+@@ -252,32 +332,24 @@ export default function App() {
+     const engine = new EditorEngine(sessionId);
+     engineRef.current = engine;
+ 
+-    // Subscribe to state changes
+     engine.subscribe((newState) => {
+       setState({ ...newState });
+-      // Save to localStorage
+       localStorage.setItem('ink_memory_state', JSON.stringify(newState));
+     });
+ 
+-    // Load saved state if exists
+     const saved = localStorage.getItem('ink_memory_state');
+     if (saved) {
+       try {
+         const parsed = JSON.parse(saved);
+         engine.loadState(parsed);
+-
+-        // Load initial text and state together
+-        const textCell = parsed.cells?.find((c: any) => c.type === 'text');
+-        const initialText = textCell?.content || '';
+-
+-        setLocalText(initialText);
+         setState(engine.getState());
+ 
+-        // Double-check: force re-render after a tick to ensure everything is initialized
+-        setTimeout(() => {
+-          setLocalText(initialText);
+-          setState({ ...engine.getState() });
+-        }, 10);
++        // Initialize localTexts from loaded state
++        const texts = new Map<string, string>();
++        parsed.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
++          texts.set(c.id, c.content || '');
++        });
++        setLocalTexts(texts);
+       } catch (e) {
+         console.error('Failed to load saved state:', e);
+       }
+@@ -286,20 +358,28 @@ export default function App() {
+     }
+   }, []);
+ 
+-  // Sync local text with state (when not composing)
++  // @@@ Sync localTexts from state when not composing
+   useEffect(() => {
+-    if (!isComposing && state) {
+-      const textCell = state.cells.find(c => c.type === 'text') as TextCell;
+-      if (textCell) {
+-        setLocalText(textCell.content || '');
+-      }
++    if (state) {
++      setLocalTexts(prev => {
++        const next = new Map(prev);
++        state.cells.filter(c => c.type === 'text').forEach(cell => {
++          const textCell = cell as TextCell;
++          // Only update if not composing in this cell
++          if (!composingCells.has(cell.id)) {
++            next.set(cell.id, textCell.content || '');
++          }
++        });
++        return next;
++      });
+     }
+-  }, [state, isComposing]);
++  }, [state, composingCells]);
+ 
+-  // @@@ Group comments by 2-row blocks using visual lines (accounting for wrapping)
++  // @@@ Group comments by 2-row blocks, accounting for widgets between cells
+   const commentGroups = useMemo(() => {
+-    const groups = new Map<number, {
++    const groups = new Map<string, {
+       comments: Commentor[];
++      cellId: string;
+       blockIndex: number;
+       visualLineStart: number;
+       visualLineEnd: number;
+@@ -307,137 +387,133 @@ export default function App() {
+       centerY: number;
+     }>();
+ 
+-    if (!textareaRef.current || !state) return groups;
++    if (!state) return groups;
++
++    // Get any available textarea ref for style calculations
++    const anyTextarea = Array.from(textareaRefs.current.values())[0];
++    if (!anyTextarea) return groups;
+ 
+-    const text = localText;
+     const maxTextareaWidth = 600;
+ 
+-    // Get actual line height from computed styles
+-    const computedStyle = window.getComputedStyle(textareaRef.current);
++    const computedStyle = window.getComputedStyle(anyTextarea);
+     const fontSize = parseFloat(computedStyle.fontSize) || 18;
+     const lineHeightRatio = parseFloat(computedStyle.lineHeight) / fontSize || 1.8;
+     const lineHeight = fontSize * lineHeightRatio;
+ 
+-    // Create a temporary canvas to measure text width
+     const canvas = document.createElement('canvas');
+     const ctx = canvas.getContext('2d');
+     if (ctx) {
+-      // Use actual font from computed styles
+       const fontFamily = computedStyle.fontFamily || 'system-ui, -apple-system, sans-serif';
+       ctx.font = `${fontSize}px ${fontFamily}`;
+     }
+ 
+-    // @@@ Build a map from character index to visual line number
+-    const charToVisualLine: number[] = new Array(text.length);
+-    let currentVisualLine = 0;
+-    let currentLineStartIndex = 0;
+-
+-    for (let i = 0; i < text.length; i++) {
+-      charToVisualLine[i] = currentVisualLine;
+-
+-      if (text[i] === '\n') {
+-        // Hard line break - move to next visual line
+-        currentVisualLine++;
+-        currentLineStartIndex = i + 1;
+-      } else {
+-        // Check if we need to wrap
+-        const currentLineText = text.substring(currentLineStartIndex, i + 1);
+-        const width = ctx ? ctx.measureText(currentLineText).width : currentLineText.length * (fontSize * 0.6);
+-
+-        if (width > maxTextareaWidth && i > currentLineStartIndex) {
+-          // This character causes a wrap - move to next visual line
++    // @@@ Process each text cell separately
++    state.cells.forEach(cell => {
++      if (cell.type !== 'text') return;
++
++      const textCell = cell as TextCell;
++      const text = textCell.content;
++
++      // Calculate visual lines for this cell
++      const charToVisualLine: number[] = new Array(text.length);
++      let currentVisualLine = 0;
++      let currentLineStartIndex = 0;
++
++      for (let i = 0; i < text.length; i++) {
++        charToVisualLine[i] = currentVisualLine;
++
++        if (text[i] === '\n') {
+           currentVisualLine++;
+-          currentLineStartIndex = i;
+-          charToVisualLine[i] = currentVisualLine;
++          currentLineStartIndex = i + 1;
++        } else {
++          const currentLineText = text.substring(currentLineStartIndex, i + 1);
++          const width = ctx ? ctx.measureText(currentLineText).width : currentLineText.length * (fontSize * 0.6);
++
++          if (width > maxTextareaWidth && i > currentLineStartIndex) {
++            currentVisualLine++;
++            currentLineStartIndex = i;
++            charToVisualLine[i] = currentVisualLine;
++          }
+         }
+       }
+-    }
+ 
+-    // Process each commentor
+-    state.commentors
+-      .filter(c => c.appliedAt)
+-      .forEach(commentor => {
+-        const index = text.toLowerCase().indexOf(commentor.phrase.toLowerCase());
+-        if (index === -1) return;
+-
+-        // Get visual line number for this character position
+-        const visualLineNumber = charToVisualLine[index] || 0;
+-
+-        // Determine which 2-row block this belongs to (0-1, 2-3, 4-5, etc.)
+-        const blockIndex = Math.floor(visualLineNumber / 2);
+-        const visualLineStart = blockIndex * 2;
+-        const visualLineEnd = visualLineStart + 1;
+-
+-        if (!groups.has(blockIndex)) {
+-          // For visual lines, we can assume they're all ~700px wide (or less)
+-          // So maxWidth is just the width of the longer of the two visual lines in this block
+-          let maxWidth = 0;
+-
+-          // Find all text on these two visual lines
+-          for (let i = 0; i < text.length; i++) {
+-            const vLine = charToVisualLine[i];
+-            if (vLine === visualLineStart || vLine === visualLineEnd) {
+-              // Find the end of this visual line
+-              let lineEnd = i;
+-              while (lineEnd < text.length && charToVisualLine[lineEnd] === vLine) {
+-                lineEnd++;
++      // Find comments in this cell
++      state.commentors
++        .filter(c => c.appliedAt)
++        .forEach(commentor => {
++          const index = text.toLowerCase().indexOf(commentor.phrase.toLowerCase());
++          if (index === -1) return;
++
++          const visualLineNumber = charToVisualLine[index] || 0;
++          const blockIndex = Math.floor(visualLineNumber / 2);
++          const visualLineStart = blockIndex * 2;
++          const visualLineEnd = visualLineStart + 1;
++
++          // Create unique group key per cell
++          const groupKey = `${cell.id}-${blockIndex}`;
++
++          if (!groups.has(groupKey)) {
++            let maxWidth = 0;
++
++            for (let i = 0; i < text.length; i++) {
++              const vLine = charToVisualLine[i];
++              if (vLine === visualLineStart || vLine === visualLineEnd) {
++                let lineEnd = i;
++                while (lineEnd < text.length && charToVisualLine[lineEnd] === vLine) {
++                  lineEnd++;
++                }
++                const lineText = text.substring(i, lineEnd);
++                const width = ctx ? ctx.measureText(lineText).width : lineText.length * (fontSize * 0.6);
++                maxWidth = Math.max(maxWidth, Math.min(width, maxTextareaWidth));
++                i = lineEnd - 1;
+               }
+-              const lineText = text.substring(i, lineEnd);
+-              const width = ctx ? ctx.measureText(lineText).width : lineText.length * (fontSize * 0.6);
+-              maxWidth = Math.max(maxWidth, Math.min(width, maxTextareaWidth));
+-              i = lineEnd - 1; // Skip to end of this visual line
+             }
+-          }
+-
+-          // Calculate vertical center of the 2-row block
+-          const centerY = (visualLineStart + 1) * lineHeight;
+ 
+-          groups.set(blockIndex, {
+-            comments: [],
+-            blockIndex,
+-            visualLineStart,
+-            visualLineEnd,
+-            maxLineWidth: maxWidth,
+-            centerY
+-          });
+-        }
++            const centerY = (visualLineStart + 1) * lineHeight;
++
++            groups.set(groupKey, {
++              comments: [],
++              cellId: cell.id,
++              blockIndex,
++              visualLineStart,
++              visualLineEnd,
++              maxLineWidth: maxWidth,
++              centerY
++            });
++          }
+ 
+-        groups.get(blockIndex)!.comments.push(commentor);
+-      });
++          groups.get(groupKey)!.comments.push(commentor);
++        });
++    });
+ 
+     return groups;
+-  }, [state?.commentors, localText, state]);
++  }, [state?.commentors, state, refsReady]);
+ 
+-  // @@@ Auto-switch to newest comment when group size changes
+   useEffect(() => {
+     if (!commentGroups) return;
+ 
+     setGroupPages(prev => {
+       const next = new Map(prev);
+ 
+-      // For each group, ensure the page index is valid
+-      commentGroups.forEach((group, blockIndex) => {
++      commentGroups.forEach((group, groupKey) => {
+         if (group.comments.length === 0) {
+-          next.delete(blockIndex);
++          next.delete(groupKey);
+           return;
+         }
+ 
+-        const currentPage = prev.get(blockIndex) || 0;
++        const currentPage = prev.get(groupKey) || 0;
+         const maxPage = group.comments.length - 1;
+ 
+-        // If we're on an old page and there are new comments, switch to the newest
+         if (group.comments.length > 1 && currentPage < maxPage) {
+-          next.set(blockIndex, maxPage); // Show the newest comment
++          next.set(groupKey, maxPage);
+         } else if (currentPage > maxPage) {
+-          // Current page is out of bounds, reset to last valid page
+-          next.set(blockIndex, maxPage);
++          next.set(groupKey, maxPage);
+         }
+       });
+ 
+-      // Remove pages for groups that no longer exist
+-      prev.forEach((_, blockIndex) => {
+-        if (!commentGroups.has(blockIndex)) {
+-          next.delete(blockIndex);
++      prev.forEach((_, groupKey) => {
++        if (!commentGroups.has(groupKey)) {
++          next.delete(groupKey);
+         }
+       });
+ 
+@@ -445,31 +521,34 @@ export default function App() {
+     });
+   }, [commentGroups]);
+ 
+-  // @@@ Handle page navigation for comment groups
+-  const handleGroupNavigate = useCallback((blockIndex: number, newIndex: number) => {
++  const handleGroupNavigate = useCallback((groupKey: string, newIndex: number) => {
+     setGroupPages(prev => {
+       const next = new Map(prev);
+-      next.set(blockIndex, newIndex);
++      next.set(groupKey, newIndex);
+       return next;
+     });
+   }, []);
+ 
+-  // @@@ Detect which comment the cursor is inside and switch to it
++  // @@@ Cursor-based comment navigation (per-cell)
+   useEffect(() => {
+-    if (!state || !localText) return;
++    if (!state || !cursorCellId) return;
+ 
++    // Get text for the cell where cursor is
++    const cell = state.cells.find(c => c.id === cursorCellId);
++    if (!cell || cell.type !== 'text') return;
++
++    const cellText = (cell as TextCell).content;
+     const appliedComments = state.commentors.filter(c => c.appliedAt);
+     if (appliedComments.length === 0) return;
+ 
+-    // Find which comment contains the cursor
++    // Find comment at cursor position within this cell's text
+     let foundComment: Commentor | null = null;
+     for (const comment of appliedComments) {
+-      const index = localText.toLowerCase().indexOf(comment.phrase.toLowerCase());
++      const index = cellText.toLowerCase().indexOf(comment.phrase.toLowerCase());
+       if (index !== -1) {
+         const start = index;
+         const end = index + comment.phrase.length;
+ 
+-        // Check if cursor is inside this phrase
+         if (cursorPosition >= start && cursorPosition <= end) {
+           foundComment = comment;
+           break;
+@@ -479,86 +558,274 @@ export default function App() {
+ 
+     if (!foundComment) return;
+ 
+-    // Find which group this comment belongs to
+-    commentGroups.forEach((group, blockIndex) => {
++    // Find the group key for this cell and navigate to the comment
++    commentGroups.forEach((group, groupKey) => {
++      // Only update groups in the current cell
++      if (group.cellId !== cursorCellId) return;
++
+       const commentIndex = group.comments.findIndex(c => c.id === foundComment!.id);
+       if (commentIndex !== -1) {
+-        // Switch to this comment in the group
+         setGroupPages(prev => {
+           const next = new Map(prev);
+-          if (next.get(blockIndex) !== commentIndex) {
+-            next.set(blockIndex, commentIndex);
++          if (next.get(groupKey) !== commentIndex) {
++            next.set(groupKey, commentIndex);
+           }
+           return next;
+         });
+       }
+     });
+-  }, [cursorPosition, state, localText, commentGroups]);
+-
+-  // @@@ Handle text changes (with IME support)
+-  const handleTextChange = useCallback((newText: string) => {
+-    // Always update local text for the textarea
+-    setLocalText(newText);
+-    // Only update the engine when not composing
+-    if (!isComposing && engineRef.current) {
+-      engineRef.current.updateText(newText);
++  }, [cursorPosition, cursorCellId, state, commentGroups]);
++
++  // @@@ Per-cell text change handler
++  const handleTextChange = useCallback((cellId: string, newText: string) => {
++    setLocalTexts(prev => {
++      const next = new Map(prev);
++      next.set(cellId, newText);
++      return next;
++    });
++
++    // Close dropdown if @ was deleted in the trigger cell
++    if (dropdownVisible && dropdownTriggerCellId === cellId) {
++      if (!newText.includes('@')) {
++        setDropdownVisible(false);
++        setDropdownTriggerCellId(null);
++      }
+     }
+-  }, [isComposing]);
+ 
+-  const handleCompositionStart = useCallback(() => {
+-    setIsComposing(true);
++    if (!composingCells.has(cellId) && engineRef.current) {
++      engineRef.current.updateTextCell(cellId, newText);
++    }
++  }, [composingCells, dropdownVisible, dropdownTriggerCellId]);
++
++  // @@@ Per-cell composition handlers
++  const handleCompositionStart = useCallback((cellId: string) => {
++    setComposingCells(prev => new Set(prev).add(cellId));
+   }, []);
+ 
+-  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLTextAreaElement>) => {
+-    setIsComposing(false);
++  const handleCompositionEnd = useCallback((cellId: string, e: React.CompositionEvent<HTMLTextAreaElement>) => {
++    setComposingCells(prev => {
++      const next = new Set(prev);
++      next.delete(cellId);
++      return next;
++    });
++
+     const newText = e.currentTarget.value;
+-    setLocalText(newText);
++    setLocalTexts(prev => {
++      const next = new Map(prev);
++      next.set(cellId, newText);
++      return next;
++    });
++
+     if (engineRef.current) {
+-      engineRef.current.updateText(newText);
++      engineRef.current.updateTextCell(cellId, newText);
+     }
+   }, []);
+ 
+-  // @@@ Handle paste events to ensure highlighting is triggered
+-  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+-    // Let the default paste happen, then update the engine
++  const handlePaste = useCallback((cellId: string, e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+     setTimeout(() => {
+       const newText = e.currentTarget.value;
+-      setLocalText(newText);
++      setLocalTexts(prev => {
++        const next = new Map(prev);
++        next.set(cellId, newText);
++        return next;
++      });
+       if (engineRef.current) {
+-        engineRef.current.updateText(newText);
++        engineRef.current.updateTextCell(cellId, newText);
+       }
+     }, 0);
+   }, []);
+ 
+-  // @@@ Handle cursor position changes
+-  const handleCursorChange = useCallback(() => {
+-    if (textareaRef.current) {
+-      setCursorPosition(textareaRef.current.selectionStart);
+-    }
++  const handleCursorChange = useCallback((cellId: string, e: React.SyntheticEvent<HTMLTextAreaElement>) => {
++    setCursorPosition(e.currentTarget.selectionStart);
++    setCursorCellId(cellId);
+   }, []);
+ 
+-  // @@@ Handle Start Fresh
+   const handleStartFresh = useCallback(() => {
+-    if (confirm('Clear everything and start fresh? This will delete all your current writing and comments.')) {
+-      localStorage.removeItem('ink_memory_state');
+-      window.location.reload();
++    setShowWarning(true);
++  }, []);
++
++  const confirmStartFresh = useCallback(() => {
++    localStorage.removeItem('ink_memory_state');
++    window.location.reload();
++  }, []);
++
++  // @@@ Insert @ character at the end of last text cell
++  const handleInsertAgent = useCallback(() => {
++    if (!state || !engineRef.current) return;
++
++    // Find last text cell
++    const lastTextCell = [...state.cells].reverse().find(c => c.type === 'text');
++    if (!lastTextCell) return;
++
++    const textarea = textareaRefs.current.get(lastTextCell.id);
++    if (!textarea) return;
++
++    // Insert @ character at the end
++    const currentContent = (lastTextCell as TextCell).content;
++    const newContent = currentContent + '@';
++
++    // Update the text
++    engineRef.current.updateTextCell(lastTextCell.id, newContent);
++
++    // Focus the textarea and position cursor after @
++    setTimeout(() => {
++      textarea.focus();
++      textarea.selectionStart = newContent.length;
++      textarea.selectionEnd = newContent.length;
++
++      // Show dropdown
++      const rect = textarea.getBoundingClientRect();
++      const computedStyle = window.getComputedStyle(textarea);
++      const lineHeight = parseFloat(computedStyle.lineHeight) || 32;
++      const linesBefore = newContent.substring(0, newContent.length).split('\n').length - 1;
++
++      setDropdownPosition({
++        x: rect.left + 10,
++        y: rect.top + (linesBefore * lineHeight) + lineHeight + 5
++      });
++      setDropdownTriggerCellId(lastTextCell.id);
++      setDropdownVisible(true);
++    }, 0);
++  }, [state]);
++
++  // @@@ Handle @ key press for agent dropdown
++  const handleKeyDown = useCallback((cellId: string, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
++    if (e.key === '@' && !composingCells.has(cellId)) {
++      // @@@ Capture textarea ref before setTimeout (React synthetic events are nullified)
++      const textarea = e.currentTarget;
++      setTimeout(() => {
++        if (textarea) {
++          // Get cursor position in textarea
++          const cursorPos = textarea.selectionStart;
++          const textBeforeCursor = textarea.value.substring(0, cursorPos);
++
++          // Count lines before cursor
++          const linesBefore = textBeforeCursor.split('\n').length - 1;
++
++          // Calculate approximate cursor position
++          const computedStyle = window.getComputedStyle(textarea);
++          const lineHeight = parseFloat(computedStyle.lineHeight) || 32;
++          const rect = textarea.getBoundingClientRect();
++
++          // Position dropdown at cursor (with small offset)
++          setDropdownPosition({
++            x: rect.left + 10,
++            y: rect.top + (linesBefore * lineHeight) + lineHeight + 5
++          });
++          setDropdownTriggerCellId(cellId);
++          setDropdownVisible(true);
++        }
++      }, 0);
++    } else if (e.key === 'Escape' && dropdownVisible) {
++      setDropdownVisible(false);
++      setDropdownTriggerCellId(null);
++    }
++  }, [composingCells, dropdownVisible]);
++
++  // @@@ Handle agent selection from dropdown
++  const handleAgentSelect = useCallback((voiceName: string, voiceConfig: VoiceConfig) => {
++    setDropdownVisible(false);
++
++    if (!engineRef.current || !dropdownTriggerCellId) return;
++
++    const textarea = textareaRefs.current.get(dropdownTriggerCellId);
++    if (!textarea) {
++      setDropdownTriggerCellId(null);
++      return;
++    }
++
++    const cursorPos = textarea.selectionStart;
++
++    // Create chat widget
++    const chatWidget = new ChatWidget(voiceName, voiceConfig);
++
++    // Insert widget at cursor (engine will handle @ removal)
++    engineRef.current.insertWidgetAtCursor(dropdownTriggerCellId, cursorPos, 'chat', chatWidget.getData());
++    setDropdownTriggerCellId(null);
++  }, [dropdownTriggerCellId]);
++
++  // @@@ Handle sending chat message
++  const handleChatSend = useCallback(async (widgetId: string, message: string) => {
++    if (!engineRef.current || !state) return;
++
++    // Find widget
++    const widgetCell = state.cells.find(c => c.type === 'widget' && c.id === widgetId);
++    if (!widgetCell || widgetCell.type !== 'widget') return;
++
++    const widgetData = widgetCell.data as ChatWidgetData;
++    const chatWidget = ChatWidget.fromData(widgetData);
++
++    // Add user message optimistically
++    chatWidget.addUserMessage(message);
++    engineRef.current.updateWidgetData(widgetId, chatWidget.getData());
++
++    // Mark as processing
++    setChatProcessing(prev => new Set(prev).add(widgetId));
++
++    try {
++      // Get ALL text from all text cells as unified context
++      const allText = state.cells
++        .filter(c => c.type === 'text')
++        .map(c => (c as TextCell).content)
++        .join('');
++
++      // Call backend - use voiceConfig.name as the voice name for the prompt
++      const response = await chatWithVoice(
++        widgetData.voiceConfig.name,  // Use the display name, not the key
++        widgetData.voiceConfig,
++        chatWidget.getConversationHistory().slice(0, -1), // Exclude last message (just added)
++        message,
++        allText
++      );
++
++      // Add assistant response
++      chatWidget.addAssistantMessage(response);
++      engineRef.current.updateWidgetData(widgetId, chatWidget.getData());
++    } catch (error) {
++      console.error('Chat failed:', error);
++      chatWidget.addAssistantMessage('Sorry, I encountered an error.');
++      engineRef.current.updateWidgetData(widgetId, chatWidget.getData());
++    } finally {
++      setChatProcessing(prev => {
++        const next = new Set(prev);
++        next.delete(widgetId);
++        return next;
++      });
+     }
++  }, [state]);
++
++  // @@@ Handle deleting chat widget
++  const handleChatDelete = useCallback((widgetId: string) => {
++    if (!engineRef.current) return;
++    engineRef.current.deleteCell(widgetId);
+   }, []);
+ 
+-  // @@@ Render text with highlights
+-  const renderHighlightedText = () => {
++  // @@@ Helper to get watercolor background
++  const getWatercolorBg = (color: string) => {
++    const brushes: Record<string, string> = {
++      yellow: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-9&color=ffff43)',
++      blue: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-7&color=a3d5ff)',
++      pink: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-8&color=ffb3d9)',
++      green: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-6&color=b3ffb3)',
++      purple: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-5&color=ddb3ff)'
++    };
++    return brushes[color] || 'none';
++  };
++
++  // @@@ Render highlighted text for a specific text content
++  const renderHighlightedText = (text: string) => {
+     if (!state) return null;
+ 
+     const appliedComments = state.commentors.filter(c => c.appliedAt);
+ 
+     if (appliedComments.length === 0) {
+-      return <div style={{ whiteSpace: 'pre-wrap' }}>{localText}</div>;
++      return <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>;
+     }
+ 
+-    // Create highlight ranges
++    // Find highlights in this specific text
+     const highlights: Array<{ start: number; end: number; comment: Commentor }> = [];
+     appliedComments.forEach(comment => {
+-      const index = localText.toLowerCase().indexOf(comment.phrase.toLowerCase());
++      const index = text.toLowerCase().indexOf(comment.phrase.toLowerCase());
+       if (index !== -1) {
+         highlights.push({
+           start: index,
+@@ -568,36 +835,20 @@ export default function App() {
+       }
+     });
+ 
+-    // Sort by start position
+     highlights.sort((a, b) => a.start - b.start);
+ 
+-    // Build highlighted text
+     const elements: React.ReactNode[] = [];
+     let lastEnd = 0;
+ 
+-    // Get watercolor brush URL for color
+-    const getWatercolorBg = (color: string) => {
+-      const brushes: Record<string, string> = {
+-        yellow: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-9&color=ffff43)',
+-        blue: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-7&color=a3d5ff)',
+-        pink: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-8&color=ffb3d9)',
+-        green: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-6&color=b3ffb3)',
+-        purple: 'url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-5&color=ddb3ff)'
+-      };
+-      return brushes[color] || 'none';
+-    };
+-
+     highlights.forEach((highlight, idx) => {
+-      // Add text before highlight
+       if (highlight.start > lastEnd) {
+         elements.push(
+           <span key={`text-${idx}`}>
+-            {localText.substring(lastEnd, highlight.start)}
++            {text.substring(lastEnd, highlight.start)}
+           </span>
+         );
+       }
+ 
+-      // Add highlighted text with watercolor effect
+       elements.push(
+         <span
+           key={`highlight-${idx}`}
+@@ -610,18 +861,17 @@ export default function App() {
+             transition: 'all 0.2s ease'
+           }}
+         >
+-          {localText.substring(highlight.start, highlight.end)}
++          {text.substring(highlight.start, highlight.end)}
+         </span>
+       );
+ 
+       lastEnd = highlight.end;
+     });
+ 
+-    // Add remaining text
+-    if (lastEnd < localText.length) {
++    if (lastEnd < text.length) {
+       elements.push(
+         <span key="text-final">
+-          {localText.substring(lastEnd)}
++          {text.substring(lastEnd)}
+         </span>
+       );
+     }
+@@ -640,128 +890,361 @@ export default function App() {
+   const appliedComments = state.commentors.filter(c => c.appliedAt);
+ 
+   return (
+-    <div style={{
+-      display: 'flex',
+-      height: '100vh',
+-      fontFamily: 'system-ui, -apple-system, sans-serif'
+-    }}>
+-      {/* Left Toolbar */}
+-      <LeftToolbar onStartFresh={handleStartFresh} />
+-
+-      {/* Main Editor Area with Inline Comments */}
+-      <div
+-        ref={containerRef}
+-        style={{
+-          flex: 1,
+-          position: 'relative',
+-          overflow: 'hidden'
+-        }}
+-      >
++    <>
++      <LeftSidebar currentView={currentView} onViewChange={setCurrentView} />
++      {currentView === 'writing' && (
+         <div style={{
+-          height: '100%',
+           display: 'flex',
+-          flexDirection: 'column',
+-          width: '100%',
+-          margin: '0 auto'
++          height: '100vh',
++          paddingTop: '48px',
++          fontFamily: 'system-ui, -apple-system, sans-serif'
+         }}>
+-          {/* Status Bar */}
++          {/* Left spacer for layout */}
+           <div style={{
+-            padding: '10px 20px',
+-            borderBottom: '1px solid #e0e0e0',
+-            fontSize: '12px',
+-            color: '#666',
+-            display: 'flex',
+-            gap: '20px',
+-            backgroundColor: '#fafafa'
++            width: '48px',
++            backgroundColor: 'transparent',
++            position: 'relative',
++            flexShrink: 0,
++            marginLeft: '12px'
+           }}>
+-            <span>Energy: {unusedEnergy}/{currentEnergy}</span>
+-            <span>Weight: {lastEntry?.weight || 0}</span>
+-            <span>Applied: {appliedComments.length}</span>
+-            <span>Groups: {commentGroups.size}</span>
++            <LeftToolbar onStartFresh={handleStartFresh} onInsertAgent={handleInsertAgent} />
+           </div>
+ 
+-          {/* Writing Area with Comments */}
+-          <div style={{
+-            flex: 1,
+-            position: 'relative',
+-            overflow: 'auto',
+-            padding: '40px'
+-          }}>
+-            {/* Highlighted text overlay */}
++          <div
++            ref={containerRef}
++            style={{
++              flex: 1,
++              position: 'relative',
++              overflow: 'hidden'
++            }}
++          >
+             <div style={{
+-              position: 'absolute',
+-              top: '40px',
+-              left: '40px',
+-              right: '40px',
+-              maxWidth: '600px',
+-              pointerEvents: 'none',
+-              fontSize: '18px',
+-              lineHeight: '1.8',
+-              color: 'transparent',
+-              fontFamily: 'inherit'
++              height: '100%',
++              display: 'flex',
++              flexDirection: 'column',
++              width: '100%',
++              margin: '0 auto'
+             }}>
+-              {renderHighlightedText()}
++              <div style={{
++                flex: 1,
++                position: 'relative',
++                overflow: 'auto',
++                padding: '20px'
++              }}>
++                <div style={{
++                  position: 'relative',
++                  maxWidth: '600px'
++                }}>
++                  {/* Render cells sequentially with per-cell highlights */}
++                  {state.cells.map((cell, idx) => {
++                    if (cell.type === 'text') {
++                      const textCell = cell as TextCell;
++                      // Use local text if available, otherwise use engine state
++                      const content = localTexts.get(cell.id) ?? textCell.content;
++                      const lineCount = Math.max(content.split('\n').length, 1);
++
++                      return (
++                        <div key={cell.id} style={{ position: 'relative' }}>
++                          {/* Highlight layer for this cell */}
++                          <div style={{
++                            position: 'absolute',
++                            top: 0,
++                            left: 0,
++                            right: 0,
++                            pointerEvents: 'none',
++                            fontSize: '18px',
++                            lineHeight: '1.8',
++                            color: 'transparent',
++                            fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++                            zIndex: 0
++                          }}>
++                            {renderHighlightedText(content)}
++                          </div>
++
++                          {/* Textarea for this cell */}
++                          <textarea
++                            ref={(el) => {
++                              if (el) {
++                                const wasEmpty = textareaRefs.current.size === 0;
++                                textareaRefs.current.set(cell.id, el);
++                                // Trigger re-render when first ref is set (once per mount)
++                                if (wasEmpty && !refsReadyTriggered.current) {
++                                  refsReadyTriggered.current = true;
++                                  setRefsReady(prev => prev + 1);
++                                }
++                              } else {
++                                textareaRefs.current.delete(cell.id);
++                              }
++                            }}
++                            value={content}
++                            onChange={(e) => handleTextChange(cell.id, e.target.value)}
++                            onCompositionStart={() => handleCompositionStart(cell.id)}
++                            onCompositionEnd={(e) => handleCompositionEnd(cell.id, e)}
++                            onPaste={(e) => handlePaste(cell.id, e)}
++                            onSelect={(e) => handleCursorChange(cell.id, e)}
++                            onClick={(e) => handleCursorChange(cell.id, e)}
++                            onKeyUp={(e) => handleCursorChange(cell.id, e)}
++                            onKeyDown={(e) => handleKeyDown(cell.id, e)}
++                            placeholder={idx === 0 ? "Start writing..." : "Continue writing..."}
++                            rows={lineCount}
++                            style={{
++                              width: '100%',
++                              border: 'none',
++                              outline: 'none',
++                              resize: 'none',
++                              fontSize: '18px',
++                              lineHeight: '1.8',
++                              fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++                              background: 'transparent',
++                              color: '#333',
++                              caretColor: '#333',
++                              position: 'relative',
++                              zIndex: 1,
++                              marginBottom: '0px',
++                              overflow: 'hidden',
++                              minHeight: '32px'
++                            }}
++                          />
++                        </div>
++                      );
++                    } else if (cell.type === 'widget' && cell.widgetType === 'chat') {
++                      return (
++                        <ChatWidgetUI
++                          key={cell.id}
++                          data={cell.data as ChatWidgetData}
++                          onSendMessage={(msg) => handleChatSend(cell.id, msg)}
++                          onDelete={() => handleChatDelete(cell.id)}
++                          isProcessing={chatProcessing.has(cell.id)}
++                        />
++                      );
++                    }
++                    return null;
++                  })}
++                </div>
++
++                {/* Comments layer (absolute positioned) */}
++                {Array.from(commentGroups.entries()).map(([groupKey, group]) => {
++                  const currentIndex = groupPages.get(groupKey) || 0;
++
++                  // @@@ Get the specific textarea for this group's cell
++                  const cellTextarea = textareaRefs.current.get(group.cellId);
++                  if (!cellTextarea) return null;
++
++                  // Calculate position relative to this cell's textarea
++                  const cellRect = cellTextarea.getBoundingClientRect();
++                  const containerRect = containerRef.current?.getBoundingClientRect();
++                  if (!containerRect) return null;
++
++                  const containerPadding = parseFloat(window.getComputedStyle(cellTextarea.parentElement || cellTextarea).paddingLeft) || 20;
++                  const gap = Math.max(30, window.innerWidth * 0.02);
++                  const leftPosition = containerPadding + group.maxLineWidth + gap;
++
++                  // @@@ Position relative to cell's top, not global document
++                  // centerY is already relative to cell's top, so just add cell offset
++                  const topPosition = cellRect.top - containerRect.top + group.centerY;
++
++                  return (
++                    <CommentGroupCard
++                      key={groupKey}
++                      comments={group.comments}
++                      currentIndex={currentIndex}
++                      onNavigate={(idx) => handleGroupNavigate(groupKey, idx)}
++                      position={{
++                        top: topPosition,
++                        left: leftPosition
++                      }}
++                    />
++                  );
++                })}
++              </div>
++
++              {/* Debug stats bar at bottom */}
++              <div style={{
++                position: 'fixed',
++                bottom: 0,
++                left: 0,
++                right: 0,
++                padding: '10px 20px',
++                borderTop: '1px solid #e0e0e0',
++                fontSize: '12px',
++                color: '#666',
++                display: 'flex',
++                gap: '20px',
++                backgroundColor: '#fafafa',
++                zIndex: 50
++              }}>
++                <span>Energy: {unusedEnergy}/{currentEnergy}</span>
++                <span>Weight: {lastEntry?.weight || 0}</span>
++                <span>Applied: {appliedComments.length}</span>
++                <span>Groups: {commentGroups.size}</span>
++              </div>
+             </div>
++          </div>
+ 
+-            {/* Textarea */}
+-            <textarea
+-              ref={textareaRef}
+-              value={localText}
+-              onChange={(e) => handleTextChange(e.target.value)}
+-              onCompositionStart={handleCompositionStart}
+-              onCompositionEnd={handleCompositionEnd}
+-              onPaste={handlePaste}
+-              onSelect={handleCursorChange}
+-              onClick={handleCursorChange}
+-              onKeyUp={handleCursorChange}
+-              placeholder="Start writing..."
+-              style={{
+-                width: '100%',
+-                maxWidth: '600px',
+-                minHeight: '100%',
+-                border: 'none',
+-                outline: 'none',
+-                resize: 'none',
+-                fontSize: '18px',
+-                lineHeight: '1.8',
+-                fontFamily: 'inherit',
+-                background: 'transparent',
+-                color: '#333',
+-                caretColor: '#333',
+-                position: 'relative',
+-                zIndex: 1
+-              }}
++          {/* Agent dropdown */}
++          {dropdownVisible && (
++            <AgentDropdown
++              voices={voiceConfigs}
++              position={dropdownPosition}
++              onSelect={handleAgentSelect}
++              onClose={() => setDropdownVisible(false)}
+             />
++          )}
++        </div>
++      )}
++      {currentView === 'settings' && (
++        <div style={{
++          position: 'fixed',
++          top: 48,
++          left: 0,
++          right: 0,
++          bottom: 0,
++          background: '#f8f0e6',
++          display: 'flex',
++          overflow: 'hidden'
++        }}>
++          <VoiceSettings
++            defaultVoices={defaultVoiceConfigs}
++            onSave={setVoiceConfigs}
++          />
++        </div>
++      )}
++      {currentView === 'calendar' && (
++        <div style={{
++          position: 'fixed',
++          top: 48,
++          left: 0,
++          right: 0,
++          bottom: 0,
++          background: '#f8f0e6',
++          display: 'flex',
++          overflow: 'hidden'
++        }}>
++          <CalendarView />
++        </div>
++      )}
++      {currentView === 'analysis' && (
++        <div style={{
++          position: 'fixed',
++          top: 48,
++          left: 0,
++          right: 0,
++          bottom: 0,
++          background: '#f8f0e6',
++          display: 'flex',
++          overflow: 'hidden'
++        }}>
++          <AnalysisView />
++        </div>
++      )}
++      {currentView === 'about' && (
++        <div style={{
++          position: 'fixed',
++          top: 48,
++          left: 0,
++          right: 0,
++          bottom: 0,
++          background: '#f8f0e6',
++          display: 'flex',
++          overflow: 'hidden'
++        }}>
++          <AboutView />
++        </div>
++      )}
+ 
+-            {/* Comment Groups - positioned absolutely based on 2-row blocks */}
+-            {Array.from(commentGroups.entries()).map(([blockIndex, group]) => {
+-              const currentIndex = groupPages.get(blockIndex) || 0;
+-
+-              // Get actual padding values from the container
+-              const containerPadding = textareaRef.current?.parentElement ?
+-                parseFloat(window.getComputedStyle(textareaRef.current.parentElement).paddingLeft) || 40 : 40;
+-
+-              // Dynamic gap based on viewport size
+-              const gap = Math.max(30, window.innerWidth * 0.02); // Min 30px, scales with viewport
+-
+-              const leftPosition = containerPadding + group.maxLineWidth + gap;
+-
+-              return (
+-                <CommentGroupCard
+-                  key={blockIndex}
+-                  comments={group.comments}
+-                  currentIndex={currentIndex}
+-                  onNavigate={(idx) => handleGroupNavigate(blockIndex, idx)}
+-                  position={{
+-                    top: group.centerY + containerPadding,
+-                    left: leftPosition
+-                  }}
+-                />
+-              );
+-            })}
++      {/* Warning Dialog */}
++      {showWarning && (
++        <div style={{
++          position: 'fixed',
++          top: 0,
++          left: 0,
++          right: 0,
++          bottom: 0,
++          backgroundColor: 'rgba(0, 0, 0, 0.5)',
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'center',
++          zIndex: 1000
++        }}>
++          <div style={{
++            backgroundColor: '#fffef9',
++            border: '2px solid #d0c4b0',
++            borderRadius: '8px',
++            padding: '32px',
++            maxWidth: '400px',
++            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
++            fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++          }}>
++            <h2 style={{
++              margin: '0 0 16px 0',
++              fontSize: '20px',
++              color: '#333',
++              fontWeight: 600
++            }}>
++              Start Fresh?
++            </h2>
++            <p style={{
++              margin: '0 0 24px 0',
++              fontSize: '16px',
++              lineHeight: '1.6',
++              color: '#555'
++            }}>
++              This will delete all your current writing and comments. This action cannot be undone.
++            </p>
++            <div style={{
++              display: 'flex',
++              gap: '12px',
++              justifyContent: 'space-between'
++            }}>
++              <button
++                onClick={confirmStartFresh}
++                style={{
++                  padding: '8px 20px',
++                  border: '1px solid #d44',
++                  background: '#d44',
++                  borderRadius: '4px',
++                  cursor: 'pointer',
++                  fontSize: '15px',
++                  fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++                  color: '#fff',
++                  fontWeight: 600,
++                  transition: 'all 0.2s'
++                }}
++                onMouseEnter={(e) => {
++                  e.currentTarget.style.backgroundColor = '#c33';
++                }}
++                onMouseLeave={(e) => {
++                  e.currentTarget.style.backgroundColor = '#d44';
++                }}
++              >
++                Delete All
++              </button>
++              <button
++                onClick={() => setShowWarning(false)}
++                style={{
++                  padding: '8px 20px',
++                  border: '1px solid #d0c4b0',
++                  background: '#fff',
++                  borderRadius: '4px',
++                  cursor: 'pointer',
++                  fontSize: '15px',
++                  fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++                  color: '#333',
++                  transition: 'all 0.2s'
++                }}
++                onMouseEnter={(e) => {
++                  e.currentTarget.style.backgroundColor = '#f5f5f5';
++                }}
++                onMouseLeave={(e) => {
++                  e.currentTarget.style.backgroundColor = '#fff';
++                }}
++              >
++                Cancel
++              </button>
++            </div>
+           </div>
+         </div>
+-      </div>
+-    </div>
++      )}
++    </>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/frontend/src/components/AgentDropdown.tsx b/frontend/src/components/AgentDropdown.tsx
+new file mode 100644
+index 0000000..d0c08d1
+--- /dev/null
++++ b/frontend/src/components/AgentDropdown.tsx
+@@ -0,0 +1,127 @@
++import React from 'react';
++import type { VoiceConfig } from '../types/voice';
++import {
++  FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
++  FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
++} from 'react-icons/fa';
++
++// Icon map
++const iconMap = {
++  brain: FaBrain,
++  heart: FaHeart,
++  question: FaQuestion,
++  cloud: FaCloud,
++  masks: FaTheaterMasks,
++  eye: FaEye,
++  fist: FaFistRaised,
++  lightbulb: FaLightbulb,
++  shield: FaShieldAlt,
++  wind: FaWind,
++  fire: FaFire,
++  compass: FaCompass,
++};
++
++interface AgentDropdownProps {
++  voices: Record<string, VoiceConfig>;
++  position: { x: number; y: number };
++  onSelect: (voiceName: string, voiceConfig: VoiceConfig) => void;
++  onClose: () => void;
++}
++
++export default function AgentDropdown({ voices, position, onSelect, onClose }: AgentDropdownProps) {
++  const enabledVoices = Object.entries(voices).filter(([_, cfg]) => cfg.enabled);
++  const [selectedIndex, setSelectedIndex] = React.useState(0);
++
++  // Keyboard navigation
++  React.useEffect(() => {
++    const handleKeyDown = (e: KeyboardEvent) => {
++      if (e.key === 'Escape') {
++        e.preventDefault();
++        onClose();
++      } else if (e.key === 'ArrowDown') {
++        e.preventDefault();
++        setSelectedIndex(prev => (prev + 1) % enabledVoices.length);
++      } else if (e.key === 'ArrowUp') {
++        e.preventDefault();
++        setSelectedIndex(prev => (prev - 1 + enabledVoices.length) % enabledVoices.length);
++      } else if (e.key === 'Enter') {
++        e.preventDefault();
++        const [name, cfg] = enabledVoices[selectedIndex];
++        onSelect(name, cfg);
++      }
++    };
++    document.addEventListener('keydown', handleKeyDown);
++    return () => document.removeEventListener('keydown', handleKeyDown);
++  }, [onClose, enabledVoices, selectedIndex, onSelect]);
++
++  if (enabledVoices.length === 0) {
++    return (
++      <div style={{
++        position: 'fixed',
++        left: `${position.x}px`,
++        top: `${position.y}px`,
++        background: '#fff',
++        border: '1px solid #ccc',
++        borderRadius: '8px',
++        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
++        padding: '8px',
++        zIndex: 1000,
++        minWidth: '200px',
++        fontSize: '14px',
++        color: '#666'
++      }}>
++        No agents available
++      </div>
++    );
++  }
++
++  return (
++    <div
++      style={{
++        position: 'fixed',
++        left: `${position.x}px`,
++        top: `${position.y}px`,
++        background: '#fff',
++        border: '1px solid #ccc',
++        borderRadius: '8px',
++        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
++        padding: '4px 0',
++        zIndex: 1000,
++        minWidth: '220px',
++        maxHeight: '300px',
++        overflow: 'auto'
++      }}
++    >
++      {enabledVoices.map(([name, cfg], idx) => {
++        const Icon = iconMap[cfg.icon as keyof typeof iconMap] || FaBrain;
++        const isSelected = idx === selectedIndex;
++        return (
++          <div
++            key={name}
++            onClick={() => onSelect(name, cfg)}
++            onMouseEnter={() => setSelectedIndex(idx)}
++            style={{
++              padding: '8px 12px',
++              cursor: 'pointer',
++              display: 'flex',
++              alignItems: 'center',
++              gap: '10px',
++              transition: 'background 0.15s',
++              background: isSelected ? '#f0f0f0' : 'transparent'
++            }}
++          >
++            <Icon size={16} color="#666" />
++            <div style={{ flex: 1 }}>
++              <div style={{ fontWeight: 600, fontSize: '14px', color: '#333' }}>
++                {cfg.name}
++              </div>
++              <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
++                {cfg.systemPrompt.substring(0, 40)}...
++              </div>
++            </div>
++          </div>
++        );
++      })}
++    </div>
++  );
++}
+diff --git a/frontend/src/components/ChatWidgetUI.tsx b/frontend/src/components/ChatWidgetUI.tsx
+new file mode 100644
+index 0000000..03ba410
+--- /dev/null
++++ b/frontend/src/components/ChatWidgetUI.tsx
+@@ -0,0 +1,262 @@
++import React, { useState, useRef, useEffect } from 'react';
++import type { ChatWidgetData, ChatMessage } from '../engine/ChatWidget';
++import {
++  FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
++  FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
++} from 'react-icons/fa';
++
++const iconMap = {
++  brain: FaBrain,
++  heart: FaHeart,
++  question: FaQuestion,
++  cloud: FaCloud,
++  masks: FaTheaterMasks,
++  eye: FaEye,
++  fist: FaFistRaised,
++  lightbulb: FaLightbulb,
++  shield: FaShieldAlt,
++  wind: FaWind,
++  fire: FaFire,
++  compass: FaCompass,
++};
++
++interface ChatWidgetUIProps {
++  data: ChatWidgetData;
++  onSendMessage: (message: string) => void;
++  onDelete: () => void;
++  isProcessing: boolean;
++}
++
++export default function ChatWidgetUI({ data, onSendMessage, onDelete, isProcessing }: ChatWidgetUIProps) {
++  const [inputValue, setInputValue] = useState('');
++  const messagesContainerRef = useRef<HTMLDivElement>(null);
++  const [isHovered, setIsHovered] = useState(false);
++
++  // @@@ Auto-scroll to bottom when new messages arrive
++  useEffect(() => {
++    setTimeout(() => {
++      if (messagesContainerRef.current) {
++        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
++      }
++    }, 100);
++  }, [data.messages.length]);
++
++  const handleSend = () => {
++    if (inputValue.trim() && !isProcessing) {
++      onSendMessage(inputValue.trim());
++      setInputValue('');
++    }
++  };
++
++  const handleKeyDown = (e: React.KeyboardEvent) => {
++    if (e.key === 'Enter' && !e.shiftKey) {
++      e.preventDefault();
++      handleSend();
++    }
++  };
++
++  const Icon = iconMap[data.voiceConfig.icon as keyof typeof iconMap] || FaBrain;
++
++  return (
++    <div
++      style={{
++        margin: '20px 0',
++        padding: '16px 20px',
++        background: 'rgba(250, 248, 245, 0.6)',
++        borderRadius: '12px',
++        maxWidth: '600px',
++        position: 'relative',
++        transition: 'all 0.2s ease'
++      }}
++      onMouseEnter={() => setIsHovered(true)}
++      onMouseLeave={() => setIsHovered(false)}
++    >
++      {/* Delete button - only visible on hover */}
++      <button
++        onClick={onDelete}
++        style={{
++          position: 'absolute',
++          top: '8px',
++          right: '8px',
++          padding: '4px 8px',
++          backgroundColor: 'transparent',
++          color: '#999',
++          border: 'none',
++          borderRadius: '4px',
++          fontSize: '16px',
++          cursor: 'pointer',
++          transition: 'all 0.2s',
++          opacity: isHovered ? 0.6 : 0,
++          pointerEvents: isHovered ? 'auto' : 'none',
++          lineHeight: '1'
++        }}
++        onMouseEnter={(e) => {
++          e.currentTarget.style.opacity = '1';
++          e.currentTarget.style.color = '#d44';
++        }}
++        onMouseLeave={(e) => {
++          e.currentTarget.style.opacity = '0.6';
++          e.currentTarget.style.color = '#999';
++        }}
++        title="Delete chat"
++      >
++        ×
++      </button>
++
++      {/* Initial greeting or first message */}
++      <div style={{
++        display: 'flex',
++        gap: '10px',
++        alignItems: 'flex-start',
++        marginBottom: '16px'
++      }}>
++        <Icon size={18} color="#666" style={{ marginTop: '2px', flexShrink: 0 }} />
++        <div style={{
++          color: '#444',
++          fontSize: '15px',
++          lineHeight: '1.6',
++          fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++          flex: 1
++        }}>
++          {data.messages.length === 0
++            ? "What's up?"
++            : data.messages[0].role === 'assistant'
++              ? data.messages[0].content
++              : "What's up?"
++          }
++        </div>
++      </div>
++
++      {/* Messages (skip first if it's assistant) */}
++      <div
++        ref={messagesContainerRef}
++        style={{
++          maxHeight: '300px',
++          overflowY: 'auto',
++          marginBottom: '16px'
++        }}
++      >
++        {data.messages.length > 0 && (
++          data.messages
++            .slice(data.messages[0].role === 'assistant' ? 1 : 0)
++            .map((msg, idx) => (
++              <div
++                key={idx}
++                style={{
++                  marginBottom: '12px',
++                  display: 'flex',
++                  gap: '10px',
++                  alignItems: 'flex-start'
++                }}
++              >
++                {msg.role === 'user' ? (
++                  <>
++                    <div style={{
++                      width: '26px',
++                      height: '26px',
++                      borderRadius: '50%',
++                      backgroundColor: 'rgba(100, 100, 100, 0.1)',
++                      flexShrink: 0,
++                      display: 'flex',
++                      alignItems: 'center',
++                      justifyContent: 'center',
++                      fontSize: '11px',
++                      color: '#666',
++                      fontWeight: 600,
++                      fontFamily: 'system-ui'
++                    }}>
++                      U
++                    </div>
++                    <div style={{
++                      color: '#555',
++                      fontSize: '15px',
++                      lineHeight: '1.6',
++                      paddingTop: '2px',
++                      fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++                    }}>
++                      {msg.content}
++                    </div>
++                  </>
++                ) : (
++                  <>
++                    <Icon size={18} color="#666" style={{ marginTop: '2px', flexShrink: 0 }} />
++                    <div style={{
++                      color: '#444',
++                      fontSize: '15px',
++                      lineHeight: '1.6',
++                      paddingTop: '2px',
++                      fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++                    }}>
++                      {msg.content}
++                    </div>
++                  </>
++                )}
++              </div>
++            ))
++        )}
++      </div>
++
++      {/* Input */}
++      <div style={{
++        display: 'flex',
++        gap: '10px',
++        alignItems: 'center',
++        paddingTop: '4px'
++      }}>
++        <input
++          type="text"
++          value={inputValue}
++          onChange={(e) => setInputValue(e.target.value)}
++          onKeyDown={handleKeyDown}
++          placeholder={`Chat with ${data.voiceConfig.name}...`}
++          disabled={isProcessing}
++          style={{
++            flex: 1,
++            padding: '8px 12px',
++            border: 'none',
++            borderBottom: '2px solid rgba(0, 0, 0, 0.1)',
++            fontSize: '15px',
++            outline: 'none',
++            backgroundColor: 'transparent',
++            fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++            color: '#444',
++            transition: 'border-color 0.2s'
++          }}
++          onFocus={(e) => {
++            e.currentTarget.style.borderBottomColor = 'rgba(0, 0, 0, 0.2)';
++          }}
++          onBlur={(e) => {
++            e.currentTarget.style.borderBottomColor = 'rgba(0, 0, 0, 0.1)';
++          }}
++        />
++        <button
++          onClick={handleSend}
++          disabled={!inputValue.trim() || isProcessing}
++          style={{
++            padding: '6px 14px',
++            backgroundColor: 'transparent',
++            color: isProcessing || !inputValue.trim() ? '#ccc' : '#666',
++            border: '1.5px solid',
++            borderColor: isProcessing || !inputValue.trim() ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.2)',
++            borderRadius: '6px',
++            fontSize: '14px',
++            fontWeight: 500,
++            cursor: isProcessing || !inputValue.trim() ? 'not-allowed' : 'pointer',
++            transition: 'all 0.2s',
++            fontFamily: 'system-ui'
++          }}
++          onMouseEnter={(e) => {
++            if (!isProcessing && inputValue.trim()) {
++              e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
++            }
++          }}
++          onMouseLeave={(e) => {
++            e.currentTarget.style.backgroundColor = 'transparent';
++          }}
++        >
++          {isProcessing ? '...' : '↵'}
++        </button>
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/src/components/VoiceSettings.tsx b/frontend/src/components/VoiceSettings.tsx
+index 6891af1..8a128a9 100644
+--- a/frontend/src/components/VoiceSettings.tsx
++++ b/frontend/src/components/VoiceSettings.tsx
+@@ -73,7 +73,7 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+   };
+ 
+   const handleRename = (id: string, newName: string) => {
+-    // Just update the name, keep the ID stable to avoid React re-renders
++    // Just update the name, keep the ID stable
+     setVoices({ ...voices, [id]: { ...voices[id], name: newName } });
+   };
+ 
+@@ -155,6 +155,7 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+                   type="text"
+                   value={voice.name}
+                   onChange={e => handleRename(id, e.target.value)}
++                  placeholder="Voice Name"
+                   style={{ flex: 1, border: 'none', borderBottom: '1px solid #d0c4b0', fontSize: 14, fontWeight: 'bold', background: 'transparent', padding: '4px 0' }}
+                 />
+               </label>
+diff --git a/frontend/src/engine/ChatWidget.ts b/frontend/src/engine/ChatWidget.ts
+new file mode 100644
+index 0000000..b37cbc7
+--- /dev/null
++++ b/frontend/src/engine/ChatWidget.ts
+@@ -0,0 +1,98 @@
++/**
++ * ChatWidget - Persistent 1-to-1 chat with a voice agent
++ *
++ * Each widget maintains its own conversation history.
++ * The widget is inserted after the line where @ was triggered.
++ */
++
++export interface ChatMessage {
++  role: 'user' | 'assistant';
++  content: string;
++  timestamp: number;
++}
++
++export interface ChatWidgetData {
++  id: string;
++  voiceName: string;
++  voiceConfig: {
++    name: string;
++    tagline: string;
++    icon: string;
++    color: string;
++  };
++  messages: ChatMessage[];
++  createdAt: number;
++}
++
++export class ChatWidget {
++  private data: ChatWidgetData;
++
++  constructor(voiceName: string, voiceConfig: any) {
++    this.data = {
++      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
++      voiceName,
++      voiceConfig: {
++        name: voiceConfig.name,
++        tagline: voiceConfig.systemPrompt || voiceConfig.tagline,
++        icon: voiceConfig.icon,
++        color: voiceConfig.color
++      },
++      messages: [],
++      createdAt: Date.now()
++    };
++  }
++
++  // @@@ Load from saved state
++  static fromData(data: ChatWidgetData): ChatWidget {
++    const widget = Object.create(ChatWidget.prototype);
++    widget.data = data;
++    return widget;
++  }
++
++  // @@@ Add user message (frontend only, before sending to backend)
++  addUserMessage(content: string): void {
++    this.data.messages.push({
++      role: 'user',
++      content,
++      timestamp: Date.now()
++    });
++  }
++
++  // @@@ Add assistant response (after backend returns)
++  addAssistantMessage(content: string): void {
++    this.data.messages.push({
++      role: 'assistant',
++      content,
++      timestamp: Date.now()
++    });
++  }
++
++  // @@@ Get conversation history for backend API
++  getConversationHistory(): Array<{ role: string; content: string }> {
++    return this.data.messages.map(msg => ({
++      role: msg.role,
++      content: msg.content
++    }));
++  }
++
++  // @@@ Get all data for persistence
++  getData(): ChatWidgetData {
++    return this.data;
++  }
++
++  getId(): string {
++    return this.data.id;
++  }
++
++  getVoiceName(): string {
++    return this.data.voiceName;
++  }
++
++  getVoiceConfig(): ChatWidgetData['voiceConfig'] {
++    return this.data.voiceConfig;
++  }
++
++  getMessages(): ChatMessage[] {
++    return this.data.messages;
++  }
++}
+diff --git a/frontend/src/engine/EditorEngine.ts b/frontend/src/engine/EditorEngine.ts
+index 3e319ff..66d49fa 100644
+--- a/frontend/src/engine/EditorEngine.ts
++++ b/frontend/src/engine/EditorEngine.ts
+@@ -65,7 +65,7 @@ export function computeWeight(text: string): number {
+     }
+     // Chinese comma (ignored)
+     else if (char === '，') {
+-      weight += 0;
++      // Skip: weight += 0
+     }
+     // CJK characters
+     else if (/[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff]/.test(char)) {
+@@ -106,6 +106,7 @@ export class EditorEngine {
+   private sentCache: Map<string, string> = new Map(); // Track sent sentences -> commentor hash
+   private onStateChange?: (state: EditorState) => void;
+   private isRequesting: boolean = false; // Track if request in progress
++  private voiceConfigs: Record<string, any> = {}; // Voice configurations from settings
+ 
+   constructor(sessionId: string) {
+     this.state = {
+@@ -117,16 +118,26 @@ export class EditorEngine {
+     };
+   }
+ 
+-  // @@@ Update text and track weight changes
+-  updateText(newText: string) {
+-    // Update the first text cell (for now, single cell mode)
+-    const textCell = this.state.cells.find(c => c.type === 'text') as TextCell;
+-    if (!textCell) return;
++  // @@@ Update voice configurations from settings
++  setVoiceConfigs(configs: Record<string, any>) {
++    this.voiceConfigs = configs;
++  }
++
++  // @@@ Update a specific text cell by ID
++  updateTextCell(cellId: string, newText: string) {
++    const cell = this.state.cells.find(c => c.id === cellId);
++    if (!cell || cell.type !== 'text') return;
++
++    (cell as TextCell).content = newText;
++    this.applyTextUpdate();
++  }
+ 
+-    textCell.content = newText;
++  // @@@ Apply weight calculation and trigger analysis
++  private applyTextUpdate() {
++    const combinedText = this.getCombinedText();
+ 
+     // Compute new weight entry
+-    const weight = computeWeight(newText);
++    const weight = computeWeight(combinedText);
+     const lastEntry = this.state.weightPath[this.state.weightPath.length - 1];
+     const prevWeight = lastEntry?.weight || 0;
+     const delta = Math.max(0, weight - prevWeight);
+@@ -136,21 +147,30 @@ export class EditorEngine {
+     // Add to weight path
+     this.state.weightPath.push({
+       timestamp: Date.now(),
+-      text: newText,
++      text: combinedText,
+       weight,
+       delta,
+       energy
+     });
+ 
+     // Check if we should request analysis
+-    this.checkAnalysisTrigger(newText, energy);
++    this.checkAnalysisTrigger(combinedText, energy);
+ 
+     // Check if we can apply commentors
+-    this.checkCommentorApplication(newText, energy);
++    this.checkCommentorApplication(combinedText, energy);
+ 
+     this.notifyChange();
+   }
+ 
++  // @@@ Get combined text from all text cells
++  private getCombinedText(): string {
++    return this.state.cells
++      .filter(c => c.type === 'text')
++      .map(c => (c as TextCell).content)
++      .join('');
++  }
++
++
+   // @@@ Check if we should send text for analysis
+   private checkAnalysisTrigger(text: string, _currentEnergy: number) {
+     const completedSentences = getCompletedSentences(text);
+@@ -164,12 +184,11 @@ export class EditorEngine {
+     const commentorHash = this.getCommentorHash();
+ 
+     // Check if this text+commentor combination was already sent
+-    const cacheKey = completedSentences;
+-    const cachedHash = this.sentCache.get(cacheKey);
++    const cachedHash = this.sentCache.get(completedSentences);
+ 
+     // Only send if not in cache OR commentor config changed
+     if (!cachedHash || cachedHash !== commentorHash) {
+-      this.sentCache.set(cacheKey, commentorHash);
++      this.sentCache.set(completedSentences, commentorHash);
+ 
+       // Request analysis from backend (async, results go to waitlist)
+       this.requestAnalysis(completedSentences);
+@@ -242,9 +261,22 @@ export class EditorEngine {
+       // Call backend (returns ONLY ONE comment at a time)
+       const { analyzeText } = await import('../api/voiceApi');
+ 
++      // Convert voiceConfigs to backend format
++      const backendVoices: Record<string, any> = {};
++      for (const [name, cfg] of Object.entries(this.voiceConfigs)) {
++        if (cfg.enabled) {
++          backendVoices[name] = {
++            name: cfg.name,
++            tagline: cfg.systemPrompt,
++            icon: cfg.icon,
++            color: cfg.color
++          };
++        }
++      }
++
+       // Send only APPLIED commentors to backend
+       const appliedCommentors = this.state.commentors.filter(c => c.appliedAt);
+-      const result = await analyzeText(text, this.state.sessionId, undefined, appliedCommentors);
++      const result = await analyzeText(text, this.state.sessionId, backendVoices, appliedCommentors);
+ 
+       // Backend returns at most ONE voice
+       if (result.voices.length > 0) {
+@@ -304,7 +336,166 @@ export class EditorEngine {
+     }
+   }
+ 
+-  // @@@ Add a widget cell
++  // @@@ Merge consecutive text cells to prevent text-text pattern
++  private mergeConsecutiveTextCells() {
++    const merged: Cell[] = [];
++    let i = 0;
++    let mergeCount = 0;
++
++    while (i < this.state.cells.length) {
++      const cell = this.state.cells[i];
++
++      if (cell.type === 'text') {
++        // Collect all consecutive text cells
++        let combinedContent = (cell as TextCell).content;
++        let j = i + 1;
++        let mergedCells = 0;
++
++        while (j < this.state.cells.length && this.state.cells[j].type === 'text') {
++          combinedContent += (this.state.cells[j] as TextCell).content;
++          j++;
++          mergedCells++;
++        }
++
++        if (mergedCells > 0) {
++          mergeCount += mergedCells;
++          console.log(`🔗 Merged ${mergedCells + 1} consecutive text cells into one`);
++        }
++
++        // Add merged text cell
++        merged.push({
++          id: cell.id, // Keep first cell's ID
++          type: 'text',
++          content: combinedContent
++        });
++
++        i = j; // Skip all merged cells
++      } else {
++        merged.push(cell);
++        i++;
++      }
++    }
++
++    if (mergeCount > 0) {
++      console.log(`✅ Total merged: ${mergeCount} cells → Final cell count: ${merged.length}`);
++    }
++
++    this.state.cells = merged;
++  }
++
++  // @@@ Insert widget at cursor, removing @ character if present
++  insertWidgetAtCursor(cellId: string, cursorPosition: number, widgetType: WidgetCell['widgetType'], data: any) {
++    const cell = this.state.cells.find(c => c.id === cellId);
++    if (!cell || cell.type !== 'text') return;
++
++    const text = (cell as TextCell).content;
++
++    // Remove @ character if it's right before cursor
++    const atPosition = cursorPosition - 1;
++    if (atPosition >= 0 && text[atPosition] === '@') {
++      // Check if @ is the only character on its line
++      const lineStart = text.lastIndexOf('\n', atPosition - 1) + 1;
++      const lineEnd = text.indexOf('\n', cursorPosition);
++      const lineEndPos = lineEnd === -1 ? text.length : lineEnd;
++      const lineContent = text.substring(lineStart, lineEndPos);
++      const isOnlyCharOnLine = lineContent.trim() === '@';
++
++      // Remove the @ and optionally the newline
++      let newText: string;
++      if (isOnlyCharOnLine) {
++        // @ is alone on its line - remove the newline before it (if exists)
++        const hasNewlineBefore = atPosition > 0 && text[atPosition - 1] === '\n';
++        if (hasNewlineBefore) {
++          // Remove the newline before @ and the @
++          newText = text.substring(0, atPosition - 1) + text.substring(cursorPosition);
++          console.log('✂️ Removed newline before @ and the @');
++        } else {
++          // Just remove @
++          newText = text.substring(0, atPosition) + text.substring(cursorPosition);
++          console.log('✂️ Removed @ only (first line)');
++        }
++      } else {
++        // @ is not alone - just remove @
++        newText = text.substring(0, atPosition) + text.substring(cursorPosition);
++        console.log('✂️ Removed @ only (inline)');
++      }
++      (cell as TextCell).content = newText;
++
++      // Insert widget at the @ position (adjust if we removed newline before)
++      const insertPos = isOnlyCharOnLine && atPosition > 0 && text[atPosition - 1] === '\n'
++        ? atPosition - 1
++        : atPosition;
++      this.insertWidgetAfterLine(cellId, insertPos, widgetType, data);
++    } else {
++      // No @ found, just insert widget at cursor position
++      this.insertWidgetAfterLine(cellId, cursorPosition, widgetType, data);
++    }
++  }
++
++  // @@@ Add a widget cell after a specific text position in a specific cell
++  insertWidgetAfterLine(cellId: string, cursorPosition: number, widgetType: WidgetCell['widgetType'], data: any) {
++    // Find the specific cell and its index
++    const cellIndex = this.state.cells.findIndex(c => c.id === cellId);
++    if (cellIndex === -1) return;
++
++    const cell = this.state.cells[cellIndex];
++    if (cell.type !== 'text') return;
++
++    const text = (cell as TextCell).content;
++
++    // Find the line end after cursor position
++    let lineEndPos = text.indexOf('\n', cursorPosition);
++    if (lineEndPos === -1) {
++      lineEndPos = text.length;
++    } else {
++      lineEndPos += 1; // Include the newline
++    }
++
++    // Split text into before and after
++    const beforeText = text.substring(0, lineEndPos);
++    const afterText = text.substring(lineEndPos);
++
++    // Create replacement cells for this position
++    const replacementCells: Cell[] = [];
++
++    // Text before widget (only if non-empty)
++    if (beforeText.length > 0) {
++      replacementCells.push({
++        id: generateId(),
++        type: 'text',
++        content: beforeText
++      });
++    }
++
++    // Widget cell
++    replacementCells.push({
++      id: generateId(),
++      type: 'widget',
++      widgetType,
++      data
++    });
++
++    // Text after widget (only if non-empty, otherwise rely on adjacent cell or create empty)
++    // Always add if non-empty, or if this is the last cell (to allow continued writing)
++    const isLastCell = cellIndex === this.state.cells.length - 1;
++    const hasNextTextCell = cellIndex + 1 < this.state.cells.length &&
++                           this.state.cells[cellIndex + 1].type === 'text';
++
++    if (afterText.length > 0 || (isLastCell && !hasNextTextCell)) {
++      replacementCells.push({
++        id: generateId(),
++        type: 'text',
++        content: afterText
++      });
++    }
++
++    // Replace the cell at cellIndex with the new cells, keeping all other cells intact
++    this.state.cells.splice(cellIndex, 1, ...replacementCells);
++    this.mergeConsecutiveTextCells(); // Ensure no consecutive text cells
++    this.notifyChange();
++  }
++
++  // @@@ Add a widget cell at the end
+   addWidgetCell(widgetType: WidgetCell['widgetType'], data: any) {
+     const widget: WidgetCell = {
+       id: generateId(),
+@@ -316,6 +507,15 @@ export class EditorEngine {
+     this.notifyChange();
+   }
+ 
++  // @@@ Update widget data (for chat messages)
++  updateWidgetData(widgetId: string, data: any) {
++    const widget = this.state.cells.find(c => c.type === 'widget' && c.id === widgetId);
++    if (widget && widget.type === 'widget') {
++      widget.data = data;
++      this.notifyChange();
++    }
++  }
++
+   // @@@ Subscribe to state changes
+   subscribe(callback: (state: EditorState) => void) {
+     this.onStateChange = callback;
+@@ -337,6 +537,24 @@ export class EditorEngine {
+     this.usedEnergy = this.state.commentors.filter(c => c.appliedAt).length * this.threshold;
+     this.notifyChange();
+   }
++
++  // @@@ Delete a cell by ID
++  deleteCell(cellId: string) {
++    const cellIndex = this.state.cells.findIndex(c => c.id === cellId);
++    if (cellIndex === -1) return;
++
++    this.state.cells.splice(cellIndex, 1);
++
++    // Ensure we always have at least one text cell
++    if (this.state.cells.length === 0) {
++      this.state.cells.push({ id: generateId(), type: 'text', content: '' });
++    }
++
++    // Merge consecutive text cells (important when deleting a widget between text cells)
++    this.mergeConsecutiveTextCells();
++
++    this.notifyChange();
++  }
+ }
+ 
+ // @@@ Helper to generate IDs

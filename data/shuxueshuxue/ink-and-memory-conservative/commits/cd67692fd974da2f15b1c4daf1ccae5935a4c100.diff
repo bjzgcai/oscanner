@@ -1,0 +1,11 @@
+*** MODIFIED: frontend/src/hooks/useSessionLifecycle.ts (+3/-0) ***
+@@ -356,6 +356,9 @@ export function useSessionLifecycle({
+                   setLocalTexts(new Map());
+                   ensuredSessionForDayRef.current = today;
+                   startedFreshForToday = true;
++                  // @@@ New Day Guard - clear any previously chosen session so we don't overwrite the blank state below
++                  sessionToLoad = null;
++                  loadedSessionId = undefined;
+ 
+                   await persistSessionImmediately(blankState);
+                 } else {

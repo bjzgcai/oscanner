@@ -1,0 +1,20 @@
+{
+  "hash": "2deb4b115d8c48ad1e6f986fb8d074e71b14dde5",
+  "author": "Shaobin-Jiang",
+  "email": "shaobin-jiang@outlook.com",
+  "date": "Fri Nov 28 11:23:56 2025 +0800",
+  "subject": "create websocket endpoint for speech recognition",
+  "files": [
+    "backend/server.py",
+    "backend/speech_recognition.py"
+  ],
+  "diff": "commits/2deb4b115d8c48ad1e6f986fb8d074e71b14dde5/2deb4b115d8c48ad1e6f986fb8d074e71b14dde5.diff",
+  "related_files": {
+    "backend/server.py": [
+      "backend/speech_recognition.py"
+    ],
+    "backend/speech_recognition.py": [
+      "backend/server.py"
+    ]
+  }
+}

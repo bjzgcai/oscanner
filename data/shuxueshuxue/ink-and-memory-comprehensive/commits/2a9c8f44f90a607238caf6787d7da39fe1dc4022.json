@@ -1,0 +1,73 @@
+{
+  "sha": "2a9c8f44f90a607238caf6787d7da39fe1dc4022",
+  "node_id": "C_kwDOP2Zrm9oAKDJhOWM4ZjQ0ZjkwYTYwNzIzOGNhZjY3ODdkN2RhMzlmZTFkYzQwMjI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-16T07:59:55Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-16T07:59:55Z"
+    },
+    "message": "remove visitor mode from frontend",
+    "tree": {
+      "sha": "25c3d5f192c4072bfcd1f811e15419e8d5fc86f6",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/25c3d5f192c4072bfcd1f811e15419e8d5fc86f6"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/2a9c8f44f90a607238caf6787d7da39fe1dc4022",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2a9c8f44f90a607238caf6787d7da39fe1dc4022",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/2a9c8f44f90a607238caf6787d7da39fe1dc4022",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/2a9c8f44f90a607238caf6787d7da39fe1dc4022/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "5fc58fec75ce9c955b74d9816434e1bc9cac3b30",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/5fc58fec75ce9c955b74d9816434e1bc9cac3b30",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/5fc58fec75ce9c955b74d9816434e1bc9cac3b30"
+    }
+  ],
+  "stats": {
+    "total": 60,
+    "additions": 3,
+    "deletions": 57
+  },
+  "files": [
+    {
+      "sha": "f8eaf74b85a858a78fdcd0fbbbd7150d1cc52f86",
+      "filename": "frontend/src/App.tsx",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 8,
+      "changes": 10,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2a9c8f44f90a607238caf6787d7da39fe1dc4022/frontend%2Fsrc%2FApp.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2a9c8f44f90a607238caf6787d7da39fe1dc4022/frontend%2Fsrc%2FApp.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.tsx?ref=2a9c8f44f90a607238caf6787d7da39fe1dc4022",
+      "patch": "@@ -94,7 +94,6 @@ export default function App() {\n \n   // @@@ Auth screen state\n   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');\n-  const [guestMode, setGuestMode] = useState(false);\n   const [showMigrationDialog, setShowMigrationDialog] = useState(false);\n   const [isMigrating, setIsMigrating] = useState(false);\n   const currentLanguage = (i18n.language || 'en').split('-')[0];\n@@ -670,10 +669,6 @@ export default function App() {\n     // This is handled by the useEffect hook above\n   }, []);\n \n-  const handleContinueAsGuest = useCallback(() => {\n-    setGuestMode(true);\n-  }, []);\n-\n   // @@@ Handle @ key press for agent dropdown\n   const handleKeyDown = useCallback((cellId: string, e: React.KeyboardEvent<HTMLTextAreaElement>) => {\n     handleTextCellKeyDown(cellId, e);\n@@ -889,8 +884,8 @@ export default function App() {\n     );\n   }\n \n-  // @@@ Show auth screen if not authenticated and not in guest mode\n-  if (!isAuthenticated && !guestMode) {\n+  // @@@ Show auth screen if not authenticated\n+  if (!isAuthenticated) {\n     return (\n       <div style={{\n         display: 'flex',\n@@ -904,7 +899,6 @@ export default function App() {\n           <LoginForm\n             onSuccess={handleAuthSuccess}\n             onSwitchToRegister={() => setAuthScreen('register')}\n-            onContinueAsGuest={handleContinueAsGuest}\n           />\n         ) : (\n           <RegisterForm"
+    },
+    {
+      "sha": "cda1a60f62f2e25dbe1e123606684c564ceb3f75",
+      "filename": "frontend/src/components/Auth/LoginForm.tsx",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 49,
+      "changes": 50,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/2a9c8f44f90a607238caf6787d7da39fe1dc4022/frontend%2Fsrc%2Fcomponents%2FAuth%2FLoginForm.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/2a9c8f44f90a607238caf6787d7da39fe1dc4022/frontend%2Fsrc%2Fcomponents%2FAuth%2FLoginForm.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FAuth%2FLoginForm.tsx?ref=2a9c8f44f90a607238caf6787d7da39fe1dc4022",
+      "patch": "@@ -8,10 +8,9 @@ import { useAuth } from '../../contexts/AuthContext';\n interface LoginFormProps {\n   onSuccess: () => void;\n   onSwitchToRegister: () => void;\n-  onContinueAsGuest: () => void;\n }\n \n-export default function LoginForm({ onSuccess, onSwitchToRegister, onContinueAsGuest }: LoginFormProps) {\n+export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {\n   const { login } = useAuth();\n   const [email, setEmail] = useState('');\n   const [password, setPassword] = useState('');\n@@ -180,53 +179,6 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, onContinueAsG\n           Register\n         </button>\n       </div>\n-\n-      <div style={{\n-        marginTop: '24px',\n-        paddingTop: '20px',\n-        borderTop: '1px solid #e0d8cc',\n-        textAlign: 'center'\n-      }}>\n-        <button\n-          onClick={onContinueAsGuest}\n-          disabled={isSubmitting}\n-          style={{\n-            width: '100%',\n-            padding: '12px',\n-            border: '1px solid #d0c4b0',\n-            borderRadius: '6px',\n-            backgroundColor: '#fff',\n-            color: '#666',\n-            fontSize: '15px',\n-            fontWeight: 500,\n-            cursor: isSubmitting ? 'not-allowed' : 'pointer',\n-            fontFamily: \"'Excalifont', 'Xiaolai', 'Georgia', serif\",\n-            transition: 'all 0.2s'\n-          }}\n-          onMouseEnter={(e) => {\n-            if (!isSubmitting) {\n-              e.currentTarget.style.backgroundColor = '#f8f0e6';\n-              e.currentTarget.style.borderColor = '#999';\n-            }\n-          }}\n-          onMouseLeave={(e) => {\n-            if (!isSubmitting) {\n-              e.currentTarget.style.backgroundColor = '#fff';\n-              e.currentTarget.style.borderColor = '#d0c4b0';\n-            }\n-          }}\n-        >\n-          Continue as Guest\n-        </button>\n-        <div style={{\n-          marginTop: '12px',\n-          fontSize: '12px',\n-          color: '#999',\n-          fontStyle: 'italic'\n-        }}>\n-          Limited features: no image generation or reflections\n-        </div>\n-      </div>\n     </div>\n   );\n }"
+    }
+  ]
+}

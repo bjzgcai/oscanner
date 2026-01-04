@@ -1,0 +1,23 @@
+{
+  "sha": "fff1153a5765dbf818987a9a0bb6ff59cdce8e0b",
+  "message": "Remove orphaned TipTap/ProseMirror CSS classes",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:52:03Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:52:03Z"
+  },
+  "stats": {
+    "total": 16,
+    "additions": 0,
+    "deletions": 16
+  },
+  "files_count": 1,
+  "parents": [
+    "4f16b989f963c91e1aef4ac34d2b21b5cec10ef4"
+  ]
+}

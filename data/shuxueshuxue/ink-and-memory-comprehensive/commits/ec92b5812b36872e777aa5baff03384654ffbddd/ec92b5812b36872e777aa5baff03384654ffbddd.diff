@@ -1,0 +1,16 @@
+commit ec92b5812b36872e777aa5baff03384654ffbddd
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Dec 3 02:06:09 2025 +0800
+
+    Propagate image tag to BACKEND_VERSION env
+
+diff --git a/.github/workflows/deploy-backend.yml b/.github/workflows/deploy-backend.yml
+index 21a4cda..93a9764 100644
+--- a/.github/workflows/deploy-backend.yml
++++ b/.github/workflows/deploy-backend.yml
+@@ -67,4 +67,5 @@ jobs:
+               "docker run --name ink-backend --restart unless-stopped \
+                 -p 127.0.0.1:8765:8765 \
+                 -v /root/ink-and-memory/backend/data:/app/data \
++                -e BACKEND_VERSION=${IMAGE_TAG} \
+                 ${IMAGE_TAG}"

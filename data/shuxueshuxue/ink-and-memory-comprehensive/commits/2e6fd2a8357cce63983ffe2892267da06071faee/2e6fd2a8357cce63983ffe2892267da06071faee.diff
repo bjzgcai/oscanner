@@ -1,0 +1,9 @@
+commit 2e6fd2a8357cce63983ffe2892267da06071faee
+Merge: dd81fd7 5ea65b7
+Author: zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com>
+Date:   Sun Dec 28 21:06:42 2025 +0800
+
+    Merge pull request #9 from zhuchenyu2008/codex/add-manual-database-initialization-steps-to-readme
+    
+    Add manual database initialization steps to README (EN/ZH)
+

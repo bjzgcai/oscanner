@@ -1,0 +1,569 @@
+import { useMemo } from 'react';
+import type { Deck, Voice } from '../api/voiceApi';
+import { COLORS, iconMap } from './deckVisuals';
+
+interface Props {
+  deck: Deck;
+  isSystem: boolean;
+  selectedVoiceId: string | null;
+  onSelectVoice: (voiceId: string | null) => void;
+  onClose: () => void;
+  creatingVoiceId: string | null;
+  onAddVoice: (deckId: string) => Promise<void>;
+  onUpdateDeck: (deckId: string, data: Partial<Deck>) => Promise<void>;
+  onUpdateVoice: (voiceId: string, data: Partial<Voice>) => Promise<void>;
+  onToggleVoice: (voiceId: string, currentEnabled: boolean) => Promise<void>;
+  onDeleteVoice: (voiceId: string) => Promise<void>;
+}
+
+export default function DeckEditorModal({
+  deck,
+  isSystem,
+  selectedVoiceId,
+  onSelectVoice,
+  onClose,
+  creatingVoiceId,
+  onAddVoice,
+  onUpdateDeck,
+  onUpdateVoice,
+  onToggleVoice,
+  onDeleteVoice
+}: Props) {
+  const voices = deck.voices || [];
+  const selectedVoice = useMemo(
+    () => voices.find(v => v.id === selectedVoiceId) || null,
+    [voices, selectedVoiceId]
+  );
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9998,
+        padding: 16,
+        boxSizing: 'border-box'
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(1200px, 100%)',
+          height: '85vh',
+          maxHeight: '85vh',
+          background: '#f8f0e6',
+          borderRadius: 14,
+          overflow: 'hidden',
+          border: '2px solid #d0c4b0',
+          boxShadow: '0 16px 36px rgba(0,0,0,0.25)',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '16px 18px',
+          borderBottom: '1px solid #d0c4b0',
+          background: '#fff'
+        }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#2c2c2c', letterSpacing: -0.3 }}>
+            Deck Editor
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: '#f7f3ed',
+              border: '1px solid #d0c4b0',
+              borderRadius: 10,
+              padding: '8px 14px',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#2c2c2c',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
+            }}
+          >
+            Close
+          </button>
+        </div>
+
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16, flex: 1, overflow: 'hidden' }}>
+          {/* Deck metadata: name + description left, prompt right */}
+          <div style={{
+            display: 'flex',
+            gap: 12,
+            flexWrap: 'wrap'
+          }}>
+            <div style={{
+              flex: '0 1 360px',
+              minWidth: 260,
+              background: '#fff',
+              border: '2px solid #e0e0e0',
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              boxSizing: 'border-box'
+            }}>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#666',
+                letterSpacing: 0.5,
+                textTransform: 'uppercase'
+              }}>
+                Deck Name
+              </div>
+              <input
+                key={`${deck.id}-${deck.name}`}
+                type="text"
+                defaultValue={deck.name}
+                disabled={isSystem}
+                onBlur={(e) => {
+                  if (!isSystem && e.target.value !== deck.name) {
+                    onUpdateDeck(deck.id, { name: e.target.value });
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 8,
+                  background: isSystem ? '#f5f5f5' : '#fff',
+                  color: '#2c2c2c',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#666',
+                letterSpacing: 0.5,
+                textTransform: 'uppercase'
+              }}>
+                Deck Description
+              </div>
+              <textarea
+                key={`${deck.id}-desc-${deck.description || ''}`}
+                defaultValue={deck.description || ''}
+                disabled={isSystem}
+                onBlur={(e) => {
+                  if (!isSystem && e.target.value !== (deck.description || '')) {
+                    onUpdateDeck(deck.id, { description: e.target.value });
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  minHeight: 90,
+                  padding: '10px 12px',
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 8,
+                  background: isSystem ? '#f5f5f5' : '#fff',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  lineHeight: 1.5
+                }}
+              />
+            </div>
+
+            <div style={{
+              flex: '1 1 320px',
+              minWidth: 260,
+              background: '#fff',
+              border: '2px solid #e0e0e0',
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              boxSizing: 'border-box'
+            }}>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#666',
+                letterSpacing: 0.5,
+                textTransform: 'uppercase'
+              }}>
+                Deck Prompt (shared)
+              </div>
+              <textarea
+                key={`${deck.id}-prompt-${deck.description || ''}`}
+                defaultValue={deck.description || ''}
+                disabled={isSystem}
+                onBlur={(e) => {
+                  if (!isSystem && e.target.value !== (deck.description || '')) {
+                    onUpdateDeck(deck.id, { description: e.target.value });
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  minHeight: 140,
+                  padding: '10px 12px',
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 8,
+                  background: isSystem ? '#f5f5f5' : '#fff',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  lineHeight: 1.6
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ height: 1, background: '#dcd4c5', width: '100%' }} />
+
+          <div style={{
+            display: 'flex',
+            gap: 16,
+            alignItems: 'stretch',
+            flexWrap: 'wrap',
+            flex: 1,
+            minHeight: 0
+          }}>
+            {/* Left column: voice list */}
+            <div style={{
+              width: 320,
+              flexShrink: 0,
+              flexGrow: 0,
+              minWidth: 260,
+              maxHeight: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
+            }}>
+              <div style={{
+                background: '#fff',
+                border: '2px solid #e0e0e0',
+                borderRadius: 10,
+                padding: 14,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                flex: 1,
+                minHeight: 200,
+                overflowY: 'auto'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#666',
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase'
+                  }}>
+                    Agents
+                  </div>
+                  {!isSystem && (
+                    <button
+                      onClick={() => onAddVoice(deck.id)}
+                      disabled={creatingVoiceId === deck.id}
+                      style={{
+                        border: '1px dashed #4a90e2',
+                        background: 'transparent',
+                        color: '#4a90e2',
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                        cursor: creatingVoiceId === deck.id ? 'not-allowed' : 'pointer',
+                        fontSize: 12
+                      }}
+                    >
+                      {creatingVoiceId === deck.id ? 'Adding…' : '+ Add'}
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto' }}>
+                  {voices.length === 0 && (
+                    <div style={{ color: '#999', fontSize: 13, fontStyle: 'italic' }}>
+                      No voices in this deck yet
+                    </div>
+                  )}
+                  {voices.map(voice => {
+                    const VoiceIcon = iconMap[voice.icon as keyof typeof iconMap] || iconMap.brain;
+                    const voiceColor = COLORS[voice.color as keyof typeof COLORS]?.hex || '#4a90e2';
+                    const isSelected = selectedVoiceId === voice.id;
+
+                    return (
+                      <div
+                        key={voice.id}
+                        onClick={() => onSelectVoice(voice.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          border: isSelected ? `2px solid ${voiceColor}` : '2px solid transparent',
+                          background: isSelected ? `${voiceColor}15` : '#fafafa',
+                          transition: 'all 0.15s',
+                          opacity: voice.enabled ? 1 : 0.55
+                        }}
+                      >
+                        <div style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          background: voiceColor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#fff',
+                          flexShrink: 0,
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                        }}>
+                          <VoiceIcon size={16} />
+                        </div>
+                        <div style={{
+                          flex: 1,
+                          minWidth: 0,
+                          fontSize: 14,
+                          fontWeight: isSelected ? 700 : 500,
+                          color: '#2c2c2c',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {voice.name}
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={voice.enabled}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => onToggleVoice(voice.id, voice.enabled)}
+                          disabled={isSystem}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Right column: selected voice editor */}
+            <div style={{
+              flex: 1,
+              minWidth: 0,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
+            }}>
+              {selectedVoice ? (() => {
+                const voiceColor = COLORS[selectedVoice.color as keyof typeof COLORS]?.hex || '#4a90e2';
+                const VoiceIcon = iconMap[selectedVoice.icon as keyof typeof iconMap] || iconMap.brain;
+
+                return (
+                  <div
+                    key={selectedVoice.id}
+                    style={{
+                      flex: 1,
+                      minHeight: 0,
+                      background: '#fff',
+                      border: `2px solid ${voiceColor}`,
+                      borderRadius: 12,
+                      padding: 18,
+                      boxShadow: `0 4px 10px ${voiceColor}25`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      flexWrap: 'wrap'
+                    }}>
+                      <div style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        background: voiceColor,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        boxShadow: `0 3px 8px ${voiceColor}40`
+                      }}>
+                        <VoiceIcon size={22} />
+                      </div>
+
+                      <input
+                        key={`${selectedVoice.id}-${selectedVoice.name}`}
+                        type="text"
+                        defaultValue={selectedVoice.name}
+                        disabled={isSystem}
+                        onBlur={(e) => {
+                          if (!isSystem && e.target.value !== selectedVoice.name) {
+                            onUpdateVoice(selectedVoice.id, { name: e.target.value });
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          minWidth: 140,
+                          border: 'none',
+                          borderBottom: '2px solid #e0e0e0',
+                          fontSize: 18,
+                          fontWeight: 700,
+                          padding: '6px 4px',
+                          outline: 'none',
+                          background: 'transparent'
+                        }}
+                      />
+
+                      <select
+                        value={selectedVoice.icon}
+                        disabled={isSystem}
+                        onChange={(e) => onUpdateVoice(selectedVoice.id, { icon: e.target.value })}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 6,
+                          border: '1px solid #ddd',
+                          background: '#fafafa',
+                          fontSize: 12,
+                          cursor: isSystem ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {Object.keys(iconMap).map((iconName) => (
+                          <option key={iconName} value={iconName}>{iconName}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={selectedVoice.color}
+                        disabled={isSystem}
+                        onChange={(e) => onUpdateVoice(selectedVoice.id, { color: e.target.value })}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 6,
+                          border: '1px solid #ddd',
+                          background: '#fafafa',
+                          fontSize: 12,
+                          cursor: isSystem ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {Object.entries(COLORS).map(([colorName, data]) => (
+                          <option key={colorName} value={colorName}>{data.label}</option>
+                        ))}
+                      </select>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#333' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedVoice.enabled}
+                          disabled={isSystem}
+                          onChange={() => onToggleVoice(selectedVoice.id, selectedVoice.enabled)}
+                        />
+                        Enabled
+                      </label>
+
+                      {!isSystem && (
+                        <button
+                          onClick={() => onDeleteVoice(selectedVoice.id)}
+                          style={{
+                            padding: '8px 12px',
+                            background: '#fff',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            color: '#c00'
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: '#666',
+                      letterSpacing: 0.5,
+                      textTransform: 'uppercase'
+                    }}>
+                      Agent Prompt
+                    </div>
+                    <textarea
+                      key={`${selectedVoice.id}-${selectedVoice.system_prompt}`}
+                      defaultValue={selectedVoice.system_prompt}
+                      disabled={isSystem}
+                      onBlur={(e) => {
+                        if (!isSystem && e.target.value !== selectedVoice.system_prompt) {
+                          onUpdateVoice(selectedVoice.id, { system_prompt: e.target.value });
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        width: '100%',
+                        minHeight: 0,
+                        padding: 12,
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: 8,
+                        background: isSystem ? '#f5f5f5' : '#fff',
+                        resize: 'vertical',
+                        boxSizing: 'border-box',
+                        lineHeight: 1.6
+                      }}
+                    />
+                  </div>
+                );
+              })() : (
+                <div style={{
+                  flex: 1,
+                  background: '#fff',
+                  border: '2px dashed #d0c4b0',
+                  borderRadius: 12,
+                  padding: 40,
+                  color: '#888',
+                  fontSize: 14,
+                  textAlign: 'center'
+                }}>
+                  Select an agent from the list to edit
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

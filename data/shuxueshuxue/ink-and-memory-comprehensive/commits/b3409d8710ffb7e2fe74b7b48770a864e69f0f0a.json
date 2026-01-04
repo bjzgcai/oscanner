@@ -1,0 +1,61 @@
+{
+  "sha": "b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+  "node_id": "C_kwDOP2Zrm9oAKGIzNDA5ZDg3MTBmZmI3ZTJmZTc0YjdiNDg3NzBhODY0ZTY5ZjBmMGE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T15:51:15Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T15:51:15Z"
+    },
+    "message": "fix comment group not display latest comment issue",
+    "tree": {
+      "sha": "6c3153db62dc99e52d68b2a2003f13f481b25309",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/6c3153db62dc99e52d68b2a2003f13f481b25309"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "fc203bf679b5bcd3430162815da289cb78719d35",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fc203bf679b5bcd3430162815da289cb78719d35",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fc203bf679b5bcd3430162815da289cb78719d35"
+    }
+  ],
+  "stats": {
+    "total": 26,
+    "additions": 18,
+    "deletions": 8
+  },
+  "files": [
+    {
+      "sha": "94cc27c36244f782f58ded1fc54f408f9ede5185",
+      "filename": "frontend/src/hooks/useComments.ts",
+      "status": "modified",
+      "additions": 18,
+      "deletions": 8,
+      "changes": 26,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a/frontend%2Fsrc%2Fhooks%2FuseComments.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a/frontend%2Fsrc%2Fhooks%2FuseComments.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fhooks%2FuseComments.ts?ref=b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+      "patch": "@@ -52,7 +52,8 @@ export function useComments({\n   engineRef,\n }: UseCommentsOptions): UseCommentsReturn {\n   const [groupPages, setGroupPages] = useState<Map<string, number>>(new Map());\n-  const prevCommentCounts = useRef<Map<string, number>>(new Map());\n+  const prevGroupSignatures = useRef<Map<string, string>>(new Map());\n+  const manualLockSignatures = useRef<Map<string, string>>(new Map());\n   const [cursorPosition, setCursorPosition] = useState<number>(0);\n   const [cursorCellId, setCursorCellId] = useState<string | null>(null);\n   const [mobileActiveComment, setMobileActiveComment] = useState<Commentor | null>(null);\n@@ -157,11 +158,12 @@ export function useComments({\n     return groups;\n   }, [state?.commentors, state, refsReady, selectedState]);\n \n-  // @@@ Preserve manual selection - only jump to newest when a group gains comments\n+  // @@@ Auto-advance on new comment - jump to latest only when signature changes\n   useEffect(() => {\n-    const currentCounts = new Map<string, number>();\n+    const currentSignatures = new Map<string, string>();\n     commentGroups.forEach((group, groupKey) => {\n-      currentCounts.set(groupKey, group.comments.length);\n+      const signature = group.comments.map(c => c.id).join(\"|\");\n+      currentSignatures.set(groupKey, signature);\n     });\n \n     setGroupPages(prev => {\n@@ -175,13 +177,17 @@ export function useComments({\n \n         const currentPage = prev.get(groupKey) ?? 0;\n         const maxPage = group.comments.length - 1;\n-        const prevCount = prevCommentCounts.current.get(groupKey) ?? 0;\n-        const currentCount = group.comments.length;\n         const isNewGroup = !prev.has(groupKey);\n+        const currentSignature = currentSignatures.get(groupKey) || \"\";\n+        const prevSignature = prevGroupSignatures.current.get(groupKey) || \"\";\n+        const signatureChanged = currentSignature !== prevSignature;\n+        const manualLockSignature = manualLockSignatures.current.get(groupKey) || \"\";\n \n         if (isNewGroup) {\n           next.set(groupKey, maxPage);\n-        } else if (currentCount > prevCount) {\n+        } else if (signatureChanged && manualLockSignature !== currentSignature) {\n+          next.set(groupKey, maxPage);\n+        } else if (currentPage < maxPage && manualLockSignature !== currentSignature) {\n           next.set(groupKey, maxPage);\n         } else if (currentPage > maxPage) {\n           next.set(groupKey, maxPage);\n@@ -191,13 +197,14 @@ export function useComments({\n       prev.forEach((_, groupKey) => {\n         if (!commentGroups.has(groupKey)) {\n           next.delete(groupKey);\n+          manualLockSignatures.current.delete(groupKey);\n         }\n       });\n \n       return next;\n     });\n \n-    prevCommentCounts.current = currentCounts;\n+    prevGroupSignatures.current = currentSignatures;\n   }, [commentGroups]);\n \n   const handleGroupNavigate = useCallback((groupKey: string, newIndex: number) => {\n@@ -214,6 +221,9 @@ export function useComments({\n     if (anyExpanded && group.comments[newIndex]) {\n       setExpandedCommentId(group.comments[newIndex].id);\n     }\n+\n+    const signature = group.comments.map(c => c.id).join(\"|\");\n+    manualLockSignatures.current.set(groupKey, signature);\n   }, [commentGroups, expandedCommentId]);\n \n   useEffect(() => {"
+    }
+  ]
+}

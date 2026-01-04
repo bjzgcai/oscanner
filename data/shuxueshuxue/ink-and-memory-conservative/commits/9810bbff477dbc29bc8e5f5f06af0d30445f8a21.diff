@@ -1,0 +1,19 @@
+*** MODIFIED: README.zh.md (+2/-2) ***
+@@ -90,7 +90,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
+ uv pip install -r requirements.txt
+ ```
+ 
+-创建 `models.json` 文件配置你的大语言模型：
++复制 `models.json` 文件并配置你的大语言模型：
+ 
+ ```json
+ {
+@@ -118,7 +118,7 @@ python server.py  # 运行在 http://localhost:8765
+ 
+ ### 手动初始化数据库
+ 
+-首次启动前如果需要手动创建 SQLite 表结构，可执行：
++首次启动前需要手动创建 SQLite 表结构：
+ 
+ ```bash
+ cd backend

@@ -1,0 +1,263 @@
+*** FILE: README.md ***
+@@ -95,15 +95,21 @@ Create a `models.json` file for your LLM:
+ ```json
+ {
+   "models": {
+-    "default": {
+-      "endpoint": "https://api.your-provider.com/v1",
++    "gemini-3-flash-preview": {
++      "endpoint": "https://openrouter.ai/api/v1",
+       "api_key": "your-key-here",
+-      "model": "gpt-4o"
++      "model": "google/gemini-3-flash-preview"
+     }
++  },
++  "roles": {
++    "voice_analysis": "gemini-3-flash-preview",
++    "voice_chat": "gemini-3-flash-preview"
+   }
+ }
+ ```
+ 
++See `backend/models.json.example` for the full set of roles and image settings.
++
+ Then start the server:
+ 
+ ```bash
+
+*** FILE: README.zh.md ***
+@@ -95,15 +95,21 @@ uv pip install -r requirements.txt
+ ```json
+ {
+   "models": {
+-    "default": {
+-      "endpoint": "https://api.your-provider.com/v1",
++    "gemini-3-flash-preview": {
++      "endpoint": "https://openrouter.ai/api/v1",
+       "api_key": "your-key-here",
+-      "model": "gpt-4o"
++      "model": "google/gemini-3-flash-preview"
+     }
++  },
++  "roles": {
++    "voice_analysis": "gemini-3-flash-preview",
++    "voice_chat": "gemini-3-flash-preview"
+   }
+ }
+ ```
+ 
++完整配置选项（包括图片生成设置）请参考 `backend/models.json.example`。
++
+ 然后启动服务器：
+ 
+ ```bash
+
+*** FILE: backend/config.py ***
+@@ -2,84 +2,101 @@
+ 
+ import json
+ import os
++from typing import Any, Dict
+ 
+-# VOICE_ANALYSIS_MODEL = "claude-haiku-4.5"
+-# VOICE_ANALYSIS_MODEL = "deepseek-v3.2"
+-# VOICE_ANALYSIS_MODEL = "gemini-3-pro-preview"
+-# VOICE_ANALYSIS_MODEL = "mistral-small-creative"
+-# VOICE_ANALYSIS_MODEL = "claude-sonnet-4.5"
+-VOICE_ANALYSIS_MODEL = "gemini-3-flash-preview"
++CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.json")
+ 
+-# VOICE_INSPIRATION_MODEL = "claude-sonnet-4.5"
+-VOICE_INSPIRATION_MODEL = "gemini-3-flash-preview"
+ 
+-# VOICE_CHAT_MODEL = "claude-sonnet-4.5"
+-VOICE_CHAT_MODEL = "gemini-3-flash-preview"
++def _load_models_config() -> Dict[str, Any]:
++    """Load configuration from models.json."""
++    if not os.path.exists(CONFIG_PATH):
++        raise RuntimeError(
++            "models.json not found; copy backend/models.json.example and fill in your keys"
++        )
++    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
++        data = json.load(f)
++    if not isinstance(data, dict):
++        raise RuntimeError("models.json must contain a JSON object at the top level")
++    return data
+ 
+-# ECHO_ANALYSIS_MODEL = "claude-sonnet-4.5"
+-ECHO_ANALYSIS_MODEL = "gemini-3-flash-preview"
+ 
+-# TRAIT_ANALYSIS_MODEL = "claude-sonnet-4.5"
+-TRAIT_ANALYSIS_MODEL = "gemini-3-flash-preview"
++_CONFIG = _load_models_config()
+ 
+-# PATTERN_ANALYSIS_MODEL = "claude-sonnet-4.5"
+-PATTERN_ANALYSIS_MODEL = "gemini-3-flash-preview"
+ 
+-# @@@ Sparsity control
+-MAX_VOICES = 5
+-MIN_TEXT_LENGTH = 20
+-SINGLE_COMMENT_MODE = (
+-    True  # If True, only add 1 comment per request (gradual accumulation)
+-)
++def _get_roles() -> Dict[str, str]:
++    roles = _CONFIG.get("roles")
++    if not isinstance(roles, dict) or not roles:
++        raise RuntimeError('models.json must define a "roles" object with model names')
++    return roles
+ 
+ 
+-# @@@ Image generation configuration
+-def _load_image_api_key() -> str:
+-    """
+-    Load image API key from backend/models.json; fail loudly if missing.
+-
+-    Expected shape:
+-    {
+-      "models": {
+-        "gpt-5": {
+-          "endpoint": "...",
+-          "api_key": "...",
+-          "model": "..."
+-        },
+-        ...
+-      }
+-    }
+-    """
+-    models_path = os.path.join(os.path.dirname(__file__), "models.json")
+-    if not os.path.exists(models_path):
+-        raise RuntimeError("models.json not found; image API key unavailable")
+-
+-    with open(models_path, "r", encoding="utf-8") as f:
+-        data = json.load(f)
++_ROLES = _get_roles()
+ 
+-    models = data.get("models") or {}
+-    for _, cfg in models.items():
+-        key = cfg.get("api_key")
+-        if key:
+-            return key
+ 
+-    raise RuntimeError("No api_key found under models.* in models.json")
++def _role_model(role: str) -> str:
++    try:
++        model_name = _ROLES[role]
++    except KeyError as exc:
++        raise RuntimeError(f'model role "{role}" missing in models.json "roles"') from exc
++    if not isinstance(model_name, str) or not model_name.strip():
++        raise RuntimeError(f'model role "{role}" must map to a non-empty model name string')
++    return model_name
++
++
++def _resolve_model_config(model_name: str) -> Dict[str, Any]:
++    models = _CONFIG.get("models")
++    if not isinstance(models, dict) or not models:
++        raise RuntimeError('models.json must define a non-empty "models" object')
++    entry = models.get(model_name)
++    if not isinstance(entry, dict):
++        raise RuntimeError(
++            f'model "{model_name}" not found under "models" in models.json'
++        )
++    return entry
++
++
++VOICE_ANALYSIS_MODEL = _role_model("voice_analysis")
++VOICE_INSPIRATION_MODEL = _role_model("voice_inspiration")
++VOICE_CHAT_MODEL = _role_model("voice_chat")
++ECHO_ANALYSIS_MODEL = _role_model("echo_analysis")
++TRAIT_ANALYSIS_MODEL = _role_model("trait_analysis")
++PATTERN_ANALYSIS_MODEL = _role_model("pattern_analysis")
++_IMAGE_DESCRIPTION_ROLE_KEY = _role_model("image_description")
++_IMAGE_DESCRIPTION_CONFIG = _resolve_model_config(_IMAGE_DESCRIPTION_ROLE_KEY)
++IMAGE_DESCRIPTION_MODEL = _IMAGE_DESCRIPTION_CONFIG.get(
++    "model", _IMAGE_DESCRIPTION_ROLE_KEY
++)
+ 
+ 
+-IMAGE_API_KEY = _load_image_api_key()
+-IMAGE_API_ENDPOINT = "https://api.dou.chat/v1"
+-IMAGE_DESCRIPTION_MODEL = "anthropic/claude-haiku-4.5"
+-# IMAGE_GENERATION_MODEL = "google/gemini-2.5-flash-image-preview"
+-IMAGE_GENERATION_MODEL = "google/gemini-2.5-flash-image-preview"
++# @@@ Image role resolution - tie model selection to the credentials used for HTTP calls
++IMAGE_GENERATION_MODEL = _role_model("image_generation")
++_IMAGE_MODEL_CONFIG = _resolve_model_config(IMAGE_GENERATION_MODEL)
++IMAGE_GENERATION_MODEL = _IMAGE_MODEL_CONFIG.get("model", IMAGE_GENERATION_MODEL)
++IMAGE_API_KEY = _IMAGE_MODEL_CONFIG.get("api_key")
++if not IMAGE_API_KEY:
++    raise RuntimeError(
++        f'api_key missing for image generation model "{IMAGE_GENERATION_MODEL}" in models.json'
++    )
++_IMAGE_API_SECTION = _CONFIG.get("image_api") or {}
++IMAGE_API_ENDPOINT = _IMAGE_MODEL_CONFIG.get("endpoint") or _IMAGE_API_SECTION.get(
++    "endpoint"
++)
++if not IMAGE_API_ENDPOINT:
++    raise RuntimeError(
++        f'endpoint missing for image generation model "{IMAGE_GENERATION_MODEL}" '
++        'and no "image_api.endpoint" fallback provided'
++    )
+ 
+ # Retry configuration for image generation
+-IMAGE_RETRY_MAX_ATTEMPTS = 3
+-IMAGE_RETRY_BASE_TIMEOUT = 90  # First attempt: 90s, then +30s per retry
+-IMAGE_RETRY_TIMEOUT_INCREMENT = 30
+-IMAGE_MAX_TOKENS = 1000
+-IMAGE_DESCRIPTION_MAX_TOKENS = 500
+-IMAGE_DESCRIPTION_TIMEOUT = 120
+-
++_IMAGE_RETRY = _CONFIG.get("image_retry") or {}
++IMAGE_RETRY_MAX_ATTEMPTS = _IMAGE_RETRY.get("max_attempts", 3)
++IMAGE_RETRY_BASE_TIMEOUT = _IMAGE_RETRY.get(
++    "base_timeout", 90
++)  # First attempt: 90s, then +30s per retry
++IMAGE_RETRY_TIMEOUT_INCREMENT = _IMAGE_RETRY.get("timeout_increment", 30)
++IMAGE_MAX_TOKENS = _IMAGE_RETRY.get("max_tokens", 1000)
++IMAGE_DESCRIPTION_MAX_TOKENS = _IMAGE_RETRY.get("description_max_tokens", 500)
++IMAGE_DESCRIPTION_TIMEOUT = _IMAGE_RETRY.get("description_timeout", 120)
+ 
+ # @@@ Helper function to load voice prompts from files
+ def _load_prompt(filename):
+
+*** FILE: backend/models.json.example ***
+@@ -0,0 +1,40 @@
++{
++  "models": {
++    "gemini-3-flash-preview": {
++      "endpoint": "https://openrouter.ai/api/v1",
++      "api_key": "sk-or-your-key",
++      "model": "google/gemini-3-flash-preview"
++    },
++    "claude-haiku-4.5": {
++      "endpoint": "https://api.your-provider.com/v1",
++      "api_key": "sk-your-key",
++      "model": "anthropic/claude-haiku-4.5"
++    },
++    "gemini-2.5-flash-image-preview": {
++      "endpoint": "https://api.your-provider.com/v1",
++      "api_key": "sk-your-key",
++      "model": "google/gemini-2.5-flash-image-preview"
++    }
++  },
++  "roles": {
++    "voice_analysis": "gemini-3-flash-preview",
++    "voice_inspiration": "gemini-3-flash-preview",
++    "voice_chat": "gemini-3-flash-preview",
++    "echo_analysis": "gemini-3-flash-preview",
++    "trait_analysis": "gemini-3-flash-preview",
++    "pattern_analysis": "gemini-3-flash-preview",
++    "image_description": "claude-haiku-4.5",
++    "image_generation": "gemini-2.5-flash-image-preview"
++  },
++  "image_api": {
++    "endpoint": "https://api.your-provider.com/v1"
++  },
++  "image_retry": {
++    "max_attempts": 3,
++    "base_timeout": 90,
++    "timeout_increment": 30,
++    "max_tokens": 1000,
++    "description_max_tokens": 500,
++    "description_timeout": 120
++  }
++}

@@ -1,0 +1,19 @@
+commit 086c71c11d9fc0c0e3a4aaa44b67f32544496409
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Dec 3 04:05:01 2025 +0800
+
+    edit remove file path
+
+diff --git a/.github/workflows/deploy-frontend.yml b/.github/workflows/deploy-frontend.yml
+index b0f367c..27a00d1 100644
+--- a/.github/workflows/deploy-frontend.yml
++++ b/.github/workflows/deploy-frontend.yml
+@@ -34,7 +34,7 @@ jobs:
+           username: root
+           key: ${{ secrets.SERVER_SSH_KEY }}
+           script: |
+-            rm -rf /var/www/lexicalmathical.com/ink-and-memory/frontend
++            rm -rf /var/www/lexicalmathical.com/ink-and-memory/
+       - name: Deploy static assets
+         uses: appleboy/scp-action@v0.1.7
+         with:

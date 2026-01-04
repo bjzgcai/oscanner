@@ -1,0 +1,1097 @@
+*** FILE: backend/server.py ***
+@@ -15,11 +15,13 @@
+         "voice_config": {"type": "dict"},
+         "conversation_history": {"type": "list"},
+         "user_message": {"type": "str"},
+-        "original_text": {"type": "str"}
++        "original_text": {"type": "str"},
++        "meta_prompt": {"type": "str"},
++        "state_prompt": {"type": "str"}
+     },
+     category="Chat"
+ )
+-def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: list, user_message: str, original_text: str = ""):
++def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: list, user_message: str, original_text: str = "", meta_prompt: str = "", state_prompt: str = ""):
+     """
+     Chat with a specific voice persona.
+ 
+@@ -29,6 +31,7 @@ def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: l
+         conversation_history: Previous messages in the conversation
+         user_message: The user's new message
+         original_text: The user's original writing text
++        meta_prompt: Additional instructions that apply to all voices
+ 
+     Returns:
+         Dictionary with assistant's response
+@@ -38,6 +41,8 @@ def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: l
+     print(f"   Voice: {voice_name}")
+     print(f"   User message: {user_message}")
+     print(f"   History length: {len(conversation_history)}")
++    print(f"   Meta prompt: {repr(meta_prompt)[:100]}")
++    print(f"   State prompt: {repr(state_prompt)[:100]}")
+     print(f"{'='*60}\n")
+ 
+     agent = PolyAgent(id=f"voice-chat-{voice_name.lower()}")
+@@ -66,6 +71,20 @@ def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: l
+ 
+ Your initial comment was about this text. Keep this context in mind when responding to the user's questions."""
+ 
++    # Add meta prompt if available
++    if meta_prompt and meta_prompt.strip():
++        system_prompt += f"""
++
++Additional instructions:
++{meta_prompt.strip()}"""
++
++    # @@@ Add state prompt if available (between meta and voice-specific)
++    if state_prompt and state_prompt.strip():
++        system_prompt += f"""
++
++User's current state:
++{state_prompt.strip()}"""
++
+     # Build full prompt with conversation history
+     prompt = system_prompt + "\n\nConversation history:\n"
+ 
+@@ -99,11 +118,13 @@ def chat_with_voice(voice_name: str, voice_config: dict, conversation_history: l
+         "text": {"type": "str"},
+         "session_id": {"type": "str"},
+         "voices": {"type": "dict"},
+-        "applied_comments": {"type": "list"}
++        "applied_comments": {"type": "list"},
++        "meta_prompt": {"type": "str"},
++        "state_prompt": {"type": "str"}
+     },
+     category="Analysis"
+ )
+-def analyze_text(text: str, session_id: str, voices: dict = None, applied_comments: list = None):
++def analyze_text(text: str, session_id: str, voices: dict = None, applied_comments: list = None, meta_prompt: str = "", state_prompt: str = ""):
+     """
+     Stateless analysis - returns ONE new comment based on text and applied comments.
+ 
+@@ -112,6 +133,8 @@ def analyze_text(text: str, session_id: str, voices: dict = None, applied_commen
+         session_id: Session ID (for future use)
+         voices: Voice configuration
+         applied_comments: List of already applied comments (to avoid duplicates)
++        meta_prompt: Additional instructions that apply to all voices
++        state_prompt: User's current emotional state prompt
+ 
+     Returns:
+         Dictionary with single new voice (or empty list)
+@@ -120,12 +143,14 @@ def analyze_text(text: str, session_id: str, voices: dict = None, applied_commen
+     print(f"🎯 Stateless analyze_text() called")
+     print(f"   Text: {text[:100]}...")
+     print(f"   Applied comments: {len(applied_comments or [])}")
++    print(f"   Meta prompt: {repr(meta_prompt)[:100]}")
++    print(f"   State prompt: {repr(state_prompt)[:100]}")
+     print(f"{'='*60}\n")
+ 
+     agent = PolyAgent(id="voice-analyzer")
+ 
+     # Get voices from stateless analyzer
+-    result = analyze_stateless(agent, text, applied_comments or [], voices)
++    result = analyze_stateless(agent, text, applied_comments or [], voices, meta_prompt, state_prompt)
+ 
+     print(f"✅ Returning {result['new_voices_added']} new voice(s)")
+ 
+
+*** FILE: backend/stateless_analyzer.py ***
+@@ -16,7 +16,7 @@ class VoiceTrigger(BaseModel):
+ class SingleVoiceAnalysis(BaseModel):
+     voice: Optional[VoiceTrigger] = Field(description="Single voice trigger, or None if nothing to comment")
+ 
+-def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict], voices: dict = None) -> dict:
++def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict], voices: dict = None, meta_prompt: str = "", state_prompt: str = "") -> dict:
+     """
+     Stateless analysis - receives applied comments, returns ONE new comment.
+ 
+@@ -25,6 +25,8 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],
+         text: Text to analyze (completed sentences only)
+         applied_comments: List of already applied comments (to avoid duplicates)
+         voices: Voice configuration
++        meta_prompt: Additional instructions that apply to all voices
++        state_prompt: User's current emotional state prompt
+ 
+     Returns:
+         Dict with single new voice (or empty list if none)
+@@ -76,6 +78,20 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],
+ - Only comment on complete sentences (ending with .!?。！？)
+ - Write in the SAME LANGUAGE as the text"""
+ 
++    # @@@ Add meta prompt if available
++    if meta_prompt and meta_prompt.strip():
++        prompt += f"""
++
++Additional instructions:
++{meta_prompt.strip()}"""
++
++    # @@@ Add state prompt if available
++    if state_prompt and state_prompt.strip():
++        prompt += f"""
++
++User's current state:
++{state_prompt.strip()}"""
++
+     print("🤖 Calling LLM for one new comment...")
+ 
+     result = agent.run(
+
+*** FILE: frontend/src/App.tsx ***
+@@ -17,8 +17,9 @@ import AnalysisView from './components/AnalysisView';
+ import AboutView from './components/AboutView';
+ import AgentDropdown from './components/AgentDropdown';
+ import ChatWidgetUI from './components/ChatWidgetUI';
++import StateChooser from './components/StateChooser';
+ import type { VoiceConfig } from './types/voice';
+-import { getVoices } from './utils/voiceStorage';
++import { getVoices, getMetaPrompt, getStateConfig } from './utils/voiceStorage';
+ import { getDefaultVoices, chatWithVoice } from './api/voiceApi';
+ 
+ // @@@ Left Toolbar Component - floating toolbelt within left margin
+@@ -265,6 +266,12 @@ export default function App() {
+   // @@@ Warning dialog state
+   const [showWarning, setShowWarning] = useState(false);
+ 
++  // @@@ State chooser
++  const [selectedState, setSelectedState] = useState<string | null>(
++    () => localStorage.getItem('selected-state')
++  );
++  const [stateConfig, setStateConfig] = useState(() => getStateConfig());
++
+   // @@@ Per-cell textarea refs for positioning and style calculations
+   const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+   const containerRef = useRef<HTMLDivElement>(null);
+@@ -326,6 +333,13 @@ export default function App() {
+     }
+   }, [voiceConfigs]);
+ 
++  // @@@ Reload state config when returning to writing view
++  useEffect(() => {
++    if (currentView === 'writing') {
++      setStateConfig(getStateConfig());
++    }
++  }, [currentView]);
++
+   // Initialize engine
+   useEffect(() => {
+     const sessionId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+@@ -584,6 +598,13 @@ export default function App() {
+       return next;
+     });
+ 
++    // @@@ Auto-resize textarea to prevent internal scrolling
++    const textarea = textareaRefs.current.get(cellId);
++    if (textarea) {
++      textarea.style.height = 'auto';
++      textarea.style.height = textarea.scrollHeight + 'px';
++    }
++
+     // Close dropdown if @ was deleted in the trigger cell
+     if (dropdownVisible && dropdownTriggerCellId === cellId) {
+       if (!newText.includes('@')) {
+@@ -646,9 +667,15 @@ export default function App() {
+ 
+   const confirmStartFresh = useCallback(() => {
+     localStorage.removeItem('ink_memory_state');
++    localStorage.removeItem('selected-state');
+     window.location.reload();
+   }, []);
+ 
++  const handleStateChoose = useCallback((stateId: string) => {
++    setSelectedState(stateId);
++    localStorage.setItem('selected-state', stateId);
++  }, []);
++
+   // @@@ Insert @ character at the end of last text cell
+   const handleInsertAgent = useCallback(() => {
+     if (!state || !engineRef.current) return;
+@@ -770,12 +797,18 @@ export default function App() {
+         .join('');
+ 
+       // Call backend - use voiceConfig.name as the voice name for the prompt
++      const metaPrompt = getMetaPrompt();
++      const statePrompt = selectedState && stateConfig.states[selectedState]
++        ? stateConfig.states[selectedState].prompt
++        : '';
+       const response = await chatWithVoice(
+         widgetData.voiceConfig.name,  // Use the display name, not the key
+         widgetData.voiceConfig,
+         chatWidget.getConversationHistory().slice(0, -1), // Exclude last message (just added)
+         message,
+-        allText
++        allText,
++        metaPrompt,
++        statePrompt
+       );
+ 
+       // Add assistant response
+@@ -792,7 +825,7 @@ export default function App() {
+         return next;
+       });
+     }
+-  }, [state]);
++  }, [state, selectedState, stateConfig]);
+ 
+   // @@@ Handle deleting chat widget
+   const handleChatDelete = useCallback((widgetId: string) => {
+@@ -935,6 +968,15 @@ export default function App() {
+                   position: 'relative',
+                   maxWidth: '600px'
+                 }}>
++                  {/* State chooser widget - always shown, collapses when state selected */}
++                  <div style={{ marginBottom: 24 }}>
++                    <StateChooser
++                      stateConfig={stateConfig}
++                      selectedState={selectedState}
++                      onChoose={handleStateChoose}
++                    />
++                  </div>
++
+                   {/* Render cells sequentially with per-cell highlights */}
+                   {state.cells.map((cell, idx) => {
+                     if (cell.type === 'text') {
+@@ -972,6 +1014,9 @@ export default function App() {
+                                   refsReadyTriggered.current = true;
+                                   setRefsReady(prev => prev + 1);
+                                 }
++                                // @@@ Force height to match scrollHeight to prevent internal scrolling
++                                el.style.height = 'auto';
++                                el.style.height = el.scrollHeight + 'px';
+                               } else {
+                                 textareaRefs.current.delete(cell.id);
+                               }
+@@ -986,7 +1031,6 @@ export default function App() {
+                             onKeyUp={(e) => handleCursorChange(cell.id, e)}
+                             onKeyDown={(e) => handleKeyDown(cell.id, e)}
+                             placeholder={idx === 0 ? "Start writing..." : "Continue writing..."}
+-                            rows={lineCount}
+                             style={{
+                               width: '100%',
+                               border: 'none',
+@@ -1002,7 +1046,11 @@ export default function App() {
+                               zIndex: 1,
+                               marginBottom: '0px',
+                               overflow: 'hidden',
+-                              minHeight: '32px'
++                              overflowWrap: 'break-word',
++                              wordWrap: 'break-word',
++                              whiteSpace: 'pre-wrap',
++                              minHeight: '32px',
++                              height: 'auto'
+                             }}
+                           />
+                         </div>
+
+*** FILE: frontend/src/api/voiceApi.ts ***
+@@ -40,14 +40,14 @@ interface StatusResponse {
+ /**
+  * Trigger voice analysis session
+  */
+-export async function triggerAnalysis(text: string, sessionId: string, voices?: any, appliedComments?: any[]): Promise<string> {
++export async function triggerAnalysis(text: string, sessionId: string, voices?: any, appliedComments?: any[], metaPrompt?: string, statePrompt?: string): Promise<string> {
+   console.log('📤 Sending trigger request...');
+   const response = await fetch(`${API_BASE}/api/trigger`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({
+       session_id: 'analyze_text',
+-      params: { text, session_id: sessionId, voices, applied_comments: appliedComments || [] }
++      params: { text, session_id: sessionId, voices, applied_comments: appliedComments || [], meta_prompt: metaPrompt || '', state_prompt: statePrompt || '' }
+     })
+   });
+ 
+@@ -99,8 +99,8 @@ export async function getAnalysisResult(exec_id: string): Promise<StatusResponse
+ /**
+  * Analyze text and return voices with metadata (all-in-one)
+  */
+-export async function analyzeText(text: string, sessionId: string, voices?: any, appliedComments?: any[]) {
+-  const exec_id = await triggerAnalysis(text, sessionId, voices, appliedComments);
++export async function analyzeText(text: string, sessionId: string, voices?: any, appliedComments?: any[], metaPrompt?: string, statePrompt?: string) {
++  const exec_id = await triggerAnalysis(text, sessionId, voices, appliedComments, metaPrompt, statePrompt);
+   const result = await getAnalysisResult(exec_id);
+   // @@@ Return both voices and new_voices_added for energy refund mechanism
+   return {
+@@ -117,7 +117,9 @@ export async function chatWithVoice(
+   voiceConfig: any,
+   conversationHistory: Array<{ role: string; content: string }>,
+   userMessage: string,
+-  originalText?: string
++  originalText?: string,
++  metaPrompt?: string,
++  statePrompt?: string
+ ): Promise<string> {
+   console.log('💬 Sending chat request to backend...');
+ 
+@@ -132,7 +134,9 @@ export async function chatWithVoice(
+         voice_config: voiceConfig,
+         conversation_history: conversationHistory,
+         user_message: userMessage,
+-        original_text: originalText || ''
++        original_text: originalText || '',
++        meta_prompt: metaPrompt || '',
++        state_prompt: statePrompt || ''
+       }
+     })
+   });
+
+*** FILE: frontend/src/components/AgentDropdown.tsx ***
+@@ -31,6 +31,8 @@ interface AgentDropdownProps {
+ export default function AgentDropdown({ voices, position, onSelect, onClose }: AgentDropdownProps) {
+   const enabledVoices = Object.entries(voices).filter(([_, cfg]) => cfg.enabled);
+   const [selectedIndex, setSelectedIndex] = React.useState(0);
++  const containerRef = React.useRef<HTMLDivElement>(null);
++  const itemRefs = React.useRef<Map<number, HTMLDivElement>>(new Map());
+ 
+   // Keyboard navigation
+   React.useEffect(() => {
+@@ -40,10 +42,10 @@ export default function AgentDropdown({ voices, position, onSelect, onClose }: A
+         onClose();
+       } else if (e.key === 'ArrowDown') {
+         e.preventDefault();
+-        setSelectedIndex(prev => (prev + 1) % enabledVoices.length);
++        setSelectedIndex(prev => Math.min(prev + 1, enabledVoices.length - 1));
+       } else if (e.key === 'ArrowUp') {
+         e.preventDefault();
+-        setSelectedIndex(prev => (prev - 1 + enabledVoices.length) % enabledVoices.length);
++        setSelectedIndex(prev => Math.max(prev - 1, 0));
+       } else if (e.key === 'Enter') {
+         e.preventDefault();
+         const [name, cfg] = enabledVoices[selectedIndex];
+@@ -54,6 +56,32 @@ export default function AgentDropdown({ voices, position, onSelect, onClose }: A
+     return () => document.removeEventListener('keydown', handleKeyDown);
+   }, [onClose, enabledVoices, selectedIndex, onSelect]);
+ 
++  // @@@ Auto-scroll to selected item
++  React.useEffect(() => {
++    const selectedItem = itemRefs.current.get(selectedIndex);
++    const container = containerRef.current;
++
++    if (selectedItem && container) {
++      const itemRect = selectedItem.getBoundingClientRect();
++      const containerRect = container.getBoundingClientRect();
++
++      // Calculate positions relative to container
++      const itemTop = selectedItem.offsetTop;
++      const itemBottom = itemTop + selectedItem.offsetHeight;
++      const containerScrollTop = container.scrollTop;
++      const containerHeight = container.clientHeight;
++
++      // Only scroll if item is not fully visible
++      if (itemTop < containerScrollTop) {
++        // Item is above visible area - scroll up
++        container.scrollTop = itemTop;
++      } else if (itemBottom > containerScrollTop + containerHeight) {
++        // Item is below visible area - scroll down
++        container.scrollTop = itemBottom - containerHeight;
++      }
++    }
++  }, [selectedIndex]);
++
+   if (enabledVoices.length === 0) {
+     return (
+       <div style={{
+@@ -77,6 +105,7 @@ export default function AgentDropdown({ voices, position, onSelect, onClose }: A
+ 
+   return (
+     <div
++      ref={containerRef}
+       style={{
+         position: 'fixed',
+         left: `${position.x}px`,
+@@ -98,6 +127,13 @@ export default function AgentDropdown({ voices, position, onSelect, onClose }: A
+         return (
+           <div
+             key={name}
++            ref={(el) => {
++              if (el) {
++                itemRefs.current.set(idx, el);
++              } else {
++                itemRefs.current.delete(idx);
++              }
++            }}
+             onClick={() => onSelect(name, cfg)}
+             onMouseEnter={() => setSelectedIndex(idx)}
+             style={{
+
+*** FILE: frontend/src/components/ChatWidgetUI.tsx ***
+@@ -5,6 +5,26 @@ import {
+   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
+ } from 'react-icons/fa';
+ 
++// @@@ Inject CSS keyframes for button pulse animation
++if (typeof document !== 'undefined') {
++  const styleId = 'chat-widget-pulse-animation';
++  if (!document.getElementById(styleId)) {
++    const style = document.createElement('style');
++    style.id = styleId;
++    style.textContent = `
++      @keyframes pulse {
++        0%, 100% {
++          opacity: 0.5;
++        }
++        50% {
++          opacity: 1;
++        }
++      }
++    `;
++    document.head.appendChild(style);
++  }
++}
++
+ const iconMap = {
+   brain: FaBrain,
+   heart: FaHeart,
+@@ -243,7 +263,8 @@ export default function ChatWidgetUI({ data, onSendMessage, onDelete, isProcessi
+             fontWeight: 500,
+             cursor: isProcessing || !inputValue.trim() ? 'not-allowed' : 'pointer',
+             transition: 'all 0.2s',
+-            fontFamily: 'system-ui'
++            fontFamily: 'system-ui',
++            animation: isProcessing ? 'pulse 1.5s ease-in-out infinite' : 'none'
+           }}
+           onMouseEnter={(e) => {
+             if (!isProcessing && inputValue.trim()) {
+
+*** FILE: frontend/src/components/StateChooser.tsx ***
+@@ -0,0 +1,143 @@
++import { useState } from 'react';
++import type { StateConfig } from '../types/voice';
++
++interface Props {
++  stateConfig: StateConfig;
++  selectedState: string | null;
++  onChoose: (stateId: string) => void;
++}
++
++export default function StateChooser({ stateConfig, selectedState, onChoose }: Props) {
++  const [isExpanded, setIsExpanded] = useState(!selectedState);
++
++  const selectedStateData = selectedState ? stateConfig.states[selectedState] : null;
++
++  return (
++    <div style={{
++      padding: '16px 20px',
++      background: 'linear-gradient(135deg, #fffef9 0%, #f8f0e6 100%)',
++      border: '1px solid #d0c4b0',
++      borderRadius: 8,
++      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
++      fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++    }}>
++      {/* Compact view when state is selected */}
++      {selectedStateData && !isExpanded ? (
++        <div style={{
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'space-between',
++          gap: 12
++        }}>
++          <div style={{
++            display: 'flex',
++            alignItems: 'center',
++            gap: 12,
++            flex: 1
++          }}>
++            <span style={{
++              fontSize: 13,
++              color: '#666',
++              fontWeight: 500
++            }}>
++              Current state:
++            </span>
++            <span style={{
++              fontSize: 14,
++              fontWeight: 600,
++              color: '#333',
++              padding: '4px 12px',
++              background: '#fff',
++              border: '1px solid #d0c4b0',
++              borderRadius: 4
++            }}>
++              {selectedStateData.name}
++            </span>
++          </div>
++          <button
++            onClick={() => setIsExpanded(true)}
++            style={{
++              padding: '6px 14px',
++              fontSize: 12,
++              fontWeight: 500,
++              border: '1px solid #d0c4b0',
++              background: '#fff',
++              borderRadius: 4,
++              cursor: 'pointer',
++              transition: 'all 0.2s',
++              color: '#333'
++            }}
++            onMouseEnter={(e) => {
++              e.currentTarget.style.background = '#f0f0f0';
++            }}
++            onMouseLeave={(e) => {
++              e.currentTarget.style.background = '#fff';
++            }}
++          >
++            Change
++          </button>
++        </div>
++      ) : (
++        /* Expanded view - choose state */
++        <>
++          <p style={{
++            margin: '0 0 16px 0',
++            fontSize: 15,
++            color: '#333',
++            textAlign: 'center',
++            lineHeight: 1.5,
++            fontWeight: 500
++          }}>
++            {stateConfig.greeting}
++          </p>
++          <div style={{
++            display: 'flex',
++            gap: 10,
++            justifyContent: 'center',
++            flexWrap: 'wrap'
++          }}>
++            {Object.entries(stateConfig.states).map(([id, state]) => {
++              const isSelected = id === selectedState;
++              return (
++                <button
++                  key={id}
++                  onClick={() => {
++                    onChoose(id);
++                    setIsExpanded(false);
++                  }}
++                  style={{
++                    padding: '10px 20px',
++                    fontSize: 14,
++                    fontWeight: isSelected ? 600 : 500,
++                    border: isSelected ? '2px solid #666' : '1px solid #d0c4b0',
++                    background: isSelected ? '#fff' : '#fff',
++                    borderRadius: 6,
++                    cursor: 'pointer',
++                    transition: 'all 0.2s',
++                    minWidth: '90px',
++                    color: '#333',
++                    boxShadow: isSelected ? '0 2px 6px rgba(0,0,0,0.12)' : 'none'
++                  }}
++                  onMouseEnter={(e) => {
++                    if (!isSelected) {
++                      e.currentTarget.style.background = '#f8f0e6';
++                      e.currentTarget.style.borderColor = '#999';
++                    }
++                  }}
++                  onMouseLeave={(e) => {
++                    if (!isSelected) {
++                      e.currentTarget.style.background = '#fff';
++                      e.currentTarget.style.borderColor = '#d0c4b0';
++                    }
++                  }}
++                >
++                  {state.name}
++                </button>
++              );
++            })}
++          </div>
++        </>
++      )}
++    </div>
++  );
++}
+
+*** FILE: frontend/src/components/VoiceSettings.tsx ***
+@@ -1,6 +1,6 @@
+-import { useState, useEffect } from 'react';
+-import type { VoiceConfig } from '../types/voice';
+-import { getVoices, saveVoices, clearVoices } from '../utils/voiceStorage';
++import { useState, useEffect, useRef } from 'react';
++import type { VoiceConfig, StateConfig, UserState } from '../types/voice';
++import { getVoices, saveVoices, clearVoices, getMetaPrompt, saveMetaPrompt, getStateConfig, saveStateConfig } from '../utils/voiceStorage';
+ 
+ // @@@ Display mappings (text name → visual)
+ const COLORS = {
+@@ -24,7 +24,10 @@ interface Props {
+ 
+ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+   const [voices, setVoices] = useState<Record<string, VoiceConfig>>({});
++  const [metaPrompt, setMetaPrompt] = useState<string>('');
++  const [stateConfig, setStateConfig] = useState<StateConfig>(getStateConfig());
+   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
++  const scrollContainerRef = useRef<HTMLDivElement>(null);
+ 
+   // @@@ Sync with defaultVoices prop (handles async fetch + Use Default button)
+   useEffect(() => {
+@@ -34,8 +37,15 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+     }
+   }, [defaultVoices]);
+ 
++  // @@@ Load meta prompt from localStorage
++  useEffect(() => {
++    setMetaPrompt(getMetaPrompt());
++  }, []);
++
+   const handleSave = () => {
+     saveVoices(voices);
++    saveMetaPrompt(metaPrompt);
++    saveStateConfig(stateConfig);
+     onSave(voices);
+     setSaveStatus('saved');
+     setTimeout(() => setSaveStatus('idle'), 2000);
+@@ -46,10 +56,14 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+     console.log('Current voices:', voices);
+     console.log('Default voices:', defaultVoices);
+     clearVoices();
++    localStorage.removeItem('meta-prompt');
++    localStorage.removeItem('state-config');
+     // Deep copy to force React to re-render
+     const freshDefaults = JSON.parse(JSON.stringify(defaultVoices));
+     console.log('Fresh defaults:', freshDefaults);
+     setVoices(freshDefaults);
++    setMetaPrompt(getMetaPrompt());
++    setStateConfig(getStateConfig());
+     onSave(freshDefaults);
+   };
+ 
+@@ -65,6 +79,16 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+         color: 'blue'
+       }
+     });
++
++    // Scroll to bottom after adding
++    setTimeout(() => {
++      if (scrollContainerRef.current) {
++        scrollContainerRef.current.scrollTo({
++          top: scrollContainerRef.current.scrollHeight,
++          behavior: 'smooth'
++        });
++      }
++    }, 100);
+   };
+ 
+   const handleDelete = (id: string) => {
+@@ -82,7 +106,13 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+   };
+ 
+   const handleExport = () => {
+-    const blob = new Blob([JSON.stringify(voices, null, 2)], { type: 'application/json' });
++    // @@@ Export voices, meta prompt, and state config
++    const data = {
++      voices,
++      metaPrompt,
++      stateConfig
++    };
++    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+     const url = URL.createObjectURL(blob);
+     const a = document.createElement('a');
+     a.href = url;
+@@ -99,41 +129,296 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+       if (file) {
+         file.text().then(text => {
+           const imported = JSON.parse(text);
+-          setVoices(imported);
+-          saveVoices(imported);
+-          onSave(imported);
++          // @@@ Support old format (just voices) and new format (voices + metaPrompt + stateConfig)
++          const importedVoices = imported.voices || imported;
++          const importedMetaPrompt = imported.metaPrompt || '';
++          const importedStateConfig = imported.stateConfig || getStateConfig();
++          setVoices(importedVoices);
++          setMetaPrompt(importedMetaPrompt);
++          setStateConfig(importedStateConfig);
++          saveVoices(importedVoices);
++          saveMetaPrompt(importedMetaPrompt);
++          saveStateConfig(importedStateConfig);
++          onSave(importedVoices);
+         });
+       }
+     };
+     input.click();
+   };
+ 
++  const handleAddState = () => {
++    const newId = `state_${Date.now()}`;
++    setStateConfig({
++      ...stateConfig,
++      states: {
++        ...stateConfig.states,
++        [newId]: { name: 'New State', prompt: '' }
++      }
++    });
++  };
++
++  const handleDeleteState = (id: string) => {
++    const { [id]: _, ...rest } = stateConfig.states;
++    setStateConfig({ ...stateConfig, states: rest });
++  };
++
++  const handleUpdateState = (id: string, field: keyof UserState, value: string) => {
++    setStateConfig({
++      ...stateConfig,
++      states: {
++        ...stateConfig.states,
++        [id]: { ...stateConfig.states[id], [field]: value }
++      }
++    });
++  };
++
+   return (
+     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f8f0e6', overflow: 'hidden' }}>
+-      <div style={{ padding: '20px 32px', background: '#f8f0e6', flexShrink: 0 }}>
+-        <div style={{ display: 'flex', gap: 8 }}>
+-          <button onClick={handleAdd} style={{ padding: '6px 12px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer' }}>+ Add</button>
+-          <button onClick={handleImport} style={{ padding: '6px 12px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer' }}>Import</button>
+-          <button onClick={handleExport} style={{ padding: '6px 12px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer' }}>Export</button>
+-          <button onClick={handleDefault} style={{ padding: '6px 12px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer' }}>Use Default</button>
++      {/* Fixed Header - Function Bar */}
++      <div style={{
++        padding: '16px 24px',
++        background: '#fff',
++        borderBottom: '2px solid #d0c4b0',
++        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
++        flexShrink: 0
++      }}>
++        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
++          <button onClick={handleAdd} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>+ Add Voice</button>
++          <button onClick={handleImport} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Import</button>
++          <button onClick={handleExport} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Export</button>
++          <button onClick={handleDefault} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fffef9', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Use Default</button>
++          <div style={{ flex: 1 }} />
+           <button
+             onClick={handleSave}
+             style={{
+-              padding: '6px 12px',
++              padding: '8px 20px',
+               border: saveStatus === 'saved' ? '1px solid #27ae60' : '1px solid #666',
+               background: saveStatus === 'saved' ? '#27ae60' : '#333',
+               color: '#fff',
+               borderRadius: 4,
+               cursor: 'pointer',
+               fontWeight: 'bold',
++              fontSize: 13,
+               transition: 'all 0.3s'
+             }}
+           >
+             {saveStatus === 'saved' ? '✓ Saved!' : 'Save'}
+           </button>
+         </div>
+       </div>
+-      <div style={{ flex: 1, overflowY: 'auto', padding: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20, alignContent: 'start', background: '#f8f0e6' }}>
++
++      {/* Scrollable Content Area */}
++      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f8f0e6' }}>
++        {/* Meta Prompt Section */}
++        <div style={{
++          marginBottom: 24,
++          padding: 20,
++          background: '#fffef9',
++          border: '1px solid #d0c4b0',
++          borderRadius: 6,
++          boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
++        }}>
++          <h3 style={{
++            margin: '0 0 12px 0',
++            fontSize: 15,
++            fontWeight: 600,
++            color: '#333',
++            letterSpacing: '-0.01em'
++          }}>
++            Meta Prompt
++          </h3>
++          <p style={{
++            margin: '0 0 12px 0',
++            fontSize: 12,
++            color: '#666',
++            lineHeight: 1.5
++          }}>
++            Global instructions applied to all voice personas (affects both comments and chat)
++          </p>
++          <textarea
++            value={metaPrompt}
++            onChange={e => setMetaPrompt(e.target.value)}
++            placeholder="e.g., Be honest and pragmatic. Prioritize mental well-being over theatrical commentary..."
++            style={{
++              width: '100%',
++              minHeight: 100,
++              padding: 12,
++              fontSize: 13,
++              fontFamily: 'monospace',
++              border: '1px solid #d0c4b0',
++              borderRadius: 4,
++              background: '#fff',
++              resize: 'vertical',
++              boxSizing: 'border-box',
++              lineHeight: 1.6
++            }}
++          />
++        </div>
++
++        {/* User States Section */}
++        <div style={{
++          marginBottom: 24,
++          padding: 20,
++          background: '#fffef9',
++          border: '1px solid #d0c4b0',
++          borderRadius: 6,
++          boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
++        }}>
++          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
++            <h3 style={{
++              margin: 0,
++              fontSize: 15,
++              fontWeight: 600,
++              color: '#333',
++              letterSpacing: '-0.01em'
++            }}>
++              User States
++            </h3>
++            <button
++              onClick={handleAddState}
++              style={{
++                padding: '4px 12px',
++                fontSize: 12,
++                border: '1px solid #d0c4b0',
++                background: '#fff',
++                borderRadius: 4,
++                cursor: 'pointer'
++              }}
++            >
++              + Add State
++            </button>
++          </div>
++          <p style={{
++            margin: '0 0 16px 0',
++            fontSize: 12,
++            color: '#666',
++            lineHeight: 1.5
++          }}>
++            Configure states shown at startup, each with a specific prompt context
++          </p>
++
++          {/* Greeting */}
++          <div style={{ marginBottom: 16 }}>
++            <label style={{
++              display: 'block',
++              fontSize: 12,
++              fontWeight: 600,
++              color: '#333',
++              marginBottom: 6
++            }}>
++              Greeting Message
++            </label>
++            <input
++              type="text"
++              value={stateConfig.greeting}
++              onChange={e => setStateConfig({ ...stateConfig, greeting: e.target.value })}
++              placeholder="e.g., How are you feeling today?"
++              style={{
++                width: '100%',
++                padding: 8,
++                fontSize: 13,
++                border: '1px solid #d0c4b0',
++                borderRadius: 4,
++                background: '#fff',
++                boxSizing: 'border-box'
++              }}
++            />
++          </div>
++
++          {/* States */}
++          <div style={{ display: 'grid', gap: 12 }}>
++            {Object.entries(stateConfig.states).map(([id, state]) => (
++              <div key={id} style={{
++                padding: 12,
++                background: '#f8f0e6',
++                border: '1px solid #d0c4b0',
++                borderRadius: 4,
++                position: 'relative'
++              }}>
++                <button
++                  onClick={() => handleDeleteState(id)}
++                  style={{
++                    position: 'absolute',
++                    top: 8,
++                    right: 8,
++                    background: 'none',
++                    border: 'none',
++                    cursor: 'pointer',
++                    fontSize: 14
++                  }}
++                  title="Delete"
++                >
++                  🗑️
++                </button>
++
++                <div style={{ marginBottom: 8 }}>
++                  <label style={{
++                    display: 'block',
++                    fontSize: 11,
++                    fontWeight: 600,
++                    color: '#666',
++                    marginBottom: 4
++                  }}>
++                    State Name (shown to user)
++                  </label>
++                  <input
++                    type="text"
++                    value={state.name}
++                    onChange={e => handleUpdateState(id, 'name', e.target.value)}
++                    placeholder="e.g., Happy"
++                    style={{
++                      width: '100%',
++                      padding: 6,
++                      fontSize: 13,
++                      border: '1px solid #d0c4b0',
++                      borderRadius: 4,
++                      background: '#fff',
++                      boxSizing: 'border-box'
++                    }}
++                  />
++                </div>
++
++                <div>
++                  <label style={{
++                    display: 'block',
++                    fontSize: 11,
++                    fontWeight: 600,
++                    color: '#666',
++                    marginBottom: 4
++                  }}>
++                    State Prompt (added to voice context)
++                  </label>
++                  <textarea
++                    value={state.prompt}
++                    onChange={e => handleUpdateState(id, 'prompt', e.target.value)}
++                    placeholder="e.g., The user is feeling positive and energized..."
++                    style={{
++                      width: '100%',
++                      minHeight: 60,
++                      padding: 8,
++                      fontSize: 12,
++                      fontFamily: 'monospace',
++                      border: '1px solid #d0c4b0',
++                      borderRadius: 4,
++                      background: '#fff',
++                      resize: 'vertical',
++                      boxSizing: 'border-box',
++                      lineHeight: 1.4
++                    }}
++                  />
++                </div>
++              </div>
++            ))}
++          </div>
++        </div>
++
++        {/* Voice Personas Grid */}
++        <div style={{
++          display: 'grid',
++          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
++          gap: 20,
++          alignContent: 'start'
++        }}>
+         {Object.entries(voices).map(([id, voice]) => (
+           <div key={id} style={{ padding: 12, border: '1px solid #d0c4b0', borderRadius: 4, position: 'relative', background: '#fffef9' }}>
+             <button
+@@ -190,6 +475,7 @@ export default function VoiceSettings({ defaultVoices, onSave }: Props) {
+             />
+           </div>
+         ))}
++        </div>
+       </div>
+     </div>
+   );
+
+*** FILE: frontend/src/engine/EditorEngine.ts ***
+@@ -260,6 +260,7 @@ export class EditorEngine {
+     try {
+       // Call backend (returns ONLY ONE comment at a time)
+       const { analyzeText } = await import('../api/voiceApi');
++      const { getMetaPrompt, getStateConfig } = await import('../utils/voiceStorage');
+ 
+       // Convert voiceConfigs to backend format
+       const backendVoices: Record<string, any> = {};
+@@ -276,7 +277,16 @@ export class EditorEngine {
+ 
+       // Send only APPLIED commentors to backend
+       const appliedCommentors = this.state.commentors.filter(c => c.appliedAt);
+-      const result = await analyzeText(text, this.state.sessionId, backendVoices, appliedCommentors);
++      const metaPrompt = getMetaPrompt();
++
++      // Get state prompt from localStorage
++      const selectedState = localStorage.getItem('selected-state');
++      const stateConfig = getStateConfig();
++      const statePrompt = selectedState && stateConfig.states[selectedState]
++        ? stateConfig.states[selectedState].prompt
++        : '';
++
++      const result = await analyzeText(text, this.state.sessionId, backendVoices, appliedCommentors, metaPrompt, statePrompt);
+ 
+       // Backend returns at most ONE voice
+       if (result.voices.length > 0) {
+
+*** FILE: frontend/src/types/voice.ts ***
+@@ -5,3 +5,13 @@ export interface VoiceConfig {
+   icon: string;
+   color: string;
+ }
++
++export interface UserState {
++  name: string;
++  prompt: string;
++}
++
++export interface StateConfig {
++  greeting: string;
++  states: Record<string, UserState>;
++}
+
+*** FILE: frontend/src/utils/voiceStorage.ts ***
+@@ -1,6 +1,30 @@
+-import type { VoiceConfig } from '../types/voice';
++import type { VoiceConfig, StateConfig } from '../types/voice';
+ 
+ const KEY = 'voice-customizations';
++const META_PROMPT_KEY = 'meta-prompt';
++const STATE_CONFIG_KEY = 'state-config';
++
++// @@@ Default meta prompt: honest, pragmatic advice over role-playing fluff
++const DEFAULT_META_PROMPT = `Be honest and pragmatic. This is not actual Disco Elysium - prioritize the user's mental well-being and genuine insight over pure role-playing. Offer constructive perspectives that help with real thinking and writing, not just theatrical commentary.`;
++
++// @@@ Default state configuration
++const DEFAULT_STATE_CONFIG: StateConfig = {
++  greeting: "How are you feeling today?",
++  states: {
++    happy: {
++      name: "Happy",
++      prompt: "The user is feeling positive and energized. Encourage creative exploration and bold ideas."
++    },
++    ok: {
++      name: "OK",
++      prompt: "The user is feeling neutral. Provide balanced, steady guidance."
++    },
++    unhappy: {
++      name: "Unhappy",
++      prompt: "The user is feeling down. Be gentle, supportive, and focus on small wins."
++    }
++  }
++};
+ 
+ export const getVoices = (): Record<string, VoiceConfig> | null =>
+   JSON.parse(localStorage.getItem(KEY) || 'null');
+@@ -9,3 +33,17 @@ export const saveVoices = (voices: Record<string, VoiceConfig>) =>
+   localStorage.setItem(KEY, JSON.stringify(voices));
+ 
+ export const clearVoices = () => localStorage.removeItem(KEY);
++
++export const getMetaPrompt = (): string =>
++  localStorage.getItem(META_PROMPT_KEY) || DEFAULT_META_PROMPT;
++
++export const saveMetaPrompt = (prompt: string) =>
++  localStorage.setItem(META_PROMPT_KEY, prompt);
++
++export const getStateConfig = (): StateConfig => {
++  const stored = localStorage.getItem(STATE_CONFIG_KEY);
++  return stored ? JSON.parse(stored) : DEFAULT_STATE_CONFIG;
++};
++
++export const saveStateConfig = (config: StateConfig) =>
++  localStorage.setItem(STATE_CONFIG_KEY, JSON.stringify(config));

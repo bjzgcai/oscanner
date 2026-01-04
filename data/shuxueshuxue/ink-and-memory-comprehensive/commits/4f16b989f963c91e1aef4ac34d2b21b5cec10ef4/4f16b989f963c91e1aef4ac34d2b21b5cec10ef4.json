@@ -1,0 +1,14 @@
+{
+  "hash": "4f16b989f963c91e1aef4ac34d2b21b5cec10ef4",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 2 15:51:33 2025 +0800",
+  "subject": "Remove unused TipTap extension file",
+  "files": [
+    "frontend/src/extensions/VoiceHighlight.ts"
+  ],
+  "diff": "commits/4f16b989f963c91e1aef4ac34d2b21b5cec10ef4/4f16b989f963c91e1aef4ac34d2b21b5cec10ef4.diff",
+  "related_files": {
+    "frontend/src/extensions/VoiceHighlight.ts": []
+  }
+}

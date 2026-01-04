@@ -1,0 +1,14 @@
+{
+  "hash": "459d3941359e1e2a8ff26e0828b33e3dd386c0aa",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Dec 10 14:01:51 2025 +0800",
+  "subject": "remove placeholder text from i18n",
+  "files": [
+    "frontend/src/i18n.ts"
+  ],
+  "diff": "commits/459d3941359e1e2a8ff26e0828b33e3dd386c0aa/459d3941359e1e2a8ff26e0828b33e3dd386c0aa.diff",
+  "related_files": {
+    "frontend/src/i18n.ts": []
+  }
+}

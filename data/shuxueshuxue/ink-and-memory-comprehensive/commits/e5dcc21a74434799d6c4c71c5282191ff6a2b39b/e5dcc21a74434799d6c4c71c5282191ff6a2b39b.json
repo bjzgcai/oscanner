@@ -1,0 +1,20 @@
+{
+  "hash": "e5dcc21a74434799d6c4c71c5282191ff6a2b39b",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Oct 7 22:13:51 2025 +0800",
+  "subject": "Add demo screenshot and showcase original UI design",
+  "files": [
+    "README.md",
+    "assets/demo-screenshot.png"
+  ],
+  "diff": "commits/e5dcc21a74434799d6c4c71c5282191ff6a2b39b/e5dcc21a74434799d6c4c71c5282191ff6a2b39b.diff",
+  "related_files": {
+    "README.md": [
+      "assets/demo-screenshot.png"
+    ],
+    "assets/demo-screenshot.png": [
+      "README.md"
+    ]
+  }
+}

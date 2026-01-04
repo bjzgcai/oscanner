@@ -1,0 +1,355 @@
+commit bc06173f92d704ef74ef5839123ea519d448d160
+Author: Shaobin-Jiang <shaobin-jiang@outlook.com>
+Date:   Fri Nov 28 11:24:10 2025 +0800
+
+    support voice input
+
+diff --git a/frontend/src/App.css b/frontend/src/App.css
+index 97b85a7..4f0f8d9 100644
+--- a/frontend/src/App.css
++++ b/frontend/src/App.css
+@@ -263,3 +263,47 @@
+ .comments-panel::-webkit-scrollbar-thumb:hover {
+   background: #999;
+ }
++
++.voice-input-modal {
++  background-color: #25252588;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  height: 100vh;
++  width: 100vw;
++  position: fixed;
++  top: 0;
++  left: 0;
++  z-index: 99999;
++}
++
++.voice-input-container {
++  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;
++  background-color: #ddd;
++  border-radius: 10px;
++  width: 50%;
++  height: 50%;
++}
++
++.voice-input-result {
++  font-size: 1.25rem;
++  box-sizing: border-box;
++  width: 100%;
++  height: 80%;
++  padding: 20px;
++  overflow: auto;
++}
++
++.voice-input-button-group {
++  display: flex;
++  align-items: center;
++  justify-content: space-around;
++  width: 100%;
++  height: 18%;
++}
++
++.voice-input-button-group button {
++  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;
++  padding: 5px 10px;
++  font-size: 1.25rem;
++}
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index c4f1f1c..1c94098 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -9,7 +9,7 @@ import {
+   FaSync,
+   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass,
+-  FaAlignRight
++  FaAlignRight, FaMicrophone
+ } from 'react-icons/fa';
+ import TopNavBar from './components/TopNavBar';
+ import DeckManager from './components/DeckManager';
+@@ -47,12 +47,14 @@ function LeftToolbar({
+   onToggleAlign,
+   onShowCalendar,
+   onSaveToday,
++  onStartTalking,
+   isAligned
+ }: {
+   onInsertAgent: () => void;
+   onToggleAlign: () => void;
+   onShowCalendar: () => void;
+   onSaveToday: () => void;
++  onStartTalking: () => void;
+   isAligned: boolean;
+ }) {
+   return (
+@@ -162,7 +164,7 @@ function LeftToolbar({
+         @
+       </button>
+ 
+-      {/* Align button - last */}
++      {/* Align button - fourth */}
+       <button
+         onClick={onToggleAlign}
+         title={isAligned ? "Unalign Comments" : "Align Comments Right"}
+@@ -187,6 +189,32 @@ function LeftToolbar({
+       >
+         <FaAlignRight size={18} color={isAligned ? '#1976d2' : '#333'} />
+       </button>
++
++      {/* Align button - last */}
++      <button
++        onClick={onStartTalking}
++        title="Voice Input"
++        style={{
++          width: '36px',
++          height: '36px',
++          border: 'none',
++          borderRadius: '4px',
++          backgroundColor: isAligned ? '#e3f2fd' : '#fff',
++          cursor: 'pointer',
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'center',
++          transition: 'all 0.2s ease'
++        }}
++        onMouseEnter={(e) => {
++          e.currentTarget.style.backgroundColor = isAligned ? '#bbdefb' : '#f0f0f0';
++        }}
++        onMouseLeave={(e) => {
++          e.currentTarget.style.backgroundColor = isAligned ? '#e3f2fd' : '#fff';
++        }}
++      >
++        <FaMicrophone size={18} color={isAligned ? '#1976d2' : '#333'} />
++      </button>
+     </div>
+   );
+ }
+@@ -1412,6 +1440,218 @@ export default function App() {
+     }
+   }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);
+ 
++  const handleStartTalking = useCallback(async () => {
++    if (!textareaRefs.current) return;
++    if (!isAuthenticated) {
++      const toast = document.createElement('div');
++      toast.textContent = 'Please sign in to enable voice input';
++      toast.style.cssText = `
++        position: fixed;
++        top: 70px;
++        right: 20px;
++        background: #f44336;
++        color: white;
++        padding: 12px 20px;
++        borderRadius: 6px;
++        fontSize: 14px;
++        fontFamily: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
++        zIndex: 10000;
++        boxShadow: 0 4px 12px rgba(0,0,0,0.15);
++      `;
++      document.body.appendChild(toast);
++      setTimeout(() => {
++        toast.style.opacity = '0';
++        toast.style.transition = 'opacity 0.3s';
++        setTimeout(() => document.body.removeChild(toast), 300);
++      }, 2000);
++      return;
++    }
++
++    let voiceInputModal: HTMLDivElement = document.createElement('div');
++    voiceInputModal.className = 'voice-input-modal';
++    document.body.append(voiceInputModal);
++
++    let voiceInputContainer: HTMLDivElement = document.createElement('div');
++    voiceInputContainer.className = 'voice-input-container';
++    voiceInputModal.append(voiceInputContainer);
++
++    let voiceInputResult: HTMLParagraphElement = document.createElement('div');
++    voiceInputResult.className = 'voice-input-result';
++    voiceInputContainer.append(voiceInputResult);
++
++    let btnGroup: HTMLDivElement = document.createElement('div');
++    btnGroup.className = 'voice-input-button-group';
++    voiceInputContainer.append(btnGroup);
++
++    let startBtn: HTMLButtonElement = document.createElement('button');
++    startBtn.innerText = 'Start';
++
++    let stopBtn: HTMLButtonElement = document.createElement('button');
++    stopBtn.innerText = 'Pause';
++    stopBtn.disabled = true;
++
++    let applyBtn: HTMLButtonElement = document.createElement('button');
++    applyBtn.innerText = 'Apply';
++    applyBtn.disabled = true;
++
++    let cancelBtn: HTMLButtonElement = document.createElement('button');
++    cancelBtn.innerText = 'Cancel';
++
++    btnGroup.append(startBtn);
++    btnGroup.append(stopBtn);
++    btnGroup.append(applyBtn);
++    btnGroup.append(cancelBtn);
++
++    try {
++      let audioCtx: AudioContext;
++      let stream: MediaStream;
++      let processor: ScriptProcessorNode;
++      let source: MediaStreamAudioSourceNode;
++      let ws: WebSocket;
++      const targetSampleRate = 16000;
++
++      let sentences: Array<string> = [];
++      let sentenceId: number = -1;
++
++      function floatTo16BitPCM(float32Array: Float32Array): ArrayBuffer {
++        const buffer = new ArrayBuffer(float32Array.length * 2);
++        const view = new DataView(buffer);
++        let offset = 0;
++        for (let i = 0; i < float32Array.length; i++, offset += 2) {
++          let s = Math.max(-1, Math.min(1, float32Array[i]));
++          view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
++        }
++        return buffer;
++      }
++
++      function downsampleBuffer(buffer: Float32Array, inSampleRate: number, outSampleRate: number): Float32Array {
++        if (outSampleRate === inSampleRate) {
++          return buffer;
++        }
++        if (outSampleRate > inSampleRate) {
++          console.warn("downsampleBuffer: target sample rate is higher than input, returning original");
++          return buffer;
++        }
++        const sampleRateRatio = inSampleRate / outSampleRate;
++        const newLength = Math.round(buffer.length / sampleRateRatio);
++        const result = new Float32Array(newLength);
++        let offsetResult = 0;
++        let offsetBuffer = 0;
++        while (offsetResult < result.length) {
++          const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
++          let accum = 0, count = 0;
++          for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
++            accum += buffer[i];
++            count++;
++          }
++          result[offsetResult] = count ? accum / count : 0;
++          offsetResult++;
++          offsetBuffer = nextOffsetBuffer;
++        }
++        return result;
++      }
++
++      async function start() {
++        startBtn.disabled = true;
++        stopBtn.disabled = false;
++        applyBtn.disabled = false;
++
++        ws = new WebSocket('ws://127.0.0.1:8765/ws/speech-recognition');
++        ws.binaryType = 'arraybuffer';
++        ws.onerror = (e) => {
++          console.error('WS err', e);
++        };
++        ws.onmessage = (evt) => {
++          try {
++            const data = JSON.parse(evt.data);
++            let id = data.id;
++            if (id != sentenceId) {
++              sentenceId = id;
++              sentences.push('');
++            }
++            sentences[sentences.length - 1] = data.sentence;
++            voiceInputResult.innerHTML = sentences.map(v => `<p>${v}</p>`).join('');
++          } catch (e) {
++            console.log('Non-JSON message from server:', evt.data);
++          }
++        };
++
++        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
++        audioCtx = new window.AudioContext();
++        source = audioCtx.createMediaStreamSource(stream);
++
++        const inputSampleRate = audioCtx.sampleRate;
++        console.log('input sample rate', inputSampleRate);
++
++        const bufferSize = 4096;
++        processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
++
++        processor.onaudioprocess = (event) => {
++          const inputBuffer = event.inputBuffer.getChannelData(0);
++          const downsampled = downsampleBuffer(inputBuffer, inputSampleRate, targetSampleRate);
++          const pcm16ab = floatTo16BitPCM(downsampled);
++          if (ws && ws.readyState === WebSocket.OPEN) {
++            ws.send(pcm16ab);
++          }
++        };
++
++        source.connect(processor);
++        processor.connect(audioCtx.destination);
++
++        startBtn.disabled = true;
++        stopBtn.disabled = false;
++      }
++
++      function stop() {
++        startBtn.disabled = false;
++        stopBtn.disabled = true;
++
++        processor?.disconnect();
++        source?.disconnect();
++        audioCtx?.close();
++        stream?.getTracks().forEach(t => t.stop());
++        ws?.close();
++        startBtn.disabled = false;
++        stopBtn.disabled = true;
++        sentenceId = -1;
++      }
++
++      function apply() {
++        stop();
++        voiceInputModal.remove();
++
++        if (!engineRef.current) return;
++        const lastTextCell = [...engineRef.current.getState().cells].reverse().find(c => c.type === 'text');
++        if (!lastTextCell) return;
++        const textarea = textareaRefs.current.get(lastTextCell.id);
++        if (!textarea) return;
++
++        const currentContent = (lastTextCell as TextCell).content;
++        const newContent = currentContent + sentences.join('');
++        engineRef.current.updateTextCell(lastTextCell.id, newContent);
++
++        // Postpone setting of textarea height
++        setTimeout(() => {
++          textarea.style.height = `${textarea.scrollHeight}px`;
++        }, 100);
++      }
++
++      function cancel() {
++        stop();
++        voiceInputModal.remove();
++      }
++
++      startBtn.addEventListener('click', start);
++      stopBtn.addEventListener('click', stop);
++      applyBtn.addEventListener('click', apply);
++      cancelBtn.addEventListener('click', cancel);
++    
++    } catch (error) {
++      console.error('Voice input encountered an unexpected error:', error);
++      voiceInputModal.remove();
++    }
++  }, [isAuthenticated]);
++
+   const handleLoadEntry = useCallback((entry: CalendarEntry) => {
+     if (!engineRef.current) return;
+ 
+@@ -2108,6 +2348,7 @@ export default function App() {
+                 onToggleAlign={handleToggleAlign}
+                 onShowCalendar={() => setShowCalendarPopup(true)}
+                 onSaveToday={handleSaveToday}
++                onStartTalking={handleStartTalking}
+                 isAligned={commentsAligned}
+               />
+             </div>

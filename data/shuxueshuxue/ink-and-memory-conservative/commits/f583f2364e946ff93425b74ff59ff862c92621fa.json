@@ -1,0 +1,23 @@
+{
+  "sha": "f583f2364e946ff93425b74ff59ff862c92621fa",
+  "message": "remove proxy",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-09T04:03:14Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-09T04:03:14Z"
+  },
+  "stats": {
+    "total": 30,
+    "additions": 1,
+    "deletions": 29
+  },
+  "files_count": 2,
+  "parents": [
+    "33a61dd768ee2de788ecb09c8673e129486d0bb3"
+  ]
+}

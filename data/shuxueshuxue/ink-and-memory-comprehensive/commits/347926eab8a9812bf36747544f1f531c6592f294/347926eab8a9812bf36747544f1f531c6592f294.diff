@@ -1,0 +1,91 @@
+commit 347926eab8a9812bf36747544f1f531c6592f294
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Dec 3 16:16:49 2025 +0800
+
+    change model
+
+diff --git a/backend/config.py b/backend/config.py
+index f16fd39..09b5880 100644
+--- a/backend/config.py
++++ b/backend/config.py
+@@ -4,11 +4,14 @@ import os
+ 
+ # Model to use for voice analysis
+ MODEL = "claude-haiku-4.5"
++MODEL = "deepseek-v3.2"
+ 
+ # @@@ Sparsity control
+ MAX_VOICES = 5
+ MIN_TEXT_LENGTH = 20
+-SINGLE_COMMENT_MODE = True  # If True, only add 1 comment per request (gradual accumulation)
++SINGLE_COMMENT_MODE = (
++    True  # If True, only add 1 comment per request (gradual accumulation)
++)
+ 
+ # @@@ Image generation configuration
+ IMAGE_API_KEY = "sk-yz0JLc7sGbCHnwam70Bc9e29Dc684bAe904102C95dF32fB1"
+@@ -24,54 +27,56 @@ IMAGE_MAX_TOKENS = 1000
+ IMAGE_DESCRIPTION_MAX_TOKENS = 500
+ IMAGE_DESCRIPTION_TIMEOUT = 30
+ 
++
+ # @@@ Helper function to load voice prompts from files
+ def _load_prompt(filename):
+     """Load prompt from prompts/ directory."""
+     prompt_path = os.path.join(os.path.dirname(__file__), "prompts", filename)
+     try:
+-        with open(prompt_path, 'r', encoding='utf-8') as f:
++        with open(prompt_path, "r", encoding="utf-8") as f:
+             return f.read().strip()
+     except FileNotFoundError:
+         return ""
+ 
++
+ # Voice archetypes (Echo system - 6 Chinese voice personas)
+ VOICE_ARCHETYPES = {
+     "holder": {
+         "name": "接纳者 (The Holder)",
+         "systemPrompt": _load_prompt("holder.md"),
+         "icon": "heart",
+-        "color": "pink"
++        "color": "pink",
+     },
+     "unpacker": {
+         "name": "拆解者 (The Unpacker)",
+         "systemPrompt": _load_prompt("unpacker.md"),
+         "icon": "brain",
+-        "color": "blue"
++        "color": "blue",
+     },
+     "starter": {
+         "name": "启动者 (The Starter)",
+         "systemPrompt": _load_prompt("starter.md"),
+         "icon": "fist",
+-        "color": "yellow"
++        "color": "yellow",
+     },
+     "mirror": {
+         "name": "照镜者 (The Mirror)",
+         "systemPrompt": _load_prompt("mirror.md"),
+         "icon": "eye",
+-        "color": "green"
++        "color": "green",
+     },
+     "weaver": {
+         "name": "连接者 (The Weaver)",
+         "systemPrompt": _load_prompt("weaver.md"),
+         "icon": "compass",
+-        "color": "purple"
++        "color": "purple",
+     },
+     "absurdist": {
+         "name": "幽默者 (The Absurdist)",
+         "systemPrompt": _load_prompt("absurdist.md"),
+         "icon": "masks",
+-        "color": "pink"
+-    }
++        "color": "pink",
++    },
+ }
+ 
+ # @@@ Analysis prompt for LLM

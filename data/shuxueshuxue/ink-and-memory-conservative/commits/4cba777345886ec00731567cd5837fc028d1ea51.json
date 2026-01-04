@@ -1,0 +1,23 @@
+{
+  "sha": "4cba777345886ec00731567cd5837fc028d1ea51",
+  "message": "remove unpacker from system decks",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-16T08:49:10Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-16T08:49:10Z"
+  },
+  "stats": {
+    "total": 61,
+    "additions": 42,
+    "deletions": 19
+  },
+  "files_count": 4,
+  "parents": [
+    "6a134c937fb4c3152fdc4e3d66d648855142b72d"
+  ]
+}
