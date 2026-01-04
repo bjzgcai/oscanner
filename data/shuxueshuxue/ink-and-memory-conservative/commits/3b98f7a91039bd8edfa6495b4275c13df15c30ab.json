@@ -1,0 +1,23 @@
+{
+  "sha": "3b98f7a91039bd8edfa6495b4275c13df15c30ab",
+  "message": "Rewrite README with clear product vs tech sections",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-21T10:36:11Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-21T10:36:11Z"
+  },
+  "stats": {
+    "total": 126,
+    "additions": 57,
+    "deletions": 69
+  },
+  "files_count": 1,
+  "parents": [
+    "37bdcbfb94a08088bff3eca426535f3ebcf88ea9"
+  ]
+}

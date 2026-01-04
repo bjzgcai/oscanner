@@ -1,0 +1,20 @@
+{
+  "hash": "34969e3dcaabf7bae62dc21e6e624fab2cd6faec",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Dec 3 21:51:13 2025 +0800",
+  "subject": "add roadmap",
+  "files": [
+    "README.md",
+    "README.zh.md"
+  ],
+  "diff": "commits/34969e3dcaabf7bae62dc21e6e624fab2cd6faec/34969e3dcaabf7bae62dc21e6e624fab2cd6faec.diff",
+  "related_files": {
+    "README.md": [
+      "README.zh.md"
+    ],
+    "README.zh.md": [
+      "README.md"
+    ]
+  }
+}

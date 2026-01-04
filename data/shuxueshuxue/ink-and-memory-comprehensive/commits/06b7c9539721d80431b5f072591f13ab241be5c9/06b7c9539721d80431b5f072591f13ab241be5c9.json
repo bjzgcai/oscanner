@@ -1,0 +1,36 @@
+{
+  "hash": "06b7c9539721d80431b5f072591f13ab241be5c9",
+  "author": "shuxueshuxue",
+  "email": "shuxue@protonmail.com",
+  "date": "Sun Dec 28 20:41:59 2025 +0800",
+  "subject": "Refactor model role config",
+  "files": [
+    "README.md",
+    "README.zh.md",
+    "backend/config.py",
+    "backend/models.json.example"
+  ],
+  "diff": "commits/06b7c9539721d80431b5f072591f13ab241be5c9/06b7c9539721d80431b5f072591f13ab241be5c9.diff",
+  "related_files": {
+    "README.md": [
+      "README.zh.md",
+      "backend/config.py",
+      "backend/models.json.example"
+    ],
+    "README.zh.md": [
+      "README.md",
+      "backend/config.py",
+      "backend/models.json.example"
+    ],
+    "backend/config.py": [
+      "README.md",
+      "README.zh.md",
+      "backend/models.json.example"
+    ],
+    "backend/models.json.example": [
+      "README.md",
+      "README.zh.md",
+      "backend/config.py"
+    ]
+  }
+}

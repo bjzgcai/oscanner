@@ -1,0 +1,23 @@
+{
+  "sha": "bdbc7cdbfae2d62b29c8e2bf71145a01841e973c",
+  "message": "feat: add friend system UI\n\n- Add FriendsView component with 3 tabs (My Friends, Requests, Add Friend)\n- Implement friend list, request management, and invite code system\n- Add friend system API functions to voiceApi.ts\n- Update TopNavBar with Friends navigation button\n- Add i18n translations for friend system (English + Chinese)\n- Integrate FriendsView into App.tsx routing",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-19T08:16:08Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-19T08:16:08Z"
+  },
+  "stats": {
+    "total": 1306,
+    "additions": 1292,
+    "deletions": 14
+  },
+  "files_count": 9,
+  "parents": [
+    "cf049f26eaf34f5d1b20486bf0b7e5bc737dc2fc"
+  ]
+}

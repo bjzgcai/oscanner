@@ -1,0 +1,23 @@
+{
+  "sha": "9dbf46bb0f470f643fd16f5b2e8c7f490d3b1d2e",
+  "message": "Add stacking card effect with 70% overlap and hover expansion",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-08T01:14:09Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-08T01:14:09Z"
+  },
+  "stats": {
+    "total": 42,
+    "additions": 37,
+    "deletions": 5
+  },
+  "files_count": 4,
+  "parents": [
+    "9b384932b9fe0f85a80c4373acdd33b60d418e3b"
+  ]
+}

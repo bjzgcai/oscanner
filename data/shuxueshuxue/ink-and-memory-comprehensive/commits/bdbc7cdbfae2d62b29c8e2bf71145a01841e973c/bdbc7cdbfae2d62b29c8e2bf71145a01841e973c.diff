@@ -1,0 +1,1521 @@
+commit bdbc7cdbfae2d62b29c8e2bf71145a01841e973c
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Nov 19 16:16:08 2025 +0800
+
+    feat: add friend system UI
+    
+    - Add FriendsView component with 3 tabs (My Friends, Requests, Add Friend)
+    - Implement friend list, request management, and invite code system
+    - Add friend system API functions to voiceApi.ts
+    - Update TopNavBar with Friends navigation button
+    - Add i18n translations for friend system (English + Chinese)
+    - Integrate FriendsView into App.tsx routing
+
+diff --git a/backend/database.py b/backend/database.py
+index 7fb8bfe..0da689c 100644
+--- a/backend/database.py
++++ b/backend/database.py
+@@ -198,6 +198,39 @@ def create_tables(db):
+     db.execute("CREATE INDEX IF NOT EXISTS idx_voices_deck ON voices(deck_id)")
+     db.execute("CREATE INDEX IF NOT EXISTS idx_voices_owner ON voices(owner_id)")
+ 
++    # @@@ Friendships table - bidirectional friend relationships
++    db.execute("""
++    CREATE TABLE IF NOT EXISTS friendships (
++      id INTEGER PRIMARY KEY AUTOINCREMENT,
++      user_id INTEGER NOT NULL,
++      friend_id INTEGER NOT NULL,
++      status TEXT NOT NULL CHECK(status IN ('pending', 'accepted', 'rejected')),
++      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
++      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
++      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
++      FOREIGN KEY (friend_id) REFERENCES users (id) ON DELETE CASCADE,
++      UNIQUE(user_id, friend_id)
++    )
++    """)
++    db.execute("CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id, status)")
++    db.execute("CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id, status)")
++
++    # @@@ Friend invites table - one-time invite codes
++    db.execute("""
++    CREATE TABLE IF NOT EXISTS friend_invites (
++      code TEXT PRIMARY KEY,
++      user_id INTEGER NOT NULL,
++      expires_at DATETIME NOT NULL,
++      used_by INTEGER,
++      used_at DATETIME,
++      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
++      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
++      FOREIGN KEY (used_by) REFERENCES users (id) ON DELETE SET NULL
++    )
++    """)
++    db.execute("CREATE INDEX IF NOT EXISTS idx_invites_user ON friend_invites(user_id)")
++    db.execute("CREATE INDEX IF NOT EXISTS idx_invites_expires ON friend_invites(expires_at)")
++
+     print("✅ Tables created")
+ 
+ def seed_system_decks():
+@@ -1407,6 +1440,310 @@ def import_user_data(user_id: int, sessions: list, pictures: list, preferences:
+     finally:
+         db.close()
+ 
++# ========== Friend System ==========
++
++def generate_invite_code(user_id: int) -> dict:
++    """
++    Generate a new friend invite code (6 chars, 7 days validity).
++    Returns: {code, expires_at}
++    """
++    import random
++    import string
++    from datetime import datetime, timedelta
++
++    db = get_db()
++    try:
++        # Generate unique 6-character code
++        while True:
++            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
++            # Check if code already exists and is not expired
++            existing = db.execute(
++                "SELECT code FROM friend_invites WHERE code = ? AND expires_at > datetime('now')",
++                (code,)
++            ).fetchone()
++            if not existing:
++                break
++
++        expires_at = (datetime.now() + timedelta(days=7)).isoformat()
++
++        db.execute("""
++        INSERT INTO friend_invites (code, user_id, expires_at)
++        VALUES (?, ?, ?)
++        """, (code, user_id, expires_at))
++
++        db.commit()
++        return {"code": code, "expires_at": expires_at}
++    finally:
++        db.close()
++
++def use_invite_code(code: str, requesting_user_id: int) -> dict:
++    """
++    Use an invite code to send a friend request.
++    Returns: {success, friend_request_id, inviter_id, inviter_name} or {success: False, error}
++    """
++    from datetime import datetime
++
++    db = get_db()
++    try:
++        # Validate invite code
++        invite = db.execute("""
++        SELECT user_id, expires_at, used_by
++        FROM friend_invites
++        WHERE code = ?
++        """, (code,)).fetchone()
++
++        if not invite:
++            return {"success": False, "error": "Invalid invite code"}
++
++        if invite['used_by']:
++            return {"success": False, "error": "Invite code already used"}
++
++        if datetime.fromisoformat(invite['expires_at']) < datetime.now():
++            return {"success": False, "error": "Invite code expired"}
++
++        inviter_id = invite['user_id']
++
++        if inviter_id == requesting_user_id:
++            return {"success": False, "error": "Cannot add yourself as friend"}
++
++        # Check if friendship already exists
++        existing = db.execute("""
++        SELECT id, status FROM friendships
++        WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
++        """, (requesting_user_id, inviter_id, inviter_id, requesting_user_id)).fetchone()
++
++        if existing:
++            if existing['status'] == 'accepted':
++                return {"success": False, "error": "Already friends"}
++            elif existing['status'] == 'pending':
++                return {"success": False, "error": "Friend request already pending"}
++
++        # Get inviter's display name
++        inviter = db.execute(
++            "SELECT display_name, email FROM users WHERE id = ?",
++            (inviter_id,)
++        ).fetchone()
++
++        # Create friendship request (requesting_user sends request to inviter)
++        cursor = db.execute("""
++        INSERT INTO friendships (user_id, friend_id, status)
++        VALUES (?, ?, 'pending')
++        """, (requesting_user_id, inviter_id))
++
++        friend_request_id = cursor.lastrowid
++
++        # Mark invite as used
++        db.execute("""
++        UPDATE friend_invites
++        SET used_by = ?, used_at = datetime('now')
++        WHERE code = ?
++        """, (requesting_user_id, code))
++
++        db.commit()
++
++        return {
++            "success": True,
++            "friend_request_id": friend_request_id,
++            "inviter_id": inviter_id,
++            "inviter_name": inviter['display_name'] or inviter['email']
++        }
++    finally:
++        db.close()
++
++def get_friend_requests(user_id: int) -> list:
++    """
++    Get all pending friend requests FOR this user (others wanting to be friends).
++    Returns: [{id, requester_id, requester_name, created_at}]
++    """
++    db = get_db()
++    try:
++        rows = db.execute("""
++        SELECT f.id, f.user_id as requester_id, u.display_name, u.email, f.created_at
++        FROM friendships f
++        JOIN users u ON f.user_id = u.id
++        WHERE f.friend_id = ? AND f.status = 'pending'
++        ORDER BY f.created_at DESC
++        """, (user_id,)).fetchall()
++
++        return [{
++            "id": row['id'],
++            "requester_id": row['requester_id'],
++            "requester_name": row['display_name'] or row['email'],
++            "created_at": row['created_at']
++        } for row in rows]
++    finally:
++        db.close()
++
++def accept_friend_request(request_id: int, user_id: int) -> dict:
++    """
++    Accept a friend request. user_id must be the friend_id in the request.
++    Returns: {success, error?}
++    """
++    db = get_db()
++    try:
++        # Verify this request is for current user and is pending
++        request = db.execute("""
++        SELECT user_id, friend_id, status
++        FROM friendships
++        WHERE id = ?
++        """, (request_id,)).fetchone()
++
++        if not request:
++            return {"success": False, "error": "Request not found"}
++
++        if request['friend_id'] != user_id:
++            return {"success": False, "error": "Permission denied"}
++
++        if request['status'] != 'pending':
++            return {"success": False, "error": f"Request already {request['status']}"}
++
++        # Update status to accepted
++        db.execute("""
++        UPDATE friendships
++        SET status = 'accepted', updated_at = datetime('now')
++        WHERE id = ?
++        """, (request_id,))
++
++        db.commit()
++        return {"success": True}
++    finally:
++        db.close()
++
++def reject_friend_request(request_id: int, user_id: int) -> dict:
++    """
++    Reject a friend request. user_id must be the friend_id in the request.
++    Returns: {success, error?}
++    """
++    db = get_db()
++    try:
++        # Verify this request is for current user and is pending
++        request = db.execute("""
++        SELECT user_id, friend_id, status
++        FROM friendships
++        WHERE id = ?
++        """, (request_id,)).fetchone()
++
++        if not request:
++            return {"success": False, "error": "Request not found"}
++
++        if request['friend_id'] != user_id:
++            return {"success": False, "error": "Permission denied"}
++
++        if request['status'] != 'pending':
++            return {"success": False, "error": f"Request already {request['status']}"}
++
++        # Update status to rejected
++        db.execute("""
++        UPDATE friendships
++        SET status = 'rejected', updated_at = datetime('now')
++        WHERE id = ?
++        """, (request_id,))
++
++        db.commit()
++        return {"success": True}
++    finally:
++        db.close()
++
++def get_friends(user_id: int) -> list:
++    """
++    Get all accepted friends for this user.
++    Returns: [{friend_id, friend_name, friend_email, since}]
++    """
++    db = get_db()
++    try:
++        # Get friends where I sent the request
++        rows1 = db.execute("""
++        SELECT f.friend_id as friend_id, u.display_name, u.email, f.updated_at
++        FROM friendships f
++        JOIN users u ON f.friend_id = u.id
++        WHERE f.user_id = ? AND f.status = 'accepted'
++        """, (user_id,)).fetchall()
++
++        # Get friends where they sent the request
++        rows2 = db.execute("""
++        SELECT f.user_id as friend_id, u.display_name, u.email, f.updated_at
++        FROM friendships f
++        JOIN users u ON f.user_id = u.id
++        WHERE f.friend_id = ? AND f.status = 'accepted'
++        """, (user_id,)).fetchall()
++
++        all_friends = []
++        for row in rows1 + rows2:
++            all_friends.append({
++                "friend_id": row['friend_id'],
++                "friend_name": row['display_name'] or row['email'],
++                "friend_email": row['email'],
++                "since": row['updated_at']
++            })
++
++        # Sort by most recent first
++        all_friends.sort(key=lambda x: x['since'], reverse=True)
++
++        return all_friends
++    finally:
++        db.close()
++
++def remove_friend(user_id: int, friend_id: int) -> dict:
++    """
++    Remove a friend relationship.
++    Returns: {success, error?}
++    """
++    db = get_db()
++    try:
++        # Delete the friendship (bidirectional - delete either direction)
++        result = db.execute("""
++        DELETE FROM friendships
++        WHERE status = 'accepted' AND (
++          (user_id = ? AND friend_id = ?) OR
++          (user_id = ? AND friend_id = ?)
++        )
++        """, (user_id, friend_id, friend_id, user_id))
++
++        if result.rowcount == 0:
++            return {"success": False, "error": "Friendship not found"}
++
++        db.commit()
++        return {"success": True}
++    finally:
++        db.close()
++
++def get_friend_timeline(user_id: int, friend_id: int, limit: int = 30) -> list:
++    """
++    Get friend's timeline pictures (only if they are friends).
++    Returns: [{date, base64, prompt, created_at}] or None if not friends
++    """
++    db = get_db()
++    try:
++        # Check if they are friends
++        friendship = db.execute("""
++        SELECT id FROM friendships
++        WHERE status = 'accepted' AND (
++          (user_id = ? AND friend_id = ?) OR
++          (user_id = ? AND friend_id = ?)
++        )
++        """, (user_id, friend_id, friend_id, user_id)).fetchone()
++
++        if not friendship:
++            return None  # Not friends, no access
++
++        # Get friend's timeline pictures (thumbnails)
++        rows = db.execute("""
++        SELECT date, COALESCE(thumbnail_base64, image_base64) as base64, prompt, created_at
++        FROM daily_pictures
++        WHERE user_id = ?
++        ORDER BY date DESC
++        LIMIT ?
++        """, (friend_id, limit)).fetchall()
++
++        return [{
++            "date": row['date'],
++            "base64": row['base64'],
++            "prompt": row['prompt'],
++            "created_at": row['created_at']
++        } for row in rows]
++    finally:
++        db.close()
++
+ if __name__ == "__main__":
+     # Initialize database
+     init_db()
+diff --git a/backend/server.py b/backend/server.py
+index 7d5008f..de72d4c 100644
+--- a/backend/server.py
++++ b/backend/server.py
+@@ -1367,6 +1367,14 @@ class VoiceUpdateRequest(BaseModel):
+ class VoiceForkRequest(BaseModel):
+     target_deck_id: str
+ 
++# ========== Friend System Models ==========
++
++class UseInviteCodeRequest(BaseModel):
++    code: str
++
++class FriendRequestActionRequest(BaseModel):
++    pass  # No body needed, just request_id in URL
++
+ @app.get("/api/decks")
+ def list_decks(published: bool = False, current_user: dict = Depends(get_current_user)):
+     """Get decks - either user's own or published community decks"""
+@@ -1523,6 +1531,74 @@ def fork_voice(voice_id: str, request: VoiceForkRequest, current_user: dict = De
+     except ValueError as e:
+         raise HTTPException(status_code=400, detail=str(e))
+ 
++# ========== Friend System Endpoints ==========
++
++@app.post("/api/friends/invite/generate")
++def generate_friend_invite(current_user: dict = Depends(get_current_user)):
++    """Generate a new friend invite code (6 chars, 7 days validity)"""
++    user_id = current_user['user_id']
++    result = database.generate_invite_code(user_id)
++    return result
++
++@app.post("/api/friends/invite/use")
++def use_friend_invite(request: UseInviteCodeRequest, current_user: dict = Depends(get_current_user)):
++    """Use an invite code to send a friend request"""
++    user_id = current_user['user_id']
++    result = database.use_invite_code(request.code, user_id)
++    if not result.get('success'):
++        raise HTTPException(status_code=400, detail=result.get('error'))
++    return result
++
++@app.get("/api/friends/requests")
++def get_friend_requests(current_user: dict = Depends(get_current_user)):
++    """Get all pending friend requests for current user"""
++    user_id = current_user['user_id']
++    requests = database.get_friend_requests(user_id)
++    return {"requests": requests}
++
++@app.post("/api/friends/requests/{request_id}/accept")
++def accept_friend_request(request_id: int, current_user: dict = Depends(get_current_user)):
++    """Accept a friend request"""
++    user_id = current_user['user_id']
++    result = database.accept_friend_request(request_id, user_id)
++    if not result.get('success'):
++        raise HTTPException(status_code=400, detail=result.get('error'))
++    return result
++
++@app.post("/api/friends/requests/{request_id}/reject")
++def reject_friend_request(request_id: int, current_user: dict = Depends(get_current_user)):
++    """Reject a friend request"""
++    user_id = current_user['user_id']
++    result = database.reject_friend_request(request_id, user_id)
++    if not result.get('success'):
++        raise HTTPException(status_code=400, detail=result.get('error'))
++    return result
++
++@app.get("/api/friends")
++def get_friends(current_user: dict = Depends(get_current_user)):
++    """Get all accepted friends for current user"""
++    user_id = current_user['user_id']
++    friends = database.get_friends(user_id)
++    return {"friends": friends}
++
++@app.delete("/api/friends/{friend_id}")
++def remove_friend(friend_id: int, current_user: dict = Depends(get_current_user)):
++    """Remove a friend"""
++    user_id = current_user['user_id']
++    result = database.remove_friend(user_id, friend_id)
++    if not result.get('success'):
++        raise HTTPException(status_code=400, detail=result.get('error'))
++    return result
++
++@app.get("/api/friends/{friend_id}/timeline")
++def get_friend_timeline(friend_id: int, limit: int = 30, current_user: dict = Depends(get_current_user)):
++    """Get a friend's timeline pictures (only if friends)"""
++    user_id = current_user['user_id']
++    timeline = database.get_friend_timeline(user_id, friend_id, limit)
++    if timeline is None:
++        raise HTTPException(status_code=403, detail="Not friends or friend not found")
++    return {"pictures": timeline}
++
+ # @@@ Removed /api/analyze wrapper - frontend now calls /polycli/api/trigger-sync directly
+ 
+ # @@@ Removed /api/chat wrapper - frontend now calls /polycli/api/trigger-sync directly
+@@ -1575,6 +1651,15 @@ if __name__ == "__main__":
+     print("    PUT  /api/voices/{id}     - Update voice")
+     print("    DELETE /api/voices/{id}   - Delete voice")
+     print("    POST /api/voices/{id}/fork - Fork voice")
++    print("  Friend System:")
++    print("    POST /api/friends/invite/generate - Generate invite code")
++    print("    POST /api/friends/invite/use      - Use invite code")
++    print("    GET  /api/friends/requests        - Get friend requests")
++    print("    POST /api/friends/requests/{id}/accept - Accept request")
++    print("    POST /api/friends/requests/{id}/reject - Reject request")
++    print("    GET  /api/friends                 - Get friends list")
++    print("    DELETE /api/friends/{id}          - Remove friend")
++    print("    GET  /api/friends/{id}/timeline   - Get friend's timeline")
+     print("\n  PolyCLI (AI Functions):")
+     print("    /polycli                  - Control panel UI")
+     print("    /polycli/api/trigger-sync - Direct sync API")
+diff --git a/backend/stateless_analyzer.py b/backend/stateless_analyzer.py
+index 54a24b2..6928459 100644
+--- a/backend/stateless_analyzer.py
++++ b/backend/stateless_analyzer.py
+@@ -115,7 +115,10 @@ CRITICAL RULES:
+ - DO NOT suggest any rejected phrases: {overlapped_phrases}
+ - DO NOT CREATE NEW VOICE NAMES - Only use from the available list
+ - Return null if nothing is worth commenting on
+-- Write in the SAME LANGUAGE as the text
++- Write your comment in the EXACT SAME LANGUAGE as the user's text
++  * If user writes in Chinese, comment in Chinese
++  * If user writes in English, comment in English
++  * Match the user's language REGARDLESS of what language the voice's name or system prompt uses
+ 
+ IMPORTANT: Return voice_id only (e.g., "holder"). Do NOT fill voice_name - it will be auto-filled."""
+ 
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index c599b0a..51d5f58 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -18,6 +18,7 @@ import { saveEntryToToday, type CalendarEntry } from './utils/calendarStorage';
+ import CollectionsView from './components/CollectionsView';
+ import AnalysisView from './components/AnalysisView';
+ import AboutView from './components/AboutView';
++import FriendsView from './components/FriendsView';
+ import AgentDropdown from './components/AgentDropdown';
+ import ChatWidgetUI from './components/ChatWidgetUI';
+ import StateChooser from './components/StateChooser';
+@@ -2428,6 +2429,21 @@ export default function App() {
+         </div>
+       )}
+ 
++      {currentView === 'friends' && (
++        <div style={{
++          position: 'fixed',
++          top: 48,
++          left: 0,
++          right: 0,
++          bottom: 0,
++          background: '#f8f0e6',
++          display: 'flex',
++          overflow: 'hidden'
++        }}>
++          <FriendsView isVisible={currentView === 'friends'} />
++        </div>
++      )}
++
+       {/* Warning Dialog */}
+       {showWarning && (
+         <div style={{
+diff --git a/frontend/src/api/voiceApi.ts b/frontend/src/api/voiceApi.ts
+index ae29816..db2d0b3 100644
+--- a/frontend/src/api/voiceApi.ts
++++ b/frontend/src/api/voiceApi.ts
+@@ -899,8 +899,9 @@ export async function loadVoicesFromDecks(): Promise<Record<string, VoiceConfig>
+           for (const voice of fullDeck.voices) {
+             if (!voice.enabled) continue;
+ 
+-            // Convert Voice to VoiceConfig format
+-            voiceConfigs[voice.name] = {
++            // @@@ Convert Voice to VoiceConfig format
++            // Key by voice.id (UUID) so backend can find it in database
++            voiceConfigs[voice.id] = {
+               name: voice.name,
+               systemPrompt: voice.system_prompt,
+               enabled: voice.enabled,
+@@ -922,3 +923,165 @@ export async function loadVoicesFromDecks(): Promise<Record<string, VoiceConfig>
+     return {};
+   }
+ }
++
++// ========== Friend System API ==========
++
++export interface FriendInvite {
++  code: string;
++  expires_at: string;
++  created_at: string;
++}
++
++export interface FriendRequest {
++  id: number;
++  requester_id: number;
++  requester_name: string;
++  requester_email: string;
++  created_at: string;
++}
++
++export interface Friend {
++  id: number;
++  user_id: number;
++  friend_id: number;
++  friend_name: string;
++  friend_email: string;
++  created_at: string;
++}
++
++/**
++ * Generate a new friend invite code (6 chars, 7 days validity)
++ */
++export async function generateInviteCode(): Promise<FriendInvite> {
++  const response = await fetch(`${API_BASE}/api/friends/invite/generate`, {
++    method: 'POST',
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Generate invite code failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Use an invite code to send a friend request
++ */
++export async function useInviteCode(code: string): Promise<{ success: boolean; message: string }> {
++  const response = await fetch(`${API_BASE}/api/friends/invite/use`, {
++    method: 'POST',
++    headers: getAuthHeaders(),
++    body: JSON.stringify({ code })
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Use invite code failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Get all pending friend requests for current user
++ */
++export async function getFriendRequests(): Promise<FriendRequest[]> {
++  const response = await fetch(`${API_BASE}/api/friends/requests`, {
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Get friend requests failed');
++  }
++
++  const data = await response.json();
++  return data.requests;
++}
++
++/**
++ * Accept a friend request
++ */
++export async function acceptFriendRequest(requestId: number): Promise<{ success: boolean }> {
++  const response = await fetch(`${API_BASE}/api/friends/requests/${requestId}/accept`, {
++    method: 'POST',
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Accept friend request failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Reject a friend request
++ */
++export async function rejectFriendRequest(requestId: number): Promise<{ success: boolean }> {
++  const response = await fetch(`${API_BASE}/api/friends/requests/${requestId}/reject`, {
++    method: 'POST',
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Reject friend request failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Get all accepted friends
++ */
++export async function getFriends(): Promise<Friend[]> {
++  const response = await fetch(`${API_BASE}/api/friends`, {
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Get friends failed');
++  }
++
++  const data = await response.json();
++  return data.friends;
++}
++
++/**
++ * Remove a friend
++ */
++export async function removeFriend(friendId: number): Promise<{ success: boolean }> {
++  const response = await fetch(`${API_BASE}/api/friends/${friendId}`, {
++    method: 'DELETE',
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Remove friend failed');
++  }
++
++  return await response.json();
++}
++
++/**
++ * Get friend's timeline (pictures)
++ */
++export async function getFriendTimeline(friendId: number, limit: number = 30): Promise<any[]> {
++  const response = await fetch(`${API_BASE}/api/friends/${friendId}/timeline?limit=${limit}`, {
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Get friend timeline failed');
++  }
++
++  const data = await response.json();
++  return data.pictures;
++}
+diff --git a/frontend/src/components/DeckManager.tsx b/frontend/src/components/DeckManager.tsx
+index fba2ae7..0a2f40d 100644
+--- a/frontend/src/components/DeckManager.tsx
++++ b/frontend/src/components/DeckManager.tsx
+@@ -277,7 +277,7 @@ export default function DeckManager({ onUpdate }: Props) {
+   async function handlePublishToggle(deckId: string) {
+     try {
+       const result = await publishDeck(deckId);
+-      alert(result.published ? '✅ Deck published to community!' : '✅ Deck unpublished');
++      alert(result.published ? t('deck.messages.publishSuccess') : t('deck.messages.unpublishSuccess'));
+       await loadDecks(true);
+       await loadCommunityDecks();
+       onUpdate?.();
+@@ -291,7 +291,7 @@ export default function DeckManager({ onUpdate }: Props) {
+   async function handleInstallDeck(deckId: string) {
+     try {
+       await forkDeck(deckId);
+-      alert('✅ Deck installed to your collection!');
++      alert(t('deck.messages.installSuccess'));
+       await loadDecks(true);
+       await loadCommunityDecks();
+       onUpdate?.();
+@@ -1507,17 +1507,15 @@ export default function DeckManager({ onUpdate }: Props) {
+             onClick={(e) => e.stopPropagation()}
+           >
+             <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+-              ⚠️ Publish Deck Warning
++              {t('deck.publishWarning.heading')}
+             </h3>
+ 
+             <p style={{ marginBottom: '16px', lineHeight: '1.5', fontSize: '14px' }}>
+-              Publishing will <strong>break the parent link</strong>. This deck will become
+-              a standalone deck in the community store.
++              <span dangerouslySetInnerHTML={{ __html: t('deck.publishWarning.body') }} />
+             </p>
+ 
+             <p style={{ marginBottom: '16px', color: '#e74c3c', fontSize: '13px', lineHeight: '1.5' }}>
+-              This action cannot be undone. You can unpublish later, but the parent
+-              link will remain broken.
++              {t('deck.publishWarning.note')}
+             </p>
+ 
+             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+@@ -1534,7 +1532,7 @@ export default function DeckManager({ onUpdate }: Props) {
+                   fontWeight: 500
+                 }}
+               >
+-                Cancel
++                {t('deck.publishWarning.cancel')}
+               </button>
+               <button
+                 onClick={() => handlePublishToggle(publishWarning)}
+@@ -1549,7 +1547,7 @@ export default function DeckManager({ onUpdate }: Props) {
+                   fontWeight: 500
+                 }}
+               >
+-                Publish Anyway
++                {t('deck.publishWarning.confirm')}
+               </button>
+             </div>
+           </div>
+diff --git a/frontend/src/components/FriendsView.tsx b/frontend/src/components/FriendsView.tsx
+new file mode 100644
+index 0000000..6e894ad
+--- /dev/null
++++ b/frontend/src/components/FriendsView.tsx
+@@ -0,0 +1,570 @@
++import { useState, useEffect } from 'react';
++import { useTranslation } from 'react-i18next';
++import {
++  generateInviteCode,
++  useInviteCode,
++  getFriendRequests,
++  acceptFriendRequest,
++  rejectFriendRequest,
++  getFriends,
++  removeFriend,
++  type FriendInvite,
++  type FriendRequest,
++  type Friend
++} from '../api/voiceApi';
++
++interface Props {
++  isVisible: boolean;
++  onViewFriendTimeline?: (friendId: number, friendName: string) => void;
++}
++
++export default function FriendsView({ isVisible, onViewFriendTimeline }: Props) {
++  const { t } = useTranslation();
++  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'invite'>('friends');
++
++  // Invite state
++  const [inviteCode, setInviteCode] = useState<FriendInvite | null>(null);
++  const [generatingInvite, setGeneratingInvite] = useState(false);
++  const [inputCode, setInputCode] = useState('');
++  const [usingCode, setUsingCode] = useState(false);
++  const [codeMessage, setCodeMessage] = useState('');
++
++  // Friends state
++  const [friends, setFriends] = useState<Friend[]>([]);
++  const [loadingFriends, setLoadingFriends] = useState(false);
++
++  // Requests state
++  const [requests, setRequests] = useState<FriendRequest[]>([]);
++  const [loadingRequests, setLoadingRequests] = useState(false);
++
++  // Load friends on mount
++  useEffect(() => {
++    if (isVisible && activeTab === 'friends') {
++      loadFriends();
++    }
++  }, [isVisible, activeTab]);
++
++  // Load requests on mount
++  useEffect(() => {
++    if (isVisible && activeTab === 'requests') {
++      loadRequests();
++    }
++  }, [isVisible, activeTab]);
++
++  const loadFriends = async () => {
++    setLoadingFriends(true);
++    try {
++      const data = await getFriends();
++      setFriends(data);
++    } catch (err) {
++      console.error('Failed to load friends:', err);
++    } finally {
++      setLoadingFriends(false);
++    }
++  };
++
++  const loadRequests = async () => {
++    setLoadingRequests(true);
++    try {
++      const data = await getFriendRequests();
++      setRequests(data);
++    } catch (err) {
++      console.error('Failed to load requests:', err);
++    } finally {
++      setLoadingRequests(false);
++    }
++  };
++
++  const handleGenerateInvite = async () => {
++    setGeneratingInvite(true);
++    try {
++      const invite = await generateInviteCode();
++      setInviteCode(invite);
++    } catch (err) {
++      console.error('Failed to generate invite:', err);
++      alert(t('friends.generateError') || 'Failed to generate invite code');
++    } finally {
++      setGeneratingInvite(false);
++    }
++  };
++
++  const handleUseCode = async () => {
++    if (!inputCode.trim()) return;
++
++    setUsingCode(true);
++    setCodeMessage('');
++    try {
++      const result = await useInviteCode(inputCode.trim());
++      setCodeMessage(result.message || t('friends.requestSent') || 'Friend request sent!');
++      setInputCode('');
++      // Refresh requests to see if there are any new ones
++      setTimeout(() => loadRequests(), 500);
++    } catch (err: any) {
++      setCodeMessage(err.message || t('friends.useCodeError') || 'Invalid or expired code');
++    } finally {
++      setUsingCode(false);
++    }
++  };
++
++  const handleAcceptRequest = async (requestId: number) => {
++    try {
++      await acceptFriendRequest(requestId);
++      // Refresh both requests and friends
++      loadRequests();
++      loadFriends();
++    } catch (err) {
++      console.error('Failed to accept request:', err);
++      alert(t('friends.acceptError') || 'Failed to accept request');
++    }
++  };
++
++  const handleRejectRequest = async (requestId: number) => {
++    try {
++      await rejectFriendRequest(requestId);
++      loadRequests();
++    } catch (err) {
++      console.error('Failed to reject request:', err);
++      alert(t('friends.rejectError') || 'Failed to reject request');
++    }
++  };
++
++  const handleRemoveFriend = async (friendId: number) => {
++    if (!confirm(t('friends.confirmRemove') || 'Remove this friend?')) return;
++
++    try {
++      await removeFriend(friendId);
++      loadFriends();
++    } catch (err) {
++      console.error('Failed to remove friend:', err);
++      alert(t('friends.removeError') || 'Failed to remove friend');
++    }
++  };
++
++  const handleCopyCode = () => {
++    if (inviteCode) {
++      navigator.clipboard.writeText(inviteCode.code);
++      alert(t('friends.codeCopied') || 'Code copied to clipboard!');
++    }
++  };
++
++  if (!isVisible) return null;
++
++  return (
++    <div style={{
++      width: '100%',
++      height: '100%',
++      display: 'flex',
++      flexDirection: 'column',
++      fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++      background: '#f8f0e6',
++      overflow: 'hidden'
++    }}>
++      {/* Tab Navigation */}
++      <div style={{
++        display: 'flex',
++        gap: 16,
++        padding: '24px 32px 0',
++        borderBottom: '1px solid #d0c4b0'
++      }}>
++        <button
++          onClick={() => setActiveTab('friends')}
++          style={{
++            padding: '12px 24px',
++            border: 'none',
++            background: 'transparent',
++            fontSize: 15,
++            fontWeight: activeTab === 'friends' ? 600 : 400,
++            cursor: 'pointer',
++            color: activeTab === 'friends' ? '#2c2c2c' : '#888',
++            borderBottom: activeTab === 'friends' ? '3px solid #2c2c2c' : '3px solid transparent',
++            transition: 'all 0.2s'
++          }}
++        >
++          {t('friends.myFriends') || 'My Friends'} {friends.length > 0 && `(${friends.length})`}
++        </button>
++        <button
++          onClick={() => setActiveTab('requests')}
++          style={{
++            padding: '12px 24px',
++            border: 'none',
++            background: 'transparent',
++            fontSize: 15,
++            fontWeight: activeTab === 'requests' ? 600 : 400,
++            cursor: 'pointer',
++            color: activeTab === 'requests' ? '#2c2c2c' : '#888',
++            borderBottom: activeTab === 'requests' ? '3px solid #2c2c2c' : '3px solid transparent',
++            transition: 'all 0.2s'
++          }}
++        >
++          {t('friends.requests') || 'Requests'} {requests.length > 0 && `(${requests.length})`}
++        </button>
++        <button
++          onClick={() => setActiveTab('invite')}
++          style={{
++            padding: '12px 24px',
++            border: 'none',
++            background: 'transparent',
++            fontSize: 15,
++            fontWeight: activeTab === 'invite' ? 600 : 400,
++            cursor: 'pointer',
++            color: activeTab === 'invite' ? '#2c2c2c' : '#888',
++            borderBottom: activeTab === 'invite' ? '3px solid #2c2c2c' : '3px solid transparent',
++            transition: 'all 0.2s'
++          }}
++        >
++          {t('friends.addFriend') || 'Add Friend'}
++        </button>
++      </div>
++
++      {/* Content Area */}
++      <div style={{
++        flex: 1,
++        overflow: 'auto',
++        padding: 32
++      }}>
++        {/* Friends Tab */}
++        {activeTab === 'friends' && (
++          <div>
++            <h2 style={{ fontSize: 24, marginBottom: 24, fontWeight: 600 }}>
++              {t('friends.myFriends') || 'My Friends'}
++            </h2>
++
++            {loadingFriends ? (
++              <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>
++                {t('friends.loading') || 'Loading...'}
++              </div>
++            ) : friends.length === 0 ? (
++              <div style={{
++                textAlign: 'center',
++                padding: 60,
++                color: '#888',
++                fontSize: 15
++              }}>
++                {t('friends.noFriends') || 'No friends yet. Use an invite code to add your first friend!'}
++              </div>
++            ) : (
++              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
++                {friends.map(friend => (
++                  <div key={friend.id} style={{
++                    background: '#fff',
++                    border: '1px solid #d0c4b0',
++                    borderRadius: 8,
++                    padding: 20,
++                    display: 'flex',
++                    alignItems: 'center',
++                    gap: 16
++                  }}>
++                    <div style={{
++                      width: 48,
++                      height: 48,
++                      borderRadius: 24,
++                      background: '#4CAF50',
++                      display: 'flex',
++                      alignItems: 'center',
++                      justifyContent: 'center',
++                      color: '#fff',
++                      fontSize: 20,
++                      fontWeight: 600
++                    }}>
++                      {friend.friend_name?.[0]?.toUpperCase() || friend.friend_email?.[0]?.toUpperCase() || 'F'}
++                    </div>
++                    <div style={{ flex: 1 }}>
++                      <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>
++                        {friend.friend_name}
++                      </div>
++                      <div style={{ fontSize: 13, color: '#666' }}>
++                        {friend.friend_email}
++                      </div>
++                    </div>
++                    <button
++                      onClick={() => onViewFriendTimeline?.(friend.friend_id, friend.friend_name)}
++                      style={{
++                        padding: '8px 16px',
++                        background: '#4CAF50',
++                        color: '#fff',
++                        border: 'none',
++                        borderRadius: 6,
++                        cursor: 'pointer',
++                        fontSize: 14,
++                        fontWeight: 500,
++                        transition: 'background 0.2s'
++                      }}
++                      onMouseEnter={e => e.currentTarget.style.background = '#45a049'}
++                      onMouseLeave={e => e.currentTarget.style.background = '#4CAF50'}
++                    >
++                      {t('friends.viewTimeline') || 'View Timeline'}
++                    </button>
++                    <button
++                      onClick={() => handleRemoveFriend(friend.friend_id)}
++                      style={{
++                        padding: '8px 16px',
++                        background: '#f44336',
++                        color: '#fff',
++                        border: 'none',
++                        borderRadius: 6,
++                        cursor: 'pointer',
++                        fontSize: 14,
++                        fontWeight: 500,
++                        transition: 'background 0.2s'
++                      }}
++                      onMouseEnter={e => e.currentTarget.style.background = '#da190b'}
++                      onMouseLeave={e => e.currentTarget.style.background = '#f44336'}
++                    >
++                      {t('friends.remove') || 'Remove'}
++                    </button>
++                  </div>
++                ))}
++              </div>
++            )}
++          </div>
++        )}
++
++        {/* Requests Tab */}
++        {activeTab === 'requests' && (
++          <div>
++            <h2 style={{ fontSize: 24, marginBottom: 24, fontWeight: 600 }}>
++              {t('friends.requests') || 'Friend Requests'}
++            </h2>
++
++            {loadingRequests ? (
++              <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>
++                {t('friends.loading') || 'Loading...'}
++              </div>
++            ) : requests.length === 0 ? (
++              <div style={{
++                textAlign: 'center',
++                padding: 60,
++                color: '#888',
++                fontSize: 15
++              }}>
++                {t('friends.noRequests') || 'No pending friend requests'}
++              </div>
++            ) : (
++              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
++                {requests.map(request => (
++                  <div key={request.id} style={{
++                    background: '#fff',
++                    border: '1px solid #d0c4b0',
++                    borderRadius: 8,
++                    padding: 20,
++                    display: 'flex',
++                    alignItems: 'center',
++                    gap: 16
++                  }}>
++                    <div style={{
++                      width: 48,
++                      height: 48,
++                      borderRadius: 24,
++                      background: '#2196F3',
++                      display: 'flex',
++                      alignItems: 'center',
++                      justifyContent: 'center',
++                      color: '#fff',
++                      fontSize: 20,
++                      fontWeight: 600
++                    }}>
++                      {request.requester_name?.[0]?.toUpperCase() || request.requester_email?.[0]?.toUpperCase() || 'R'}
++                    </div>
++                    <div style={{ flex: 1 }}>
++                      <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>
++                        {request.requester_name}
++                      </div>
++                      <div style={{ fontSize: 13, color: '#666' }}>
++                        {request.requester_email}
++                      </div>
++                    </div>
++                    <button
++                      onClick={() => handleAcceptRequest(request.id)}
++                      style={{
++                        padding: '8px 16px',
++                        background: '#4CAF50',
++                        color: '#fff',
++                        border: 'none',
++                        borderRadius: 6,
++                        cursor: 'pointer',
++                        fontSize: 14,
++                        fontWeight: 500,
++                        transition: 'background 0.2s'
++                      }}
++                      onMouseEnter={e => e.currentTarget.style.background = '#45a049'}
++                      onMouseLeave={e => e.currentTarget.style.background = '#4CAF50'}
++                    >
++                      {t('friends.accept') || 'Accept'}
++                    </button>
++                    <button
++                      onClick={() => handleRejectRequest(request.id)}
++                      style={{
++                        padding: '8px 16px',
++                        background: '#f44336',
++                        color: '#fff',
++                        border: 'none',
++                        borderRadius: 6,
++                        cursor: 'pointer',
++                        fontSize: 14,
++                        fontWeight: 500,
++                        transition: 'background 0.2s'
++                      }}
++                      onMouseEnter={e => e.currentTarget.style.background = '#da190b'}
++                      onMouseLeave={e => e.currentTarget.style.background = '#f44336'}
++                    >
++                      {t('friends.reject') || 'Reject'}
++                    </button>
++                  </div>
++                ))}
++              </div>
++            )}
++          </div>
++        )}
++
++        {/* Invite Tab */}
++        {activeTab === 'invite' && (
++          <div>
++            <h2 style={{ fontSize: 24, marginBottom: 24, fontWeight: 600 }}>
++              {t('friends.addFriend') || 'Add Friend'}
++            </h2>
++
++            {/* Generate Invite Code */}
++            <div style={{
++              background: '#fff',
++              border: '1px solid #d0c4b0',
++              borderRadius: 8,
++              padding: 24,
++              marginBottom: 32
++            }}>
++              <h3 style={{ fontSize: 18, marginBottom: 12, fontWeight: 600 }}>
++                {t('friends.generateInvite') || 'Generate Invite Code'}
++              </h3>
++              <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
++                {t('friends.generateHint') || 'Share this code with someone to let them send you a friend request. Code expires in 7 days.'}
++              </p>
++
++              {inviteCode ? (
++                <div>
++                  <div style={{
++                    background: '#f5f5f5',
++                    padding: 16,
++                    borderRadius: 6,
++                    marginBottom: 12,
++                    display: 'flex',
++                    alignItems: 'center',
++                    gap: 12
++                  }}>
++                    <div style={{
++                      flex: 1,
++                      fontSize: 24,
++                      fontWeight: 700,
++                      fontFamily: 'monospace',
++                      letterSpacing: 4,
++                      textAlign: 'center'
++                    }}>
++                      {inviteCode.code}
++                    </div>
++                    <button
++                      onClick={handleCopyCode}
++                      style={{
++                        padding: '8px 16px',
++                        background: '#2196F3',
++                        color: '#fff',
++                        border: 'none',
++                        borderRadius: 6,
++                        cursor: 'pointer',
++                        fontSize: 14,
++                        fontWeight: 500
++                      }}
++                    >
++                      {t('friends.copy') || 'Copy'}
++                    </button>
++                  </div>
++                  <div style={{ fontSize: 12, color: '#888' }}>
++                    {t('friends.expiresAt') || 'Expires'}: {new Date(inviteCode.expires_at).toLocaleString()}
++                  </div>
++                </div>
++              ) : (
++                <button
++                  onClick={handleGenerateInvite}
++                  disabled={generatingInvite}
++                  style={{
++                    padding: '12px 24px',
++                    background: generatingInvite ? '#ccc' : '#4CAF50',
++                    color: '#fff',
++                    border: 'none',
++                    borderRadius: 6,
++                    cursor: generatingInvite ? 'not-allowed' : 'pointer',
++                    fontSize: 15,
++                    fontWeight: 500
++                  }}
++                >
++                  {generatingInvite ? (t('friends.generating') || 'Generating...') : (t('friends.generate') || 'Generate Code')}
++                </button>
++              )}
++            </div>
++
++            {/* Use Invite Code */}
++            <div style={{
++              background: '#fff',
++              border: '1px solid #d0c4b0',
++              borderRadius: 8,
++              padding: 24
++            }}>
++              <h3 style={{ fontSize: 18, marginBottom: 12, fontWeight: 600 }}>
++                {t('friends.useInvite') || 'Use Invite Code'}
++              </h3>
++              <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
++                {t('friends.useHint') || 'Enter a friend\'s invite code to send them a friend request.'}
++              </p>
++
++              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
++                <input
++                  type="text"
++                  value={inputCode}
++                  onChange={e => setInputCode(e.target.value.toUpperCase())}
++                  placeholder={t('friends.codePlaceholder') || 'Enter 6-character code'}
++                  maxLength={6}
++                  style={{
++                    flex: 1,
++                    padding: '12px 16px',
++                    border: '1px solid #d0c4b0',
++                    borderRadius: 6,
++                    fontSize: 16,
++                    fontFamily: 'monospace',
++                    letterSpacing: 2,
++                    textTransform: 'uppercase'
++                  }}
++                />
++                <button
++                  onClick={handleUseCode}
++                  disabled={usingCode || inputCode.length !== 6}
++                  style={{
++                    padding: '12px 24px',
++                    background: (usingCode || inputCode.length !== 6) ? '#ccc' : '#2196F3',
++                    color: '#fff',
++                    border: 'none',
++                    borderRadius: 6,
++                    cursor: (usingCode || inputCode.length !== 6) ? 'not-allowed' : 'pointer',
++                    fontSize: 15,
++                    fontWeight: 500
++                  }}
++                >
++                  {usingCode ? (t('friends.sending') || 'Sending...') : (t('friends.send') || 'Send Request')}
++                </button>
++              </div>
++
++              {codeMessage && (
++                <div style={{
++                  marginTop: 12,
++                  padding: 12,
++                  background: codeMessage.includes('sent') || codeMessage.includes('成功') ? '#e8f5e9' : '#ffebee',
++                  color: codeMessage.includes('sent') || codeMessage.includes('成功') ? '#2e7d32' : '#c62828',
++                  borderRadius: 6,
++                  fontSize: 14
++                }}>
++                  {codeMessage}
++                </div>
++              )}
++            </div>
++          </div>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/src/components/TopNavBar.tsx b/frontend/src/components/TopNavBar.tsx
+index 18c4eba..245e7e5 100644
+--- a/frontend/src/components/TopNavBar.tsx
++++ b/frontend/src/components/TopNavBar.tsx
+@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
+ import { useAuth } from '../contexts/AuthContext';
+ 
+ interface Props {
+-  currentView: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks';
+-  onViewChange: (view: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks') => void;
++  currentView: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks' | 'friends';
++  onViewChange: (view: 'writing' | 'settings' | 'timeline' | 'analysis' | 'decks' | 'friends') => void;
+ }
+ 
+ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+@@ -152,6 +152,24 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+         >
+           {t('nav.decks')}
+         </button>
++
++        <button
++          onClick={() => onViewChange('friends')}
++          style={buttonStyle(currentView === 'friends')}
++          title={t('nav.friends')}
++          onMouseEnter={e => {
++            if (currentView !== 'friends') {
++              e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
++            }
++          }}
++          onMouseLeave={e => {
++            if (currentView !== 'friends') {
++              e.currentTarget.style.background = 'transparent';
++            }
++          }}
++        >
++          {t('nav.friends') || 'Friends'}
++        </button>
+       </div>
+ 
+       <div style={{ flex: 1 }} />
+diff --git a/frontend/src/i18n.ts b/frontend/src/i18n.ts
+index 45bf06a..7d9fe85 100644
+--- a/frontend/src/i18n.ts
++++ b/frontend/src/i18n.ts
+@@ -11,6 +11,7 @@ const resources = {
+         timeline: 'Timeline',
+         analysis: 'Reflections',
+         decks: 'Decks',
++        friends: 'Friends',
+         settings: 'Settings'
+       },
+       settings: {
+@@ -106,6 +107,18 @@ const resources = {
+         confirm: {
+           delete: 'Delete this deck and all its voices?',
+           sync: 'Sync with original template? This will overwrite any changes you made to this deck.'
++        },
++        publishWarning: {
++          heading: '⚠️ Publish Deck Warning',
++          body: 'Publishing will <strong>break the parent link</strong>. This deck becomes a standalone deck in the community store.',
++          note: 'This action cannot be undone. Even if you unpublish later, the parent link stays broken.',
++          cancel: 'Cancel',
++          confirm: 'Publish Anyway'
++        },
++        messages: {
++          publishSuccess: '✅ Deck published to community!',
++          unpublishSuccess: '✅ Deck unpublished',
++          installSuccess: '✅ Deck installed to your collection!'
+         }
+       },
+       timeline: {
+@@ -142,6 +155,37 @@ const resources = {
+         noEntriesForDate: 'No entries for this date',
+         todayLabel: 'Today',
+         deleteError: 'Failed to delete entry'
++      },
++      friends: {
++        myFriends: 'My Friends',
++        requests: 'Requests',
++        addFriend: 'Add Friend',
++        noFriends: 'No friends yet. Use an invite code to add your first friend!',
++        noRequests: 'No pending friend requests',
++        loading: 'Loading...',
++        viewTimeline: 'View Timeline',
++        remove: 'Remove',
++        accept: 'Accept',
++        reject: 'Reject',
++        generateInvite: 'Generate Invite Code',
++        generateHint: 'Share this code with someone to let them send you a friend request. Code expires in 7 days.',
++        generate: 'Generate Code',
++        generating: 'Generating...',
++        copy: 'Copy',
++        codeCopied: 'Code copied to clipboard!',
++        expiresAt: 'Expires',
++        useInvite: 'Use Invite Code',
++        useHint: 'Enter a friend\'s invite code to send them a friend request.',
++        codePlaceholder: 'Enter 6-character code',
++        send: 'Send Request',
++        sending: 'Sending...',
++        requestSent: 'Friend request sent!',
++        confirmRemove: 'Remove this friend?',
++        generateError: 'Failed to generate invite code',
++        useCodeError: 'Invalid or expired code',
++        acceptError: 'Failed to accept request',
++        rejectError: 'Failed to reject request',
++        removeError: 'Failed to remove friend'
+       }
+     }
+   },
+@@ -152,6 +196,7 @@ const resources = {
+         timeline: '时间线',
+         analysis: '回顾',
+         decks: '卡组',
++        friends: '好友',
+         settings: '设置'
+       },
+       settings: {
+@@ -247,6 +292,18 @@ const resources = {
+         confirm: {
+           delete: '确定删除这个卡组以及所有声线？',
+           sync: '与原模板同步？这会覆盖你在卡组里的修改。'
++        },
++        publishWarning: {
++          heading: '⚠️ 发布提醒',
++          body: '发布后会<strong>断开与父卡组的链接</strong>，并在社区中以独立卡组存在。',
++          note: '此操作不可逆，就算之后取消发布，父子链接也无法恢复。',
++          cancel: '取消',
++          confirm: '仍要发布'
++        },
++        messages: {
++          publishSuccess: '✅ 已发布到社区！',
++          unpublishSuccess: '✅ 已取消发布',
++          installSuccess: '✅ 已安装到你的卡组'
+         }
+       },
+       timeline: {
+@@ -283,6 +340,37 @@ const resources = {
+         noEntriesForDate: '这一天暂无记录',
+         todayLabel: '今天',
+         deleteError: '删除失败'
++      },
++      friends: {
++        myFriends: '我的好友',
++        requests: '好友申请',
++        addFriend: '添加好友',
++        noFriends: '还没有好友。使用邀请码添加你的第一个好友吧！',
++        noRequests: '暂无待处理的好友申请',
++        loading: '加载中...',
++        viewTimeline: '查看时间线',
++        remove: '移除',
++        accept: '接受',
++        reject: '拒绝',
++        generateInvite: '生成邀请码',
++        generateHint: '将此邀请码分享给朋友，让对方向你发送好友申请。邀请码 7 天后过期。',
++        generate: '生成邀请码',
++        generating: '生成中...',
++        copy: '复制',
++        codeCopied: '邀请码已复制到剪贴板！',
++        expiresAt: '过期时间',
++        useInvite: '使用邀请码',
++        useHint: '输入朋友的邀请码，向对方发送好友申请。',
++        codePlaceholder: '输入 6 位邀请码',
++        send: '发送申请',
++        sending: '发送中...',
++        requestSent: '好友申请已发送！',
++        confirmRemove: '确定要移除这位好友吗？',
++        generateError: '生成邀请码失败',
++        useCodeError: '邀请码无效或已过期',
++        acceptError: '接受申请失败',
++        rejectError: '拒绝申请失败',
++        removeError: '移除好友失败'
+       }
+     }
+   }

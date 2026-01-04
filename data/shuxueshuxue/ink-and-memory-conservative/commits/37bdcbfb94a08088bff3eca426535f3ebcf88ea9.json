@@ -1,0 +1,23 @@
+{
+  "sha": "37bdcbfb94a08088bff3eca426535f3ebcf88ea9",
+  "message": "Polish README structure",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-21T10:31:54Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-21T10:31:54Z"
+  },
+  "stats": {
+    "total": 31,
+    "additions": 7,
+    "deletions": 24
+  },
+  "files_count": 1,
+  "parents": [
+    "4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614"
+  ]
+}

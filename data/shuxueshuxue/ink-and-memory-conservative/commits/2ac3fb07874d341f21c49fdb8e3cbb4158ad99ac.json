@@ -1,0 +1,23 @@
+{
+  "sha": "2ac3fb07874d341f21c49fdb8e3cbb4158ad99ac",
+  "message": "Add Collections tab with starred comments and analysis features\n\n- Create CollectionsView component with Starred Comments and Daily Pictures sections\n- Replace Calendar tab with Collections in navigation\n- Add Calendar and Save buttons to left toolbar (floating)\n- Implement CalendarPopup modal for loading/viewing entries\n- Add smooth comment expansion animations with cubic-bezier easing\n- Remove caret pulse animation per user feedback\n\nBackend Analysis Features:\n- Add analyze_echoes session: find recurring themes across all notes\n- Add analyze_traits session: identify personality characteristics\n- Add analyze_patterns session: discover behavioral patterns\n- All analysis functions use PolyCLI session_def with LLM (gpt-4o-dou)\n\nFrontend Analysis Integration:\n- Update AnalysisView with Echoes, Traits, Patterns pages\n- Remove \"Ask Away\" page from Analysis tab\n- Collect all calendar entries and send concatenated text to backend\n- Display structured JSON results with custom styling per type\n\nComment Card Enhancements:\n- Expand max width from 400px to 600px\n- Change from fixed height to minHeight for vertical expansion\n- Add 3-line clamp with word-wrap instead of ellipsis cutoff\n- Add action toolbar (star, kill) when expanded\n- Add inline chat interface in expanded cards\n\nOther Improvements:\n- Fix TypeScript errors: unused imports, unused parameters\n- Exclude *.old.tsx files from TypeScript compilation\n- Add calendar storage utilities with date-keyed entries\n- Improve comment navigation when cards are expanded\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-28T18:43:28Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-28T18:43:28Z"
+  },
+  "stats": {
+    "total": 2646,
+    "additions": 2451,
+    "deletions": 195
+  },
+  "files_count": 13,
+  "parents": [
+    "6ba210fc450801f7e916ec2065b4fc09d0a3645b"
+  ]
+}

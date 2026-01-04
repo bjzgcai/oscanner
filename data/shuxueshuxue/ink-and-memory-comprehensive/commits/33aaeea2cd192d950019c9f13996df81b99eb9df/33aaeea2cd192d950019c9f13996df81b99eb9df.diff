@@ -1,0 +1,9 @@
+commit 33aaeea2cd192d950019c9f13996df81b99eb9df
+Merge: df84839 b56fdc9
+Author: F2J <98064968+shuxueshuxue@users.noreply.github.com>
+Date:   Thu Jan 1 13:34:28 2026 +0800
+
+    Merge pull request #28 from zhuchenyu2008/main
+    
+    添加控制能量条显示的开关
+

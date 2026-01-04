@@ -1,0 +1,118 @@
+commit 2a9c8f44f90a607238caf6787d7da39fe1dc4022
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Dec 16 15:59:55 2025 +0800
+
+    remove visitor mode from frontend
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 7172160..f8eaf74 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -94,7 +94,6 @@ export default function App() {
+ 
+   // @@@ Auth screen state
+   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
+-  const [guestMode, setGuestMode] = useState(false);
+   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+   const [isMigrating, setIsMigrating] = useState(false);
+   const currentLanguage = (i18n.language || 'en').split('-')[0];
+@@ -670,10 +669,6 @@ export default function App() {
+     // This is handled by the useEffect hook above
+   }, []);
+ 
+-  const handleContinueAsGuest = useCallback(() => {
+-    setGuestMode(true);
+-  }, []);
+-
+   // @@@ Handle @ key press for agent dropdown
+   const handleKeyDown = useCallback((cellId: string, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+     handleTextCellKeyDown(cellId, e);
+@@ -889,8 +884,8 @@ export default function App() {
+     );
+   }
+ 
+-  // @@@ Show auth screen if not authenticated and not in guest mode
+-  if (!isAuthenticated && !guestMode) {
++  // @@@ Show auth screen if not authenticated
++  if (!isAuthenticated) {
+     return (
+       <div style={{
+         display: 'flex',
+@@ -904,7 +899,6 @@ export default function App() {
+           <LoginForm
+             onSuccess={handleAuthSuccess}
+             onSwitchToRegister={() => setAuthScreen('register')}
+-            onContinueAsGuest={handleContinueAsGuest}
+           />
+         ) : (
+           <RegisterForm
+diff --git a/frontend/src/components/Auth/LoginForm.tsx b/frontend/src/components/Auth/LoginForm.tsx
+index d72ac7d..cda1a60 100644
+--- a/frontend/src/components/Auth/LoginForm.tsx
++++ b/frontend/src/components/Auth/LoginForm.tsx
+@@ -8,10 +8,9 @@ import { useAuth } from '../../contexts/AuthContext';
+ interface LoginFormProps {
+   onSuccess: () => void;
+   onSwitchToRegister: () => void;
+-  onContinueAsGuest: () => void;
+ }
+ 
+-export default function LoginForm({ onSuccess, onSwitchToRegister, onContinueAsGuest }: LoginFormProps) {
++export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
+   const { login } = useAuth();
+   const [email, setEmail] = useState('');
+   const [password, setPassword] = useState('');
+@@ -180,53 +179,6 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, onContinueAsG
+           Register
+         </button>
+       </div>
+-
+-      <div style={{
+-        marginTop: '24px',
+-        paddingTop: '20px',
+-        borderTop: '1px solid #e0d8cc',
+-        textAlign: 'center'
+-      }}>
+-        <button
+-          onClick={onContinueAsGuest}
+-          disabled={isSubmitting}
+-          style={{
+-            width: '100%',
+-            padding: '12px',
+-            border: '1px solid #d0c4b0',
+-            borderRadius: '6px',
+-            backgroundColor: '#fff',
+-            color: '#666',
+-            fontSize: '15px',
+-            fontWeight: 500,
+-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+-            fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
+-            transition: 'all 0.2s'
+-          }}
+-          onMouseEnter={(e) => {
+-            if (!isSubmitting) {
+-              e.currentTarget.style.backgroundColor = '#f8f0e6';
+-              e.currentTarget.style.borderColor = '#999';
+-            }
+-          }}
+-          onMouseLeave={(e) => {
+-            if (!isSubmitting) {
+-              e.currentTarget.style.backgroundColor = '#fff';
+-              e.currentTarget.style.borderColor = '#d0c4b0';
+-            }
+-          }}
+-        >
+-          Continue as Guest
+-        </button>
+-        <div style={{
+-          marginTop: '12px',
+-          fontSize: '12px',
+-          color: '#999',
+-          fontStyle: 'italic'
+-        }}>
+-          Limited features: no image generation or reflections
+-        </div>
+-      </div>
+     </div>
+   );
+ }

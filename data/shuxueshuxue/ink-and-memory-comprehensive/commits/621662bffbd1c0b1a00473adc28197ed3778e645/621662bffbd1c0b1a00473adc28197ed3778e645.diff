@@ -1,0 +1,46 @@
+commit 621662bffbd1c0b1a00473adc28197ed3778e645
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Sun Nov 2 15:43:11 2025 +0800
+
+    Fix timing issue: wait for session save before reload
+    
+    Root cause: Race condition in Start Fresh
+    - window.location.reload() was OUTSIDE try block
+    - Reload happened IMMEDIATELY, not waiting for saveSession
+    - Result: Reloaded before new session saved → loaded old session
+    
+    Fix: Move reload INSIDE try/catch blocks
+    - Wait for await saveSession() to complete
+    - Then reload → loads the newly saved empty session
+    - Also reload in catch block to clear UI even if save fails
+    
+    🤖 Generated with [Claude Code](https://claude.com/claude-code)
+    
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 5deb407..2725e5b 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -854,16 +854,19 @@ export default function App() {
+         const { saveSession } = await import('./api/voiceApi');
+         await saveSession(emptyState.sessionId, emptyState);
+         console.log(`✅ Created new session: ${newSessionId}`);
++        // @@@ Wait for save to complete BEFORE reloading
++        window.location.reload();
+       } catch (error) {
+         console.error('Failed to create new session in database:', error);
++        // Reload anyway to clear UI
++        window.location.reload();
+       }
+     } else {
+       // For guest users: clear localStorage
+       localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
+       localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
++      window.location.reload();
+     }
+-
+-    window.location.reload();
+   }, [isAuthenticated]);
+ 
+   const handleSaveToday = useCallback(() => {

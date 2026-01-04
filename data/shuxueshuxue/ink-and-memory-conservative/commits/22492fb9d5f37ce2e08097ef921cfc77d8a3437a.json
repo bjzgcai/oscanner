@@ -1,0 +1,23 @@
+{
+  "sha": "22492fb9d5f37ce2e08097ef921cfc77d8a3437a",
+  "message": "Refactor localStorage keys to use centralized constants\n\n- Created src/constants/storageKeys.ts with all storage key constants\n- Replaced all magic string localStorage keys across 8 files:\n  * AuthContext.tsx (6 instances)\n  * App.tsx (multiple instances for all state management)\n  * voiceApi.ts (1 instance)\n  * voiceStorage.ts (6 instances)\n  * calendarStorage.ts (2 instances)\n  * CollectionsView.tsx (4 instances)\n  * AnalysisView.tsx (2 instances)\n  * EditorEngine.ts (1 instance)\n\nBenefits:\n- Single source of truth for all storage keys\n- Type safety with const assertion\n- Easy to refactor/rename keys\n- Prevents typos in storage key names\n- Better IDE autocomplete support\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:14:34Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:14:34Z"
+  },
+  "stats": {
+    "total": 145,
+    "additions": 89,
+    "deletions": 56
+  },
+  "files_count": 9,
+  "parents": [
+    "686157161fca772b3dd3a6854410944d4852e6ba"
+  ]
+}

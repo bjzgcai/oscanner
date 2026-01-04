@@ -1,0 +1,14 @@
+{
+  "hash": "ed93c617cf414bb7a90528cfd9bed647933fe7ea",
+  "author": "zhuchenyu2008",
+  "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+  "date": "Sat Jan 3 12:05:42 2026 +0800",
+  "subject": "Delete App.tsx",
+  "files": [
+    "App.tsx"
+  ],
+  "diff": "commits/ed93c617cf414bb7a90528cfd9bed647933fe7ea/ed93c617cf414bb7a90528cfd9bed647933fe7ea.diff",
+  "related_files": {
+    "App.tsx": []
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "sha": "654ed2c9a39c824e4481875291e4df8018cbb451",
+  "node_id": "C_kwDOP2Zrm9oAKDY1NGVkMmM5YTM5YzgyNGU0NDgxODc1MjkxZTRkZjgwMThjYmI0NTE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-17T08:53:47Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-17T08:53:47Z"
+    },
+    "message": "remove .swm",
+    "tree": {
+      "sha": "c3265b5d1e0f54bd99a7f1c4c61ede9bbcb38f0e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/c3265b5d1e0f54bd99a7f1c4c61ede9bbcb38f0e"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/654ed2c9a39c824e4481875291e4df8018cbb451",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/654ed2c9a39c824e4481875291e4df8018cbb451",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/654ed2c9a39c824e4481875291e4df8018cbb451",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/654ed2c9a39c824e4481875291e4df8018cbb451/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8"
+    }
+  ],
+  "stats": {
+    "total": 27,
+    "additions": 0,
+    "deletions": 27
+  },
+  "files": [
+    {
+      "sha": "eeea2fe16c9cde0fff1eccbb0b3188c3b8d2e4b2",
+      "filename": ".swm/schema-analysis.j3t2rus0.sw.md",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 24,
+      "changes": 24,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8/.swm%2Fschema-analysis.j3t2rus0.sw.md",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8/.swm%2Fschema-analysis.j3t2rus0.sw.md",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.swm%2Fschema-analysis.j3t2rus0.sw.md?ref=3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8",
+      "patch": "@@ -1,24 +0,0 @@\n----\n-title: Schema analysis\n----\n-<SwmSnippet path=\"/backend/stateless_analyzer.py\" line=\"9\">\n-\n----\n-\n-Current schema for what a voice trigger contains.\n-\n-```python\n-class VoiceTrigger(BaseModel):\n-    phrase: str = Field(description=\"Exact trigger phrase from text (verbatim, 2-4 words, avoid punctuation)\")\n-    voice_id: str = Field(description=\"Voice ID from the available list (e.g., 'holder', 'mirror', 'unpacker')\")\n-    voice_name: str = Field(description=\"Voice display name (will be auto-filled, LLM should not generate this)\")\n-    comment: str = Field(description=\"What this voice is saying (as if speaking)\")\n-    icon: str = Field(description=\"Icon identifier\")\n-    color: str = Field(description=\"Color identifier\")\n-```\n-\n----\n-\n-</SwmSnippet>\n-\n-<SwmMeta version=\"3.0.0\" repo-id=\"Z2l0aHViJTNBJTNBaW5rLWFuZC1tZW1vcnklM0ElM0FzaHV4dWVzaHV4dWU=\" repo-name=\"ink-and-memory\"><sup>Powered by [Swimm](https://app.swimm.io/)</sup></SwmMeta>"
+    },
+    {
+      "sha": "b8c2ccc1cacc59bd5eae80c783fb9b587b683adc",
+      "filename": ".swm/swimm.json",
+      "status": "removed",
+      "additions": 0,
+      "deletions": 3,
+      "changes": 3,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8/.swm%2Fswimm.json",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8/.swm%2Fswimm.json",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.swm%2Fswimm.json?ref=3a06c2b7fcbb09fdf5122c90e0b3a0ba6390cea8",
+      "patch": "@@ -1,3 +0,0 @@\n-{\n-    \"repo_id\": \"Z2l0aHViJTNBJTNBaW5rLWFuZC1tZW1vcnklM0ElM0FzaHV4dWVzaHV4dWU=\"\n-}"
+    }
+  ]
+}

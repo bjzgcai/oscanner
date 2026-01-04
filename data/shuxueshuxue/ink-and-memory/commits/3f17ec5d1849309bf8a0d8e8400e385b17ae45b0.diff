@@ -1,0 +1,318 @@
+*** FILE: backend/database.py ***
+@@ -48,6 +48,8 @@ def init_db():
+     # Run migrations
+     if current_version < 1:
+         migrate_v1(db)
++    if current_version < 2:
++        migrate_v2(db)
+ 
+     db.commit()
+     db.close()
+@@ -150,6 +152,20 @@ def migrate_v1(db):
+ 
+     print("✅ Migration v1 completed")
+ 
++def migrate_v2(db):
++    """Add first_login_completed field to user_preferences."""
++    print("📦 Running migration v2: Add first_login_completed field")
++
++    # Add first_login_completed column to user_preferences
++    db.execute("""
++    ALTER TABLE user_preferences ADD COLUMN first_login_completed INTEGER DEFAULT 0
++    """)
++
++    # Record migration
++    db.execute("INSERT INTO schema_version (version) VALUES (2)")
++
++    print("✅ Migration v2 completed")
++
+ # ========== User Management ==========
+ 
+ def create_user(email: str, password_hash: str, display_name: str = None) -> int:
+@@ -335,7 +351,8 @@ def get_preferences(user_id: int):
+     db = get_db()
+     try:
+         row = db.execute("""
+-        SELECT voice_configs_json, meta_prompt, state_config_json, selected_state, updated_at
++        SELECT voice_configs_json, meta_prompt, state_config_json, selected_state,
++               first_login_completed, updated_at
+         FROM user_preferences
+         WHERE user_id = ?
+         """, (user_id,)).fetchone()
+@@ -351,6 +368,31 @@ def get_preferences(user_id: int):
+     finally:
+         db.close()
+ 
++def set_first_login_completed(user_id: int):
++    """Mark user's first login as completed."""
++    db = get_db()
++    try:
++        # Check if preferences exist
++        existing = db.execute("SELECT user_id FROM user_preferences WHERE user_id = ?", (user_id,)).fetchone()
++
++        if existing:
++            # Update existing
++            db.execute("""
++            UPDATE user_preferences
++            SET first_login_completed = 1, updated_at = CURRENT_TIMESTAMP
++            WHERE user_id = ?
++            """, (user_id,))
++        else:
++            # Insert new
++            db.execute("""
++            INSERT INTO user_preferences (user_id, first_login_completed)
++            VALUES (?, 1)
++            """, (user_id,))
++
++        db.commit()
++    finally:
++        db.close()
++
+ # ========== Analysis Reports ==========
+ 
+ def save_analysis_report(user_id: int, report_type: str, report_data: dict, all_notes_text: str = None):
+
+*** FILE: backend/server.py ***
+@@ -907,6 +907,16 @@ def save_preferences_endpoint(
+ 
+     return {"success": True}
+ 
++@app.post("/api/mark-first-login-completed")
++def mark_first_login_completed(current_user: dict = Depends(get_current_user)):
++    """
++    Mark user's first login as completed.
++    Called after migration dialog is shown (migrate or skip).
++    """
++    user_id = current_user['user_id']
++    database.set_first_login_completed(user_id)
++    return {"success": True}
++
+ # ========== Analysis Reports Endpoints ==========
+ 
+ @app.get("/api/reports")
+
+*** FILE: frontend/src/App.tsx ***
+@@ -370,57 +370,52 @@ export default function App() {
+ 
+   // @@@ Check for localStorage migration after login
+   useEffect(() => {
+-    console.log('🔍 Migration check:', { isAuthenticated, isLoading });
+-
+-    if (isAuthenticated && !isLoading) {
+-      // Check if user has localStorage data that needs migration
+-      const hasLocalData =
+-        localStorage.getItem(STORAGE_KEYS.EDITOR_STATE) ||
+-        localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES) ||
+-        localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES) ||
+-        localStorage.getItem(STORAGE_KEYS.VOICE_CONFIGS) ||
+-        localStorage.getItem(STORAGE_KEYS.META_PROMPT) ||
+-        localStorage.getItem(STORAGE_KEYS.STATE_CONFIG) ||
+-        localStorage.getItem(STORAGE_KEYS.SELECTED_STATE) ||
+-        localStorage.getItem(STORAGE_KEYS.ANALYSIS_REPORTS);
+-
+-      // Check if migration already done (flag stored after migration)
+-      const migrationDone = localStorage.getItem(STORAGE_KEYS.MIGRATION_COMPLETED);
+-
+-      console.log('📦 Migration status:', {
+-        hasLocalData: !!hasLocalData,
+-        migrationDone: !!migrationDone,
+-        editorState: !!localStorage.getItem(STORAGE_KEYS.EDITOR_STATE),
+-        calendarEntries: !!localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES),
+-        dailyPictures: !!localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES)
+-      });
++    const checkMigration = async () => {
++      if (!isAuthenticated || isLoading) return;
+ 
+-      // @@@ Handle migration scenarios
+-      const hasCalendar = !!localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES);
+-      let shouldShowDialog = false;
++      try {
++        // Get user preferences from database (includes first_login_completed)
++        const { getPreferences } = await import('./api/voiceApi');
++        const preferences = await getPreferences();
++
++        // If user has already completed first login, clear localStorage
++        if (preferences?.first_login_completed) {
++          console.log('✅ Returning user, clearing localStorage');
++          // Clear all app data from localStorage (keep only auth token)
++          Object.values(STORAGE_KEYS).forEach(key => {
++            if (key !== STORAGE_KEYS.AUTH_TOKEN) {
++              localStorage.removeItem(key);
++            }
++          });
++          return;
++        }
+ 
+-      // If user explicitly skipped, don't show dialog again
+-      if (migrationDone === 'skipped') {
+-        console.log('🚫 Migration was skipped by user, not showing dialog');
+-        shouldShowDialog = false;
+-      }
+-      // If migration was marked done but calendar entries still exist, it may have failed
+-      else if (hasCalendar && migrationDone === 'true') {
+-        console.warn('⚠️ Found calendar entries but migration was marked done - may have failed, forcing re-migration');
+-        localStorage.removeItem(STORAGE_KEYS.MIGRATION_COMPLETED);
+-        // Re-check immediately after clearing flag
+-        shouldShowDialog = !!hasLocalData; // Migration is now not done
+-      }
+-      // Normal case: show if there's data and migration not done
+-      else {
+-        shouldShowDialog = !!hasLocalData && !migrationDone;
++        // First time login - check for localStorage data to migrate
++        const hasLocalData =
++          localStorage.getItem(STORAGE_KEYS.EDITOR_STATE) ||
++          localStorage.getItem(STORAGE_KEYS.CALENDAR_ENTRIES) ||
++          localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES) ||
++          localStorage.getItem(STORAGE_KEYS.VOICE_CONFIGS) ||
++          localStorage.getItem(STORAGE_KEYS.META_PROMPT) ||
++          localStorage.getItem(STORAGE_KEYS.STATE_CONFIG) ||
++          localStorage.getItem(STORAGE_KEYS.SELECTED_STATE) ||
++          localStorage.getItem(STORAGE_KEYS.ANALYSIS_REPORTS);
++
++        if (hasLocalData) {
++          console.log('🔍 First login with localStorage data, showing migration dialog');
++          setShowMigrationDialog(true);
++        } else {
++          // No localStorage data, just mark first login as completed
++          console.log('🔍 First login without localStorage data, marking as completed');
++          const { markFirstLoginCompleted } = await import('./api/voiceApi');
++          await markFirstLoginCompleted();
++        }
++      } catch (error) {
++        console.error('Failed to check migration status:', error);
+       }
++    };
+ 
+-      if (shouldShowDialog) {
+-        console.log('✅ Showing migration dialog');
+-        setShowMigrationDialog(true);
+-      }
+-    }
++    checkMigration();
+   }, [isAuthenticated, isLoading]);
+ 
+   // Initialize engine
+@@ -547,12 +542,20 @@ export default function App() {
+ 
+   // @@@ Auto-save to database for authenticated users
+   useEffect(() => {
+-    if (!isAuthenticated || !state) return;
++    if (!isAuthenticated || !state || !engineRef.current) return;
+ 
+     const autoSaveTimer = setTimeout(async () => {
+       try {
++        // Use currentEntryId if exists, otherwise create new UUID
++        let sessionId = state.currentEntryId;
++        if (!sessionId) {
++          sessionId = crypto.randomUUID();
++          engineRef.current?.setCurrentEntryId(sessionId);
++        }
++
+         const { saveSession } = await import('./api/voiceApi');
+-        await saveSession('current-session', state, 'Current Session');
++        // Auto-save without name (unsaved draft)
++        await saveSession(sessionId, state);
+         console.log('Auto-saved to database');
+       } catch (error) {
+         console.error('Auto-save failed:', error);
+@@ -1097,14 +1100,13 @@ export default function App() {
+       // Call backend migration endpoint
+       const result = await importLocalData(migrationData);
+ 
+-      // Mark migration as complete
+-      localStorage.setItem(STORAGE_KEYS.MIGRATION_COMPLETED, 'true');
++      // Mark first login as completed in database
++      const { markFirstLoginCompleted } = await import('./api/voiceApi');
++      await markFirstLoginCompleted();
+ 
+-      // Clear old localStorage data (keep auth token and migration flag)
+-      const keysToKeep: string[] = [STORAGE_KEYS.AUTH_TOKEN, STORAGE_KEYS.MIGRATION_COMPLETED];
+-      const allKeys = Object.keys(localStorage);
+-      allKeys.forEach(key => {
+-        if (!keysToKeep.includes(key)) {
++      // Clear ALL localStorage data (keep only auth token)
++      Object.values(STORAGE_KEYS).forEach(key => {
++        if (key !== STORAGE_KEYS.AUTH_TOKEN) {
+           localStorage.removeItem(key);
+         }
+       });
+@@ -1134,10 +1136,24 @@ export default function App() {
+     }
+   }, []);
+ 
+-  const handleSkipMigration = useCallback(() => {
+-    // @@@ Set flag to 'skipped' instead of 'true' to distinguish from successful migration
+-    localStorage.setItem(STORAGE_KEYS.MIGRATION_COMPLETED, 'skipped');
+-    setShowMigrationDialog(false);
++  const handleSkipMigration = useCallback(async () => {
++    try {
++      // Mark first login as completed in database
++      const { markFirstLoginCompleted } = await import('./api/voiceApi');
++      await markFirstLoginCompleted();
++
++      // Clear ALL localStorage data (keep only auth token)
++      Object.values(STORAGE_KEYS).forEach(key => {
++        if (key !== STORAGE_KEYS.AUTH_TOKEN) {
++          localStorage.removeItem(key);
++        }
++      });
++
++      setShowMigrationDialog(false);
++    } catch (error) {
++      console.error('Failed to skip migration:', error);
++      alert('Failed to skip migration. Please try again.');
++    }
+   }, []);
+ 
+   const handleAuthSuccess = useCallback(() => {
+
+*** FILE: frontend/src/api/voiceApi.ts ***
+@@ -421,3 +421,18 @@ export async function getAnalysisReports(limit: number = 10): Promise<any[]> {
+   const data = await response.json();
+   return data.reports;
+ }
++
++/**
++ * Mark first login as completed (after migration dialog)
++ */
++export async function markFirstLoginCompleted(): Promise<void> {
++  const response = await fetch(`${API_BASE}/api/mark-first-login-completed`, {
++    method: 'POST',
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Mark first login completed failed');
++  }
++}
+
+*** FILE: frontend/src/components/AnalysisView.tsx ***
+@@ -102,7 +102,12 @@ export default function AnalysisView() {
+           const grouped: Record<string, any[]> = {};
+           for (const session of sessions) {
+             const fullSession = await getSession(session.id);
+-            let dateKey = session.created_at?.split('T')[0];
++
++            // @@@ BUGFIX: Extract date from timestamp (format: "2025-11-02 10:42:17" or "2025-11-02T10:42:17")
++            // Just take first 10 characters to get "YYYY-MM-DD"
++            let dateKey = session.created_at?.substring(0, 10);
++
++            // Prefer date from session name if it has one
+             if (session.name && /^\d{4}-\d{2}-\d{2}/.test(session.name)) {
+               dateKey = session.name.split(' - ')[0];
+             }
+
+*** FILE: frontend/src/components/CalendarPopup.tsx ***
+@@ -34,8 +34,9 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+           for (const session of sessions) {
+             const fullSession = await getSession(session.id);
+ 
+-            // Extract date from name or use created_at
+-            let dateKey = session.created_at?.split('T')[0] || getTodayKey();
++            // @@@ BUGFIX: Extract date from timestamp (format: "2025-11-02 10:42:17" or "2025-11-02T10:42:17")
++            // Just take first 10 characters to get "YYYY-MM-DD"
++            let dateKey = session.created_at?.substring(0, 10) || getTodayKey();
+ 
+             // If name starts with YYYY-MM-DD format, use that
+             if (session.name && /^\d{4}-\d{2}-\d{2}/.test(session.name)) {

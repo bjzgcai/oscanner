@@ -1,0 +1,20 @@
+{
+  "hash": "30be7c68037af9b5ba3bfc9993bcfc4c83fe7169",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Dec 9 20:16:55 2025 +0800",
+  "subject": "session life cycle hook extraction",
+  "files": [
+    "frontend/src/App.tsx",
+    "frontend/src/hooks/useSessionLifecycle.ts"
+  ],
+  "diff": "commits/30be7c68037af9b5ba3bfc9993bcfc4c83fe7169/30be7c68037af9b5ba3bfc9993bcfc4c83fe7169.diff",
+  "related_files": {
+    "frontend/src/App.tsx": [
+      "frontend/src/hooks/useSessionLifecycle.ts"
+    ],
+    "frontend/src/hooks/useSessionLifecycle.ts": [
+      "frontend/src/App.tsx"
+    ]
+  }
+}

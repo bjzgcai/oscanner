@@ -1,0 +1,17 @@
+commit fcdae5acf7f9b3dbc26ba5d0d7384051c1e8f506
+Author: F2J <98064968+shuxueshuxue@users.noreply.github.com>
+Date:   Wed Dec 3 22:42:16 2025 +0800
+
+    Update README.md
+
+diff --git a/README.md b/README.md
+index cc7e41d..94e1b43 100644
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,4 @@
+-# Ink & Memory: Your Mind, Mirrored
+-
++# Ink & Memory
+ <p align="center">
+   <img src="assets/banner.png" alt="Ink & Memory Banner" width="700"/>
+ </p>

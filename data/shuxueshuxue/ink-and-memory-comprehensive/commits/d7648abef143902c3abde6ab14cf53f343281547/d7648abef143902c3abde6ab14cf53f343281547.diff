@@ -1,0 +1,669 @@
+commit d7648abef143902c3abde6ab14cf53f343281547
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Thu Nov 20 17:39:31 2025 +0800
+
+    UI adjustment
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 51d5f58..9fd657c 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -248,8 +248,9 @@ export default function App() {
+     }
+   }, [currentLanguage, i18n]);
+ 
+-  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks'>('writing');
++  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks' | 'friends'>('writing');
+   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
++  const [timelineFriendToSelect, setTimelineFriendToSelect] = useState<number | null>(null);
+   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+ 
+   const engineRef = useRef<EditorEngine | null>(null);
+@@ -638,6 +639,35 @@ export default function App() {
+     }
+   }, [state, composingCells]);
+ 
++  // @@@ Keep focus on the lone blank text cell (after resets / clears)
++  useEffect(() => {
++    if (!state) return;
++
++    const textCells = state.cells.filter(c => c.type === 'text') as TextCell[];
++    if (textCells.length !== 1) return;
++
++    const firstCell = textCells[0];
++    if (firstCell.content.trim().length > 0) return;
++
++    const focusEditor = () => {
++      const textarea = textareaRefs.current.get(firstCell.id);
++      if (textarea && document.activeElement !== textarea) {
++        textarea.focus();
++        textarea.selectionStart = 0;
++        textarea.selectionEnd = 0;
++      }
++    };
++
++    const textarea = textareaRefs.current.get(firstCell.id);
++    if (textarea) {
++      focusEditor();
++      return;
++    }
++
++    const timer = window.setTimeout(focusEditor, 0);
++    return () => window.clearTimeout(timer);
++  }, [state, refsReady]);
++
+   // @@@ Auto-save to database for authenticated users
+   useEffect(() => {
+     if (!isAuthenticated || !state) return;
+@@ -1212,6 +1242,15 @@ export default function App() {
+     }
+   }, []);
+ 
++  const handleViewFriendTimeline = useCallback((friendId: number, _friendName?: string) => {
++    setTimelineFriendToSelect(friendId);
++    setCurrentView('timeline');
++  }, []);
++
++  const handleFriendSelectionHandled = useCallback(() => {
++    setTimelineFriendToSelect(null);
++  }, []);
++
+   const handleStateChoose = useCallback(async (stateId: string) => {
+     setSelectedState(stateId);
+     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+@@ -2412,7 +2451,12 @@ export default function App() {
+         display: currentView === 'timeline' ? 'flex' : 'none',
+         overflow: 'hidden'
+       }}>
+-        <CollectionsView isVisible={currentView === 'timeline'} voiceConfigs={voiceConfigs} />
++        <CollectionsView
++          isVisible={currentView === 'timeline'}
++          voiceConfigs={voiceConfigs}
++          friendToSelect={timelineFriendToSelect}
++          onFriendSelectionHandled={handleFriendSelectionHandled}
++        />
+       </div>
+       {currentView === 'analysis' && (
+         <div style={{
+@@ -2440,7 +2484,10 @@ export default function App() {
+           display: 'flex',
+           overflow: 'hidden'
+         }}>
+-          <FriendsView isVisible={currentView === 'friends'} />
++          <FriendsView
++            isVisible={currentView === 'friends'}
++            onViewFriendTimeline={handleViewFriendTimeline}
++          />
+         </div>
+       )}
+ 
+@@ -2542,6 +2589,7 @@ export default function App() {
+       {showCalendarPopup && (
+         <CalendarPopup
+           onLoadEntry={handleLoadEntry}
++          currentEntryId={state.currentEntryId}
+           onClose={() => setShowCalendarPopup(false)}
+         />
+       )}
+diff --git a/frontend/src/components/CalendarPopup.tsx b/frontend/src/components/CalendarPopup.tsx
+index ee23358..8660a41 100644
+--- a/frontend/src/components/CalendarPopup.tsx
++++ b/frontend/src/components/CalendarPopup.tsx
+@@ -13,9 +13,10 @@ import { useAuth } from '../contexts/AuthContext';
+ interface Props {
+   onLoadEntry: (entry: CalendarEntry) => void;
+   onClose: () => void;
++  currentEntryId?: string | null;
+ }
+ 
+-export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
++export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId }: Props) {
+   const { isAuthenticated } = useAuth();
+   const { t, i18n } = useTranslation();
+   const dateLocale = getDateLocale(i18n.language);
+@@ -402,6 +403,7 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                   overflow: 'auto'
+                 }}>
+                   {selectedEntries.map((entry) => {
++                    const isCurrentEntry = currentEntryId === entry.id;
+                     const time = new Date(entry.timestamp).toLocaleTimeString(dateLocale, {
+                       hour: '2-digit',
+                       minute: '2-digit'
+@@ -411,14 +413,15 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                       <div
+                         key={entry.id}
+                         style={{
+-                          border: '1px solid #d0c4b0',
++                          border: isCurrentEntry ? '2px solid #4CAF50' : '1px solid #d0c4b0',
+                           borderRadius: '6px',
+                           padding: '12px',
+-                          background: '#fff',
++                          background: isCurrentEntry ? '#f0fff4' : '#fff',
+                           display: 'flex',
+                           justifyContent: 'space-between',
+                           alignItems: 'center',
+-                          gap: '12px'
++                          gap: '12px',
++                          boxShadow: isCurrentEntry ? '0 0 0 1px rgba(76, 175, 80, 0.1)' : 'none'
+                         }}
+                       >
+                         <button
+@@ -435,11 +438,32 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+                           }}
+                         >
+                           <div style={{
+-                            fontSize: '12px',
+-                            color: '#999',
++                            display: 'flex',
++                            alignItems: 'center',
++                            gap: '8px',
+                             marginBottom: '4px'
+                           }}>
+-                            {time}
++                            <div style={{
++                              fontSize: '12px',
++                              color: '#999'
++                            }}>
++                              {time}
++                            </div>
++                            {isCurrentEntry && (
++                              <span style={{
++                                fontSize: '11px',
++                                letterSpacing: '0.05em',
++                                textTransform: 'uppercase',
++                                padding: '2px 6px',
++                                borderRadius: '999px',
++                                border: '1px solid #4CAF50',
++                                color: '#256029',
++                                background: '#e8f5e9',
++                                fontWeight: 600
++                              }}>
++                                {t('calendar.currentEntryLabel')}
++                              </span>
++                            )}
+                           </div>
+                           <div style={{
+                             fontSize: '14px',
+diff --git a/frontend/src/components/CollectionsView.tsx b/frontend/src/components/CollectionsView.tsx
+index 049f787..8006ea1 100644
+--- a/frontend/src/components/CollectionsView.tsx
++++ b/frontend/src/components/CollectionsView.tsx
+@@ -1,4 +1,4 @@
+-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
++import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
+ import { useTranslation } from 'react-i18next';
+ import type { Commentor } from '../engine/EditorEngine';
+ import { findNormalizedPhrase } from '../utils/textNormalize';
+@@ -28,7 +28,14 @@ interface TimelineEntryData {
+   comments: Commentor[];
+ }
+ 
+-export default function CollectionsView({ isVisible, voiceConfigs }: { isVisible: boolean; voiceConfigs: Record<string, any> }) {
++interface CollectionsViewProps {
++  isVisible: boolean;
++  voiceConfigs: Record<string, any>;
++  friendToSelect?: number | null;
++  onFriendSelectionHandled?: () => void;
++}
++
++export default function CollectionsView({ isVisible, voiceConfigs, friendToSelect, onFriendSelectionHandled }: CollectionsViewProps) {
+   const { i18n } = useTranslation();
+   const dateLocale = getDateLocale(i18n.language);
+   return (
+@@ -40,7 +47,13 @@ export default function CollectionsView({ isVisible, voiceConfigs }: { isVisible
+       background: '#f8f0e6',
+       overflow: 'hidden'
+     }}>
+-      <TimelinePage isVisible={isVisible} voiceConfigs={voiceConfigs} dateLocale={dateLocale} />
++      <TimelinePage
++        isVisible={isVisible}
++        voiceConfigs={voiceConfigs}
++        dateLocale={dateLocale}
++        friendToSelect={friendToSelect}
++        onFriendSelectionHandled={onFriendSelectionHandled}
++      />
+     </div>
+   );
+ }
+@@ -429,7 +442,15 @@ const getInitialLetter = (name?: string, fallback: string = '?') => {
+   return first || fallback;
+ };
+ 
+-function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: boolean; voiceConfigs: Record<string, any>; dateLocale: string }) {
++interface TimelinePageProps {
++  isVisible: boolean;
++  voiceConfigs: Record<string, any>;
++  dateLocale: string;
++  friendToSelect?: number | null;
++  onFriendSelectionHandled?: () => void;
++}
++
++function TimelinePage({ isVisible, voiceConfigs, dateLocale, friendToSelect, onFriendSelectionHandled }: TimelinePageProps) {
+   const { t } = useTranslation();
+   const { isAuthenticated } = useAuth();
+   const [starredComments, setStarredComments] = useState<Commentor[]>([]);
+@@ -465,12 +486,13 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+   const [isFriendPickerOpen, setIsFriendPickerOpen] = useState(false);
+   const [friendSearchTerm, setFriendSearchTerm] = useState('');
+   const [friendPictures, setFriendPictures] = useState<TimelinePicture[]>([]);
+-  const [loadingFriends, setLoadingFriends] = useState(false);
++  const [, setLoadingFriends] = useState(false);
+   const [friendLoadError, setFriendLoadError] = useState<string | null>(null);
+-  const [friendTimelineError, setFriendTimelineError] = useState<string | null>(null);
+-  const [loadingFriendTimeline, setLoadingFriendTimeline] = useState(false);
++  const [, setFriendTimelineError] = useState<string | null>(null);
++  const [, setLoadingFriendTimeline] = useState(false);
+   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+   const emptyTextMap = useMemo(() => new Map<string, string>(), []);
++  const allTimelineDays = useMemo(() => generateTimelineDays(), []);
+   const filteredFriends = useMemo(() => {
+     const term = friendSearchTerm.trim().toLowerCase();
+     if (!term) return friends;
+@@ -484,10 +506,14 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+       prev.filter(id => friends.some(friend => friend.friend_id === id))
+     );
+   }, [friends]);
+-  const selectedFriend = useMemo(
+-    () => friends.find(friend => friend.friend_id === selectedFriendId),
+-    [friends, selectedFriendId]
+-  );
++
++  // @@@ Reset friend selection when auth state changes (guests can't view friends)
++  useEffect(() => {
++    if (!isAuthenticated) {
++      setSelectedFriendId(null);
++      localStorage.removeItem(STORAGE_KEYS.SELECTED_FRIEND);
++    }
++  }, [isAuthenticated]);
+   useEffect(() => {
+     if (typeof window === 'undefined') return;
+     localStorage.setItem(STORAGE_KEYS.RECENT_FRIENDS, JSON.stringify(recentFriendIds));
+@@ -498,12 +524,26 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+     return map;
+   }, [friends]);
+   const orderedFriendIds = useMemo(() => {
+-    const ids = recentFriendIds.filter(id => friendMap.has(id));
+-    if (selectedFriendId && friendMap.has(selectedFriendId)) {
+-      return [selectedFriendId, ...ids.filter(id => id !== selectedFriendId)].slice(0, MAX_RECENT_FRIENDS);
++    const recentValid = recentFriendIds.filter(id => friendMap.has(id));
++    const prioritized = selectedFriendId && friendMap.has(selectedFriendId)
++      ? [selectedFriendId, ...recentValid.filter(id => id !== selectedFriendId)]
++      : [...recentValid];
++
++    if (prioritized.length < MAX_RECENT_FRIENDS) {
++      for (const friend of friends) {
++        if (!friendMap.has(friend.friend_id)) continue;
++        if (!prioritized.includes(friend.friend_id)) {
++          prioritized.push(friend.friend_id);
++        }
++        if (prioritized.length >= MAX_RECENT_FRIENDS) {
++          break;
++        }
++      }
+     }
+-    return ids.slice(0, MAX_RECENT_FRIENDS);
+-  }, [recentFriendIds, selectedFriendId, friendMap]);
++
++    return prioritized.slice(0, MAX_RECENT_FRIENDS);
++  }, [recentFriendIds, selectedFriendId, friendMap, friends]);
++  const selectedFriend = selectedFriendId ? friendMap.get(selectedFriendId) : null;
+   const orderedRecentFriends = orderedFriendIds
+     .map(id => friendMap.get(id))
+     .filter((friend): friend is Friend => Boolean(friend));
+@@ -757,26 +797,26 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+   // @@@ Set initial scroll position to show today's row at top
+   // Use useLayoutEffect to position BEFORE browser paints (prevents flash)
+   useLayoutEffect(() => {
+-    // @@@ Only scroll when timeline is visible AND data has loaded
+-    if (!isVisible || initialLoading) return;
++    if (!isVisible || initialLoading || !scrollContainerRef.current) return;
++
++    const container = scrollContainerRef.current;
++    const todayIndex = allTimelineDays.findIndex(day => day.isToday);
++    if (todayIndex === -1) return;
+ 
+-    // Double RAF to ensure layout is complete
+     requestAnimationFrame(() => {
+       requestAnimationFrame(() => {
+-        if (scrollContainerRef.current) {
+-          // Today is at index 7 (after 7 past days)
+-          // Each row is roughly 98px (80px card + 1.5rem gap ~= 24px)
+-          const todayIndex = 7;
+-          const rowHeight = 98; // Approximate height of row + gap
+-          const topPadding = 48; // 3rem top padding
+-
+-          // Scroll to today's row
+-          const scrollTop = topPadding + (todayIndex * rowHeight);
+-          scrollContainerRef.current.scrollTop = scrollTop;
++        const rows = container.querySelectorAll('[data-timeline-row]');
++        const todayRow = rows[todayIndex] as HTMLElement | undefined;
++        if (todayRow) {
++          const containerRect = container.getBoundingClientRect();
++          const todayRect = todayRow.getBoundingClientRect();
++          const offset = todayRect.top - containerRect.top;
++          const centerAdjustment = (container.clientHeight / 2) - (todayRect.height / 2);
++          container.scrollTop += offset - centerAdjustment;
+         }
+       });
+     });
+-  }, [isVisible, initialLoading]);
++  }, [isVisible, initialLoading, allTimelineDays]);
+ 
+   // @@@ Reload comments for a specific date from backend
+   const reloadCommentsForDate = async (dateStr: string) => {
+@@ -865,7 +905,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+     }
+   };
+ 
+-  const handleFriendSelection = (friendId: number | null) => {
++  const handleFriendSelection = useCallback((friendId: number | null) => {
+     setSelectedFriendId(friendId);
+     if (typeof window !== 'undefined') {
+       if (friendId) {
+@@ -882,7 +922,21 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+     }
+     setFriendSearchTerm('');
+     setIsFriendPickerOpen(false);
+-  };
++  }, []);
++
++  useEffect(() => {
++    if (friendToSelect === undefined || friendToSelect === null) {
++      return;
++    }
++
++    if (friendToSelect === selectedFriendId) {
++      onFriendSelectionHandled?.();
++      return;
++    }
++
++    handleFriendSelection(friendToSelect);
++    onFriendSelectionHandled?.();
++  }, [friendToSelect, selectedFriendId, handleFriendSelection, onFriendSelectionHandled]);
+ 
+   const handleGenerateForDate = async (dateStr: string) => {
+     // @@@ Block image generation for guests
+@@ -933,9 +987,6 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+     return null;
+   }
+ 
+-  // @@@ Generate all timeline days using helper function (always show timeline structure)
+-  const allTimelineDays = generateTimelineDays();
+-
+   return (
+     <div
+       ref={scrollContainerRef}
+@@ -952,7 +1003,8 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+       <div style={{
+         position: 'fixed',
+         right: '1rem',
+-        top: '160px',
++        top: '50%',
++        transform: 'translateY(-50%)',
+         display: 'flex',
+         flexDirection: 'column',
+         gap: '0.4rem',
+@@ -1022,6 +1074,70 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+         </button>
+       </div>
+ 
++      {!selectedFriendId && !isFriendPickerOpen && (
++        <div style={{
++          position: 'fixed',
++          right: '6.5rem',
++          top: '50%',
++          transform: 'translateY(-50%)',
++          width: '260px',
++          borderRadius: '16px',
++          border: '1px solid #d0c4b0',
++          background: '#fffefb',
++          padding: '1.5rem',
++          boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
++          zIndex: 3
++        }}>
++          <div style={{
++            fontSize: '15px',
++            fontWeight: 600,
++            color: '#3d342a',
++            marginBottom: '0.75rem'
++          }}>
++            {t('timeline.friendSelector.selfOnlyTitle') || 'Your private timeline'}
++          </div>
++          <div style={{
++            fontSize: '13px',
++            color: '#5c5145',
++            lineHeight: 1.5
++          }}>
++            {t('timeline.friendSelector.selfOnlyHint') || 'Pick a friend from the badges on the right to compare timelines side by side.'}
++          </div>
++        </div>
++      )}
++
++      {selectedFriendId && !isFriendPickerOpen && friendPictures.length === 0 && (
++        <div style={{
++          position: 'fixed',
++          right: '6.5rem',
++          top: '50%',
++          transform: 'translateY(-50%)',
++          width: '260px',
++          borderRadius: '16px',
++          border: '1px solid #d0c4b0',
++          background: '#fffefb',
++          padding: '1.5rem',
++          boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
++          zIndex: 3
++        }}>
++          <div style={{
++            fontSize: '15px',
++            fontWeight: 600,
++            color: '#3d342a',
++            marginBottom: '0.75rem'
++          }}>
++            {t('timeline.friendSelector.friendEmptyTitle') || 'No friend timeline yet'}
++          </div>
++          <div style={{
++            fontSize: '13px',
++            color: '#5c5145',
++            lineHeight: 1.5
++          }}>
++            {t('timeline.friendSelector.friendEmptyHint', { name: selectedFriend?.friend_name || '' }) || 'They have not shared anything for these days yet.'}
++          </div>
++        </div>
++      )}
++
+       {isFriendPickerOpen && (
+         <div
+           style={{
+@@ -1093,12 +1209,14 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+                 onClick={() => handleFriendSelection(null)}
+                 style={{
+                   flex: 1,
+-                  border: '1px solid #c7b9a4',
+-                  background: '#f8f0e6',
++                  border: selectedFriendId === null ? '1px solid #2c2c2c' : '1px solid #c7b9a4',
++                  background: selectedFriendId === null ? '#f0e8de' : '#fff',
+                   borderRadius: '8px',
+                   padding: '0.6rem 0.75rem',
+                   fontSize: '13px',
+-                  cursor: 'pointer'
++                  cursor: 'pointer',
++                  color: '#2c2c2c',
++                  fontWeight: 600
+                 }}
+               >
+                 {t('timeline.friendSelector.none')}
+@@ -1165,6 +1283,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: bool
+ 
+           return (
+             <div
++              data-timeline-row
+               key={day.date}
+               style={{
+                 position: 'relative',
+diff --git a/frontend/src/components/DeckManager.tsx b/frontend/src/components/DeckManager.tsx
+index 0a2f40d..10fb3e7 100644
+--- a/frontend/src/components/DeckManager.tsx
++++ b/frontend/src/components/DeckManager.tsx
+@@ -1,4 +1,4 @@
+-import { useState, useEffect, useRef } from 'react';
++import { useMemo, useState, useEffect, useRef } from 'react';
+ import { createPortal } from 'react-dom';
+ import { useTranslation } from 'react-i18next';
+ import {
+@@ -53,6 +53,9 @@ interface Props {
+ 
+ export default function DeckManager({ onUpdate }: Props) {
+   const { t } = useTranslation();
++  const spinnerKeyframes = useMemo(() => (
++    `@keyframes deck-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`
++  ), []);
+   const [decks, setDecks] = useState<Deck[]>([]);
+   const [communityDecks, setCommunityDecks] = useState<Deck[]>([]);
+   const [expandedDecks, setExpandedDecks] = useState<Set<string>>(new Set());
+@@ -304,12 +307,33 @@ export default function DeckManager({ onUpdate }: Props) {
+     return (
+       <div style={{
+         display: 'flex',
++        flexDirection: 'column',
+         alignItems: 'center',
+         justifyContent: 'center',
+-        height: '100vh',
++        width: '100%',
++        minHeight: '100vh',
+         background: '#f8f0e6'
+       }}>
+-        <div style={{ fontSize: 18, color: '#666' }}>Loading decks...</div>
++        <style>{spinnerKeyframes}</style>
++        <div style={{
++          fontSize: 18,
++          color: '#666',
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'center',
++          gap: '0.75rem',
++          textAlign: 'center'
++        }}>
++          <span style={{
++            width: '18px',
++            height: '18px',
++            borderRadius: '50%',
++            border: '2px solid rgba(0,0,0,0.1)',
++            borderTopColor: '#666',
++            animation: 'deck-spin 0.9s linear infinite'
++          }} />
++          Loading decks…
++        </div>
+       </div>
+     );
+   }
+diff --git a/frontend/src/engine/EditorEngine.ts b/frontend/src/engine/EditorEngine.ts
+index 23a9400..2bd3d48 100644
+--- a/frontend/src/engine/EditorEngine.ts
++++ b/frontend/src/engine/EditorEngine.ts
+@@ -155,6 +155,12 @@ export class EditorEngine {
+   private applyTextUpdate() {
+     const combinedText = this.getCombinedText();
+ 
++    // @@@ Auto-reset when editor is cleared (no widgets + empty text cells)
++    if (this.shouldResetEditorState(combinedText)) {
++      this.resetEditorToBlank();
++      return;
++    }
++
+     // Compute new weight entry
+     const weight = computeWeight(combinedText);
+     const lastEntry = this.state.weightPath[this.state.weightPath.length - 1];
+@@ -200,6 +206,40 @@ export class EditorEngine {
+       .join('');
+   }
+ 
++  // @@@ Detect when all text cells are empty and no other cells remain
++  private shouldResetEditorState(combinedText: string): boolean {
++    const hasNonTextCells = this.state.cells.some(cell => cell.type !== 'text');
++    if (hasNonTextCells) {
++      return false;
++    }
++
++    return combinedText.trim().length === 0;
++  }
++
++  // @@@ Restore editor to pristine state while preserving session metadata
++  private resetEditorToBlank() {
++    const { sessionId, currentEntryId, selectedState, createdAt } = this.state;
++
++    this.state = {
++      cells: [{ id: generateId(), type: 'text', content: '' }],
++      commentors: [],
++      tasks: [],
++      weightPath: [],
++      overlappedPhrases: [],
++      sessionId,
++      currentEntryId,
++      selectedState,
++      createdAt
++    };
++
++    this.usedEnergy = 0;
++    this.commentorWaitlist = [];
++    this.sentCache.clear();
++    this.isRequesting = false;
++
++    this.notifyChange();
++  }
++
+ 
+   // @@@ Check if we should send text for analysis
+   private checkAnalysisTrigger(text: string, _currentEnergy: number) {
+@@ -722,4 +762,4 @@ export class EditorEngine {
+ // @@@ Helper to generate IDs
+ function generateId(): string {
+   return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+-}
+\ No newline at end of file
++}
+diff --git a/frontend/src/i18n.ts b/frontend/src/i18n.ts
+index 29abb7e..cb84915 100644
+--- a/frontend/src/i18n.ts
++++ b/frontend/src/i18n.ts
+@@ -140,7 +140,11 @@ const resources = {
+           noMatches: 'No matches found',
+           close: 'Close',
+           personal: 'You',
+-          more: 'More'
++          more: 'More',
++          selfOnlyTitle: 'Just you today',
++          selfOnlyHint: 'Pick a friend badge on the right to pull in their timeline beside yours.',
++          friendEmptyTitle: 'No timeline yet',
++          friendEmptyHint: 'This friend has not shared anything for these recent days.'
+         },
+         friendTimeline: {
+           loading: 'Loading friend timeline...',
+@@ -170,6 +174,7 @@ const resources = {
+         deleteConfirm: 'Delete this entry?',
+         entriesLabel_one: '{{count}} entry',
+         entriesLabel_other: '{{count}} entries',
++        currentEntryLabel: 'Current note',
+         openButton: 'Open',
+         deleteButton: 'Delete',
+         close: 'Close',
+@@ -348,7 +353,11 @@ const resources = {
+           noMatches: '没有符合条件的好友',
+           close: '关闭',
+           personal: '仅自己',
+-          more: '更多'
++          more: '更多',
++          selfOnlyTitle: '只有你在这里',
++          selfOnlyHint: '点右侧的好友圆标，就能把 TA 的时间线拉来并排浏览。',
++          friendEmptyTitle: '最近没有内容',
++          friendEmptyHint: '这位好友在最近几天都没有留下时间线。'
+         },
+         friendTimeline: {
+           loading: '正在加载好友时间线...',
+@@ -378,6 +387,7 @@ const resources = {
+         deleteConfirm: '确定删除这篇记录？',
+         entriesLabel_one: '{{count}} 篇',
+         entriesLabel_other: '{{count}} 篇',
++        currentEntryLabel: '当前笔记',
+         openButton: '打开',
+         deleteButton: '删除',
+         close: '关闭',

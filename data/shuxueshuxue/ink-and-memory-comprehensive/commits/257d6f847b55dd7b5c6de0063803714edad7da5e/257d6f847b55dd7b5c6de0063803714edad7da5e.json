@@ -1,0 +1,27 @@
+{
+  "hash": "257d6f847b55dd7b5c6de0063803714edad7da5e",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Oct 8 10:13:35 2025 +0800",
+  "subject": "Fix architecture: use relative positioning with negative margins instead of absolute",
+  "files": [
+    "frontend/src/App.css",
+    "frontend/src/App.tsx",
+    "frontend/src/components/VoicesPanel.tsx"
+  ],
+  "diff": "commits/257d6f847b55dd7b5c6de0063803714edad7da5e/257d6f847b55dd7b5c6de0063803714edad7da5e.diff",
+  "related_files": {
+    "frontend/src/App.css": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/VoicesPanel.tsx"
+    ],
+    "frontend/src/App.tsx": [
+      "frontend/src/App.css",
+      "frontend/src/components/VoicesPanel.tsx"
+    ],
+    "frontend/src/components/VoicesPanel.tsx": [
+      "frontend/src/App.css",
+      "frontend/src/App.tsx"
+    ]
+  }
+}

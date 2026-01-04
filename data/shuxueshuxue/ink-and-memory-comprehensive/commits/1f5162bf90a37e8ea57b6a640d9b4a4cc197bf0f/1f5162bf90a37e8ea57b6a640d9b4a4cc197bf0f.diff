@@ -1,0 +1,873 @@
+commit 1f5162bf90a37e8ea57b6a640d9b4a4cc197bf0f
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Dec 10 14:23:49 2025 +0800
+
+    timeline dynamic loading
+
+diff --git a/backend/database.py b/backend/database.py
+index ab71628..da0898f 100644
+--- a/backend/database.py
++++ b/backend/database.py
+@@ -1141,6 +1141,49 @@ def list_sessions(user_id: int):
+     finally:
+         db.close()
+ 
++def list_sessions_in_range(user_id: int, start_date: Optional[str], end_date: Optional[str]):
++    """
++    List sessions within an optional date range (UTC timestamps stored in DB).
++    Dates are strings YYYY-MM-DD and compared against created_at/updated_at dates.
++    """
++    db = get_db()
++    try:
++        rows = db.execute(f"""
++        SELECT id, name, editor_state_json, created_at, updated_at
++        FROM user_sessions
++        WHERE user_id = ?
++          AND (? IS NULL OR date(COALESCE(created_at, updated_at)) >= ?)
++          AND (? IS NULL OR date(COALESCE(created_at, updated_at)) <= ?)
++        ORDER BY updated_at DESC
++        """, (user_id, start_date, start_date, end_date, end_date)).fetchall()
++
++        results = []
++        for row in rows:
++            first_line = ""
++            try:
++                state = json.loads(row["editor_state_json"])
++                first_text = next(
++                    (c.get("content", "").strip() for c in state.get("cells", []) if c.get("type") == "text" and c.get("content")),
++                    ""
++                )
++                if first_text:
++                    first_line = first_text.split("\n")[0][:30]
++            except Exception:
++                first_line = ""
++
++            results.append(
++                {
++                    "id": row["id"],
++                    "name": row["name"],
++                    "created_at": row["created_at"],
++                    "updated_at": row["updated_at"],
++                    "first_line": first_line,
++                }
++            )
++        return results
++    finally:
++        db.close()
++
+ def get_all_sessions_with_text(user_id: int) -> list[dict]:
+     """
+     Get all sessions for a user with text extracted from text cells.
+@@ -1890,6 +1933,31 @@ def get_friend_timeline(user_id: int, friend_id: int, limit: int = 30) -> list:
+     finally:
+         db.close()
+ 
++def get_daily_pictures_range(user_id: int, start_date: Optional[str], end_date: Optional[str], limit: int = 30) -> list[dict]:
++    """
++    Get daily pictures within a date range (thumbnails preferred). Limits results.
++    """
++    db = get_db()
++    try:
++        rows = db.execute("""
++        SELECT date, COALESCE(thumbnail_base64, image_base64) as base64, prompt, created_at
++        FROM daily_pictures
++        WHERE user_id = ?
++          AND (? IS NULL OR date(date) >= ?)
++          AND (? IS NULL OR date(date) <= ?)
++        ORDER BY date DESC
++        LIMIT ?
++        """, (user_id, start_date, start_date, end_date, end_date, limit)).fetchall()
++
++        return [{
++            "date": row['date'],
++            "base64": row['base64'],
++            "prompt": row['prompt'],
++            "created_at": row['created_at']
++        } for row in rows]
++    finally:
++        db.close()
++
+ if __name__ == "__main__":
+     # Initialize database
+     init_db()
+diff --git a/backend/server.py b/backend/server.py
+index d14c2b1..299d7c7 100644
+--- a/backend/server.py
++++ b/backend/server.py
+@@ -1279,14 +1279,46 @@ def list_sessions(timezone: str = "Asia/Shanghai", current_user: dict = Depends(
+     List all sessions for current user.
+     Returns: Array of session metadata (without full editor state) plus local day key + first line.
+     """
++    return list_sessions_with_range(None, None, timezone, current_user)
++
++def _validate_date_str(value: Optional[str]) -> Optional[str]:
++    if value is None:
++        return None
++    value = value.strip()
++    if not value:
++        return None
++    try:
++        datetime.fromisoformat(value)
++    except Exception:
++        raise HTTPException(status_code=400, detail="Invalid date format, expected YYYY-MM-DD")
++    if len(value) != 10:
++        raise HTTPException(status_code=400, detail="Invalid date format, expected YYYY-MM-DD")
++    return value
++
++@app.get("/api/sessions/range")
++def list_sessions_with_range(
++    start_date: Optional[str] = None,
++    end_date: Optional[str] = None,
++    timezone: str = "Asia/Shanghai",
++    current_user: dict = Depends(get_current_user)
++):
++    """
++    List sessions within an optional date range.
++    """
+     user_id = current_user["user_id"]
++    start_date = _validate_date_str(start_date)
++    end_date = _validate_date_str(end_date)
+     try:
+         from zoneinfo import ZoneInfo
+         tz = ZoneInfo(timezone)
+     except Exception:
+         raise HTTPException(status_code=400, detail="Invalid timezone")
+ 
+-    sessions = database.list_sessions(user_id)
++    if start_date or end_date:
++        sessions = database.list_sessions_in_range(user_id, start_date, end_date)
++    else:
++        sessions = database.list_sessions(user_id)
++
+     enriched = []
+     for s in sessions:
+         dt = _clean_timestamp(s.get("created_at") or s.get("updated_at"))
+@@ -1416,6 +1448,22 @@ def get_pictures(limit: int = 30, current_user: dict = Depends(get_current_user)
+     pictures = database.get_daily_pictures(user_id, limit)
+     return {"pictures": pictures}
+ 
++@app.get("/api/pictures/range")
++def get_pictures_range(
++    start_date: Optional[str] = None,
++    end_date: Optional[str] = None,
++    limit: int = 30,
++    current_user: dict = Depends(get_current_user)
++):
++    """
++    Get daily pictures within an optional date range.
++    """
++    user_id = current_user["user_id"]
++    start_date = _validate_date_str(start_date)
++    end_date = _validate_date_str(end_date)
++    pictures = database.get_daily_pictures_range(user_id, start_date, end_date, limit)
++    return {"pictures": pictures}
++
+ 
+ @app.get("/api/pictures/{date}/full")
+ def get_picture_full(date: str, current_user: dict = Depends(get_current_user)):
+diff --git a/frontend/src/api/voiceApi.ts b/frontend/src/api/voiceApi.ts
+index 84c16d7..0ac62b0 100644
+--- a/frontend/src/api/voiceApi.ts
++++ b/frontend/src/api/voiceApi.ts
+@@ -389,15 +389,24 @@ export async function saveSession(sessionId: string, editorState: any, name?: st
+   }
+ }
+ 
++type SessionRangeOptions = {
++  startDate?: string;
++  endDate?: string;
++  limit?: number;
++};
++
+ /**
+- * List all sessions (metadata only). If timezone is provided, the backend will include a local-day key.
++ * List sessions metadata, optionally scoped to a date range.
+  */
+-export async function listSessions(timezone?: string): Promise<any[]> {
+-  const url = timezone
+-    ? `${API_BASE}/api/sessions?timezone=${encodeURIComponent(timezone)}`
+-    : `${API_BASE}/api/sessions`;
+-
+-  const response = await fetch(url, {
++export async function listSessions(timezone?: string, options: SessionRangeOptions = {}): Promise<any[]> {
++  const params = new URLSearchParams();
++  if (timezone) params.append('timezone', timezone);
++  if (options.startDate) params.append('start_date', options.startDate);
++  if (options.endDate) params.append('end_date', options.endDate);
++  const endpoint = options.startDate || options.endDate ? '/api/sessions/range' : '/api/sessions';
++  const query = params.toString();
++
++  const response = await fetch(`${API_BASE}${endpoint}${query ? `?${query}` : ''}`, {
+     headers: getAuthHeaders()
+   });
+ 
+@@ -503,8 +512,21 @@ export async function saveDailyPicture(date: string, imageBase64: string, prompt
+ /**
+  * Get daily pictures (thumbnails only for fast timeline loading)
+  */
+-export async function getDailyPictures(limit: number = 30): Promise<any[]> {
+-  const response = await fetch(`${API_BASE}/api/pictures?limit=${limit}`, {
++type PictureRangeOptions = {
++  startDate?: string;
++  endDate?: string;
++  limit?: number;
++};
++
++export async function getDailyPictures(limit: number = 30, options: PictureRangeOptions = {}): Promise<any[]> {
++  const params = new URLSearchParams();
++  params.append('limit', String(options.limit ?? limit));
++  if (options.startDate) params.append('start_date', options.startDate);
++  if (options.endDate) params.append('end_date', options.endDate);
++  const endpoint = options.startDate || options.endDate ? '/api/pictures/range' : '/api/pictures';
++  const query = params.toString();
++
++  const response = await fetch(`${API_BASE}${endpoint}${query ? `?${query}` : ''}`, {
+     headers: getAuthHeaders()
+   });
+ 
+diff --git a/frontend/src/components/CollectionsView.tsx b/frontend/src/components/CollectionsView.tsx
+index 78b1015..bb520cd 100644
+--- a/frontend/src/components/CollectionsView.tsx
++++ b/frontend/src/components/CollectionsView.tsx
+@@ -1,4 +1,4 @@
+-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
++import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
+ import { useTranslation } from 'react-i18next';
+ import type { Commentor } from '../engine/EditorEngine';
+ import { findNormalizedPhrase } from '../utils/textNormalize';
+@@ -130,45 +130,41 @@ function formatDate(date: Date | string, locale: string): string {
+   });
+ }
+ 
+-// @@@ Generate timeline days (7 past + today + 7 future)
+-function generateTimelineDays(): TimelineDay[] {
+-  const today = new Date();
+-  const todayStr = getLocalDateString(today);
+-  const allTimelineDays: TimelineDay[] = [];
+-
+-  for (let i = 10; i >= 1; i--) {
+-    const pastDate = new Date(today);
+-    pastDate.setDate(today.getDate() - i);
+-    allTimelineDays.push({
+-      date: getLocalDateString(pastDate),
+-      isPast: true,
+-      isFuture: false,
+-      isToday: false,
+-      daysOffset: -i
+-    });
+-  }
++// @@@ Date helpers for dynamic timeline
++function startOfDay(date: Date): Date {
++  const d = new Date(date);
++  d.setHours(0, 0, 0, 0);
++  return d;
++}
+ 
+-  allTimelineDays.push({
+-    date: todayStr,
+-    isPast: false,
+-    isFuture: false,
+-    isToday: true,
+-    daysOffset: 0
+-  });
++function addDays(date: Date, delta: number): Date {
++  const d = new Date(date);
++  d.setDate(d.getDate() + delta);
++  return d;
++}
+ 
+-  for (let i = 1; i <= 10; i++) {
+-    const futureDate = new Date(today);
+-    futureDate.setDate(today.getDate() + i);
+-    allTimelineDays.push({
+-      date: getLocalDateString(futureDate),
+-      isPast: false,
+-      isFuture: true,
+-      isToday: false,
+-      daysOffset: i
+-    });
+-  }
++function makeTimelineDay(date: Date): TimelineDay {
++  const today = startOfDay(new Date());
++  const day = startOfDay(date);
++  const diff = Math.round((day.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
++  return {
++    date: getLocalDateString(day),
++    isPast: diff < 0,
++    isFuture: diff > 0,
++    isToday: diff === 0,
++    daysOffset: diff
++  };
++}
+ 
+-  return allTimelineDays;
++function buildDayRange(startDate: Date, endDate: Date): TimelineDay[] {
++  const days: TimelineDay[] = [];
++  const cursor = startOfDay(startDate);
++  const end = startOfDay(endDate);
++  while (cursor.getTime() <= end.getTime()) {
++    days.push(makeTimelineDay(cursor));
++    cursor.setDate(cursor.getDate() + 1);
++  }
++  return days;
+ }
+ 
+ // @@@ Extract and truncate beginning of text for timeline preview
+@@ -196,6 +192,14 @@ function getTextPreview(text: string, maxLength: number = 60): string {
+ // @@@ Card height for overlap calculation
+ const CARD_HEIGHT = 100;
+ const CARD_OVERLAP = 30; // 30% overlap for zigzag effect
++const SLOT_HEIGHT = CARD_HEIGHT - CARD_OVERLAP;
++const INITIAL_PAST_DAYS = 10;
++const INITIAL_FUTURE_DAYS = 10;
++const CHUNK_SIZE = 14;
++const MAX_PAST_DAYS = 365;
++const MAX_FUTURE_DAYS = 365;
++const LOAD_THRESHOLD_PX = 200;
++const VIRTUAL_BUFFER = 5;
+ 
+ interface TimelineCardProps {
+   day: TimelineDay;
+@@ -396,107 +400,121 @@ interface TimelinePageProps {
+ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: TimelinePageProps) {
+   const { t } = useTranslation();
+   const { isAuthenticated } = useAuth();
+-  const [starredComments, setStarredComments] = useState<Commentor[]>([]);
++  const [days, setDays] = useState<TimelineDay[]>([]);
++  const [sessionSummaries, setSessionSummaries] = useState<Map<string, SessionSummary>>(new Map());
++  const [datesWithSessions, setDatesWithSessions] = useState<Set<string>>(new Set());
+   const [allCommentsByDate, setAllCommentsByDate] = useState<Map<string, Commentor[]>>(new Map());
+   const [textByDate, setTextByDate] = useState<Map<string, string>>(new Map());
+   const [firstLineByDate, setFirstLineByDate] = useState<Map<string, string>>(new Map());
+-  const [pictures, setPictures] = useState<TimelinePicture[]>([]);
+-  const [sessionSummaries, setSessionSummaries] = useState<SessionSummary[]>([]);
+-  const [datesWithSessions, setDatesWithSessions] = useState<Set<string>>(new Set());
++  const [picturesByDate, setPicturesByDate] = useState<Map<string, TimelinePicture>>(new Map());
+   const [generatingForDate, setGeneratingForDate] = useState<string | null>(null);
+   const [viewingImage, setViewingImage] = useState<{ base64: string; full_base64?: string; prompt: string; date: string; } | null>(null);
+   const [initialLoading, setInitialLoading] = useState(true);
+   const [loadingCommentsForDate, setLoadingCommentsForDate] = useState<string | null>(null);
++  const [loadingPast, setLoadingPast] = useState(false);
++  const [loadingFuture, setLoadingFuture] = useState(false);
++  const [hasMorePast, setHasMorePast] = useState(true);
++  const [hasMoreFuture, setHasMoreFuture] = useState(true);
++  const [scrollTopValue, setScrollTopValue] = useState(0);
++  const [viewportHeight, setViewportHeight] = useState(0);
++  const [pendingInitialScroll, setPendingInitialScroll] = useState(true);
+   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+-  const allTimelineDays = useMemo(() => generateTimelineDays(), []);
++  const loadedRangesRef = useRef<Set<string>>(new Set());
+ 
+-  useEffect(() => {
+-    let cancelled = false;
+-
+-    const loadTimelineData = async () => {
+-      setInitialLoading(true);
+-      setStarredComments([]);
+-      setAllCommentsByDate(new Map());
+-      setTextByDate(new Map());
+-      setFirstLineByDate(new Map());
+-      setDatesWithSessions(new Set());
+-      setPictures([]);
++  const mergeSessions = useCallback((sessions: SessionSummary[]) => {
++    setSessionSummaries(prev => {
++      const next = new Map(prev);
++      sessions.forEach((s) => next.set(s.id, s));
++      return next;
++    });
++    setDatesWithSessions(prev => {
++      const next = new Set(prev);
++      sessions.forEach(s => {
++        if (s.date_key) next.add(s.date_key);
++      });
++      return next;
++    });
++    setFirstLineByDate(prev => {
++      const next = new Map(prev);
++      sessions.forEach(s => {
++        if (s.date_key && (s.first_line || s.name) && !next.has(s.date_key)) {
++          next.set(s.date_key, s.first_line || s.name || 'Untitled');
++        }
++      });
++      return next;
++    });
++  }, []);
++
++  const mergePictures = useCallback((pictures: any[]) => {
++    setPicturesByDate(prev => {
++      const next = new Map(prev);
++      pictures.forEach((p: any) => {
++        next.set(p.date, {
++          date: p.date,
++          base64: p.base64,
++          prompt: p.prompt || ''
++        });
++      });
++      return next;
++    });
++  }, []);
+ 
+-      if (isAuthenticated) {
+-        try {
+-          const { listSessions, getDailyPictures } = await import('../api/voiceApi');
+-          const sessions: SessionSummary[] = await listSessions(timezone);
+-          if (cancelled) return;
+-
+-          setSessionSummaries(sessions);
+-
+-          const firstLineMap = new Map<string, string>();
+-          const dates = new Set<string>();
+-          sessions.forEach((session) => {
+-            const dateKey = session.date_key;
+-            if (dateKey) {
+-              dates.add(dateKey);
+-              if (!firstLineMap.has(dateKey)) {
+-                const line = session.first_line || session.name || 'Untitled';
+-                firstLineMap.set(dateKey, line);
+-              }
+-            }
+-          });
++  const loadRange = useCallback(async (rangeStart: Date, rangeEnd: Date) => {
++    if (!isAuthenticated) return;
++    const startKey = getLocalDateString(rangeStart);
++    const endKey = getLocalDateString(rangeEnd);
++    const cacheKey = `${startKey}|${endKey}|${timezone}`;
++    if (loadedRangesRef.current.has(cacheKey)) return;
++    loadedRangesRef.current.add(cacheKey);
+ 
+-          if (!cancelled) {
+-            setFirstLineByDate(firstLineMap);
+-            setDatesWithSessions(dates);
+-          }
++    try {
++      const { listSessions, getDailyPictures } = await import('../api/voiceApi');
++      const [sessions, pictures] = await Promise.all([
++        listSessions(timezone, { startDate: startKey, endDate: endKey }),
++        getDailyPictures(CHUNK_SIZE * 2, { startDate: startKey, endDate: endKey })
++      ]);
++      mergeSessions(sessions);
++      mergePictures(pictures);
++    } catch (error) {
++      loadedRangesRef.current.delete(cacheKey);
++      console.error('Failed to load range:', error);
++    }
++  }, [isAuthenticated, mergePictures, mergeSessions, timezone]);
+ 
+-          try {
+-            const dbPictures = await getDailyPictures(30);
+-            if (!cancelled) {
+-              const formattedPictures = dbPictures.map((p: any) => ({
+-                date: p.date,
+-                base64: p.base64,
+-                prompt: p.prompt || ''
+-              }));
+-              setPictures(formattedPictures);
+-            }
+-          } catch (error) {
+-            console.error('Failed to load pictures from database:', error);
+-            if (!cancelled) {
+-              const savedPictures = localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES);
+-              if (savedPictures) {
+-                try {
+-                  const parsed = JSON.parse(savedPictures);
+-                  const thumbnailsOnly = parsed.map((p: any) => ({
+-                    date: p.date,
+-                    base64: p.base64,
+-                    prompt: p.prompt
+-                  }));
+-                  setPictures(thumbnailsOnly);
+-                } catch (e) {
+-                  console.error('Failed to load pictures:', e);
+-                }
+-              }
+-            }
+-          }
+-        } catch (error) {
+-          console.error('Failed to load timeline data:', error);
+-          setSessionSummaries([]);
+-        }
++  useEffect(() => {
++    let cancelled = false;
++    const today = new Date();
++    const start = addDays(today, -INITIAL_PAST_DAYS);
++    const end = addDays(today, INITIAL_FUTURE_DAYS);
++
++    setInitialLoading(true);
++    setLoadingPast(false);
++    setLoadingFuture(false);
++    setHasMorePast(true);
++    setHasMoreFuture(true);
++    setPendingInitialScroll(true);
++    setDays(buildDayRange(start, end));
++    setSessionSummaries(new Map());
++    setDatesWithSessions(new Set());
++    setAllCommentsByDate(new Map());
++    setTextByDate(new Map());
++    setFirstLineByDate(new Map());
++    setPicturesByDate(new Map());
++    loadedRangesRef.current.clear();
++
++    const run = async () => {
++      if (isAuthenticated) {
++        await loadRange(start, end);
+       } else {
+-        setSessionSummaries([]);
+         const savedState = localStorage.getItem(STORAGE_KEYS.EDITOR_STATE);
+         if (savedState) {
+           try {
+             const state = JSON.parse(savedState);
+-            const starred = state.commentors?.filter((c: Commentor) => c.feedback === 'star') || [];
+-            setStarredComments(starred);
+-
+-            const today = formatDate(new Date(), dateLocale);
+-            const allComments = state.commentors?.filter((c: Commentor) => c.appliedAt) || [];
+-            const commentsByDate = new Map<string, Commentor[]>();
+-            if (allComments.length > 0) {
+-              commentsByDate.set(today, allComments);
++            const todayKey = formatDate(new Date(), dateLocale);
++            const comments = state.commentors?.filter((c: Commentor) => c.appliedAt) || [];
++            if (comments.length > 0) {
++              setAllCommentsByDate(new Map([[todayKey, comments]]));
+             }
+-            setAllCommentsByDate(commentsByDate);
+ 
+             const guestTextMap = new Map<string, string>();
+             const guestFirstLineMap = new Map<string, string>();
+@@ -510,31 +528,24 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+ 
+               if (combined) {
+                 guestTextMap.set(dateKey, combined);
++                guestFirstLineMap.set(dateKey, extractFirstLine(state));
+               }
+-              guestFirstLineMap.set(dateKey, extractFirstLine(state));
+             }
+             setTextByDate(guestTextMap);
+             setFirstLineByDate(guestFirstLineMap);
+-          } catch (e) {
+-            console.error('Failed to load comments:', e);
++            setDatesWithSessions(new Set(Array.from(guestTextMap.keys())));
++          } catch (error) {
++            console.error('Failed to load guest state:', error);
+           }
+-        } else {
+-          setTextByDate(new Map());
+-          setFirstLineByDate(new Map());
+         }
+ 
+         const savedPictures = localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES);
+         if (savedPictures) {
+           try {
+             const parsed = JSON.parse(savedPictures);
+-            const thumbnailsOnly = parsed.map((p: any) => ({
+-              date: p.date,
+-              base64: p.base64,
+-              prompt: p.prompt
+-            }));
+-            setPictures(thumbnailsOnly);
+-          } catch (e) {
+-            console.error('Failed to load pictures:', e);
++            mergePictures(parsed);
++          } catch (error) {
++            console.error('Failed to load pictures:', error);
+           }
+         }
+       }
+@@ -544,12 +555,88 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+       }
+     };
+ 
+-    loadTimelineData();
++    run();
+ 
+     return () => {
+       cancelled = true;
+     };
+-  }, [isAuthenticated, timezone, dateLocale, allTimelineDays]);
++  }, [isAuthenticated, timezone, dateLocale, mergePictures, loadRange]);
++
++  const loadPastChunk = useCallback(async () => {
++    if (loadingPast || !hasMorePast || days.length === 0) return;
++    setLoadingPast(true);
++    const firstDay = days[0];
++    const firstDate = startOfDay(new Date(firstDay.date));
++    const desiredStart = addDays(firstDate, -CHUNK_SIZE);
++    const minDate = addDays(startOfDay(new Date()), -MAX_PAST_DAYS);
++    const actualStart = desiredStart < minDate ? minDate : desiredStart;
++    const actualEnd = addDays(firstDate, -1);
++
++    if (actualEnd.getTime() < actualStart.getTime()) {
++      setHasMorePast(false);
++      setLoadingPast(false);
++      return;
++    }
++
++    const newDays = buildDayRange(actualStart, actualEnd);
++    const container = scrollContainerRef.current;
++    const prevScroll = container?.scrollTop ?? 0;
++    const addedCount = newDays.length;
++
++    setDays(prev => {
++      const existing = new Set(prev.map(d => d.date));
++      const merged = [...newDays.filter(d => !existing.has(d.date)), ...prev];
++      return merged;
++    });
++
++    requestAnimationFrame(() => {
++      if (container) {
++        container.scrollTop = prevScroll + addedCount * SLOT_HEIGHT;
++        setScrollTopValue(container.scrollTop);
++      }
++    });
++
++    if (isAuthenticated) {
++      await loadRange(actualStart, actualEnd);
++    }
++
++    const reachedMin = actualStart.getTime() <= minDate.getTime();
++    setHasMorePast(!reachedMin);
++    setLoadingPast(false);
++  }, [days, hasMorePast, isAuthenticated, loadRange, loadingPast]);
++
++  const loadFutureChunk = useCallback(async () => {
++    if (loadingFuture || !hasMoreFuture || days.length === 0) return;
++    setLoadingFuture(true);
++    const lastDay = days[days.length - 1];
++    const lastDate = startOfDay(new Date(lastDay.date));
++    const desiredEnd = addDays(lastDate, CHUNK_SIZE);
++    const maxDate = addDays(startOfDay(new Date()), MAX_FUTURE_DAYS);
++    const actualEnd = desiredEnd > maxDate ? maxDate : desiredEnd;
++    const actualStart = addDays(lastDate, 1);
++
++    if (actualStart.getTime() > actualEnd.getTime()) {
++      setHasMoreFuture(false);
++      setLoadingFuture(false);
++      return;
++    }
++
++    const newDays = buildDayRange(actualStart, actualEnd);
++
++    setDays(prev => {
++      const existing = new Set(prev.map(d => d.date));
++      const merged = [...prev, ...newDays.filter(d => !existing.has(d.date))];
++      return merged;
++    });
++
++    if (isAuthenticated) {
++      await loadRange(actualStart, actualEnd);
++    }
++
++    const reachedMax = actualEnd.getTime() >= maxDate.getTime();
++    setHasMoreFuture(!reachedMax);
++    setLoadingFuture(false);
++  }, [days, hasMoreFuture, isAuthenticated, loadRange, loadingFuture]);
+ 
+   // @@@ Group items by date
+   const timelineByDate = useMemo(() => {
+@@ -567,49 +654,75 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+       map.set(date, entry);
+     });
+ 
+-    starredComments.forEach(comment => {
+-      const commentDate = new Date(comment.appliedAt || comment.computedAt);
+-      const date = getLocalDateString(commentDate);
+-      const hasFullComments = allCommentsByDate.has(date);
+-      if (!map.has(date)) {
+-        map.set(date, { comments: [] });
+-      }
+-      if (!hasFullComments) {
+-        map.get(date)!.comments.push(comment);
+-      }
++    picturesByDate.forEach((pic, date) => {
++      const entry = map.get(date) || { comments: [] };
++      entry.picture = pic;
++      map.set(date, entry);
+     });
+ 
+-    pictures.forEach(pic => {
+-      const date = pic.date;
+-      if (!map.has(date)) {
+-        map.set(date, { comments: [] });
++    return map;
++  }, [datesWithSessions, allCommentsByDate, picturesByDate]);
++
++  useEffect(() => {
++    const container = scrollContainerRef.current;
++    if (!container) return;
++
++    const handleScroll = () => {
++      const top = container.scrollTop;
++      setScrollTopValue(top);
++
++      if (top < LOAD_THRESHOLD_PX) {
++        loadPastChunk();
+       }
+-      map.get(date)!.picture = pic;
+-    });
++      if (top + container.clientHeight > container.scrollHeight - LOAD_THRESHOLD_PX) {
++        loadFutureChunk();
++      }
++    };
+ 
+-    return map;
+-  }, [datesWithSessions, allCommentsByDate, starredComments, pictures]);
++    const handleResize = () => {
++      setViewportHeight(container.clientHeight);
++    };
++
++    container.addEventListener('scroll', handleScroll);
++    window.addEventListener('resize', handleResize);
++    handleResize();
++
++    return () => {
++      container.removeEventListener('scroll', handleScroll);
++      window.removeEventListener('resize', handleResize);
++    };
++  }, [loadFutureChunk, loadPastChunk]);
+ 
+   // @@@ Set initial scroll position to show today's row centered
+   useLayoutEffect(() => {
+-    if (!isVisible || initialLoading || !scrollContainerRef.current) return;
+-
++    if (!isVisible || initialLoading || !scrollContainerRef.current || !pendingInitialScroll) return;
+     const container = scrollContainerRef.current;
+     const todayStr = getLocalDateString();
++    const todayIndex = days.findIndex(d => d.date === todayStr);
++    if (todayIndex === -1) return;
+ 
+     requestAnimationFrame(() => {
+-      requestAnimationFrame(() => {
+-        const todayElement = container.querySelector(`[data-date="${todayStr}"]`) as HTMLElement | null;
+-        if (todayElement) {
+-          const containerHeight = container.clientHeight;
+-          const elementTop = todayElement.offsetTop;
+-          const elementHeight = todayElement.offsetHeight;
+-          const scrollTarget = elementTop - (containerHeight / 2) + (elementHeight / 2);
+-          container.scrollTop = Math.max(0, scrollTarget);
+-        }
+-      });
++      const target = todayIndex * SLOT_HEIGHT - (container.clientHeight / 2) + (CARD_HEIGHT / 2) + 32;
++      container.scrollTop = Math.max(0, target);
++      setScrollTopValue(container.scrollTop);
++      setPendingInitialScroll(false);
+     });
+-  }, [isVisible, initialLoading, allTimelineDays]);
++  }, [days, initialLoading, isVisible, pendingInitialScroll]);
++
++  const visibleMetrics = useMemo(() => {
++    const effectiveScroll = Math.max(0, scrollTopValue - 32);
++    const firstVisibleIndex = Math.floor(effectiveScroll / SLOT_HEIGHT);
++    const visibleCount = Math.ceil((viewportHeight || 0) / SLOT_HEIGHT) + 1;
++    const renderStart = Math.max(0, firstVisibleIndex - VIRTUAL_BUFFER);
++    const renderEnd = Math.min(days.length - 1, firstVisibleIndex + visibleCount + VIRTUAL_BUFFER);
++    return { renderStart, renderEnd };
++  }, [days.length, scrollTopValue, viewportHeight]);
++
++  const { renderStart, renderEnd } = visibleMetrics;
++  const renderedDays = days.slice(renderStart, renderEnd + 1);
++  const totalHeight = days.length > 0
++    ? (days.length - 1) * SLOT_HEIGHT + CARD_HEIGHT + 32
++    : 0;
+ 
+   // @@@ Reload comments for a specific date from backend
+   const reloadCommentsForDate = async (dateStr: string) => {
+@@ -617,7 +730,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+ 
+     try {
+       if (isAuthenticated) {
+-        const sessionsForDate = sessionSummaries.filter(session => session.date_key === dateStr);
++        const sessionsForDate = Array.from(sessionSummaries.values()).filter(session => session.date_key === dateStr);
+ 
+         if (sessionsForDate.length === 0) {
+           setAllCommentsByDate(prev => {
+@@ -659,25 +772,28 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+   };
+ 
+   const handleImageClick = async (picture: TimelinePicture) => {
+-    setViewingImage({ ...picture });
++    const stored = picturesByDate.get(picture.date) || picture;
++    setViewingImage({ ...stored });
+ 
+-    if (!picture.full_base64 && isAuthenticated) {
++    if (!stored.full_base64 && isAuthenticated) {
+       try {
+         const { getDailyPictureFull } = await import('../api/voiceApi');
+-        const fullImage = await getDailyPictureFull(picture.date);
++        const fullImage = await getDailyPictureFull(stored.date);
+ 
+-        const updatedPicture = { ...picture, full_base64: fullImage };
++        const updatedPicture = { ...stored, full_base64: fullImage };
+         setViewingImage(updatedPicture);
+ 
+-        setPictures(prev => prev.map(p =>
+-          p.date === picture.date ? updatedPicture : p
+-        ));
++        setPicturesByDate(prev => {
++          const next = new Map(prev);
++          next.set(stored.date, updatedPicture);
++          return next;
++        });
+       } catch (error) {
+         console.error('Failed to load full image:', error);
+       }
+     }
+ 
+-    await reloadCommentsForDate(picture.date);
++    await reloadCommentsForDate(stored.date);
+   };
+ 
+   const handleGenerateForDate = async (dateStr: string) => {
+@@ -707,9 +823,11 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+ 
+       await saveDailyPicture(pictureDate, image_base64, prompt, thumbnail_base64);
+ 
+-      const updated = pictures.filter(p => p.date !== pictureDate);
+-      updated.unshift(newPicture);
+-      setPictures(updated);
++      setPicturesByDate(prev => {
++        const next = new Map(prev);
++        next.set(pictureDate, newPicture);
++        return next;
++      });
+     } catch (error) {
+       console.error('Image generation failed:', error);
+       alert('Failed to generate image. Please try again.');
+@@ -761,16 +879,13 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+         />
+ 
+         {/* Cards */}
+-        {allTimelineDays.map((day, index) => {
++        {renderedDays.map((day, localIndex) => {
++          const globalIndex = renderStart + localIndex;
+           const dayData = timelineByDate.get(day.date);
+-          const hasData = !!dayData;
++          const hasData = timelineByDate.has(day.date);
+           const isGenerating = generatingForDate === day.date;
+-          const isLeftSide = index % 2 === 0;
+-
+-          // Each card occupies a "slot" but overlaps with neighbors
+-          // Slot height = CARD_HEIGHT - CARD_OVERLAP (the non-overlapping portion)
+-          const slotHeight = CARD_HEIGHT - CARD_OVERLAP;
+-          const topPosition = index * slotHeight;
++          const isLeftSide = globalIndex % 2 === 0;
++          const topPosition = globalIndex * SLOT_HEIGHT;
+ 
+           return (
+             <div
+@@ -784,7 +899,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+                 paddingRight: isLeftSide ? '24px' : '0',
+                 paddingLeft: isLeftSide ? '0' : '24px',
+                 height: `${CARD_HEIGHT}px`,
+-                zIndex: allTimelineDays.length - index, // Stack order for overlapping
++                zIndex: days.length - globalIndex, // Stack order for overlapping
+               }}
+             >
+               {/* Timeline dot */}
+@@ -822,7 +937,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+         })}
+ 
+         {/* Spacer to ensure container has correct height */}
+-        <div style={{ height: `${(allTimelineDays.length - 1) * (CARD_HEIGHT - CARD_OVERLAP) + CARD_HEIGHT + 32}px` }} />
++        <div style={{ height: `${totalHeight}px` }} />
+       </div>
+ 
+       {/* Image Lightbox Modal */}

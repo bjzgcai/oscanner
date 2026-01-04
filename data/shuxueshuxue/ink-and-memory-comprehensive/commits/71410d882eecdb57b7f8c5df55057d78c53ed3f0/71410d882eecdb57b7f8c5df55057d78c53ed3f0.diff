@@ -1,0 +1,60 @@
+commit 71410d882eecdb57b7f8c5df55057d78c53ed3f0
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Fri Nov 7 15:32:12 2025 +0800
+
+    Combine effects for better ordering: resize then restore scroll
+    
+    Merged two useLayoutEffect hooks into one to guarantee execution order:
+    1. Resize textareas first (updates content height)
+    2. Restore scroll position second (using correct heights)
+    
+    Benefits:
+    - No race conditions between effects
+    - Cleaner code (21 lines -> 16 lines)
+    - Single responsibility
+    - Correct ordering guaranteed
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 70c60f0..22d3186 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -289,28 +289,23 @@ export default function App() {
+   const [_suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');  // Not used yet
+   const suggestionTimerRef = useRef<number | null>(null);
+ 
+-  // @@@ CRITICAL: Preserve scroll position across NON-TYPING re-renders
+-  // useLayoutEffect runs synchronously after DOM mutations but BEFORE browser paint
+-  // This prevents visible scroll jumps when state updates trigger re-renders
+-  // Skip during typing to let browser naturally scroll to cursor
++  // @@@ CRITICAL: Resize textareas then restore scroll position
++  // Order matters: resize first (changes content height), then restore scroll
++  // Triggers: on mount (refsReady) and when cells added/deleted (cells.length)
+   useLayoutEffect(() => {
+-    if (scrollContainerRef.current && savedScrollTop.current > 0) {
+-      // Only restore if we have a saved position and container exists
+-      scrollContainerRef.current.scrollTop = savedScrollTop.current;
+-    }
+-  }, [state]);  // Only run when engine state changes (not on typing)
+-
+-  // @@@ Initialize textarea heights on mount for saved content
+-  // This runs when refs are ready AND when cells are added/deleted
+-  // Prevents the issue where loaded notes require typing in each cell to expand
+-  useLayoutEffect(() => {
+-    if (refsReady > 0) {  // Only after refs are ready
++    // 1. Resize textareas first (if refs are ready)
++    if (refsReady > 0) {
+       textareaRefs.current.forEach((textarea) => {
+         textarea.style.height = 'auto';
+         textarea.style.height = textarea.scrollHeight + 'px';
+       });
+     }
+-  }, [refsReady, state?.cells.length]);  // Run when refs ready OR when cells added/deleted
++
++    // 2. Then restore scroll position (after heights are correct)
++    if (scrollContainerRef.current && savedScrollTop.current > 0) {
++      scrollContainerRef.current.scrollTop = savedScrollTop.current;
++    }
++  }, [refsReady, state?.cells.length]);
+ 
+   // @@@ Trigger re-render when returning to writing view to recalculate comment positions
+   useEffect(() => {

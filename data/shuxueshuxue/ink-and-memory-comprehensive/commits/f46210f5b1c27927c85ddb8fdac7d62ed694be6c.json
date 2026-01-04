@@ -1,0 +1,61 @@
+{
+  "sha": "f46210f5b1c27927c85ddb8fdac7d62ed694be6c",
+  "node_id": "C_kwDOP2Zrm9oAKGY0NjIxMGY1YjFjMjc5MjdjODVkZGI4ZmRhYzdkNjJlZDY5NGJlNmM",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T07:08:30Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T07:08:30Z"
+    },
+    "message": "fix timeline display issue",
+    "tree": {
+      "sha": "eb172957e68c7c1e264498af3036e7b46201414a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/eb172957e68c7c1e264498af3036e7b46201414a"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/f46210f5b1c27927c85ddb8fdac7d62ed694be6c",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f46210f5b1c27927c85ddb8fdac7d62ed694be6c",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/f46210f5b1c27927c85ddb8fdac7d62ed694be6c",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/f46210f5b1c27927c85ddb8fdac7d62ed694be6c/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "88c2ae2033b34611bfda8edddfb231e1ba30945b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/88c2ae2033b34611bfda8edddfb231e1ba30945b",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/88c2ae2033b34611bfda8edddfb231e1ba30945b"
+    }
+  ],
+  "stats": {
+    "total": 22,
+    "additions": 9,
+    "deletions": 13
+  },
+  "files": [
+    {
+      "sha": "5b4909dfa34980478cb19255fb47feb065c3d297",
+      "filename": "frontend/src/components/CollectionsView.tsx",
+      "status": "modified",
+      "additions": 9,
+      "deletions": 13,
+      "changes": 22,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/f46210f5b1c27927c85ddb8fdac7d62ed694be6c/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/f46210f5b1c27927c85ddb8fdac7d62ed694be6c/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx?ref=f46210f5b1c27927c85ddb8fdac7d62ed694be6c",
+      "patch": "@@ -193,8 +193,7 @@ function getTextPreview(text: string, maxLength: number = 60): string {\n const CARD_HEIGHT = 100;\n const CARD_OVERLAP = 30; // 30% overlap for zigzag effect\n const SLOT_HEIGHT = CARD_HEIGHT - CARD_OVERLAP;\n-const INITIAL_PAST_DAYS = 10;\n-const INITIAL_FUTURE_DAYS = 10;\n+const INITIAL_PAST_DAYS = 14;\n const CHUNK_SIZE = 14;\n const MAX_PAST_DAYS = 365;\n const LOAD_THRESHOLD_PX = 200;\n@@ -483,7 +482,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n     let cancelled = false;\n     const today = new Date();\n     const start = addDays(today, -INITIAL_PAST_DAYS);\n-    const end = addDays(today, INITIAL_FUTURE_DAYS);\n+    const end = today;\n \n     setInitialLoading(true);\n     setLoadingPast(false);\n@@ -658,6 +657,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n \n     const handleResize = () => {\n       setViewportHeight(container.clientHeight);\n+      setScrollTopValue(container.scrollTop);\n     };\n \n     container.addEventListener('scroll', handleScroll);\n@@ -675,19 +675,18 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n   useLayoutEffect(() => {\n     if (!isVisible || initialLoading || !scrollContainerRef.current || !pendingInitialScroll) return;\n     const container = scrollContainerRef.current;\n-    const todayStr = getLocalDateString();\n-    const todayIndex = days.findIndex(d => d.date === todayStr);\n-    if (todayIndex === -1) return;\n-\n     requestAnimationFrame(() => {\n-      const target = todayIndex * SLOT_HEIGHT - (container.clientHeight / 2) + (CARD_HEIGHT / 2) + 32;\n-      container.scrollTop = Math.max(0, target);\n-      setScrollTopValue(container.scrollTop);\n+      const bottom = Math.max(0, container.scrollHeight - container.clientHeight);\n+      container.scrollTop = bottom;\n+      setScrollTopValue(bottom);\n       setPendingInitialScroll(false);\n     });\n   }, [days, initialLoading, isVisible, pendingInitialScroll]);\n \n   const visibleMetrics = useMemo(() => {\n+    if (viewportHeight === 0) {\n+      return { renderStart: 0, renderEnd: days.length - 1 };\n+    }\n     const effectiveScroll = Math.max(0, scrollTopValue - 32);\n     const firstVisibleIndex = Math.floor(effectiveScroll / SLOT_HEIGHT);\n     const visibleCount = Math.ceil((viewportHeight || 0) / SLOT_HEIGHT) + 1;\n@@ -879,9 +878,6 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n           </button>\n         )}\n \n-        {/* Sentinels for infinite load */}\n-        <div ref={topSentinelRef} style={{ position: 'absolute', top: 0, height: '1px', width: '100%' }} />\n-\n         {/* Cards */}\n         {renderedDays.map((day, localIndex) => {\n           const globalIndex = renderStart + localIndex;"
+    }
+  ]
+}

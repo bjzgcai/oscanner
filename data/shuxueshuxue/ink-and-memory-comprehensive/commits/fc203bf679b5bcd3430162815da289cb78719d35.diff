@@ -1,0 +1,79 @@
+*** FILE: .github/workflows/deploy-backend.yml ***
+@@ -88,6 +88,13 @@ jobs:
+               -p 127.0.0.1:8765:8765 \
+               -v /root/ink-and-memory/backend/data:/app/data \
+               -v /root/ink-and-memory/backend/models.json:/app/models.json:ro \
++              --add-host host.docker.internal:host-gateway \
++              -e HTTP_PROXY=http://host.docker.internal:7890 \
++              -e HTTPS_PROXY=http://host.docker.internal:7890 \
++              -e NO_PROXY=localhost,127.0.0.1,::1 \
++              -e http_proxy=http://host.docker.internal:7890 \
++              -e https_proxy=http://host.docker.internal:7890 \
++              -e no_proxy=localhost,127.0.0.1,::1 \
+               -e BACKEND_VERSION=${IMAGE_TAG} \
+               ${IMAGE_TAG}
+             tmux kill-session -t ink-and-memory-docker 2>/dev/null || true
+
+*** FILE: backend/config.py ***
+@@ -7,23 +7,23 @@
+ # VOICE_ANALYSIS_MODEL = "deepseek-v3.2"
+ # VOICE_ANALYSIS_MODEL = "gemini-3-pro-preview"
+ # VOICE_ANALYSIS_MODEL = "mistral-small-creative"
+-# VOICE_ANALYSIS_MODEL = "gemini-3-flash-preview"
+-VOICE_ANALYSIS_MODEL = "claude-sonnet-4.5"
++# VOICE_ANALYSIS_MODEL = "claude-sonnet-4.5"
++VOICE_ANALYSIS_MODEL = "gemini-3-flash-preview"
+ 
+-# VOICE_INSPIRATION_MODEL = "gemini-3-flash-preview"
+-VOICE_INSPIRATION_MODEL = "claude-sonnet-4.5"
++# VOICE_INSPIRATION_MODEL = "claude-sonnet-4.5"
++VOICE_INSPIRATION_MODEL = "gemini-3-flash-preview"
+ 
+-# VOICE_CHAT_MODEL = "gemini-3-flash-preview"
+-VOICE_CHAT_MODEL = "claude-sonnet-4.5"
++# VOICE_CHAT_MODEL = "claude-sonnet-4.5"
++VOICE_CHAT_MODEL = "gemini-3-flash-preview"
+ 
+-# ECHO_ANALYSIS_MODEL = "gemini-3-flash-preview"
+-ECHO_ANALYSIS_MODEL = "claude-sonnet-4.5"
++# ECHO_ANALYSIS_MODEL = "claude-sonnet-4.5"
++ECHO_ANALYSIS_MODEL = "gemini-3-flash-preview"
+ 
+-# TRAIT_ANALYSIS_MODEL = "gemini-3-flash-preview"
+-TRAIT_ANALYSIS_MODEL = "claude-sonnet-4.5"
++# TRAIT_ANALYSIS_MODEL = "claude-sonnet-4.5"
++TRAIT_ANALYSIS_MODEL = "gemini-3-flash-preview"
+ 
+-# PATTERN_ANALYSIS_MODEL = "gemini-3-flash-preview"
+-PATTERN_ANALYSIS_MODEL = "claude-sonnet-4.5"
++# PATTERN_ANALYSIS_MODEL = "claude-sonnet-4.5"
++PATTERN_ANALYSIS_MODEL = "gemini-3-flash-preview"
+ 
+ # @@@ Sparsity control
+ MAX_VOICES = 5
+
+*** FILE: backend/docker-compose.yml ***
+@@ -0,0 +1,22 @@
++version: "3.8"
++
++services:
++  ink-backend:
++    image: ghcr.io/shuxueshuxue/ink-backend:latest
++    container_name: ink-backend
++    restart: unless-stopped
++    extra_hosts:
++      - "host.docker.internal:host-gateway"
++    ports:
++      - "127.0.0.1:8765:8765"
++    volumes:
++      - ./data:/app/data
++      - ./models.json:/app/models.json:ro
++    environment:
++      BACKEND_VERSION: ghcr.io/shuxueshuxue/ink-backend:latest
++      HTTP_PROXY: http://host.docker.internal:7890
++      HTTPS_PROXY: http://host.docker.internal:7890
++      NO_PROXY: localhost,127.0.0.1,::1
++      http_proxy: http://host.docker.internal:7890
++      https_proxy: http://host.docker.internal:7890
++      no_proxy: localhost,127.0.0.1,::1
+

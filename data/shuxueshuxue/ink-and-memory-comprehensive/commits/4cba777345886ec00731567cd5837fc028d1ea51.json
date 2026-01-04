@@ -1,0 +1,97 @@
+{
+  "sha": "4cba777345886ec00731567cd5837fc028d1ea51",
+  "node_id": "C_kwDOP2Zrm9oAKDRjYmE3NzczNDU4ODZlYzAwNzMxNTY3Y2Q1ODM3ZmMwMjhkMWVhNTE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-16T08:49:10Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-16T08:49:10Z"
+    },
+    "message": "remove unpacker from system decks",
+    "tree": {
+      "sha": "bbac0cd5a28fd4c3c8339005744f0684b92a8ba3",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/bbac0cd5a28fd4c3c8339005744f0684b92a8ba3"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/4cba777345886ec00731567cd5837fc028d1ea51",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4cba777345886ec00731567cd5837fc028d1ea51",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/4cba777345886ec00731567cd5837fc028d1ea51",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/4cba777345886ec00731567cd5837fc028d1ea51/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "6a134c937fb4c3152fdc4e3d66d648855142b72d",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/6a134c937fb4c3152fdc4e3d66d648855142b72d",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/6a134c937fb4c3152fdc4e3d66d648855142b72d"
+    }
+  ],
+  "stats": {
+    "total": 61,
+    "additions": 42,
+    "deletions": 19
+  },
+  "files": [
+    {
+      "sha": "9b2e70ca9142a41aca6c36deed99d66327ac33bf",
+      "filename": "backend/config.py",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 7,
+      "changes": 8,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4cba777345886ec00731567cd5837fc028d1ea51/backend%2Fconfig.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4cba777345886ec00731567cd5837fc028d1ea51/backend%2Fconfig.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fconfig.py?ref=4cba777345886ec00731567cd5837fc028d1ea51",
+      "patch": "@@ -72,20 +72,14 @@ def _load_prompt(filename):\n         return \"\"\n \n \n-# Voice archetypes (Echo system - 6 Chinese voice personas)\n+# Voice archetypes (Echo system - 5 Chinese voice personas)\n VOICE_ARCHETYPES = {\n     \"holder\": {\n         \"name\": \"\u63a5\u7eb3\u8005 (The Holder)\",\n         \"systemPrompt\": _load_prompt(\"holder.md\"),\n         \"icon\": \"heart\",\n         \"color\": \"pink\",\n     },\n-    \"unpacker\": {\n-        \"name\": \"\u62c6\u89e3\u8005 (The Unpacker)\",\n-        \"systemPrompt\": _load_prompt(\"unpacker.md\"),\n-        \"icon\": \"brain\",\n-        \"color\": \"blue\",\n-    },\n     \"starter\": {\n         \"name\": \"\u542f\u52a8\u8005 (The Starter)\",\n         \"systemPrompt\": _load_prompt(\"starter.md\"),"
+    },
+    {
+      "sha": "059ed8dc653c601c6b20fe5f74bc1a4349967aac",
+      "filename": "backend/database.py",
+      "status": "modified",
+      "additions": 5,
+      "deletions": 7,
+      "changes": 12,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4cba777345886ec00731567cd5837fc028d1ea51/backend%2Fdatabase.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4cba777345886ec00731567cd5837fc028d1ea51/backend%2Fdatabase.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fdatabase.py?ref=4cba777345886ec00731567cd5837fc028d1ea51",
+      "patch": "@@ -268,16 +268,14 @@ def seed_system_decks():\n     introspection_voices = [\n         ('holder', config.VOICE_ARCHETYPES['holder']['name'], '\u63a5\u7eb3\u8005', 'The Holder',\n          config.VOICE_ARCHETYPES['holder']['systemPrompt'], 'heart', 'pink', 0),\n-        ('unpacker', config.VOICE_ARCHETYPES['unpacker']['name'], '\u62c6\u89e3\u8005', 'The Unpacker',\n-         config.VOICE_ARCHETYPES['unpacker']['systemPrompt'], 'brain', 'blue', 1),\n         ('starter', config.VOICE_ARCHETYPES['starter']['name'], '\u542f\u52a8\u8005', 'The Starter',\n-         config.VOICE_ARCHETYPES['starter']['systemPrompt'], 'fist', 'yellow', 2),\n+         config.VOICE_ARCHETYPES['starter']['systemPrompt'], 'fist', 'yellow', 1),\n         ('mirror', config.VOICE_ARCHETYPES['mirror']['name'], '\u7167\u955c\u8005', 'The Mirror',\n-         config.VOICE_ARCHETYPES['mirror']['systemPrompt'], 'eye', 'green', 3),\n+         config.VOICE_ARCHETYPES['mirror']['systemPrompt'], 'eye', 'green', 2),\n         ('weaver', config.VOICE_ARCHETYPES['weaver']['name'], '\u8fde\u63a5\u8005', 'The Weaver',\n-         config.VOICE_ARCHETYPES['weaver']['systemPrompt'], 'compass', 'purple', 4),\n+         config.VOICE_ARCHETYPES['weaver']['systemPrompt'], 'compass', 'purple', 3),\n         ('absurdist', config.VOICE_ARCHETYPES['absurdist']['name'], '\u5e7d\u9ed8\u8005', 'The Absurdist',\n-         config.VOICE_ARCHETYPES['absurdist']['systemPrompt'], 'masks', 'pink', 5),\n+         config.VOICE_ARCHETYPES['absurdist']['systemPrompt'], 'masks', 'pink', 4),\n     ]\n \n     for voice_id, name, name_zh, name_en, prompt, icon, color, order in introspection_voices:\n@@ -344,7 +342,7 @@ def seed_system_decks():\n \n     db.commit()\n     db.close()\n-    print(\"\u2705 System decks seeded (3 decks, 16 voices)\")\n+    print(\"\u2705 System decks seeded (3 decks, 15 voices)\")\n \n # ========== Deck CRUD ==========\n "
+    },
+    {
+      "sha": "e3c7454457e5da4ddbdb53a09dd0c93e478579b1",
+      "filename": "backend/stateless_analyzer.py",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4cba777345886ec00731567cd5837fc028d1ea51/backend%2Fstateless_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4cba777345886ec00731567cd5837fc028d1ea51/backend%2Fstateless_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateless_analyzer.py?ref=4cba777345886ec00731567cd5837fc028d1ea51",
+      "patch": "@@ -8,7 +8,7 @@\n \n class VoiceTrigger(BaseModel):\n     phrase: str = Field(description=\"Exact trigger phrase from text (verbatim, 2-4 words, avoid punctuation)\")\n-    voice_id: str = Field(description=\"Voice ID from the available list (e.g., 'holder', 'mirror', 'unpacker')\")\n+    voice_id: str = Field(description=\"Voice ID from the available list (e.g., 'holder', 'mirror', 'starter')\")\n     voice_name: str = Field(description=\"Voice display name (will be auto-filled, LLM should not generate this)\")\n     comment: str = Field(description=\"What this voice is saying (as if speaking)\")\n     icon: str = Field(description=\"Icon identifier\")"
+    },
+    {
+      "sha": "abc1b4be305c68de62ed79b9bf61295d6f120216",
+      "filename": "frontend/src/contexts/AuthContext.tsx",
+      "status": "modified",
+      "additions": 35,
+      "deletions": 4,
+      "changes": 39,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/4cba777345886ec00731567cd5837fc028d1ea51/frontend%2Fsrc%2Fcontexts%2FAuthContext.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/4cba777345886ec00731567cd5837fc028d1ea51/frontend%2Fsrc%2Fcontexts%2FAuthContext.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcontexts%2FAuthContext.tsx?ref=4cba777345886ec00731567cd5837fc028d1ea51",
+      "patch": "@@ -33,6 +33,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {\n   const [token, setToken] = useState<string | null>(null);\n   const [isLoading, setIsLoading] = useState(true);\n \n+  const fetchUserProfile = async (authToken: string) => {\n+    const res = await fetch(`${API_BASE}/api/me`, {\n+      headers: {\n+        'Authorization': `Bearer ${authToken}`\n+      }\n+    });\n+\n+    if (!res.ok) {\n+      throw new Error('Failed to fetch user profile');\n+    }\n+\n+    return res.json();\n+  };\n+\n   // Load token from localStorage on mount\n   useEffect(() => {\n     const savedToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);\n@@ -78,9 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {\n     }\n \n     const data = await response.json();\n-    setUser(data.user);\n-    setToken(data.token);\n     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);\n+    setToken(data.token);\n+\n+    try {\n+      const profile = await fetchUserProfile(data.token);\n+      setUser(profile);\n+    } catch (error) {\n+      // Profile fetch failed, clear token to avoid inconsistent state\n+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);\n+      setToken(null);\n+      throw error;\n+    }\n   };\n \n   const register = async (email: string, password: string, displayName?: string) => {\n@@ -102,9 +125,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {\n     }\n \n     const data = await response.json();\n-    setUser(data.user);\n-    setToken(data.token);\n     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);\n+    setToken(data.token);\n+\n+    try {\n+      const profile = await fetchUserProfile(data.token);\n+      setUser(profile);\n+    } catch (error) {\n+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);\n+      setToken(null);\n+      throw error;\n+    }\n   };\n \n   const logout = () => {"
+    }
+  ]
+}

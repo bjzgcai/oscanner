@@ -1,0 +1,44 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps & build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy static assets
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 101.201.227.31
+          username: root
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "frontend/dist/*"
+          target: "/var/www/lexicalmathical.com/ink-and-memory/"
+          overwrite: true
+
+      - name: Fix ownership
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: 101.201.227.31
+          username: root
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            chown -R www-data:www-data /var/www/lexicalmathical.com/ink-and-memory/

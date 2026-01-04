@@ -1,0 +1,23 @@
+{
+  "sha": "bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e",
+  "message": "Unify session identity and drop currentEntryId",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-23T08:50:24Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-23T08:50:24Z"
+  },
+  "stats": {
+    "total": 128,
+    "additions": 73,
+    "deletions": 55
+  },
+  "files_count": 4,
+  "parents": [
+    "9161d8b7fb4ea64ce46e884860f1ac7047c8fab3"
+  ]
+}

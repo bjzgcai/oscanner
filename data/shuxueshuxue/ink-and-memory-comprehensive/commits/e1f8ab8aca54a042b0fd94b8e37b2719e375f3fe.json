@@ -1,0 +1,61 @@
+{
+  "sha": "e1f8ab8aca54a042b0fd94b8e37b2719e375f3fe",
+  "node_id": "C_kwDOP2Zrm9oAKGUxZjhhYjhhY2E1NGEwNDJiMGZkOTRiOGUzN2IyNzE5ZTM3NWYzZmU",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-09T13:59:12Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-09T13:59:12Z"
+    },
+    "message": "add docker login retry",
+    "tree": {
+      "sha": "d8ad5420d36e1083847939544acfd80aaa5608e3",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/d8ad5420d36e1083847939544acfd80aaa5608e3"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/e1f8ab8aca54a042b0fd94b8e37b2719e375f3fe",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/e1f8ab8aca54a042b0fd94b8e37b2719e375f3fe",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/e1f8ab8aca54a042b0fd94b8e37b2719e375f3fe",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/e1f8ab8aca54a042b0fd94b8e37b2719e375f3fe/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "cebce6633f966f5f621500f411c7ba158ad82c4e",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/cebce6633f966f5f621500f411c7ba158ad82c4e",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/cebce6633f966f5f621500f411c7ba158ad82c4e"
+    }
+  ],
+  "stats": {
+    "total": 27,
+    "additions": 22,
+    "deletions": 5
+  },
+  "files": [
+    {
+      "sha": "ab7ab13b612e053b8e1dca493fc1242b360e9f80",
+      "filename": ".github/workflows/deploy-backend.yml",
+      "status": "modified",
+      "additions": 22,
+      "deletions": 5,
+      "changes": 27,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/e1f8ab8aca54a042b0fd94b8e37b2719e375f3fe/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/e1f8ab8aca54a042b0fd94b8e37b2719e375f3fe/.github%2Fworkflows%2Fdeploy-backend.yml",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.github%2Fworkflows%2Fdeploy-backend.yml?ref=e1f8ab8aca54a042b0fd94b8e37b2719e375f3fe",
+      "patch": "@@ -61,11 +61,28 @@ jobs:\n             cd /root/ink-and-memory/backend\n             mkdir -p /root/ink-and-memory/backend/data\n             # Write models.json from secret for runtime mounting\n-            cat > /root/ink-and-memory/backend/models.json <<'EOF'\n-            ${{ secrets.MODELS_JSON }}\n-            EOF\n-            echo \"${{ secrets.GHCR_PAT }}\" | docker login ghcr.io -u shuxueshuxue --password-stdin >/dev/null\n-            docker pull \"${IMAGE_TAG}\"\n+          cat > /root/ink-and-memory/backend/models.json <<'EOF'\n+          ${{ secrets.MODELS_JSON }}\n+          EOF\n+          echo \"${{ secrets.GHCR_PAT }}\" | docker login ghcr.io -u shuxueshuxue --password-stdin >/dev/null\n+            echo \"Pulling image ${IMAGE_TAG} with retries...\"\n+            attempt=1\n+            while true; do\n+              if docker pull \"${IMAGE_TAG}\"; then\n+                echo \"Image pull succeeded on attempt ${attempt}\"\n+                break\n+              fi\n+              if [ \"${attempt}\" -ge 3 ]; then\n+                echo \"Image pull failed after ${attempt} attempts\"\n+                exit 1\n+              fi\n+              case \"${attempt}\" in\n+                1) sleep 15 ;;\n+                2) sleep 30 ;;\n+                *) sleep 45 ;;\n+              esac\n+              attempt=$((attempt + 1))\n+            done\n             docker rm -f ink-backend || true\n             docker run -d --name ink-backend --restart unless-stopped \\\n               -p 127.0.0.1:8765:8765 \\"
+    }
+  ]
+}

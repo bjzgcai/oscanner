@@ -1,0 +1,127 @@
+import React from 'react';
+import type { VoiceConfig } from '../types/voice';
+import {
+  FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+  FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
+} from 'react-icons/fa';
+
+// Icon map
+const iconMap = {
+  brain: FaBrain,
+  heart: FaHeart,
+  question: FaQuestion,
+  cloud: FaCloud,
+  masks: FaTheaterMasks,
+  eye: FaEye,
+  fist: FaFistRaised,
+  lightbulb: FaLightbulb,
+  shield: FaShieldAlt,
+  wind: FaWind,
+  fire: FaFire,
+  compass: FaCompass,
+};
+
+interface AgentDropdownProps {
+  voices: Record<string, VoiceConfig>;
+  position: { x: number; y: number };
+  onSelect: (voiceName: string, voiceConfig: VoiceConfig) => void;
+  onClose: () => void;
+}
+
+export default function AgentDropdown({ voices, position, onSelect, onClose }: AgentDropdownProps) {
+  const enabledVoices = Object.entries(voices).filter(([_, cfg]) => cfg.enabled);
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
+
+  // Keyboard navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev + 1) % enabledVoices.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev - 1 + enabledVoices.length) % enabledVoices.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const [name, cfg] = enabledVoices[selectedIndex];
+        onSelect(name, cfg);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, enabledVoices, selectedIndex, onSelect]);
+
+  if (enabledVoices.length === 0) {
+    return (
+      <div style={{
+        position: 'fixed',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        background: '#fff',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        padding: '8px',
+        zIndex: 1000,
+        minWidth: '200px',
+        fontSize: '14px',
+        color: '#666'
+      }}>
+        No agents available
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        background: '#fff',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        padding: '4px 0',
+        zIndex: 1000,
+        minWidth: '220px',
+        maxHeight: '300px',
+        overflow: 'auto'
+      }}
+    >
+      {enabledVoices.map(([name, cfg], idx) => {
+        const Icon = iconMap[cfg.icon as keyof typeof iconMap] || FaBrain;
+        const isSelected = idx === selectedIndex;
+        return (
+          <div
+            key={name}
+            onClick={() => onSelect(name, cfg)}
+            onMouseEnter={() => setSelectedIndex(idx)}
+            style={{
+              padding: '8px 12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              transition: 'background 0.15s',
+              background: isSelected ? '#f0f0f0' : 'transparent'
+            }}
+          >
+            <Icon size={16} color="#666" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: '14px', color: '#333' }}>
+                {cfg.name}
+              </div>
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                {cfg.systemPrompt.substring(0, 40)}...
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

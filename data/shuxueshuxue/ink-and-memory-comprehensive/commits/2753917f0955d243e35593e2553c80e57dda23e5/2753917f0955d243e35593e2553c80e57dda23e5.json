@@ -1,0 +1,36 @@
+{
+  "hash": "2753917f0955d243e35593e2553c80e57dda23e5",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sat Oct 4 09:37:43 2025 +0800",
+  "subject": "Make voice triggers dynamic and configurable",
+  "files": [
+    "frontend/src/App.tsx",
+    "frontend/src/components/EditableTextArea.tsx",
+    "frontend/src/components/WritingArea.tsx",
+    "frontend/src/extensions/VoiceHighlight.ts"
+  ],
+  "diff": "commits/2753917f0955d243e35593e2553c80e57dda23e5/2753917f0955d243e35593e2553c80e57dda23e5.diff",
+  "related_files": {
+    "frontend/src/App.tsx": [
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/extensions/VoiceHighlight.ts"
+    ],
+    "frontend/src/components/EditableTextArea.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/extensions/VoiceHighlight.ts"
+    ],
+    "frontend/src/components/WritingArea.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/extensions/VoiceHighlight.ts"
+    ],
+    "frontend/src/extensions/VoiceHighlight.ts": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx"
+    ]
+  }
+}

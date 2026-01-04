@@ -1,0 +1,15 @@
+*** FILE: README.md ***
+@@ -1,11 +1,8 @@
+ # Ink and Memory
+ 
+-A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.
++A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write—supporting both English and Chinese from the first keystroke.
+ 
+-![Demo Screenshot](assets/demo-screenshot.png)
+-
+-*Original UI Design Concept:*
+-![Book UI Design](assets/book-ui-design.png)
++![Writing Area Screenshot](assets/writing-area.png)
+ 
+ ## ✨ Features
+ 

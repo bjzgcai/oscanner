@@ -1,0 +1,27 @@
+{
+  "hash": "9e6fe1454b6e694b038915b27787276ec6c7130e",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Oct 8 09:46:37 2025 +0800",
+  "subject": "Use two-container layout for proper card separation",
+  "files": [
+    "frontend/src/App.css",
+    "frontend/src/App.tsx",
+    "frontend/src/components/VoicesPanel.tsx"
+  ],
+  "diff": "commits/9e6fe1454b6e694b038915b27787276ec6c7130e/9e6fe1454b6e694b038915b27787276ec6c7130e.diff",
+  "related_files": {
+    "frontend/src/App.css": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/VoicesPanel.tsx"
+    ],
+    "frontend/src/App.tsx": [
+      "frontend/src/App.css",
+      "frontend/src/components/VoicesPanel.tsx"
+    ],
+    "frontend/src/components/VoicesPanel.tsx": [
+      "frontend/src/App.css",
+      "frontend/src/App.tsx"
+    ]
+  }
+}

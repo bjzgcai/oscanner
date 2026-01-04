@@ -1,0 +1,83 @@
+commit b3409d8710ffb7e2fe74b7b48770a864e69f0f0a
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Thu Dec 18 23:51:15 2025 +0800
+
+    fix comment group not display latest comment issue
+
+diff --git a/frontend/src/hooks/useComments.ts b/frontend/src/hooks/useComments.ts
+index 36086c2..94cc27c 100644
+--- a/frontend/src/hooks/useComments.ts
++++ b/frontend/src/hooks/useComments.ts
+@@ -52,7 +52,8 @@ export function useComments({
+   engineRef,
+ }: UseCommentsOptions): UseCommentsReturn {
+   const [groupPages, setGroupPages] = useState<Map<string, number>>(new Map());
+-  const prevCommentCounts = useRef<Map<string, number>>(new Map());
++  const prevGroupSignatures = useRef<Map<string, string>>(new Map());
++  const manualLockSignatures = useRef<Map<string, string>>(new Map());
+   const [cursorPosition, setCursorPosition] = useState<number>(0);
+   const [cursorCellId, setCursorCellId] = useState<string | null>(null);
+   const [mobileActiveComment, setMobileActiveComment] = useState<Commentor | null>(null);
+@@ -157,11 +158,12 @@ export function useComments({
+     return groups;
+   }, [state?.commentors, state, refsReady, selectedState]);
+ 
+-  // @@@ Preserve manual selection - only jump to newest when a group gains comments
++  // @@@ Auto-advance on new comment - jump to latest only when signature changes
+   useEffect(() => {
+-    const currentCounts = new Map<string, number>();
++    const currentSignatures = new Map<string, string>();
+     commentGroups.forEach((group, groupKey) => {
+-      currentCounts.set(groupKey, group.comments.length);
++      const signature = group.comments.map(c => c.id).join("|");
++      currentSignatures.set(groupKey, signature);
+     });
+ 
+     setGroupPages(prev => {
+@@ -175,13 +177,17 @@ export function useComments({
+ 
+         const currentPage = prev.get(groupKey) ?? 0;
+         const maxPage = group.comments.length - 1;
+-        const prevCount = prevCommentCounts.current.get(groupKey) ?? 0;
+-        const currentCount = group.comments.length;
+         const isNewGroup = !prev.has(groupKey);
++        const currentSignature = currentSignatures.get(groupKey) || "";
++        const prevSignature = prevGroupSignatures.current.get(groupKey) || "";
++        const signatureChanged = currentSignature !== prevSignature;
++        const manualLockSignature = manualLockSignatures.current.get(groupKey) || "";
+ 
+         if (isNewGroup) {
+           next.set(groupKey, maxPage);
+-        } else if (currentCount > prevCount) {
++        } else if (signatureChanged && manualLockSignature !== currentSignature) {
++          next.set(groupKey, maxPage);
++        } else if (currentPage < maxPage && manualLockSignature !== currentSignature) {
+           next.set(groupKey, maxPage);
+         } else if (currentPage > maxPage) {
+           next.set(groupKey, maxPage);
+@@ -191,13 +197,14 @@ export function useComments({
+       prev.forEach((_, groupKey) => {
+         if (!commentGroups.has(groupKey)) {
+           next.delete(groupKey);
++          manualLockSignatures.current.delete(groupKey);
+         }
+       });
+ 
+       return next;
+     });
+ 
+-    prevCommentCounts.current = currentCounts;
++    prevGroupSignatures.current = currentSignatures;
+   }, [commentGroups]);
+ 
+   const handleGroupNavigate = useCallback((groupKey: string, newIndex: number) => {
+@@ -214,6 +221,9 @@ export function useComments({
+     if (anyExpanded && group.comments[newIndex]) {
+       setExpandedCommentId(group.comments[newIndex].id);
+     }
++
++    const signature = group.comments.map(c => c.id).join("|");
++    manualLockSignatures.current.set(groupKey, signature);
+   }, [commentGroups, expandedCommentId]);
+ 
+   useEffect(() => {

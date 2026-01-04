@@ -1,0 +1,23 @@
+{
+  "sha": "83196932878eb35e5a5996bea747506176d360e0",
+  "message": "Add explicit overlap avoidance instructions to LLM prompt\n\n- Show list of already highlighted phrases to the LLM\n- Add explicit rules to avoid choosing overlapping phrases\n- Instruct LLM to choose phrases completely separate from existing highlights\n- Reduce reliance on post-processing collision detection\n\nThis makes the LLM aware upfront that overlapping is not allowed,\nimproving comment quality and reducing conflicts.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T15:28:21Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T15:28:21Z"
+  },
+  "stats": {
+    "total": 14,
+    "additions": 10,
+    "deletions": 4
+  },
+  "files_count": 1,
+  "parents": [
+    "348fac22f83ca12deff43fea760a5cc7702cbc66"
+  ]
+}

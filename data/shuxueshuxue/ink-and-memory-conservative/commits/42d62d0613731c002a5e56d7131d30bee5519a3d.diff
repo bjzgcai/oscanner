@@ -1,0 +1,74 @@
+*** MODIFIED: frontend/src/App.css (+4/-2) ***
+@@ -52,13 +52,13 @@
+ .voices-container {
+   display: flex;
+   flex-direction: column;
+-  gap: 2rem;
++  gap: 4rem;
+   margin-left: 2rem;
+ }
+ 
+ .voice-stack {
+   position: relative;
+-  min-height: 100px;
++  width: 100%;
+ }
+ 
+ .latest-card-container {
+@@ -136,6 +136,8 @@
+ 
+ .top-card {
+   cursor: default;
++  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
++  transform: scale(1.02) rotate(-1deg);
+ }
+ 
+ .voice-header {
+
+*** MODIFIED: frontend/src/App.tsx (+2/-1) ***
+@@ -107,7 +107,7 @@ function App() {
+             isTopCard={false}
+             style={{
+               zIndex: index + 1,
+-              transform: `translateY(${index * 50}%)`,
++              transform: `translateY(${index * 55}%)`,
+             }}
+           />
+         ))}
+@@ -123,6 +123,7 @@ function App() {
+             }}
+           />
+         )}
++        stackedCount={stackedVoices.length}
+       />
+       <BinderRings />
+     </div>
+
+*** MODIFIED: frontend/src/components/VoicesPanel.tsx (+11/-4) ***
+@@ -4,15 +4,22 @@ import BookPage from './BookPage';
+ interface VoicesPanelProps {
+   stackedCards: ReactNode;
+   latestCard: ReactNode;
++  stackedCount: number;
+ }
+ 
+-export default function VoicesPanel({ stackedCards, latestCard }: VoicesPanelProps) {
++export default function VoicesPanel({ stackedCards, latestCard, stackedCount }: VoicesPanelProps) {
++  // Calculate minimum height needed: base card height + offsets
++  // Assume ~100px per card, plus 55% offsets
++  const stackHeightPx = stackedCount > 0 ? 100 + (stackedCount - 1) * 55 : 0;
++
+   return (
+     <BookPage side="right">
+       <div className="voices-container">
+-        <div className="voice-stack">
+-          {stackedCards}
+-        </div>
++        {stackedCount > 0 && (
++          <div className="voice-stack" style={{ minHeight: `${stackHeightPx}px` }}>
++            {stackedCards}
++          </div>
++        )}
+         <div className="latest-card-container">
+           {latestCard}
+         </div>

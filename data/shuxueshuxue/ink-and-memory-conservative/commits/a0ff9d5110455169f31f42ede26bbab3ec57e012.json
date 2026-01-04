@@ -1,0 +1,23 @@
+{
+  "sha": "a0ff9d5110455169f31f42ede26bbab3ec57e012",
+  "message": "Fix comment positioning bug on page refresh\n\nRoot cause: StateChooser height changes when state loads\n- On initial render: no selection → expanded (tall)\n- After state loads from storage: collapsed (short)\n- Height difference (~40-60px) caused layout shift\n- Comments positioned based on initial tall layout\n- After collapse, content shifts up but positions don't update\n- Clicking textarea triggered re-render → positions fixed\n\nSolution: Add selectedState to commentGroups dependency array\n- Positions now recalculate when StateChooser collapses\n- Fixes misalignment on page refresh without click\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:32:56Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:32:56Z"
+  },
+  "stats": {
+    "total": 15,
+    "additions": 2,
+    "deletions": 13
+  },
+  "files_count": 1,
+  "parents": [
+    "83ef7a4dd0f647a1d068e941e0bb006342a9942f"
+  ]
+}

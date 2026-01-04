@@ -1,0 +1,23 @@
+commit 524938eba470678817c2bca4aefa18d8625b7b4b
+Author: zhuchenyu2008 <132262479+zhuchenyu2008@users.noreply.github.com>
+Date:   Sat Jan 3 12:11:22 2026 +0800
+
+    已移除未使用的 handleStartFresh，解决 TS6133
+    
+    已移除未使用的 handleStartFresh，解决 TS6133
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index f139d1f..086544b 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -450,10 +450,6 @@ export default function App() {
+     return () => window.clearTimeout(timer);
+   }, [state, refsReady]);
+ 
+-  const handleStartFresh = useCallback(() => {
+-    setShowWarning(true);
+-  }, []);
+-
+   const handleConfirmStartFresh = useCallback(() => {
+     setShowWarning(false);
+     confirmStartFresh();

@@ -1,0 +1,26 @@
+[
+  {
+    "sha": "2acf796def20edd70972cf159a798164d33a88b6",
+    "filename": ".github/workflows/ci-backend.yml",
+    "status": "modified",
+    "additions": 6,
+    "deletions": 1,
+    "changes": 7,
+    "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5c26a0422c3e87fd417704e1bf59e6cb09448b6b/.github%2Fworkflows%2Fci-backend.yml",
+    "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5c26a0422c3e87fd417704e1bf59e6cb09448b6b/.github%2Fworkflows%2Fci-backend.yml",
+    "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/.github%2Fworkflows%2Fci-backend.yml?ref=5c26a0422c3e87fd417704e1bf59e6cb09448b6b",
+    "patch": "@@ -20,6 +20,11 @@ jobs:\n         run: |\n           docker buildx build \\\n             --platform linux/amd64 \\\n-            -t test-build \\\n+            -t ink-backend:ci \\\n             --load \\\n             backend\n+\n+      - name: Run backend smoke test (register, login, deck create)\n+        run: |\n+          chmod +x backend/tests/ci-smoke.sh\n+          backend/tests/ci-smoke.sh ink-backend:ci"
+  },
+  {
+    "sha": "4968a5dc570b02cb1f08ac8eb221115d6952100b",
+    "filename": "backend/tests/ci-smoke.sh",
+    "status": "added",
+    "additions": 60,
+    "deletions": 0,
+    "changes": 60,
+    "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/5c26a0422c3e87fd417704e1bf59e6cb09448b6b/backend%2Ftests%2Fci-smoke.sh",
+    "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/5c26a0422c3e87fd417704e1bf59e6cb09448b6b/backend%2Ftests%2Fci-smoke.sh",
+    "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Ftests%2Fci-smoke.sh?ref=5c26a0422c3e87fd417704e1bf59e6cb09448b6b",
+    "patch": "@@ -0,0 +1,60 @@\n+#!/usr/bin/env bash\n+set -euo pipefail\n+\n+# Minimal backend smoke test for CI only.\n+# Requires: docker, jq, curl\n+\n+IMAGE=\"${1:-ink-backend:ci}\"\n+PORT=\"${PORT:-18765}\"\n+CONTAINER_NAME=\"ink-backend-smoke\"\n+DB_DIR=\"$(mktemp -d)\"\n+\n+cleanup() {\n+  docker rm -f \"${CONTAINER_NAME}\" >/dev/null 2>&1 || true\n+  rm -rf \"${DB_DIR}\"\n+}\n+trap cleanup EXIT\n+\n+echo \"\ud83d\ude80 Starting container ${IMAGE} on port ${PORT} with db at ${DB_DIR}\"\n+docker run -d --rm --name \"${CONTAINER_NAME}\" -p \"${PORT}:8765\" -v \"${DB_DIR}:/app/data\" \"${IMAGE}\" >/dev/null\n+\n+echo \"\u23f3 Waiting for server...\"\n+for i in $(seq 1 30); do\n+  if curl -fsS \"http://127.0.0.1:${PORT}/docs\" >/dev/null; then\n+    break\n+  fi\n+  sleep 1\n+done\n+\n+# Initialize database tables + seed system decks\n+docker exec \"${CONTAINER_NAME}\" python database.py >/dev/null\n+\n+API=\"http://127.0.0.1:${PORT}/api\"\n+\n+echo \"\ud83d\udc64 Registering user...\"\n+REGISTER_RES=$(curl -s -X POST -H \"Content-Type: application/json\" \\\n+  -d '{\"email\":\"ci-smoke@example.com\",\"password\":\"test123\",\"display_name\":\"CI Smoke\"}' \\\n+  \"${API}/register\")\n+TOKEN=$(echo \"${REGISTER_RES}\" | jq -r '.token')\n+if [[ -z \"${TOKEN}\" || \"${TOKEN}\" == \"null\" ]]; then\n+  echo \"Register failed: ${REGISTER_RES}\"\n+  exit 1\n+fi\n+\n+echo \"\ud83c\udccf Creating deck...\"\n+CREATE_RES=$(curl -s -X POST \\\n+  -H \"Authorization: Bearer ${TOKEN}\" \\\n+  -H \"Content-Type: application/json\" \\\n+  -d '{\"name\":\"Smoke Deck\",\"description\":\"CI deck\"}' \\\n+  \"${API}/decks\")\n+DECK_ID=$(echo \"${CREATE_RES}\" | jq -r '.deck_id')\n+if [[ -z \"${DECK_ID}\" || \"${DECK_ID}\" == \"null\" ]]; then\n+  echo \"Deck creation failed: ${CREATE_RES}\"\n+  exit 1\n+fi\n+\n+echo \"\ud83d\udccb Verifying deck exists...\"\n+LIST_RES=$(curl -s -H \"Authorization: Bearer ${TOKEN}\" \"${API}/decks\")\n+echo \"${LIST_RES}\" | jq -e --arg id \"${DECK_ID}\" '.decks | map(.id == $id) | any' >/dev/null\n+\n+echo \"\u2705 Smoke test passed\""
+  }
+]

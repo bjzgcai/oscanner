@@ -1,0 +1,27 @@
+{
+  "hash": "681162b0353f059197c4c3057d35306cbd3f5bf4",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Nov 5 16:36:04 2025 +0800",
+  "subject": "Add greeting comment feature for daily state selection",
+  "files": [
+    "frontend/src/App.tsx",
+    "frontend/src/types/voice.ts",
+    "frontend/src/utils/voiceStorage.ts"
+  ],
+  "diff": "commits/681162b0353f059197c4c3057d35306cbd3f5bf4/681162b0353f059197c4c3057d35306cbd3f5bf4.diff",
+  "related_files": {
+    "frontend/src/App.tsx": [
+      "frontend/src/types/voice.ts",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/types/voice.ts": [
+      "frontend/src/App.tsx",
+      "frontend/src/utils/voiceStorage.ts"
+    ],
+    "frontend/src/utils/voiceStorage.ts": [
+      "frontend/src/App.tsx",
+      "frontend/src/types/voice.ts"
+    ]
+  }
+}

@@ -1,0 +1,374 @@
+*** FILE: backend/server.py ***
+@@ -19,6 +19,79 @@
+ 
+ # ========== Session Definitions (PolyCLI) ==========
+ 
++@session_def(
++    name="Get Writing Suggestion",
++    description="Get AI-powered writing inspiration from a voice persona",
++    params={
++        "text": {"type": "str"},
++        "meta_prompt": {"type": "str"},
++        "state_prompt": {"type": "str"}
++    },
++    category="Writing"
++)
++def get_writing_suggestion(text: str, meta_prompt: str = "", state_prompt: str = ""):
++    """Generate writing inspiration from a random voice persona."""
++    print(f"\n{'='*60}")
++    print(f"✍️  get_writing_suggestion() called")
++    print(f"   Text length: {len(text)} chars")
++    print(f"{'='*60}\n")
++
++    if not text or len(text.strip()) < 10:
++        return {"success": False, "error": "Text too short"}
++
++    # @@@ Pick a random voice persona to deliver inspiration
++    import random
++    from config import VOICE_ARCHETYPES
++
++    voice_key = random.choice(list(VOICE_ARCHETYPES.keys()))
++    voice_info = VOICE_ARCHETYPES[voice_key]
++
++    print(f"🎭 Selected voice: {voice_info['name']} ({voice_key})")
++
++    agent = PolyAgent(id="writing-suggester")
++
++    # Build system prompt - voice gives inspiration, not continuation
++    system_prompt = f"""You are {voice_info['name']}, an inner voice persona.
++Your role: {voice_info['tagline']}
++
++Read the user's writing and offer a brief, inspiring comment to help them continue.
++Be encouraging, insightful, or thought-provoking (1-2 sentences).
++Speak in the voice's characteristic style."""
++
++    if state_prompt:
++        system_prompt += f"\n\nContext: {state_prompt}"
++
++    if meta_prompt:
++        system_prompt += f"\n\nStyle guide: {meta_prompt}"
++
++    user_prompt = f"""The user wrote:
++
++{text}
++
++Offer a brief, inspiring comment to help them continue writing (1-2 sentences)."""
++
++    # Generate inspiration
++    print(f"📤 Calling agent.run() with model='claude-haiku-4.5'...")
++    result = agent.run(user_prompt, system_prompt=system_prompt, model='claude-haiku-4.5', cli="no-tools", tracked=True)
++
++    if not result.is_success or not result.content:
++        print(f"⚠️  Failed to generate inspiration")
++        inspiration = None
++    else:
++        inspiration = result.content.strip()
++        print(f"✅ Got inspiration: {inspiration[:100]}...")
++
++    print(f"\n📦 Returning voice inspiration\n")
++
++    return {
++        "success": True,
++        "inspiration": inspiration,
++        "voice": voice_info['name'],
++        "voice_key": voice_key,
++        "icon": voice_info['icon'],
++        "color": voice_info['color']
++    }
++
+ @session_def(
+     name="Chat with Voice",
+     description="Have a conversation with a specific inner voice persona",
+@@ -970,6 +1043,25 @@ def save_preferences_endpoint(
+ 
+     return {"success": True}
+ 
++@app.post("/api/suggest")
++async def suggest_api(request_data: dict):
++    """
++    @@@ Get writing continuation suggestions (sync API).
++
++    Uses PolyCLI's sync API internally - no polling needed!
++    """
++    async with httpx.AsyncClient() as client:
++        response = await client.post(
++            "http://localhost:8765/polycli/api/trigger-sync",
++            json={
++                "session_id": "get_writing_suggestion",
++                "params": request_data,
++                "timeout": 30.0
++            },
++            timeout=35.0
++        )
++        return response.json()
++
+ @app.post("/api/mark-first-login-completed")
+ def mark_first_login_completed(current_user: dict = Depends(get_current_user)):
+     """
+@@ -1146,6 +1238,7 @@ async def analyze_patterns_api(request_data: dict):
+     print("    POST /api/analyze-echoes  - Find themes (sync)")
+     print("    POST /api/analyze-traits  - Identify traits (sync)")
+     print("    POST /api/analyze-patterns - Find patterns (sync)")
++    print("    POST /api/suggest         - Get writing suggestions (sync)")
+     print("    GET  /api/default-voices  - Get voice configs")
+     print("\n  PolyCLI Control Panel:")
+     print("    /polycli                  - Control panel UI")
+
+*** FILE: frontend/src/App.tsx ***
+@@ -22,12 +22,15 @@ import ChatWidgetUI from './components/ChatWidgetUI';
+ import StateChooser from './components/StateChooser';
+ import type { VoiceConfig, StateConfig } from './types/voice';
+ import { getVoices, getMetaPrompt, getStateConfig } from './utils/voiceStorage';
+-import { getDefaultVoices, chatWithVoice, importLocalData } from './api/voiceApi';
++import { getDefaultVoices, chatWithVoice, importLocalData, getSuggestion, type VoiceInspiration } from './api/voiceApi';
+ import { useMobile } from './utils/mobileDetect';
+ import { CommentGroupCard } from './components/CommentCard';
+ import { findNormalizedPhrase } from './utils/textNormalize';
+ import { useAuth } from './contexts/AuthContext';
+ import LoginForm from './components/Auth/LoginForm';
++
++// @@@ DEBUG: Verify new code is loaded
++console.log('🚀🚀🚀 APP.TSX LOADED - NEW CODE WITH SUGGESTIONS 🚀🚀🚀');
+ import RegisterForm from './components/Auth/RegisterForm';
+ import { STORAGE_KEYS } from './constants/storageKeys';
+ 
+@@ -283,6 +286,11 @@ export default function App() {
+   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
+   const [commentChatProcessing, setCommentChatProcessing] = useState<Set<string>>(new Set());
+ 
++  // @@@ Writing suggestion state
++  const [currentInspiration, setCurrentInspiration] = useState<VoiceInspiration | null>(null);
++  const [suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');
++  const suggestionTimerRef = useRef<NodeJS.Timeout | null>(null);
++
+   // @@@ Trigger re-render when returning to writing view to recalculate comment positions
+   useEffect(() => {
+     if (currentView === 'writing') {
+@@ -807,12 +815,23 @@ export default function App() {
+ 
+   // @@@ Per-cell text change handler
+   const handleTextChange = useCallback((cellId: string, newText: string) => {
++    console.log('🔥🔥🔥 handleTextChange CALLED!', cellId, newText.length);
+     setLocalTexts(prev => {
+       const next = new Map(prev);
+       next.set(cellId, newText);
+       return next;
+     });
+ 
++    // @@@ Clear inspiration instantly on typing
++    setCurrentInspiration(null);
++    setSuggestionSnapshot('');
++
++    // @@@ Clear existing suggestion timer
++    if (suggestionTimerRef.current) {
++      clearTimeout(suggestionTimerRef.current);
++      suggestionTimerRef.current = null;
++    }
++
+     // @@@ Auto-resize textarea to prevent internal scrolling
+     const textarea = textareaRefs.current.get(cellId);
+     if (textarea) {
+@@ -831,7 +850,67 @@ export default function App() {
+     if (!composingCells.has(cellId) && engineRef.current) {
+       engineRef.current.updateTextCell(cellId, newText);
+     }
+-  }, [composingCells, dropdownVisible, dropdownTriggerCellId]);
++
++    // @@@ Start 5-second debounce timer for suggestions
++    console.log('⏱️  Starting 5-second suggestion timer');
++    suggestionTimerRef.current = setTimeout(async () => {
++      console.log('⏰ Timer fired! Fetching suggestion...');
++
++      // Get all text from all text cells
++      const allText = state?.cells
++        .filter(c => c.type === 'text')
++        .map(c => (c as TextCell).content)
++        .join('') || '';
++
++      console.log(`📝 Text length: ${allText.length} chars`);
++
++      if (allText.trim().length < 10) {
++        console.log('❌ Text too short, skipping suggestion');
++        return;
++      }
++
++      // Capture snapshot for validation
++      const snapshot = allText;
++      setSuggestionSnapshot(snapshot);
++
++      try {
++        const metaPrompt = getMetaPrompt();
++        const statePrompt = selectedState && stateConfig.states[selectedState]
++          ? stateConfig.states[selectedState].prompt
++          : '';
++
++        console.log('🚀 Calling getSuggestion API...');
++        const suggestion = await getSuggestion(allText, metaPrompt, statePrompt);
++        console.log('✅ Got suggestion:', suggestion);
++
++        // @@@ Validate text hasn't changed since request was sent
++        const currentCells = engineRef.current?.getState().cells;
++        const currentText = currentCells
++          ?.filter(c => c.type === 'text')
++          .map(c => (c as TextCell).content)
++          .join('') || '';
++
++        console.log('📊 Comparison:', {
++          snapshotLength: snapshot.length,
++          currentLength: currentText.length,
++          matches: currentText === snapshot
++        });
++
++        if (suggestion && currentText === snapshot) {
++          console.log('✨ Setting inspiration:', suggestion);
++          setCurrentInspiration(suggestion);
++        } else {
++          if (!suggestion) {
++            console.log('⚠️  No inspiration returned from backend');
++          } else {
++            console.log('⚠️  Text changed, discarding inspiration');
++          }
++        }
++      } catch (error) {
++        console.error('❌ Failed to get inspiration:', error);
++      }
++    }, 5000);
++  }, [composingCells, dropdownVisible, dropdownTriggerCellId, state, selectedState, stateConfig]);
+ 
+   // @@@ Per-cell composition handlers
+   const handleCompositionStart = useCallback((cellId: string) => {
+@@ -1919,6 +1998,7 @@ export default function App() {
+                               height: 'auto'
+                             }}
+                           />
++
+                         </div>
+                       );
+                     } else if (cell.type === 'widget' && cell.widgetType === 'chat') {
+@@ -2252,6 +2332,74 @@ export default function App() {
+         </div>
+       )}
+ 
++      {/* @@@ Floating Inspiration Bubble - appears bottom-right when inspiration is available */}
++      {currentInspiration && (
++        <div
++          style={{
++            position: 'fixed',
++            bottom: isMobile ? '60px' : '20px',
++            right: isMobile ? '10px' : '20px',
++            maxWidth: isMobile ? 'calc(100% - 20px)' : '400px',
++            backgroundColor: '#fff',
++            borderRadius: '12px',
++            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
++            padding: '16px',
++            display: 'flex',
++            gap: '12px',
++            alignItems: 'start',
++            zIndex: 1000,
++            animation: 'slideIn 0.3s ease-out'
++          }}
++        >
++          {/* Voice Icon */}
++          <div
++            style={{
++              fontSize: '28px',
++              flexShrink: 0
++            }}
++          >
++            {React.createElement(iconMap[currentInspiration.icon as keyof typeof iconMap] || FaBrain)}
++          </div>
++
++          {/* Inspiration Content */}
++          <div style={{ flex: 1 }}>
++            <div style={{
++              fontWeight: 'bold',
++              marginBottom: '6px',
++              fontSize: '14px',
++              color: '#555'
++            }}>
++              {currentInspiration.voice}
++            </div>
++            <div style={{
++              fontSize: '15px',
++              lineHeight: '1.5',
++              color: '#333'
++            }}>
++              {currentInspiration.inspiration}
++            </div>
++          </div>
++
++          {/* Close button */}
++          <button
++            onClick={() => setCurrentInspiration(null)}
++            style={{
++              border: 'none',
++              background: 'transparent',
++              cursor: 'pointer',
++              fontSize: '18px',
++              color: '#999',
++              padding: '0',
++              width: '24px',
++              height: '24px',
++              flexShrink: 0
++            }}
++          >
++            ×
++          </button>
++        </div>
++      )}
++
+       {/* Calendar Popup */}
+       {showCalendarPopup && (
+         <CalendarPopup
+
+*** FILE: frontend/src/api/voiceApi.ts ***
+@@ -405,6 +405,49 @@ export async function getPreferences(): Promise<any> {
+   return await response.json();
+ }
+ 
++/**
++ * Get writing inspiration from a voice persona
++ */
++export interface VoiceInspiration {
++  inspiration: string;
++  voice: string;
++  voice_key: string;
++  icon: string;
++  color: string;
++}
++
++export async function getSuggestion(text: string, metaPrompt?: string, statePrompt?: string): Promise<VoiceInspiration | null> {
++  const response = await fetch(`${API_BASE}/api/suggest`, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({
++      text,
++      meta_prompt: metaPrompt || '',
++      state_prompt: statePrompt || ''
++    })
++  });
++
++  if (!response.ok) {
++    console.error('Suggestion request failed');
++    return null;
++  }
++
++  const data = await response.json();
++
++  // @@@ PolyCLI trigger-sync wraps the session result in data.result
++  if (data.result && data.result.success && data.result.inspiration) {
++    return {
++      inspiration: data.result.inspiration,
++      voice: data.result.voice,
++      voice_key: data.result.voice_key,
++      icon: data.result.icon,
++      color: data.result.color
++    };
++  }
++
++  return null;
++}
++
+ /**
+  * Save analysis report
+  */

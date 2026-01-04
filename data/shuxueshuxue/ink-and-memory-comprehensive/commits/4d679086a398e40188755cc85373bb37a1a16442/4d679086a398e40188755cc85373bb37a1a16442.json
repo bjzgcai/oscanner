@@ -1,0 +1,14 @@
+{
+  "hash": "4d679086a398e40188755cc85373bb37a1a16442",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Oct 8 09:18:59 2025 +0800",
+  "subject": "Reverse z-index mapping for correct stacking",
+  "files": [
+    "frontend/src/App.tsx"
+  ],
+  "diff": "commits/4d679086a398e40188755cc85373bb37a1a16442/4d679086a398e40188755cc85373bb37a1a16442.diff",
+  "related_files": {
+    "frontend/src/App.tsx": []
+  }
+}

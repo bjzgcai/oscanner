@@ -1,0 +1,23 @@
+{
+  "sha": "f07573505d9c8612ece0046487d4bd01190671fe",
+  "message": "Add frontend-only voice input feature using Web Speech API\n\n- Create useSpeechRecognition hook with browser speech recognition\n- Add microphone button to left toolbar with pulse animation\n- Auto-detect language (zh-CN for Chinese, en-US for English)\n- Insert transcribed text into last text cell at cursor position\n- Visual feedback: red background and pulsing animation when recording\n- Frontend-only implementation, no backend changes needed",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-18T15:08:55Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-18T15:08:55Z"
+  },
+  "stats": {
+    "total": 252,
+    "additions": 250,
+    "deletions": 2
+  },
+  "files_count": 3,
+  "parents": [
+    "382ec7b66b0f1d2cd8009f1205425387d1f014fb"
+  ]
+}

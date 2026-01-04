@@ -1,0 +1,23 @@
+{
+  "sha": "3de0a0c2093156f0c420724dbca83831d96bc879",
+  "message": "Add authentication system and database storage\n\nBackend changes:\n- Add JWT authentication with bcrypt password hashing (auth.py)\n- Implement SQLite database with WAL mode (database.py)\n- Add auth endpoints: register, login, /api/me\n- Add storage endpoints: sessions, pictures, preferences, reports\n- Add localStorage → database migration endpoint\n- Refactor server.py to use FastAPI with auth middleware\n- Add comprehensive API documentation (API.md)\n\nDatabase schema:\n- users: Email/password accounts\n- user_sessions: Editor states\n- daily_pictures: Generated images (solves localStorage quota!)\n- user_preferences: Voice configs, meta prompt, state config\n- analysis_reports: Echoes, traits, patterns\n- schema_version: Migration tracking\n\nTesting:\n- test_migration.py: Unit tests for migration logic\n- test_real_migration.py: E2E test with real user data (4.79 MB migrated)\n\nFrontend changes:\n- Update voiceApi.ts to use sync API (removed polling)\n\nDocumentation:\n- LOCALSTORAGE_AUDIT.md: Complete inventory of localStorage usage\n- MIGRATION_SUMMARY.md: Migration strategy and storage comparison\n- API.md: Full API reference\n\nAll tests passing with real user data!",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T05:27:50Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T05:27:50Z"
+  },
+  "stats": {
+    "total": 3392,
+    "additions": 3177,
+    "deletions": 215
+  },
+  "files_count": 12,
+  "parents": [
+    "200a93c2aa475a059eb4bd07db346c1d0e05ec8e"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "sha": "382ec7b66b0f1d2cd8009f1205425387d1f014fb",
+  "message": "Improve deck UI: fancy create button and editing in expanded section\n\n- Enhanced Create New Deck button with gradient, shadow, sparkle emoji\n- Moved deck name/description editing to expanded section as form fields\n- Header now purely for expand/collapse (single click)\n- Removed UX conflict between editing and expanding\n- Auto-save on blur for deck settings",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-18T15:02:13Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-18T15:02:13Z"
+  },
+  "stats": {
+    "total": 274,
+    "additions": 134,
+    "deletions": 140
+  },
+  "files_count": 1,
+  "parents": [
+    "b636d9aa285ef06bbb6210bb77c66faaa6b5fb59"
+  ]
+}

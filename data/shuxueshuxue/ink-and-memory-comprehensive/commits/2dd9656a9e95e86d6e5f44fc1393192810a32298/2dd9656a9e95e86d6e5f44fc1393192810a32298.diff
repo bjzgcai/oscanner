@@ -1,0 +1,66 @@
+commit 2dd9656a9e95e86d6e5f44fc1393192810a32298
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Sun Nov 2 16:36:12 2025 +0800
+
+    Improve migration error handling for 413 errors
+    
+    - Handle 413 (Payload Too Large) specifically in voiceApi.ts
+    - Provide helpful user message explaining the issue
+    - Explain workaround options (skip or wait for fix)
+    - Prevent crash when nginx returns HTML instead of JSON
+
+diff --git a/backend/data/ink-and-memory.db b/backend/data/ink-and-memory.db
+index 78fe572..273bbb4 100644
+Binary files a/backend/data/ink-and-memory.db and b/backend/data/ink-and-memory.db differ
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index cd5c8f7..c8e0a6a 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -1033,7 +1033,20 @@ export default function App() {
+       alert(`Migration successful! Imported:\n- ${result.imported.sessions} sessions\n- ${result.imported.pictures} pictures\n- ${result.imported.preferences} preferences\n- ${result.imported.reports} reports`);
+     } catch (error: any) {
+       console.error('Migration failed:', error);
+-      alert(`Migration failed: ${error.message}\n\nYou can try again later from Settings.`);
++
++      // Provide helpful error message based on error type
++      let errorMsg = 'Migration failed: ';
++      if (error.message?.includes('413') || error.message?.includes('too large')) {
++        errorMsg += 'Your data is too large to migrate in one request.\n\n';
++        errorMsg += 'This is a known issue that will be fixed soon.\n';
++        errorMsg += 'For now, you can:\n';
++        errorMsg += '1. Skip migration and start fresh, or\n';
++        errorMsg += '2. Wait for the fix and try again later';
++      } else {
++        errorMsg += error.message + '\n\nYou can try again later from Settings.';
++      }
++
++      alert(errorMsg);
+     } finally {
+       setIsMigrating(false);
+     }
+diff --git a/frontend/src/api/voiceApi.ts b/frontend/src/api/voiceApi.ts
+index 6b423bf..3fcff35 100644
+--- a/frontend/src/api/voiceApi.ts
++++ b/frontend/src/api/voiceApi.ts
+@@ -225,8 +225,19 @@ export async function importLocalData(data: {
+   });
+ 
+   if (!response.ok) {
+-    const error = await response.json();
+-    throw new Error(error.detail || 'Import failed');
++    // Handle 413 Payload Too Large (nginx returns HTML, not JSON)
++    if (response.status === 413) {
++      throw new Error('413: Request too large - your data exceeds the server limit');
++    }
++
++    // Try to parse JSON error response
++    try {
++      const error = await response.json();
++      throw new Error(error.detail || 'Import failed');
++    } catch {
++      // If JSON parsing fails, throw generic error with status
++      throw new Error(`Import failed with status ${response.status}`);
++    }
+   }
+ 
+   return await response.json();

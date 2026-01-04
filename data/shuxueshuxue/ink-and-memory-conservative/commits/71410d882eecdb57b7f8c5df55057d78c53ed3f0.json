@@ -1,0 +1,23 @@
+{
+  "sha": "71410d882eecdb57b7f8c5df55057d78c53ed3f0",
+  "message": "Combine effects for better ordering: resize then restore scroll\n\nMerged two useLayoutEffect hooks into one to guarantee execution order:\n1. Resize textareas first (updates content height)\n2. Restore scroll position second (using correct heights)\n\nBenefits:\n- No race conditions between effects\n- Cleaner code (21 lines -> 16 lines)\n- Single responsibility\n- Correct ordering guaranteed",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-07T07:32:12Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-07T07:32:12Z"
+  },
+  "stats": {
+    "total": 27,
+    "additions": 11,
+    "deletions": 16
+  },
+  "files_count": 1,
+  "parents": [
+    "09cad170ec4d3bc28dd497667ef2116fda46520d"
+  ]
+}

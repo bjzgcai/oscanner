@@ -1,0 +1,47 @@
+{
+  "hash": "d817eb1015ca1978387287811e6dce7e51b91635",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 2 14:52:33 2025 +0800",
+  "subject": "Remove unused legacy files",
+  "files": [
+    "backend/data/ink-and-memory.db",
+    "frontend/src/components/EditableTextArea.tsx",
+    "frontend/src/components/WritingArea.tsx",
+    "frontend/src/extensions/VoiceQuote.tsx",
+    "frontend/src/utils/documentStorage.ts"
+  ],
+  "diff": "commits/d817eb1015ca1978387287811e6dce7e51b91635/d817eb1015ca1978387287811e6dce7e51b91635.diff",
+  "related_files": {
+    "backend/data/ink-and-memory.db": [
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/extensions/VoiceQuote.tsx",
+      "frontend/src/utils/documentStorage.ts"
+    ],
+    "frontend/src/components/EditableTextArea.tsx": [
+      "backend/data/ink-and-memory.db",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/extensions/VoiceQuote.tsx",
+      "frontend/src/utils/documentStorage.ts"
+    ],
+    "frontend/src/components/WritingArea.tsx": [
+      "backend/data/ink-and-memory.db",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/extensions/VoiceQuote.tsx",
+      "frontend/src/utils/documentStorage.ts"
+    ],
+    "frontend/src/extensions/VoiceQuote.tsx": [
+      "backend/data/ink-and-memory.db",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/utils/documentStorage.ts"
+    ],
+    "frontend/src/utils/documentStorage.ts": [
+      "backend/data/ink-and-memory.db",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/extensions/VoiceQuote.tsx"
+    ]
+  }
+}

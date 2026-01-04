@@ -1,0 +1,23 @@
+{
+  "sha": "ea0351f737631a412f5c3907d4e43792ab54ea5c",
+  "message": "Update README to simplify language\n\nRemoved mention of 'from the first keystroke' in the description.",
+  "author": {
+    "name": "F2J",
+    "email": "98064968+shuxueshuxue@users.noreply.github.com",
+    "date": "2025-12-03T03:15:17Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2025-12-03T03:15:17Z"
+  },
+  "stats": {
+    "total": 2,
+    "additions": 1,
+    "deletions": 1
+  },
+  "files_count": 1,
+  "parents": [
+    "086c71c11d9fc0c0e3a4aaa44b67f32544496409"
+  ]
+}

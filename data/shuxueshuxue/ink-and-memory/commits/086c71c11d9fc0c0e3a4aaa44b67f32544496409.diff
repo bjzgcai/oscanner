@@ -1,0 +1,10 @@
+*** FILE: .github/workflows/deploy-frontend.yml ***
+@@ -34,7 +34,7 @@ jobs:
+           username: root
+           key: ${{ secrets.SERVER_SSH_KEY }}
+           script: |
+-            rm -rf /var/www/lexicalmathical.com/ink-and-memory/frontend
++            rm -rf /var/www/lexicalmathical.com/ink-and-memory/
+       - name: Deploy static assets
+         uses: appleboy/scp-action@v0.1.7
+         with:

@@ -1,0 +1,33 @@
+commit ca5c9798bb898329869d0a01a12937215b5eb2cf
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Oct 8 09:21:39 2025 +0800
+
+    Restore pop-out transform on hover for stacked cards
+
+diff --git a/frontend/src/App.css b/frontend/src/App.css
+index 09debc2..155de6c 100644
+--- a/frontend/src/App.css
++++ b/frontend/src/App.css
+@@ -120,6 +120,7 @@
+ /* Only non-top cards can pop up on hover */
+ .voice-comment:not(.top-card):hover {
+   z-index: 1000 !important;
++  transform: translateY(0) !important;
+   box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+ }
+ 
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 531e5e1..1bcda2c 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -103,8 +103,8 @@ function App() {
+             color={voice.color}
+             isTopCard={index === voices.length - 1}
+             style={{
+-              zIndex: voices.length - index,
+-              transform: `translateY(${index * 30}%)`,
++              zIndex: index + 1,
++              transform: `translateY(${(voices.length - 1 - index) * 30}%)`,
+             }}
+           />
+         ))}

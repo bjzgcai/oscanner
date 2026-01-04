@@ -1,0 +1,14 @@
+{
+  "hash": "b53bbeb6aefea6d3e637d6e1fa479d926bdd8dc2",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Dec 3 15:42:40 2025 +0800",
+  "subject": "add models.json to docker image",
+  "files": [
+    ".github/workflows/deploy-backend.yml"
+  ],
+  "diff": "commits/b53bbeb6aefea6d3e637d6e1fa479d926bdd8dc2/b53bbeb6aefea6d3e637d6e1fa479d926bdd8dc2.diff",
+  "related_files": {
+    ".github/workflows/deploy-backend.yml": []
+  }
+}

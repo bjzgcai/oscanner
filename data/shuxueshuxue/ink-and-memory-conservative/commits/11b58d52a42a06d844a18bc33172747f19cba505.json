@@ -1,0 +1,23 @@
+{
+  "sha": "11b58d52a42a06d844a18bc33172747f19cba505",
+  "message": "Add calendar view with memory preview and enhance UI\n\n- Add CalendarView with polaroid-style image preview on hover\n- Add placeholder memory image for calendar entries\n- Improve AnalysisView adventure suggestions (practical, Chinese)\n- Enhance layout centering and sizing (calendar + preview panels)\n- Adjust preview panel width and polaroid size for better balance\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-22T02:13:47Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-22T02:13:47Z"
+  },
+  "stats": {
+    "total": 257,
+    "additions": 177,
+    "deletions": 80
+  },
+  "files_count": 3,
+  "parents": [
+    "43e01d30e0c47cc87db8af6959eb6d59b65d3516"
+  ]
+}

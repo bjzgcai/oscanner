@@ -1,0 +1,1117 @@
+commit 30be7c68037af9b5ba3bfc9993bcfc4c83fe7169
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Dec 9 20:16:55 2025 +0800
+
+    session life cycle hook extraction
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 835bbd6..8e8fb17 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -1,7 +1,6 @@
+ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+ import { useTranslation } from 'react-i18next';
+-import { EditorEngine } from './engine/EditorEngine';
+-import type { EditorState, Commentor, TextCell } from './engine/EditorEngine';
++import type { Commentor, EditorState, TextCell } from './engine/EditorEngine';
+ import { ChatWidget } from './engine/ChatWidget';
+ import type { ChatWidgetData } from './engine/ChatWidget';
+ import './App.css';
+@@ -23,7 +22,7 @@ import AgentDropdown from './components/AgentDropdown';
+ import ChatWidgetUI from './components/ChatWidgetUI';
+ import StateChooser from './components/StateChooser';
+ import type { VoiceConfig } from './api/voiceApi';
+-import { getVoices, getMetaPrompt, getStateConfig, saveMetaPrompt } from './utils/voiceStorage';
++import { getVoices, getMetaPrompt, getStateConfig } from './utils/voiceStorage';
+ import { getDefaultVoices, chatWithVoice, importLocalData, getSuggestion, loadVoicesFromDecks, type VoiceInspiration } from './api/voiceApi';
+ import { useMobile } from './utils/mobileDetect';
+ import { CommentGroupCard } from './components/CommentCard';
+@@ -33,13 +32,7 @@ import LoginForm from './components/Auth/LoginForm';
+ import RegisterForm from './components/Auth/RegisterForm';
+ import { STORAGE_KEYS } from './constants/storageKeys';
+ import { getLocalDayKey, getTodayKeyInTimezone } from './utils/timezone';
+-
+-function createSessionId() {
+-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+-    return crypto.randomUUID();
+-  }
+-  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+-}
++import { useSessionLifecycle } from './hooks/useSessionLifecycle';
+ 
+ // @@@ Left Toolbar Component - floating toolbelt within left margin
+ function LeftToolbar({
+@@ -291,10 +284,38 @@ export default function App() {
+   const [timelineFriendToSelect, setTimelineFriendToSelect] = useState<number | null>(null);
+   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+ 
+-  const engineRef = useRef<EditorEngine | null>(null);
+-  const [state, setState] = useState<EditorState | null>(null);
++  const browserTimezone = useMemo(() => {
++    try {
++      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
++    } catch {
++      return 'UTC';
++    }
++  }, []);
++  const [stateConfig, setStateConfig] = useState(() => getStateConfig());
++
++  const {
++    engineRef,
++    state,
++    setState,
++    localTexts,
++    setLocalTexts,
++    selectedState,
++    setSelectedState,
++    userTimezone,
++    ensureStateForPersistence,
++    getFirstLineFromState,
++    saveSessionToDatabase,
++    startDetachedBlankSession,
++    handleNewSession,
++    confirmStartFresh
++  } = useSessionLifecycle({
++    isAuthenticated,
++    browserTimezone,
++    setVoiceConfigs,
++    setStateConfig
++  });
++
+   // @@@ Track local text per cell ID for IME composition
+-  const [localTexts, setLocalTexts] = useState<Map<string, string>>(new Map());
+   const [composingCells, setComposingCells] = useState<Set<string>>(new Set());
+   const [groupPages, setGroupPages] = useState<Map<string, number>>(new Map());
+   const [cursorPosition, setCursorPosition] = useState<number>(0);
+@@ -312,10 +333,6 @@ export default function App() {
+   // @@@ Warning dialog state
+   const [showWarning, setShowWarning] = useState(false);
+ 
+-  // @@@ State chooser (start with null, load from database or localStorage later)
+-  const [selectedState, setSelectedState] = useState<string | null>(null);
+-  const [stateConfig, setStateConfig] = useState(() => getStateConfig());
+-
+   // @@@ Per-cell textarea refs for positioning and style calculations
+   const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+   const scrollContainerRef = useRef<HTMLDivElement>(null);  // @@@ Track scroll container for position preservation
+@@ -346,79 +363,6 @@ export default function App() {
+   const prevInspirationRef = useRef<VoiceInspiration | null>(null);
+   const [_suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');  // Not used yet
+   const suggestionTimerRef = useRef<number | null>(null);
+-  const browserTimezone = useMemo(() => {
+-    try {
+-      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+-    } catch {
+-      return 'UTC';
+-    }
+-  }, []);
+-  const timezoneSyncRef = useRef<string | null>(null);
+-  const [userTimezone, setUserTimezone] = useState(browserTimezone);
+-  const ensuredSessionForDayRef = useRef<string | null>(null);
+-  const userTimezoneRef = useRef(userTimezone);
+-
+-  useEffect(() => {
+-    userTimezoneRef.current = userTimezone;
+-  }, [userTimezone]);
+-
+-  const ensureStateForPersistence = useCallback((): EditorState | null => {
+-    if (engineRef.current) {
+-      const engineState = engineRef.current.getState();
+-      if (!engineState.createdAt) {
+-        engineState.createdAt = new Date().toISOString();
+-        setState({ ...engineState });
+-      }
+-      return engineState;
+-    }
+-
+-    if (state && !state.createdAt) {
+-      const nextState = { ...state, createdAt: new Date().toISOString() };
+-      setState(nextState);
+-      return nextState;
+-    }
+-
+-    if (state && !state.id) {
+-      throw new Error('Editor state is missing id');
+-    }
+-
+-    return state;
+-  }, [state]);
+-
+-  const getFirstLineFromState = useCallback((editorState: EditorState) => {
+-    const firstTextCell = editorState.cells.find(c => c.type === 'text') as TextCell | undefined;
+-    return firstTextCell?.content.split('\n')[0].trim() || 'Untitled';
+-  }, []);
+-
+-  const saveSessionToDatabase = useCallback(async (editorState: EditorState, firstLine?: string) => {
+-    const line = firstLine ?? getFirstLineFromState(editorState);
+-    const { saveSession } = await import('./api/voiceApi');
+-    const idToSave = editorState.id || crypto.randomUUID();
+-    await saveSession(idToSave, editorState, line);
+-
+-    if (engineRef.current) {
+-      const liveId = engineRef.current.getState().id;
+-      const snapshotId = editorState.id;
+-      const isSafeToUpdate = liveId === idToSave || liveId === snapshotId;
+-
+-      if (isSafeToUpdate) {
+-        engineRef.current.setCurrentEntryId(idToSave);
+-      } else {
+-        console.warn(`🛡️ Race Condition Caught: Save finished for ${idToSave}, but editor is on ${liveId}. Skipping ID reset.`);
+-      }
+-    }
+-    return idToSave;
+-  }, [getFirstLineFromState]);
+-
+-  const persistSessionImmediately = useCallback(async (editorState: EditorState) => {
+-    if (!isAuthenticated) return;
+-    try {
+-      const firstLine = getFirstLineFromState(editorState);
+-      await saveSessionToDatabase(editorState, firstLine);
+-    } catch (error) {
+-      console.error('Failed to persist session immediately:', error);
+-    }
+-  }, [getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);
+ 
+   // @@@ Detect if this is a new inspiration appearing (different from previous)
+   // Only check appearing when NOT disappearing (to avoid conflict)
+@@ -584,216 +528,6 @@ export default function App() {
+     checkMigration();
+   }, [isAuthenticated, isLoading]);
+ 
+-  useEffect(() => {
+-    const timezone = browserTimezone || 'UTC';
+-    if (!timezone) return;
+-
+-    if (!isAuthenticated) {
+-      setUserTimezone(timezone);
+-      timezoneSyncRef.current = timezone;
+-      return;
+-    }
+-
+-    if (timezoneSyncRef.current === timezone) return;
+-
+-    const syncTimezone = async () => {
+-      try {
+-        const { getPreferences, savePreferences } = await import('./api/voiceApi');
+-        const prefs = await getPreferences();
+-        if ((prefs?.timezone || 'UTC') !== timezone) {
+-          await savePreferences({ timezone });
+-          setUserTimezone(timezone);
+-        } else {
+-          setUserTimezone(prefs?.timezone || timezone);
+-        }
+-      } catch (error) {
+-        console.error('Failed to sync timezone preference:', error);
+-      } finally {
+-        timezoneSyncRef.current = timezone;
+-      }
+-    };
+-
+-    syncTimezone();
+-  }, [isAuthenticated, browserTimezone]);
+-
+-  // Initialize engine
+-  useEffect(() => {
+-    const sessionId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+-    const engine = new EditorEngine(sessionId);
+-    engineRef.current = engine;
+-
+-    // @@@ Initialize createdAt for new session
+-    const initialState = engine.getState();
+-    if (!initialState.createdAt) {
+-      initialState.createdAt = new Date().toISOString();
+-      setState(initialState);
+-    }
+-
+-    engine.subscribe((newState) => {
+-      setState({ ...newState });
+-      // Only save to localStorage if not authenticated (guest mode)
+-      if (!isAuthenticated) {
+-        localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(newState));
+-      }
+-    });
+-    const unsubscribeBlankReset = engine.onBlankReset(async () => {
+-      if (!isAuthenticated) return;
+-      const blankState = engine.getState();
+-      await persistSessionImmediately(blankState);
+-    });
+-
+-    // Load initial state
+-    const loadInitialState = async () => {
+-      if (isAuthenticated) {
+-        // @@@ Load from database if authenticated
+-        try {
+-          const { listSessions, getSession, getPreferences } = await import('./api/voiceApi');
+-
+-          // Get list of sessions
+-          const sessions = await listSessions();
+-
+-          // Load the most recent session or current session
+-          let sessionToLoad = null;
+-          let loadedSessionId: string | undefined = undefined;
+-          const currentSessionId = 'current-session';
+-          const currentSession = sessions.find(s => s.id === currentSessionId);
+-
+-          if (currentSession) {
+-            // Load current session
+-            const fullSession = await getSession(currentSessionId);
+-            sessionToLoad = fullSession.editor_state;
+-            loadedSessionId = currentSessionId;
+-          } else if (sessions.length > 0) {
+-            // Load most recent session ONLY if it's from today
+-            const mostRecent = sessions.sort((a, b) =>
+-              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+-            )[0];
+-
+-            // @@@ Daily reset check - same logic as StateChooser
+-            const timezoneForDay = userTimezoneRef.current || 'UTC';
+-            const today = getTodayKeyInTimezone(timezoneForDay);
+-            const sessionDate = getLocalDayKey(mostRecent.updated_at, timezoneForDay);
+-
+-            if (sessionDate === today) {
+-              // Same day - load the session
+-              const fullSession = await getSession(mostRecent.id);
+-              sessionToLoad = fullSession.editor_state;
+-              loadedSessionId = mostRecent.id;
+-            } else {
+-              // New day - don't load old session, start fresh
+-              console.log(`📅 New day detected. Last session was from ${sessionDate}, today is ${today}. Starting fresh.`);
+-              sessionToLoad = null;
+-              loadedSessionId = undefined;
+-            }
+-          }
+-
+-          if (sessionToLoad && loadedSessionId) {
+-            const normalizedState: EditorState = {
+-              ...sessionToLoad,
+-              id: sessionToLoad.id || (sessionToLoad as any)?.currentEntryId || (sessionToLoad as any)?.sessionId || loadedSessionId
+-            };
+-            engine.loadState(normalizedState);
+-            setState(engine.getState());
+-
+-            // Initialize localTexts from loaded state
+-            const texts = new Map<string, string>();
+-            sessionToLoad.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
+-              texts.set(c.id, c.content || '');
+-            });
+-            setLocalTexts(texts);
+-          } else {
+-            setState(engine.getState());
+-          }
+-
+-          // Load preferences
+-          try {
+-            const prefs = await getPreferences();
+-            if (prefs.voice_configs) {
+-              setVoiceConfigs(prefs.voice_configs);
+-            }
+-            if (prefs.meta_prompt) {
+-              saveMetaPrompt(prefs.meta_prompt);
+-            }
+-            if (prefs.state_config) {
+-              setStateConfig(prefs.state_config);
+-            }
+-            if (prefs.timezone) {
+-              setUserTimezone(prefs.timezone);
+-            }
+-
+-            // @@@ Load selectedState with daily reset check for authenticated users
+-            if (prefs.selected_state !== undefined && prefs.selected_state !== null) {
+-              const timezoneForDay = userTimezoneRef.current || 'UTC';
+-              const today = getTodayKeyInTimezone(timezoneForDay);
+-              const updatedAtDate = prefs.updated_at
+-                ? getLocalDayKey(prefs.updated_at, timezoneForDay)
+-                : null;
+-
+-              // Check if state was updated today
+-              if (updatedAtDate === today) {
+-                // Same day - load the state
+-                setSelectedState(prefs.selected_state);
+-              } else {
+-                // Different day or no timestamp - show cube for daily check-in
+-                setSelectedState(null);
+-              }
+-            }
+-          } catch (err) {
+-            console.log('No preferences found, using defaults');
+-          }
+-        } catch (error) {
+-          console.error('Failed to load from database:', error);
+-          setState(engine.getState());
+-        }
+-      } else {
+-        // Load from localStorage for guest mode
+-        const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_STATE);
+-        if (saved) {
+-          try {
+-            const parsed = JSON.parse(saved);
+-            engine.loadState(parsed);
+-            setState(engine.getState());
+-
+-            // Initialize localTexts from loaded state
+-            const texts = new Map<string, string>();
+-            parsed.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
+-              texts.set(c.id, c.content || '');
+-            });
+-            setLocalTexts(texts);
+-          } catch (e) {
+-            console.error('Failed to load saved state:', e);
+-          }
+-        } else {
+-          setState(engine.getState());
+-        }
+-
+-        // @@@ Load selectedState with daily reset check
+-        const savedState = localStorage.getItem(STORAGE_KEYS.SELECTED_STATE);
+-        const savedDate = localStorage.getItem('selected-state-date');
+-        const today = getTodayKeyInTimezone(userTimezoneRef.current || browserTimezone);
+-
+-        // Reset state if it's a new day
+-        if (savedState && savedDate === today) {
+-          setSelectedState(savedState);
+-        } else {
+-          // New day - clear the selection to show cube again
+-          localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+-          localStorage.removeItem('selected-state-date');
+-          setSelectedState(null);
+-        }
+-      }
+-      if (!isAuthenticated) {
+-        setUserTimezone(browserTimezone);
+-      }
+-    };
+-
+-    loadInitialState();
+-
+-    return () => {
+-      unsubscribeBlankReset();
+-    };
+-  }, [isAuthenticated, persistSessionImmediately]);
+-
+   // @@@ Sync localTexts from state when not composing
+   useEffect(() => {
+     if (state) {
+@@ -840,40 +574,6 @@ export default function App() {
+     return () => window.clearTimeout(timer);
+   }, [state, refsReady]);
+ 
+-  // @@@ Auto-save to database for authenticated users
+-  useEffect(() => {
+-    if (!isAuthenticated) return;
+-
+-    const autoSaveTimer = setTimeout(async () => {
+-      const stateSnapshot = ensureStateForPersistence();
+-      if (!stateSnapshot) return;
+-
+-      if (engineRef.current) {
+-        const liveId = engineRef.current.getState().id;
+-        const snapshotId = stateSnapshot.id;
+-        if (liveId && snapshotId && liveId !== snapshotId) {
+-          console.warn(`✋ Auto-save aborted: timer captured ${snapshotId} but editor is now on ${liveId}`);
+-          return;
+-        }
+-      }
+-
+-      if (!stateSnapshot.id) {
+-        console.error('BUG: session id should always be defined after engine init');
+-        return;
+-      }
+-
+-      try {
+-        const firstLine = getFirstLineFromState(stateSnapshot);
+-        await saveSessionToDatabase(stateSnapshot, firstLine);
+-        console.log('Auto-saved to database');
+-      } catch (error) {
+-        console.error('Auto-save failed:', error);
+-      }
+-    }, 3000);
+-
+-    return () => clearTimeout(autoSaveTimer);
+-  }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase, state]);
+-
+   // @@@ Group comments by 2-row blocks, accounting for widgets between cells
+   const commentGroups = useMemo(() => {
+     const groups = new Map<string, {
+@@ -1229,145 +929,14 @@ export default function App() {
+     setShowWarning(true);
+   }, []);
+ 
+-  interface BlankStateOptions {
+-    preserveSelectedState?: boolean;
+-    selectedStateOverride?: string | null;
+-  }
+-
+-  const buildBlankState = useCallback((options: BlankStateOptions = {}): EditorState => {
+-    const {
+-      preserveSelectedState = true,
+-      selectedStateOverride
+-    } = options;
+-    const resolvedSelectedState = selectedStateOverride !== undefined
+-      ? selectedStateOverride
+-      : (preserveSelectedState
+-        ? (engineRef.current?.getState().selectedState ?? selectedState ?? null)
+-        : null);
+-    const newSessionId = createSessionId();
+-    return {
+-      cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
+-      commentors: [],
+-      tasks: [],
+-      weightPath: [],
+-      overlappedPhrases: [],
+-      id: newSessionId,
+-      selectedState: resolvedSelectedState ?? undefined,
+-      createdAt: new Date().toISOString()
+-    };
+-  }, [selectedState]);
+-
+-  const startDetachedBlankSession = useCallback((persistImmediately: boolean = false) => {
+-    if (!engineRef.current) return;
+-    const blankState = buildBlankState();
+-
+-    engineRef.current.loadState(blankState);
+-    setState(blankState);
+-    setLocalTexts(new Map());
+-
+-    if (!isAuthenticated) {
+-      localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(blankState));
+-    } else if (persistImmediately) {
+-      persistSessionImmediately(blankState);
+-    }
+-  }, [buildBlankState, isAuthenticated, persistSessionImmediately]);
+-
+-  useEffect(() => {
+-    if (!isAuthenticated) return;
+-    if (!engineRef.current) return;
+-    if (selectedState !== null) return;
+-    const todayKey = getTodayKeyInTimezone(userTimezone);
+-    if (!todayKey) return;
+-
+-    const currentState = engineRef.current.getState();
+-    const currentKey = currentState.createdAt
+-      ? getLocalDayKey(currentState.createdAt, userTimezone)
+-      : null;
+-
+-    if (currentKey === todayKey) return;
+-    if (ensuredSessionForDayRef.current === todayKey) return;
+-
+-    ensuredSessionForDayRef.current = todayKey;
+-    startDetachedBlankSession(true);
+-  }, [isAuthenticated, selectedState, startDetachedBlankSession, userTimezone]);
+-
+-  // @@@ New session: save current, then create fresh (no data loss, no warning)
+-  const handleNewSession = useCallback(async () => {
+-    if (!state || !engineRef.current) return;
+-
+-    // @@@ First, save current session if authenticated and has content
+-    console.log('🔄 Creating new session...');
+-    console.log('📊 isAuthenticated:', isAuthenticated);
+-
+-    if (isAuthenticated) {
+-      const hasContent = state.cells.some(c => c.type === 'text' && (c as TextCell).content.trim());
+-      console.log('📝 Has content:', hasContent);
+-
+-      if (hasContent) {
+-        console.log('💾 Saving current session before creating new one...');
+-        try {
+-          // @@@ Save with title only (no date prefix)
+-          const firstTextCell = state.cells.find(c => c.type === 'text') as TextCell | undefined;
+-          const firstLine = firstTextCell?.content.split('\n')[0].trim() || 'Untitled';
+-
+-          const { saveSession } = await import('./api/voiceApi');
+-          const sessionId = state.id || crypto.randomUUID();
+-          console.log('📋 Saving session:', sessionId, 'with name:', firstLine);
+-          await saveSession(sessionId, state, firstLine);
+-          console.log('✅ Current session saved successfully');
+-        } catch (error) {
+-          console.error('❌ Failed to save current session:', error);
+-        }
+-      } else {
+-        console.log('⚠️ No content to save, skipping');
+-      }
+-    } else {
+-      console.log('⚠️ Not authenticated, skipping save');
+-    }
+-
+-    const emptyState = buildBlankState({ preserveSelectedState: false });
+-
+-    // @@@ Load empty state directly into engine (immediate UI update)
+-    engineRef.current.loadState(emptyState);
+-    setState(emptyState);
+-    setLocalTexts(new Map());
+-
+-    // @@@ Don't save empty session - let auto-save handle it when user types
+-    // This ensures the session gets saved with content, not as empty
+-    if (!isAuthenticated) {
+-      // For guest users: clear localStorage
+-      localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
+-      localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+-    }
+-    console.log('🆕 New session created (will be saved when you start typing)');
+-  }, [state, isAuthenticated, buildBlankState]);
+-
+-  const confirmStartFresh = useCallback(async () => {
++  const handleConfirmStartFresh = useCallback(() => {
+     setShowWarning(false);
++    confirmStartFresh();
++  }, [confirmStartFresh]);
+ 
+-    if (!engineRef.current) return;
+-
+-    const emptyState = buildBlankState({ preserveSelectedState: false });
+-
+-    // @@@ Load empty state directly into engine (immediate UI update)
+-    engineRef.current.loadState(emptyState);
+-    setState(emptyState);
+-    setLocalTexts(new Map());
+-
+-    if (isAuthenticated) {
+-      // @@@ Save to database in background
+-      try {
+-        const { saveSession } = await import('./api/voiceApi');
+-        await saveSession(emptyState.id, emptyState);
+-      } catch (error) {
+-        console.error('Failed to save new session:', error);
+-      }
+-    } else {
+-      // For guest users: clear localStorage
+-      localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
+-      localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+-    }
+-  }, [buildBlankState, isAuthenticated]);
++  const handleNewSessionClick = useCallback(() => {
++    handleNewSession(state);
++  }, [handleNewSession, state]);
+ 
+   const handleSaveToday = useCallback(async () => {
+     if (!engineRef.current) return;
+@@ -2295,7 +1864,7 @@ export default function App() {
+           {/* New Session "+" button - top left (desktop only) */}
+           {!isMobile && (
+             <button
+-              onClick={handleNewSession}
++                onClick={handleNewSessionClick}
+               title="New Session"
+               style={{
+                 position: 'fixed',
+@@ -2971,7 +2540,7 @@ export default function App() {
+               justifyContent: 'space-between'
+             }}>
+               <button
+-                onClick={confirmStartFresh}
++                onClick={handleConfirmStartFresh}
+                 style={{
+                   padding: '8px 20px',
+                   border: '1px solid #d44',
+diff --git a/frontend/src/hooks/useSessionLifecycle.ts b/frontend/src/hooks/useSessionLifecycle.ts
+new file mode 100644
+index 0000000..7c8166a
+--- /dev/null
++++ b/frontend/src/hooks/useSessionLifecycle.ts
+@@ -0,0 +1,507 @@
++import { useCallback, useEffect, useRef, useState } from 'react';
++import { EditorEngine } from '../engine/EditorEngine';
++import type { EditorState, TextCell } from '../engine/EditorEngine';
++import { STORAGE_KEYS } from '../constants/storageKeys';
++import { getLocalDayKey, getTodayKeyInTimezone } from '../utils/timezone';
++import { saveMetaPrompt, getStateConfig as loadStateConfig } from '../utils/voiceStorage';
++import type { VoiceConfig } from '../api/voiceApi';
++
++function createSessionId() {
++  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
++    return crypto.randomUUID();
++  }
++  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
++}
++
++type SetVoiceConfigs = React.Dispatch<React.SetStateAction<Record<string, VoiceConfig>>>;
++type SetStateConfig = React.Dispatch<React.SetStateAction<any>>;
++
++interface UseSessionLifecycleParams {
++  isAuthenticated: boolean;
++  browserTimezone: string;
++  setVoiceConfigs: SetVoiceConfigs;
++  setStateConfig: SetStateConfig;
++}
++
++export function useSessionLifecycle({
++  isAuthenticated,
++  browserTimezone,
++  setVoiceConfigs,
++  setStateConfig
++}: UseSessionLifecycleParams) {
++  const engineRef = useRef<EditorEngine | null>(null);
++  const [state, setState] = useState<EditorState | null>(null);
++  const [localTexts, setLocalTexts] = useState<Map<string, string>>(new Map());
++  const [selectedState, setSelectedState] = useState<string | null>(null);
++  const [userTimezone, setUserTimezone] = useState(browserTimezone);
++
++  const ensuredSessionForDayRef = useRef<string | null>(null);
++  const userTimezoneRef = useRef(userTimezone);
++  const timezoneSyncRef = useRef<string | null>(null);
++
++  useEffect(() => {
++    userTimezoneRef.current = userTimezone;
++  }, [userTimezone]);
++
++  const ensureStateForPersistence = useCallback((): EditorState | null => {
++    if (!state) {
++      console.error('Editor state is missing, cannot persist');
++      return null;
++    }
++
++    if (state && !state.id) {
++      throw new Error('Editor state is missing id');
++    }
++
++    return state;
++  }, [state]);
++
++  const getFirstLineFromState = useCallback((editorState: EditorState) => {
++    const firstTextCell = editorState.cells.find(c => c.type === 'text') as TextCell | undefined;
++    return firstTextCell?.content.split('\n')[0].trim() || 'Untitled';
++  }, []);
++
++  const saveSessionToDatabase = useCallback(async (editorState: EditorState, firstLine?: string) => {
++    const line = firstLine ?? getFirstLineFromState(editorState);
++    const { saveSession } = await import('../api/voiceApi');
++    const idToSave = editorState.id || createSessionId();
++    await saveSession(idToSave, editorState, line);
++
++    if (engineRef.current) {
++      const liveId = engineRef.current.getState().id;
++      const snapshotId = editorState.id;
++      const isSafeToUpdate = liveId === idToSave || liveId === snapshotId;
++
++      if (isSafeToUpdate) {
++        engineRef.current.setCurrentEntryId(idToSave);
++      } else {
++        console.warn(`🛡️ Race Condition Caught: Save finished for ${idToSave}, but editor is on ${liveId}. Skipping ID reset.`);
++      }
++    }
++    return idToSave;
++  }, [getFirstLineFromState]);
++
++  const persistSessionImmediately = useCallback(async (editorState: EditorState) => {
++    if (!isAuthenticated) return;
++    try {
++      const firstLine = getFirstLineFromState(editorState);
++      await saveSessionToDatabase(editorState, firstLine);
++    } catch (error) {
++      console.error('Failed to persist session immediately:', error);
++    }
++  }, [getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);
++
++  const buildBlankState = useCallback((options: { preserveSelectedState?: boolean; selectedStateOverride?: string | null } = {}): EditorState => {
++    const {
++      preserveSelectedState = true,
++      selectedStateOverride
++    } = options;
++    const resolvedSelectedState = selectedStateOverride !== undefined
++      ? selectedStateOverride
++      : (preserveSelectedState
++        ? (engineRef.current?.getState().selectedState ?? selectedState ?? null)
++        : null);
++    const newSessionId = createSessionId();
++    return {
++      cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
++      commentors: [],
++      tasks: [],
++      weightPath: [],
++      overlappedPhrases: [],
++      id: newSessionId,
++      selectedState: resolvedSelectedState ?? undefined,
++      createdAt: new Date().toISOString()
++    };
++  }, [selectedState]);
++
++  const startDetachedBlankSession = useCallback((persistImmediately: boolean = false) => {
++    if (!engineRef.current) return;
++    const blankState = buildBlankState();
++
++    engineRef.current.loadState(blankState);
++    setState(blankState);
++    setLocalTexts(new Map());
++
++    if (!isAuthenticated) {
++      localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(blankState));
++    } else if (persistImmediately) {
++      persistSessionImmediately(blankState);
++    }
++  }, [buildBlankState, isAuthenticated, persistSessionImmediately]);
++
++  const handleNewSession = useCallback(async (currentState?: EditorState | null) => {
++    const workingState = currentState ?? state;
++    if (!workingState || !engineRef.current) return;
++
++    if (isAuthenticated) {
++      const hasContent = workingState.cells.some(c => c.type === 'text' && (c as TextCell).content.trim());
++
++      if (hasContent) {
++        try {
++          const firstTextCell = workingState.cells.find(c => c.type === 'text') as TextCell | undefined;
++          const firstLine = firstTextCell?.content.split('\n')[0].trim() || 'Untitled';
++
++          const { saveSession } = await import('../api/voiceApi');
++          const sessionId = workingState.id || createSessionId();
++          await saveSession(sessionId, workingState, firstLine);
++        } catch (error) {
++          console.error('❌ Failed to save current session:', error);
++        }
++      }
++    }
++
++    const emptyState = buildBlankState({ preserveSelectedState: false });
++    engineRef.current.loadState(emptyState);
++    setState(emptyState);
++    setLocalTexts(new Map());
++
++    if (!isAuthenticated) {
++      localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
++      localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
++    }
++  }, [buildBlankState, isAuthenticated, state]);
++
++  const confirmStartFresh = useCallback(async () => {
++    if (!engineRef.current) return;
++
++    const emptyState = buildBlankState({ preserveSelectedState: false });
++    engineRef.current.loadState(emptyState);
++    setState(emptyState);
++    setLocalTexts(new Map());
++
++    if (isAuthenticated) {
++      try {
++        const { saveSession } = await import('../api/voiceApi');
++        await saveSession(emptyState.id, emptyState);
++      } catch (error) {
++        console.error('Failed to save new session:', error);
++      }
++    } else {
++      localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
++      localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
++    }
++  }, [buildBlankState, isAuthenticated]);
++
++  const handleSaveToday = useCallback(async () => {
++    if (!engineRef.current) return;
++    if (!isAuthenticated) {
++      const toast = document.createElement('div');
++      toast.textContent = 'Please sign in to save';
++      toast.style.cssText = `
++        position: fixed;
++        top: 70px;
++        right: 20px;
++        background: #f44336;
++        color: white;
++        padding: 12px 20px;
++        borderRadius: 6px;
++        fontSize: 14px;
++        fontFamily: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
++        zIndex: 10000;
++        boxShadow: 0 4px 12px rgba(0,0,0,0.15);
++      `;
++      document.body.appendChild(toast);
++      setTimeout(() => {
++        toast.style.opacity = '0';
++        toast.style.transition = 'opacity 0.3s';
++        setTimeout(() => document.body.removeChild(toast), 300);
++      }, 2000);
++      return;
++    }
++    const currentState = ensureStateForPersistence();
++    if (!currentState) return;
++
++    try {
++      const firstLine = getFirstLineFromState(currentState);
++      const savedSessionId = await saveSessionToDatabase(currentState, firstLine);
++      engineRef.current.setCurrentEntryId(savedSessionId);
++      const toast = document.createElement('div');
++      toast.textContent = 'Saved';
++      toast.style.cssText = `
++        position: fixed;
++        top: 70px;
++        right: 20px;
++        background: #4CAF50;
++        color: white;
++        padding: 12px 20px;
++        borderRadius: 6px;
++        fontSize: 14px;
++        fontFamily: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
++        zIndex: 10000;
++        boxShadow: 0 4px 12px rgba(0,0,0,0.15);
++      `;
++      document.body.appendChild(toast);
++      setTimeout(() => {
++        toast.style.opacity = '0';
++        toast.style.transition = 'opacity 0.3s';
++        setTimeout(() => document.body.removeChild(toast), 300);
++      }, 1200);
++    } catch (error) {
++      console.error('Failed to save session:', error);
++    }
++  }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);
++
++  useEffect(() => {
++    if (!isAuthenticated) {
++      setUserTimezone(browserTimezone);
++      return;
++    }
++
++    if (timezoneSyncRef.current === browserTimezone) {
++      return;
++    }
++
++    const syncTimezone = async () => {
++      try {
++        const timezone = browserTimezone || 'UTC';
++        const { getPreferences, savePreferences } = await import('../api/voiceApi');
++        const prefs = await getPreferences();
++        if ((prefs?.timezone || 'UTC') !== timezone) {
++          await savePreferences({ timezone });
++          setUserTimezone(timezone);
++        } else {
++          setUserTimezone(prefs?.timezone || timezone);
++        }
++      } catch (error) {
++        console.error('Failed to sync timezone preference:', error);
++      } finally {
++        timezoneSyncRef.current = browserTimezone;
++      }
++    };
++
++    syncTimezone();
++  }, [browserTimezone, isAuthenticated]);
++
++  useEffect(() => {
++    const sessionId = createSessionId();
++    const engine = new EditorEngine(sessionId);
++    engineRef.current = engine;
++
++    const initialState = engine.getState();
++    if (!initialState.createdAt) {
++      initialState.createdAt = new Date().toISOString();
++      setState(initialState);
++    }
++
++    engine.subscribe((newState) => {
++      setState({ ...newState });
++      if (!isAuthenticated) {
++        localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(newState));
++      }
++    });
++    const unsubscribeBlankReset = engine.onBlankReset(async () => {
++      if (!isAuthenticated) return;
++      const blankState = engine.getState();
++      await persistSessionImmediately(blankState);
++    });
++
++    return () => {
++      unsubscribeBlankReset();
++    };
++  }, [isAuthenticated, persistSessionImmediately]);
++
++  useEffect(() => {
++    const loadInitialState = async () => {
++      if (isAuthenticated) {
++        try {
++          const { listSessions, getSession, getPreferences } = await import('../api/voiceApi');
++
++          const sessions = await listSessions(userTimezoneRef.current);
++
++          let sessionToLoad = null;
++          let loadedSessionId: string | undefined = undefined;
++          const currentSessionId = 'current-session';
++          const currentSession = sessions.find(s => s.id === currentSessionId);
++
++          if (currentSession) {
++            const fullSession = await getSession(currentSessionId);
++            sessionToLoad = fullSession.editor_state;
++            loadedSessionId = currentSessionId;
++          } else if (sessions.length > 0) {
++            const mostRecent = sessions.sort((a, b) =>
++              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
++            )[0];
++
++            const timezoneForDay = userTimezoneRef.current || 'UTC';
++            const today = getTodayKeyInTimezone(timezoneForDay);
++            const sessionDate = getLocalDayKey(mostRecent.updated_at, timezoneForDay);
++
++            if (sessionDate === today) {
++              const fullSession = await getSession(mostRecent.id);
++              sessionToLoad = fullSession.editor_state;
++              loadedSessionId = mostRecent.id;
++            } else {
++              console.log(`📅 New day detected. Last session was from ${sessionDate}, today is ${today}. Starting fresh.`);
++              sessionToLoad = null;
++              loadedSessionId = undefined;
++            }
++          }
++
++          if (sessionToLoad && loadedSessionId) {
++            const normalizedState: EditorState = {
++              ...sessionToLoad,
++              id: sessionToLoad.id || (sessionToLoad as any)?.currentEntryId || (sessionToLoad as any)?.sessionId || loadedSessionId
++            };
++            engineRef.current?.loadState(normalizedState);
++            setState(engineRef.current?.getState() || normalizedState);
++
++            const texts = new Map<string, string>();
++            sessionToLoad.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
++              texts.set(c.id, c.content || '');
++            });
++            setLocalTexts(texts);
++          } else {
++            setState(engineRef.current?.getState() || null);
++          }
++
++          try {
++            const prefs = await getPreferences();
++            if (prefs.voice_configs) {
++              setVoiceConfigs(prefs.voice_configs);
++            }
++            if (prefs.meta_prompt) {
++              saveMetaPrompt(prefs.meta_prompt);
++            }
++            if (prefs.state_config) {
++              setStateConfig(prefs.state_config);
++            }
++            if (prefs.timezone) {
++              setUserTimezone(prefs.timezone);
++            }
++
++            if (prefs.selected_state !== undefined && prefs.selected_state !== null) {
++              const timezoneForDay = userTimezoneRef.current || 'UTC';
++              const today = getTodayKeyInTimezone(timezoneForDay);
++              const updatedAtDate = prefs.updated_at
++                ? getLocalDayKey(prefs.updated_at, timezoneForDay)
++                : null;
++
++              if (updatedAtDate === today) {
++                setSelectedState(prefs.selected_state);
++              } else {
++                setSelectedState(null);
++              }
++            }
++          } catch (err) {
++            console.log('No preferences found, using defaults');
++          }
++        } catch (error) {
++          console.error('Failed to load from database:', error);
++          setState(engineRef.current?.getState() || null);
++        }
++      } else {
++        const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_STATE);
++        if (saved) {
++          try {
++            const parsed = JSON.parse(saved);
++            engineRef.current?.loadState(parsed);
++            setState(engineRef.current?.getState() || parsed);
++
++            const texts = new Map<string, string>();
++            parsed.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
++              texts.set(c.id, c.content || '');
++            });
++            setLocalTexts(texts);
++          } catch (e) {
++            console.error('Failed to load saved state:', e);
++          }
++        } else {
++          setState(engineRef.current?.getState() || null);
++        }
++
++        const savedState = localStorage.getItem(STORAGE_KEYS.SELECTED_STATE);
++        const savedDate = localStorage.getItem('selected-state-date');
++        const today = getTodayKeyInTimezone(userTimezoneRef.current || browserTimezone);
++
++        if (savedState && savedDate === today) {
++          setSelectedState(savedState);
++        } else {
++          localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
++          localStorage.removeItem('selected-state-date');
++          setSelectedState(null);
++        }
++      }
++      if (!isAuthenticated) {
++        setUserTimezone(browserTimezone);
++      }
++    };
++
++    loadInitialState();
++  }, [browserTimezone, isAuthenticated, setStateConfig, setVoiceConfigs]);
++
++  useEffect(() => {
++    if (!isAuthenticated) return;
++    if (!engineRef.current) return;
++    if (selectedState !== null) return;
++    const todayKey = getTodayKeyInTimezone(userTimezone);
++    if (!todayKey) return;
++
++    const currentState = engineRef.current.getState();
++    const currentKey = currentState.createdAt
++      ? getLocalDayKey(currentState.createdAt, userTimezone)
++      : null;
++
++    if (currentKey === todayKey) return;
++    if (ensuredSessionForDayRef.current === todayKey) return;
++
++    ensuredSessionForDayRef.current = todayKey;
++    startDetachedBlankSession(true);
++  }, [isAuthenticated, selectedState, startDetachedBlankSession, userTimezone]);
++
++  useEffect(() => {
++    if (!isAuthenticated) return;
++
++    const autoSaveTimer = setTimeout(async () => {
++      const stateSnapshot = ensureStateForPersistence();
++      if (!stateSnapshot) return;
++
++      if (engineRef.current) {
++        const liveId = engineRef.current.getState().id;
++        const snapshotId = stateSnapshot.id;
++        if (liveId && snapshotId && liveId !== snapshotId) {
++          console.warn(`✋ Auto-save aborted: timer captured ${snapshotId} but editor is now on ${liveId}`);
++          return;
++        }
++      }
++
++      if (!stateSnapshot.id) {
++        console.error('BUG: session id should always be defined after engine init');
++        return;
++      }
++
++      try {
++        const firstLine = getFirstLineFromState(stateSnapshot);
++        await saveSessionToDatabase(stateSnapshot, firstLine);
++        console.log('Auto-saved to database');
++      } catch (error) {
++        console.error('Auto-save failed:', error);
++      }
++    }, 3000);
++
++    return () => clearTimeout(autoSaveTimer);
++  }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase, state]);
++
++  useEffect(() => {
++    setStateConfig(loadStateConfig());
++  }, [setStateConfig]);
++
++  return {
++    engineRef,
++    state,
++    setState,
++    localTexts,
++    setLocalTexts,
++    selectedState,
++    setSelectedState,
++    userTimezone,
++    setUserTimezone,
++    ensureStateForPersistence,
++    getFirstLineFromState,
++    saveSessionToDatabase,
++    persistSessionImmediately,
++    startDetachedBlankSession,
++    handleNewSession,
++    confirmStartFresh,
++    handleSaveToday
++  };
++}

@@ -1,0 +1,295 @@
+@font-face {
+  font-family: 'Excalifont';
+  src: url('/Excalifont-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-017F, U+0180-024F, U+1E00-1EFF, U+2000-206F, U+20A0-20CF, U+2100-214F;
+}
+
+@font-face {
+  font-family: 'Xiaolai';
+  src: url('/Xiaolai-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+F900-FAFF, U+3000-303F;
+}
+
+.book-interface {
+  position: fixed;
+  top: 48px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background-color: #f8f0e6;
+  padding: 1rem 2rem 2rem 2rem;
+  gap: 2rem;
+  box-sizing: border-box;
+  overflow: hidden;
+
+  /* Binder ring configuration */
+  --gap-size: 1.5rem;
+  --hole-diameter: 30px;
+  --bar-width: 100px;
+  --bar-height: 20px;
+}
+
+/* Book pages */
+.book-page {
+  flex: 1;
+  display: flex;
+  background-color: #fffef9;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  min-height: 0; /* Allow flex children to shrink */
+}
+
+.book-page.right-page {
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.book-page.right-page::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.book-page.right-page > * {
+  margin-left: 2rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.voice-comment {
+  padding: 1rem;
+  border-left: 4px solid;
+  border-radius: 4px;
+  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+  animation: fadeIn 0.5s ease-in;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.voice-comment:hover .quote-button {
+  opacity: 1 !important;
+}
+
+.voice-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.voice-icon {
+  font-size: 1.25rem;
+}
+
+.voice-text {
+  margin-left: 1.75rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px) translateY(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(-50%);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes energyPulse {
+  0% {
+    box-shadow: 0 0 0 rgba(102, 102, 102, 0);
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(102, 102, 102, 0.75),
+      0 0 20px rgba(102, 102, 102, 0.45);
+    transform: scale(1.06);
+    filter: brightness(1.15);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(102, 102, 102, 0);
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+/* @@@ Comment expansion animations */
+@keyframes slideDownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* Binder rings */
+.binder-ring {
+  position: absolute;
+  left: 1rem;
+  right: 2rem;
+  height: 20px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 100;
+}
+
+.hole-left, .hole-right {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: var(--hole-diameter);
+  height: var(--hole-diameter);
+  border-radius: 50%;
+  background: #f8f0e6;
+  z-index: 102;
+}
+
+.hole-left {
+  left: calc(50% - var(--gap-size) - var(--bar-width) / 2 - var(--hole-diameter) / 3);
+}
+
+.hole-right {
+  left: calc(50% - var(--gap-size) + var(--bar-width) / 2 - var(--hole-diameter) / 1.5);
+}
+
+.ring-bar {
+  position: absolute;
+  left: calc(50% - var(--gap-size));
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--bar-width);
+  height: var(--bar-height);
+  background: linear-gradient(180deg,
+    #666 0%,
+    #aaa 50%,
+    #666 100%
+  );
+  border-radius: calc(var(--bar-height) / 2);
+  z-index: 103;
+}
+
+/* Watercolor highlight effects */
+.voice-highlight {
+  margin: -2px -6px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.voice-highlight:hover {
+  transform: scale(1.05);
+  filter: brightness(0.95);
+}
+
+.voice-highlight-yellow {
+  background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-9&color=ffff43);
+}
+
+.voice-highlight-blue {
+  background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-7&color=a3d5ff);
+}
+
+.voice-highlight-pink {
+  background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-8&color=ffb3d9);
+}
+
+.voice-highlight-green {
+  background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-6&color=b3ffb3);
+}
+
+.voice-highlight-purple {
+  background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-5&color=ddb3ff);
+}
+
+/* @@@ Notebook ruled lines background */
+.notebook-lines {
+  background-image:
+    /* Vertical margin line (left) */
+    linear-gradient(to right, transparent 0, transparent 39px, rgba(255, 100, 100, 0.15) 40px, rgba(255, 100, 100, 0.15) 41px, transparent 41px),
+    /* Horizontal ruled lines */
+    repeating-linear-gradient(
+      transparent,
+      transparent 31.4px,
+      rgba(170, 170, 180, 0.2) 31.4px,
+      rgba(170, 170, 180, 0.2) 32.4px
+    );
+  background-size: 100% 100%;
+  background-position: 0 0;
+  background-attachment: local; /* Scroll lines with content instead of fixing to viewport */
+}
+
+/* Scrollbar styling for simplified version */
+.writing-textarea::-webkit-scrollbar,
+.comments-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.writing-textarea::-webkit-scrollbar-track,
+.comments-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.writing-textarea::-webkit-scrollbar-thumb,
+.comments-panel::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.writing-textarea::-webkit-scrollbar-thumb:hover,
+.comments-panel::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+.voice-input-modal {
+  height: calc(100vh - 85px);
+  width: calc(100vw - 80px);
+  position: fixed;
+  top: 49px;
+  left: 80px;
+  z-index: 99999;
+}

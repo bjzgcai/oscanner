@@ -1,0 +1,31 @@
+commit 1b0faee2911121e4a187aa5482288ef963399785
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Thu Oct 30 00:26:32 2025 +0800
+
+    Fix send button color in expanded comment
+    
+    Change send button from voice-specific glow color to consistent blue (#4a90e2).
+    Improves visual consistency and readability.
+    
+    🤖 Generated with Claude Code
+    
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+diff --git a/frontend/src/components/CommentCard.tsx b/frontend/src/components/CommentCard.tsx
+index e76cbee..74f17ad 100644
+--- a/frontend/src/components/CommentCard.tsx
++++ b/frontend/src/components/CommentCard.tsx
+@@ -440,12 +440,11 @@ export function CommentGroupCard({
+                 style={{
+                   padding: '6px 12px',
+                   fontSize: '12px',
+-                  background: colors.glow,
++                  background: inputValue.trim() && !isChatProcessing ? '#4a90e2' : '#ccc',
+                   color: '#fff',
+                   border: 'none',
+                   borderRadius: '3px',
+                   cursor: inputValue.trim() && !isChatProcessing ? 'pointer' : 'not-allowed',
+-                  opacity: inputValue.trim() && !isChatProcessing ? 1 : 0.5,
+                   fontWeight: 600,
+                 }}
+               >

@@ -1,0 +1,23 @@
+{
+  "sha": "fd21fac0377a9c3d062743f597d2629fa24b67d3",
+  "message": "Remove remaining ProseMirror/TipTap CSS (64 lines)\n\n- Removed entire .editable-text-area section\n- All ProseMirror-related styles now removed\n- CSS bundle: 4.89 kB → 3.88 kB (~20% reduction)",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:57:36Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:57:36Z"
+  },
+  "stats": {
+    "total": 65,
+    "additions": 0,
+    "deletions": 65
+  },
+  "files_count": 2,
+  "parents": [
+    "fff1153a5765dbf818987a9a0bb6ff59cdce8e0b"
+  ]
+}

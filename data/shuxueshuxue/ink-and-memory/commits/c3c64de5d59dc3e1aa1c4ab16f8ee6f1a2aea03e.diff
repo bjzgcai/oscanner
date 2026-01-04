@@ -1,0 +1,203 @@
+*** FILE: frontend/src/App.css ***
+@@ -132,6 +132,11 @@
+   border-color: #66ff66;
+ }
+ 
++.voice-comment-nostalgia {
++  background-color: #f3e6ff;
++  border-color: #b366ff;
++}
++
+ @keyframes fadeIn {
+   from {
+     opacity: 0;
+@@ -209,4 +214,8 @@
+ 
+ .voice-highlight-green {
+   background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-6&color=b3ffb3);
++}
++
++.voice-highlight-purple {
++  background: url(https://s2.svgbox.net/pen-brushes.svg?ic=brush-5&color=ddb3ff);
+ }
+\ No newline at end of file
+
+*** FILE: frontend/src/App.tsx ***
+@@ -1,4 +1,4 @@
+-import { useState } from 'react'
++import { useState, useEffect } from 'react'
+ import './App.css'
+ import WritingArea from './components/WritingArea'
+ import VoicesPanel from './components/VoicesPanel'
+@@ -17,19 +17,20 @@ interface Voice {
+ function App() {
+   const [voices, setVoices] = useState<Voice[]>([]);
+   const [voiceTriggers, setVoiceTriggers] = useState<VoiceTrigger[]>(VOICE_TRIGGERS);
++  const [currentText, setCurrentText] = useState<string>('');
+ 
+-  const handleTextChange = (newText: string) => {
++  const detectVoices = (text: string, triggers: VoiceTrigger[]) => {
+     const newVoices: Voice[] = [];
+-    const lowerText = newText.toLowerCase();
++    const lowerText = text.toLowerCase();
+ 
+-    voiceTriggers.forEach(({ phrase, voice, comment, icon }) => {
++    triggers.forEach(({ phrase, voice, comment, icon }) => {
+       const index = lowerText.indexOf(phrase);
+       if (index !== -1) {
+         newVoices.push({ name: voice, text: comment, icon, position: index });
+       }
+     });
+ 
+-    if (newText.length > MEMORY_VOICE.minLength && !newVoices.find(v => v.name === MEMORY_VOICE.voice)) {
++    if (text.length > MEMORY_VOICE.minLength && !newVoices.find(v => v.name === MEMORY_VOICE.voice)) {
+       newVoices.push({ name: MEMORY_VOICE.voice, text: MEMORY_VOICE.comment, icon: MEMORY_VOICE.icon, position: Infinity });
+     }
+ 
+@@ -39,18 +40,63 @@ function App() {
+     setVoices(newVoices);
+   };
+ 
+-  // Example: Add a new trigger dynamically
+-  const addCustomTrigger = () => {
+-    const newTrigger: VoiceTrigger = {
+-      phrase: 'remember when',
+-      voice: 'Nostalgia',
+-      comment: 'The past always seems brighter from here...',
+-      color: 'purple',
+-      icon: 'cloud',
+-    };
+-    setVoiceTriggers([...voiceTriggers, newTrigger]);
++  const handleTextChange = (newText: string) => {
++    setCurrentText(newText);
++    detectVoices(newText, voiceTriggers);
++  };
++
++  // @@@ Re-detect voices when triggers change
++  useEffect(() => {
++    detectVoices(currentText, voiceTriggers);
++  }, [voiceTriggers]);
++
++  // @@@ Trigger management methods - ready for backend integration
++
++  // Add a new trigger
++  const addTrigger = (trigger: VoiceTrigger) => {
++    setVoiceTriggers([...voiceTriggers, trigger]);
++  };
++
++  // Remove a trigger by phrase
++  const removeTrigger = (phrase: string) => {
++    setVoiceTriggers(voiceTriggers.filter(t => t.phrase !== phrase));
++  };
++
++  // Update an existing trigger
++  const updateTrigger = (phrase: string, updates: Partial<VoiceTrigger>) => {
++    setVoiceTriggers(voiceTriggers.map(t =>
++      t.phrase === phrase ? { ...t, ...updates } : t
++    ));
++  };
++
++  // Replace all triggers (e.g., from API)
++  const setAllTriggers = (newTriggers: VoiceTrigger[]) => {
++    setVoiceTriggers(newTriggers);
+   };
+ 
++  // Example usage (uncomment to test):
++  // setTimeout(() => {
++  //   addTrigger({
++  //     phrase: 'remember when',
++  //     voice: 'Nostalgia',
++  //     comment: 'The past always seems brighter from here...',
++  //     color: 'purple',
++  //     icon: 'cloud',
++  //   });
++  // }, 3000);
++
++  // Expose methods to window for testing in console
++  useEffect(() => {
++    (window as any).voiceControls = {
++      addTrigger,
++      removeTrigger,
++      updateTrigger,
++      setAllTriggers,
++      getCurrentTriggers: () => voiceTriggers,
++    };
++    console.log('Voice controls available! Try: window.voiceControls.addTrigger({...})');
++  }, [voiceTriggers]);
++
+   return (
+     <div className="book-interface">
+       <WritingArea onChange={handleTextChange} triggers={voiceTriggers} />
+
+*** FILE: frontend/src/components/EditableTextArea.tsx ***
+@@ -21,9 +21,10 @@ export default function EditableTextArea({ onChange, triggers }: EditableTextAre
+   // @@@ Dynamic trigger updates - Update highlights when triggers change
+   useEffect(() => {
+     if (editor && editor.isEditable) {
+-      editor.chain()
+-        .setMeta('voiceHighlight', { triggers })
+-        .run();
++      // Force recalculation by triggering a transaction with meta
++      const { tr } = editor.state;
++      tr.setMeta('voiceHighlight', { triggers });
++      editor.view.dispatch(tr);
+     }
+   }, [triggers, editor]);
+ 
+
+*** FILE: frontend/src/extensions/VoiceHighlight.ts ***
+@@ -14,6 +14,7 @@ export interface VoiceHighlightOptions {
+   triggers: VoiceTrigger[];
+ }
+ 
++// Dynamic voice highlighting with real-time updates
+ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({
+   name: 'voiceHighlight',
+ 
+@@ -24,31 +25,40 @@ export const VoiceHighlight = Extension.create<VoiceHighlightOptions>({
+   },
+ 
+   addProseMirrorPlugins() {
+-    const triggers = this.options.triggers;
++    let triggers = this.options.triggers;
+ 
+     return [
+       new Plugin({
+         key: new PluginKey('voiceHighlight'),
+ 
+         state: {
+           init(_, { doc }) {
+-            return findHighlights(doc, triggers);
++            return { decorations: findHighlights(doc, triggers), triggers };
+           },
+ 
+           apply(tr, oldState) {
+             // @@@ Dynamic updates - Recalculate on doc change or meta change
+             const metaChanged = tr.getMeta('voiceHighlight');
+-            if (tr.docChanged || metaChanged) {
+-              const newTriggers = metaChanged?.triggers || triggers;
+-              return findHighlights(tr.doc, newTriggers);
++            if (metaChanged?.triggers) {
++              triggers = metaChanged.triggers;
++              return {
++                decorations: findHighlights(tr.doc, triggers),
++                triggers
++              };
++            }
++            if (tr.docChanged) {
++              return {
++                decorations: findHighlights(tr.doc, oldState.triggers || triggers),
++                triggers: oldState.triggers || triggers
++              };
+             }
+             return oldState;
+           },
+         },
+ 
+         props: {
+           decorations(state) {
+-            return this.getState(state);
++            return this.getState(state)?.decorations;
+           },
+         },
+       }),

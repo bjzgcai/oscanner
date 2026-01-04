@@ -1,0 +1,50 @@
+commit 4fc98ff4d6a31e0b8d232c7375b9f3de4b80e614
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Fri Nov 21 18:25:29 2025 +0800
+
+    Remove technical highlights from README
+
+diff --git a/README.md b/README.md
+index c09c323..1b8efbd 100644
+--- a/README.md
++++ b/README.md
+@@ -117,39 +117,6 @@ This project was built using "observe-code-observe-code" rapid iteration:
+ ## 🔧 Technical Highlights
+ 
+ ### Stateful Commentary System
+-```python
+-class StatefulVoiceAnalyzer:
+-    def analyze(self, agent, text):
+-        # 1. Prune deleted comments
+-        self._prune_deleted_comments(text)
+-
+-        # 2. Only ask LLM for NEW comments
+-        # (shows existing comments to avoid repetition)
+-
+-        # 3. Enforce density rules
+-        # (1 per persona, 1 per sentence)
+-
+-        # 4. Return ALL comments (old + new)
+-```
+-
+-### Polling Strategy
+-```typescript
+-// Every 5 seconds, check if text changed >10 chars
+-useEffect(() => {
+-  const interval = setInterval(async () => {
+-    if (textDiff > 10 && !isAnalyzing) {
+-      const voices = await analyzeText(currentText);
+-      setVoiceTriggers(voices);
+-    }
+-  }, 5000);
+-  return () => clearInterval(interval);
+-}, []);
+-```
+-
+-### Sentence Splitting (Multilingual)
+-```python
+-# English: .!?  Chinese: 。！？  Also: newlines
+-re.split(r'[.!?。！？]+|\n+', text)
+ ```
+ 
+ ## 🗺️ Roadmap / TODO

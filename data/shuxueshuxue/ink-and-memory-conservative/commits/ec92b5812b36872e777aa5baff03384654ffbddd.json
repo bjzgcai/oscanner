@@ -1,0 +1,23 @@
+{
+  "sha": "ec92b5812b36872e777aa5baff03384654ffbddd",
+  "message": "Propagate image tag to BACKEND_VERSION env",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-02T18:06:09Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-02T18:06:09Z"
+  },
+  "stats": {
+    "total": 1,
+    "additions": 1,
+    "deletions": 0
+  },
+  "files_count": 1,
+  "parents": [
+    "ab163943717d0f61714c9118339fdf7219ff569c"
+  ]
+}

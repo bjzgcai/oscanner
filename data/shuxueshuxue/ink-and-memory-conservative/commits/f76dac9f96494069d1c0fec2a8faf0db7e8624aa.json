@@ -1,0 +1,23 @@
+{
+  "sha": "f76dac9f96494069d1c0fec2a8faf0db7e8624aa",
+  "message": "Fix critical auth bugs: data loading and user profile\n\nFixes two critical issues after migration:\n\n1. **Data not loading after migration**:\n   - App now loads from database when authenticated\n   - Loads current/most recent session on mount\n   - Loads pictures from database (not localStorage)\n   - Loads user preferences (voice configs, selected state)\n   - Auto-saves to database every 3 seconds (authenticated users)\n   - Guest mode still uses localStorage\n\n2. **User profile button not working**:\n   - Added onClick handler to profile button\n   - Shows dropdown menu with user info and logout\n   - Displays first letter of name/email as avatar\n   - Clean dropdown UI with backdrop\n\nTechnical changes:\n- App.tsx: Load data from database on mount if authenticated\n- App.tsx: Auto-save to database with 3s debounce\n- App.tsx: Only save to localStorage in guest mode\n- CollectionsView.tsx: Load pictures from database\n- LeftSidebar.tsx: Add user menu dropdown with logout\n\nDatabase is now the source of truth for authenticated users!\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T05:56:07Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T05:56:07Z"
+  },
+  "stats": {
+    "total": 330,
+    "additions": 260,
+    "deletions": 70
+  },
+  "files_count": 3,
+  "parents": [
+    "1c76021d0a3c7a2c0f4cfa490cb753ffdd5d80ef"
+  ]
+}

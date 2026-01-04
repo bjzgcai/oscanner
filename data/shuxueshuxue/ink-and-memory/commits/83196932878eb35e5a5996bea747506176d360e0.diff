@@ -1,0 +1,32 @@
+*** FILE: backend/stateless_analyzer.py ***
+@@ -46,13 +46,17 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],
+         for name, v in voice_archetypes.items()
+     ])
+ 
+-    # Build list of applied comments
++    # Build list of applied comments with their phrases
+     existing_summary = ""
++    highlighted_phrases = []
+     if applied_comments:
+-        existing_summary = "\n\nALREADY APPLIED COMMENTS (do not repeat these):\n"
++        existing_summary = "\n\nALREADY APPLIED COMMENTS (do not repeat or overlap with these):\n"
+         for c in applied_comments:
+-            existing_summary += f"- {c.get('voice', 'Unknown')} on \"{c.get('phrase', '')}\": {c.get('comment', '')}\n"
+-        existing_summary += "\n👉 Find something NEW to comment on!\n"
++            phrase = c.get('phrase', '')
++            highlighted_phrases.append(phrase)
++            existing_summary += f"- {c.get('voice', 'Unknown')} on \"{phrase}\": {c.get('comment', '')}\n"
++        existing_summary += f"\n👉 These phrases are already highlighted: {highlighted_phrases}\n"
++        existing_summary += "👉 Choose a DIFFERENT phrase that does NOT overlap with any of these!\n"
+ 
+     prompt = f"""You are analyzing internal dialogue as distinct inner voice personas.
+ 
+@@ -72,6 +76,8 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],
+ RULES:
+ - Return ONLY ONE comment
+ - DO NOT repeat any applied comments
++- DO NOT choose phrases that overlap or intersect with already highlighted phrases
++- Your chosen phrase must be completely separate from existing highlights
+ - DO NOT CREATE NEW VOICE NAMES - Only use from the available list
+ - Return null if nothing is worth commenting on
+ - Phrase MUST be EXACT substring from text

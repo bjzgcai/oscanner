@@ -1,0 +1,18 @@
+*** FILE: backend/config.py ***
+@@ -6,6 +6,8 @@
+ # Model to use for voice analysis
+ MODEL = "claude-haiku-4.5"
+ MODEL = "deepseek-v3.2"
++MODEL = "gemini-3-pro-preview"
++MODEL = "claude-sonnet-4.5"
+ 
+ # @@@ Sparsity control
+ MAX_VOICES = 5
+@@ -14,6 +16,7 @@
+     True  # If True, only add 1 comment per request (gradual accumulation)
+ )
+ 
++
+ # @@@ Image generation configuration
+ def _load_image_api_key() -> str:
+     """

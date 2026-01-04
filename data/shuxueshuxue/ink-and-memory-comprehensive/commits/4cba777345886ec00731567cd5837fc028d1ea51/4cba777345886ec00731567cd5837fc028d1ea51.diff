@@ -1,0 +1,145 @@
+commit 4cba777345886ec00731567cd5837fc028d1ea51
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Dec 16 16:49:10 2025 +0800
+
+    remove unpacker from system decks
+
+diff --git a/backend/config.py b/backend/config.py
+index 0d60c5f..9b2e70c 100644
+--- a/backend/config.py
++++ b/backend/config.py
+@@ -72,7 +72,7 @@ def _load_prompt(filename):
+         return ""
+ 
+ 
+-# Voice archetypes (Echo system - 6 Chinese voice personas)
++# Voice archetypes (Echo system - 5 Chinese voice personas)
+ VOICE_ARCHETYPES = {
+     "holder": {
+         "name": "接纳者 (The Holder)",
+@@ -80,12 +80,6 @@ VOICE_ARCHETYPES = {
+         "icon": "heart",
+         "color": "pink",
+     },
+-    "unpacker": {
+-        "name": "拆解者 (The Unpacker)",
+-        "systemPrompt": _load_prompt("unpacker.md"),
+-        "icon": "brain",
+-        "color": "blue",
+-    },
+     "starter": {
+         "name": "启动者 (The Starter)",
+         "systemPrompt": _load_prompt("starter.md"),
+diff --git a/backend/database.py b/backend/database.py
+index da0898f..059ed8d 100644
+--- a/backend/database.py
++++ b/backend/database.py
+@@ -268,16 +268,14 @@ def seed_system_decks():
+     introspection_voices = [
+         ('holder', config.VOICE_ARCHETYPES['holder']['name'], '接纳者', 'The Holder',
+          config.VOICE_ARCHETYPES['holder']['systemPrompt'], 'heart', 'pink', 0),
+-        ('unpacker', config.VOICE_ARCHETYPES['unpacker']['name'], '拆解者', 'The Unpacker',
+-         config.VOICE_ARCHETYPES['unpacker']['systemPrompt'], 'brain', 'blue', 1),
+         ('starter', config.VOICE_ARCHETYPES['starter']['name'], '启动者', 'The Starter',
+-         config.VOICE_ARCHETYPES['starter']['systemPrompt'], 'fist', 'yellow', 2),
++         config.VOICE_ARCHETYPES['starter']['systemPrompt'], 'fist', 'yellow', 1),
+         ('mirror', config.VOICE_ARCHETYPES['mirror']['name'], '照镜者', 'The Mirror',
+-         config.VOICE_ARCHETYPES['mirror']['systemPrompt'], 'eye', 'green', 3),
++         config.VOICE_ARCHETYPES['mirror']['systemPrompt'], 'eye', 'green', 2),
+         ('weaver', config.VOICE_ARCHETYPES['weaver']['name'], '连接者', 'The Weaver',
+-         config.VOICE_ARCHETYPES['weaver']['systemPrompt'], 'compass', 'purple', 4),
++         config.VOICE_ARCHETYPES['weaver']['systemPrompt'], 'compass', 'purple', 3),
+         ('absurdist', config.VOICE_ARCHETYPES['absurdist']['name'], '幽默者', 'The Absurdist',
+-         config.VOICE_ARCHETYPES['absurdist']['systemPrompt'], 'masks', 'pink', 5),
++         config.VOICE_ARCHETYPES['absurdist']['systemPrompt'], 'masks', 'pink', 4),
+     ]
+ 
+     for voice_id, name, name_zh, name_en, prompt, icon, color, order in introspection_voices:
+@@ -344,7 +342,7 @@ def seed_system_decks():
+ 
+     db.commit()
+     db.close()
+-    print("✅ System decks seeded (3 decks, 16 voices)")
++    print("✅ System decks seeded (3 decks, 15 voices)")
+ 
+ # ========== Deck CRUD ==========
+ 
+diff --git a/backend/stateless_analyzer.py b/backend/stateless_analyzer.py
+index 6928459..e3c7454 100644
+--- a/backend/stateless_analyzer.py
++++ b/backend/stateless_analyzer.py
+@@ -8,7 +8,7 @@ import config
+ 
+ class VoiceTrigger(BaseModel):
+     phrase: str = Field(description="Exact trigger phrase from text (verbatim, 2-4 words, avoid punctuation)")
+-    voice_id: str = Field(description="Voice ID from the available list (e.g., 'holder', 'mirror', 'unpacker')")
++    voice_id: str = Field(description="Voice ID from the available list (e.g., 'holder', 'mirror', 'starter')")
+     voice_name: str = Field(description="Voice display name (will be auto-filled, LLM should not generate this)")
+     comment: str = Field(description="What this voice is saying (as if speaking)")
+     icon: str = Field(description="Icon identifier")
+diff --git a/frontend/src/contexts/AuthContext.tsx b/frontend/src/contexts/AuthContext.tsx
+index b21a092..abc1b4b 100644
+--- a/frontend/src/contexts/AuthContext.tsx
++++ b/frontend/src/contexts/AuthContext.tsx
+@@ -33,6 +33,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+   const [token, setToken] = useState<string | null>(null);
+   const [isLoading, setIsLoading] = useState(true);
+ 
++  const fetchUserProfile = async (authToken: string) => {
++    const res = await fetch(`${API_BASE}/api/me`, {
++      headers: {
++        'Authorization': `Bearer ${authToken}`
++      }
++    });
++
++    if (!res.ok) {
++      throw new Error('Failed to fetch user profile');
++    }
++
++    return res.json();
++  };
++
+   // Load token from localStorage on mount
+   useEffect(() => {
+     const savedToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+@@ -78,9 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+     }
+ 
+     const data = await response.json();
+-    setUser(data.user);
+-    setToken(data.token);
+     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
++    setToken(data.token);
++
++    try {
++      const profile = await fetchUserProfile(data.token);
++      setUser(profile);
++    } catch (error) {
++      // Profile fetch failed, clear token to avoid inconsistent state
++      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
++      setToken(null);
++      throw error;
++    }
+   };
+ 
+   const register = async (email: string, password: string, displayName?: string) => {
+@@ -102,9 +125,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+     }
+ 
+     const data = await response.json();
+-    setUser(data.user);
+-    setToken(data.token);
+     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
++    setToken(data.token);
++
++    try {
++      const profile = await fetchUserProfile(data.token);
++      setUser(profile);
++    } catch (error) {
++      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
++      setToken(null);
++      throw error;
++    }
+   };
+ 
+   const logout = () => {

@@ -1,0 +1,99 @@
+*** FILE: frontend/src/App.tsx ***
+@@ -1165,8 +1165,21 @@ export default function App() {
+     setShowWarning(true);
+   }, []);
+ 
+-  const buildBlankState = useCallback((): EditorState | null => {
+-    const preservedSelectedState = engineRef.current?.getState().selectedState ?? selectedState ?? null;
++  interface BlankStateOptions {
++    preserveSelectedState?: boolean;
++    selectedStateOverride?: string | null;
++  }
++
++  const buildBlankState = useCallback((options: BlankStateOptions = {}): EditorState => {
++    const {
++      preserveSelectedState = true,
++      selectedStateOverride
++    } = options;
++    const resolvedSelectedState = selectedStateOverride !== undefined
++      ? selectedStateOverride
++      : (preserveSelectedState
++        ? (engineRef.current?.getState().selectedState ?? selectedState ?? null)
++        : null);
+     const newSessionId = createSessionId();
+     return {
+       cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
+@@ -1176,15 +1189,14 @@ export default function App() {
+       overlappedPhrases: [],
+       sessionId: newSessionId,
+       currentEntryId: newSessionId,
+-      selectedState: preservedSelectedState,
++      selectedState: resolvedSelectedState ?? undefined,
+       createdAt: new Date().toISOString()
+     };
+   }, [selectedState]);
+ 
+   const startDetachedBlankSession = useCallback((persistImmediately: boolean = false) => {
+     if (!engineRef.current) return;
+     const blankState = buildBlankState();
+-    if (!blankState) return;
+ 
+     engineRef.current.loadState(blankState);
+     setState(blankState);
+@@ -1251,18 +1263,7 @@ export default function App() {
+       console.log('⚠️ Not authenticated, skipping save');
+     }
+ 
+-    // @@@ Create empty state with NEW sessionId
+-    const newSessionId = createSessionId();
+-    const emptyState: EditorState = {
+-      cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
+-      commentors: [],
+-      tasks: [],
+-      weightPath: [],
+-      overlappedPhrases: [],
+-      sessionId: newSessionId,
+-      currentEntryId: newSessionId,
+-      createdAt: new Date().toISOString()
+-    };
++    const emptyState = buildBlankState({ preserveSelectedState: false });
+ 
+     // @@@ Load empty state directly into engine (immediate UI update)
+     engineRef.current.loadState(emptyState);
+@@ -1277,25 +1278,14 @@ export default function App() {
+       localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+     }
+     console.log('🆕 New session created (will be saved when you start typing)');
+-  }, [state, isAuthenticated]);
++  }, [state, isAuthenticated, buildBlankState]);
+ 
+   const confirmStartFresh = useCallback(async () => {
+     setShowWarning(false);
+ 
+     if (!engineRef.current) return;
+ 
+-    // @@@ Create empty state with NEW sessionId
+-    const newSessionId = createSessionId();
+-    const emptyState: EditorState = {
+-      cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
+-      commentors: [],
+-      tasks: [],
+-      weightPath: [],
+-      overlappedPhrases: [],
+-      sessionId: newSessionId,
+-      currentEntryId: newSessionId,  // @@@ Set currentEntryId to maintain invariant I5
+-      createdAt: new Date().toISOString()
+-    };
++    const emptyState = buildBlankState({ preserveSelectedState: false });
+ 
+     // @@@ Load empty state directly into engine (immediate UI update)
+     engineRef.current.loadState(emptyState);
+@@ -1315,7 +1305,7 @@ export default function App() {
+       localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
+       localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+     }
+-  }, [isAuthenticated]);
++  }, [buildBlankState, isAuthenticated]);
+ 
+   const handleSaveToday = useCallback(async () => {
+     if (!engineRef.current) return;

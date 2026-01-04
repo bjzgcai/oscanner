@@ -1,0 +1,23 @@
+{
+  "sha": "5bc015183edfe4fef5e6cdf6d796249bff6c0e90",
+  "message": "add smoke test on backend ci",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-03T05:59:37Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-03T05:59:37Z"
+  },
+  "stats": {
+    "total": 68,
+    "additions": 67,
+    "deletions": 1
+  },
+  "files_count": 3,
+  "parents": [
+    "652bc3c905aa8ce5b2089ffc3b0fb8d3332b6acb"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "sha": "fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+  "node_id": "C_kwDOP2Zrm9oAKGZkOGI2NjIxZGRjNGY3Nzk0NDc3OWZiMjQ4ZjFlMjcxMmRjYzllMmE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T17:21:23Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-18T17:21:23Z"
+    },
+    "message": "Track not-found phrases and harden analyzer reasoning",
+    "tree": {
+      "sha": "8d2b002e08133174ea877c972419ea4617e18d64",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/8d2b002e08133174ea877c972419ea4617e18d64"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/b3409d8710ffb7e2fe74b7b48770a864e69f0f0a"
+    }
+  ],
+  "stats": {
+    "total": 81,
+    "additions": 73,
+    "deletions": 8
+  },
+  "files": [
+    {
+      "sha": "569d18f23b87bb3843d46ce8f84cd809bdf591a9",
+      "filename": "backend/server.py",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 0,
+      "changes": 4,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/backend%2Fserver.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/backend%2Fserver.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fserver.py?ref=fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+      "patch": "@@ -314,6 +314,7 @@ def chat_with_voice(\n         \"meta_prompt\": {\"type\": \"str\"},\n         \"state_prompt\": {\"type\": \"str\"},\n         \"overlapped_phrases\": {\"type\": \"list\"},\n+        \"not_found_phrases\": {\"type\": \"list\"},\n     },\n     category=\"Analysis\",\n )\n@@ -325,6 +326,7 @@ def analyze_text(\n     meta_prompt: str = \"\",\n     state_prompt: str = \"\",\n     overlapped_phrases: list = None,\n+    not_found_phrases: list = None,\n ):\n     \"\"\"Stateless analysis - returns ONE new comment based on text and applied comments.\"\"\"\n     print(f\"\\n{'=' * 60}\")\n@@ -333,6 +335,7 @@ def analyze_text(\n     print(f\"   Text: {text[:100]}...\")\n     print(f\"   Applied comments: {len(applied_comments or [])}\")\n     print(f\"   Overlapped phrases: {len(overlapped_phrases or [])}\")\n+    print(f\"   Not found phrases: {len(not_found_phrases or [])}\")\n     print(f\"   Meta prompt: {repr(meta_prompt)[:100]}\")\n     print(f\"   State prompt: {repr(state_prompt)[:100]}\")\n     print(f\"{'=' * 60}\\n\")\n@@ -354,6 +357,7 @@ def analyze_text(\n         meta_prompt,\n         state_prompt,\n         overlapped_phrases or [],\n+        not_found_phrases or [],\n     )\n \n     print(f\"\u2705 Returning {result['new_voices_added']} new voice(s)\")"
+    },
+    {
+      "sha": "cb9176aaadcbc58188701f9d8d10fbb08c93f630",
+      "filename": "backend/stateless_analyzer.py",
+      "status": "modified",
+      "additions": 38,
+      "deletions": 5,
+      "changes": 43,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/backend%2Fstateless_analyzer.py",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/backend%2Fstateless_analyzer.py",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/backend%2Fstateless_analyzer.py?ref=fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+      "patch": "@@ -8,18 +8,16 @@\n \n \n class VoiceTrigger(BaseModel):\n+    reasoning: str = Field(\n+        description=\"Deliberate selection log: candidate phrases considered, verification steps, blacklist checks\"\n+    )\n     phrase: str = Field(\n         description=\"Exact trigger phrase from text (verbatim, 2-4 words, avoid punctuation)\"\n     )\n     voice_id: str = Field(\n         description=\"Voice ID from the available list (e.g., 'holder', 'mirror', 'starter')\"\n     )\n-    voice_name: str = Field(\n-        description=\"Voice display name (will be auto-filled, LLM should not generate this)\"\n-    )\n     comment: str = Field(description=\"What this voice is saying (as if speaking)\")\n-    icon: str = Field(description=\"Icon identifier\")\n-    color: str = Field(description=\"Color identifier\")\n \n \n class SingleVoiceAnalysis(BaseModel):\n@@ -36,6 +34,7 @@ def analyze_stateless(\n     meta_prompt: str = \"\",\n     state_prompt: str = \"\",\n     overlapped_phrases: List[str] = None,\n+    not_found_phrases: List[str] = None,\n ) -> dict:\n     \"\"\"\n     Stateless analysis - receives applied comments, returns ONE new comment.\n@@ -48,15 +47,19 @@ def analyze_stateless(\n         meta_prompt: Additional instructions that apply to all voices\n         state_prompt: User's current emotional state prompt\n         overlapped_phrases: Phrases that were rejected due to overlap (feedback loop)\n+        not_found_phrases: Phrases that could not be found in text (LLM extraction errors)\n \n     Returns:\n         Dict with single new voice (or empty list if none)\n     \"\"\"\n     overlapped_phrases = overlapped_phrases or []\n+    not_found_phrases = not_found_phrases or []\n     print(f\"\\n{'=' * 60}\")\n     print(f\"\ud83d\udcca Stateless Analysis\")\n     print(f\"   Text: {text[:100]}...\")\n     print(f\"   Applied comments: {len(applied_comments)}\")\n+    print(f\"   Overlapped phrases: {len(overlapped_phrases)}\")\n+    print(f\"   Not found phrases: {len(not_found_phrases)}\")\n     print(f\"{'=' * 60}\\n\")\n \n     # Use provided voices or defaults\n@@ -109,6 +112,23 @@ def analyze_stateless(\n             rejected_section += f'  \u2717 \"{phrase}\" - REJECTED, do NOT suggest again\\n'\n         rejected_section += f\"\\n\u26a0\ufe0f Do NOT suggest any variation of these phrases!\\n\"\n \n+    not_found_section = \"\"\n+    if not_found_phrases:\n+        not_found_section = (\n+            \"\\n\\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\\n\"\n+        )\n+        not_found_section += \"HARD BLACKLIST - NOT FOUND (extraction errors, never suggest):\\n\"\n+        not_found_section += (\n+            \"\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\\n\"\n+        )\n+        for phrase in not_found_phrases:\n+            not_found_section += (\n+                f'  \u2717 \"{phrase}\" - NOT FOUND IN TEXT (LLM extraction failure), do NOT suggest again\\n'\n+            )\n+        not_found_section += (\n+            \"\\n\u26a0\ufe0f These phrases failed character-by-character verification. Treat them as forbidden even if they look present. If you cannot find a safe phrase, return null.\\n\"\n+        )\n+\n     prompt = f\"\"\"You are analyzing internal dialogue as distinct inner voice personas.\n \n \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n@@ -124,13 +144,15 @@ def analyze_stateless(\n {voice_list}\n {conversation_context}\n {rejected_section}\n+{not_found_section}\n \n \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n YOUR TASK:\n \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n \n Find ONE NEW voice to comment:\n \n+0. Reasoning (think first): list 1-3 candidate substrings from the text, verify each is an exact substring, drop any that appear in rejected/not-found lists, then choose exactly ONE safest remaining candidate. If all are filtered out, generate another small batch and repeat. Only return null when you have exhausted reasonable candidates from the text.\n 1. Extract a SHORT phrase (2-4 words) from the \"TEXT TO ANALYZE\" section above\n    - MUST be EXACT substring from the quoted text\n    - Do NOT extract from the conversation context or rejected phrases\n@@ -148,6 +170,8 @@ def analyze_stateless(\n - DO NOT extract phrases from the \"EXISTING CONVERSATION\" section\n - DO NOT overlap with already highlighted phrases: {highlighted_phrases}\n - DO NOT suggest any rejected phrases: {overlapped_phrases}\n+- DO NOT suggest any not-found phrases: {not_found_phrases}\n+- HARD BLACKLIST: If a phrase is in either list above, you must not output it. If no safe phrase exists, return null.\n - DO NOT CREATE NEW VOICE NAMES - Only use from the available list\n - Return null if nothing is worth commenting on\n - Write your comment in the EXACT SAME LANGUAGE as the user's text\n@@ -171,6 +195,15 @@ def analyze_stateless(\n User's current state:\n {state_prompt.strip()}\"\"\"\n \n+    # Re-emphasize hard constraints at the end (higher priority than softer instructions)\n+    prompt += f\"\"\"\n+\n+FINAL REMINDER (hard constraints):\n+- DO NOT suggest rejected phrases: {overlapped_phrases}\n+- DO NOT suggest not-found phrases (extraction failures): {not_found_phrases}\n+These are hard blacklists. If you cannot comply, return null. These override any softer guidance above.\n+- Reasoning must show the candidate list, exact-match check, blacklist check, and retries when all candidates are filtered. Only return null after exhausting reasonable options.\"\"\"\n+\n     print(\"\ud83e\udd16 Calling LLM for one new comment...\")\n \n     result = agent.run("
+    },
+    {
+      "sha": "b2409d1cd8a36bd5a4213680312af25a569137d7",
+      "filename": "frontend/src/api/voiceApi.ts",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 2,
+      "changes": 13,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/frontend%2Fsrc%2Fapi%2FvoiceApi.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fapi%2FvoiceApi.ts?ref=fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+      "patch": "@@ -125,7 +125,15 @@ interface SyncResponse {\n  * Analyze text and return voices with metadata (PolyCLI direct call)\n  * Backend loads voice configs from database using user_id from JWT token\n  */\n-export async function analyzeText(text: string, sessionId: string, appliedComments?: any[], metaPrompt?: string, statePrompt?: string, overlappedPhrases?: string[]) {\n+export async function analyzeText(\n+  text: string,\n+  sessionId: string,\n+  appliedComments?: any[],\n+  metaPrompt?: string,\n+  statePrompt?: string,\n+  overlappedPhrases?: string[],\n+  notFoundPhrases?: string[]\n+) {\n   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);\n \n   const response = await fetch(`${API_BASE}/polycli/api/trigger-sync`, {\n@@ -142,7 +150,8 @@ export async function analyzeText(text: string, sessionId: string, appliedCommen\n         applied_comments: appliedComments || [],\n         meta_prompt: metaPrompt || '',\n         state_prompt: statePrompt || '',\n-        overlapped_phrases: overlappedPhrases || []\n+        overlapped_phrases: overlappedPhrases || [],\n+        not_found_phrases: notFoundPhrases || []\n       },\n       timeout: 90\n     })"
+    },
+    {
+      "sha": "f62938c170b500e197f28f6b5395426850927e15",
+      "filename": "frontend/src/engine/EditorEngine.ts",
+      "status": "modified",
+      "additions": 18,
+      "deletions": 1,
+      "changes": 19,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/frontend%2Fsrc%2Fengine%2FEditorEngine.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fengine%2FEditorEngine.ts?ref=fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+      "patch": "@@ -14,6 +14,7 @@ export interface EditorState {\n   tasks: Task[];\n   weightPath: WeightEntry[];\n   overlappedPhrases: string[];  // @@@ Phrases rejected due to overlap (feedback to backend)\n+  notFoundPhrases: string[];  // @@@ Phrases LLM suggested that were not found in text\n   id: string;\n   selectedState?: string | null;  // @@@ Emotional state for this session (stored per-session)\n   createdAt?: string;  // @@@ ISO timestamp when session was created\n@@ -132,6 +133,7 @@ export class EditorEngine {\n       tasks: [],\n       weightPath: [],\n       overlappedPhrases: [],\n+      notFoundPhrases: [],\n       id: sessionId\n     };\n   }\n@@ -243,6 +245,7 @@ export class EditorEngine {\n       tasks: [],\n       weightPath: [],\n       overlappedPhrases: [],\n+      notFoundPhrases: [],\n       id: preservedId,\n       selectedState,\n       createdAt: preservedTimestamp\n@@ -333,6 +336,9 @@ export class EditorEngine {\n           textSnippet: textSnippet,\n           textCharCodes: textChars\n         });\n+        if (!this.state.notFoundPhrases.includes(commentor.phrase)) {\n+          this.state.notFoundPhrases.push(commentor.phrase);\n+        }\n         skippedAny = true;\n         continue;\n       }\n@@ -432,7 +438,15 @@ export class EditorEngine {\n         ? stateConfig.states[selectedState].prompt\n         : '';\n \n-      const result = await analyzeText(text, this.state.id, appliedCommentors, metaPrompt, statePrompt, this.state.overlappedPhrases);\n+      const result = await analyzeText(\n+        text,\n+        this.state.id,\n+        appliedCommentors,\n+        metaPrompt,\n+        statePrompt,\n+        this.state.overlappedPhrases,\n+        this.state.notFoundPhrases\n+      );\n \n       // Backend returns at most ONE voice\n       if (result.voices.length > 0) {\n@@ -712,6 +726,9 @@ export class EditorEngine {\n     if (!this.state.overlappedPhrases) {\n       this.state.overlappedPhrases = [];\n     }\n+    if (!this.state.notFoundPhrases) {\n+      this.state.notFoundPhrases = [];\n+    }\n     // Recompute used energy from applied commentors\n     this.usedEnergy = this.state.commentors.filter(c => c.appliedAt).length * this.threshold;\n     this.notifyChange();"
+    },
+    {
+      "sha": "98945360fa8dbfd7dc3e5de033186c70867fc8bf",
+      "filename": "frontend/src/hooks/useSessionLifecycle.ts",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 0,
+      "changes": 2,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/fd8b6621ddc4f77944779fb248f1e2712dcc9e2a/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fhooks%2FuseSessionLifecycle.ts?ref=fd8b6621ddc4f77944779fb248f1e2712dcc9e2a",
+      "patch": "@@ -109,6 +109,7 @@ export function useSessionLifecycle({\n       tasks: [],\n       weightPath: [],\n       overlappedPhrases: [],\n+      notFoundPhrases: [],\n       id: newSessionId,\n       selectedState: resolvedSelectedState ?? undefined,\n       createdAt: new Date().toISOString()\n@@ -344,6 +345,7 @@ export function useSessionLifecycle({\n                     tasks: [],\n                     weightPath: [],\n                     overlappedPhrases: [],\n+                    notFoundPhrases: [],\n                     id: createSessionId(),\n                     selectedState: undefined,\n                     createdAt: new Date().toISOString()"
+    }
+  ]
+}

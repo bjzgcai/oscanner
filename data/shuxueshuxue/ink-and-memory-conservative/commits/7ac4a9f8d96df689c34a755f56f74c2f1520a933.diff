@@ -1,0 +1,40 @@
+*** MODIFIED: frontend/src/App.tsx (+1/-3) ***
+@@ -5,8 +5,7 @@ import { ChatWidget } from './engine/ChatWidget';
+ import type { ChatWidgetData } from './engine/ChatWidget';
+ import './App.css';
+ import {
+-  FaSync, FaBold, FaItalic, FaUnderline, FaAlignLeft, FaAlignCenter,
+-  FaAlignRight, FaListUl, FaListOl, FaQuoteRight, FaTable, FaLink, FaImage,
++  FaSync,
+   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
+ } from 'react-icons/fa';
+@@ -983,7 +982,6 @@ export default function App() {
+                       const textCell = cell as TextCell;
+                       // Use local text if available, otherwise use engine state
+                       const content = localTexts.get(cell.id) ?? textCell.content;
+-                      const lineCount = Math.max(content.split('\n').length, 1);
+ 
+                       return (
+                         <div key={cell.id} style={{ position: 'relative' }}>
+
+*** MODIFIED: frontend/src/components/AgentDropdown.tsx (+0/-3) ***
+@@ -62,9 +62,6 @@ export default function AgentDropdown({ voices, position, onSelect, onClose }: A
+     const container = containerRef.current;
+ 
+     if (selectedItem && container) {
+-      const itemRect = selectedItem.getBoundingClientRect();
+-      const containerRect = container.getBoundingClientRect();
+-
+       // Calculate positions relative to container
+       const itemTop = selectedItem.offsetTop;
+       const itemBottom = itemTop + selectedItem.offsetHeight;
+
+*** MODIFIED: frontend/src/components/ChatWidgetUI.tsx (+1/-1) ***
+@@ -1,5 +1,5 @@
+ import React, { useState, useRef, useEffect } from 'react';
+-import type { ChatWidgetData, ChatMessage } from '../engine/ChatWidget';
++import type { ChatWidgetData } from '../engine/ChatWidget';
+ import {
+   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass

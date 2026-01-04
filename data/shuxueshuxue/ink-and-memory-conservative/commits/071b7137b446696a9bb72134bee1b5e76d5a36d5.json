@@ -1,0 +1,23 @@
+{
+  "sha": "071b7137b446696a9bb72134bee1b5e76d5a36d5",
+  "message": "change chosen day indicator in calendar popup",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-10T09:49:46Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-10T09:49:46Z"
+  },
+  "stats": {
+    "total": 50,
+    "additions": 23,
+    "deletions": 27
+  },
+  "files_count": 1,
+  "parents": [
+    "0ee7351021ad2d44de72fe7cf49b831a99f07f4a"
+  ]
+}

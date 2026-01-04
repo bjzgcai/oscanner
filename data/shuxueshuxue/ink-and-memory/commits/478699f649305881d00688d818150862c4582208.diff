@@ -1,0 +1,15 @@
+*** FILE: frontend/src/components/BookPage.tsx ***
+@@ -1,4 +1,4 @@
+-import { ReactNode, forwardRef } from 'react';
++import { type ReactNode, forwardRef } from 'react';
+ 
+ interface BookPageProps {
+   children?: ReactNode;
+
+*** FILE: frontend/src/components/VoicesPanel.tsx ***
+@@ -1,4 +1,4 @@
+-import { ReactNode, useRef, useEffect } from 'react';
++import { type ReactNode, useRef, useEffect } from 'react';
+ import BookPage from './BookPage';
+ 
+ interface VoicesPanelProps {

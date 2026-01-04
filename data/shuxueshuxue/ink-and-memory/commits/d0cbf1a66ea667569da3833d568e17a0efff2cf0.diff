@@ -1,0 +1,870 @@
+*** FILE: backend/database.py ***
+@@ -1071,16 +1071,40 @@ def get_session(user_id: int, session_id: str):
+         db.close()
+ 
+ def list_sessions(user_id: int):
+-    """List all sessions for a user."""
++    """List all sessions for a user with a lightweight preview."""
+     db = get_db()
+     try:
+         rows = db.execute("""
+-        SELECT id, name, created_at, updated_at
++        SELECT id, name, editor_state_json, created_at, updated_at
+         FROM user_sessions
+         WHERE user_id = ?
+         ORDER BY updated_at DESC
+         """, (user_id,)).fetchall()
+-        return [dict(row) for row in rows]
++
++        results = []
++        for row in rows:
++            first_line = ""
++            try:
++                state = json.loads(row["editor_state_json"])
++                first_text = next(
++                    (c.get("content", "").strip() for c in state.get("cells", []) if c.get("type") == "text" and c.get("content")),
++                    ""
++                )
++                if first_text:
++                    first_line = first_text.split("\n")[0][:30]
++            except Exception:
++                first_line = ""
++
++            results.append(
++                {
++                    "id": row["id"],
++                    "name": row["name"],
++                    "created_at": row["created_at"],
++                    "updated_at": row["updated_at"],
++                    "first_line": first_line,
++                }
++            )
++        return results
+     finally:
+         db.close()
+ 
+
+*** FILE: backend/server.py ***
+@@ -9,6 +9,7 @@
+     time.tzset()
+ 
+ import asyncio
++from datetime import datetime
+ import httpx
+ from fastapi import FastAPI, HTTPException, Depends, Header, WebSocket
+ from fastapi.middleware.cors import CORSMiddleware
+@@ -1256,15 +1257,40 @@ def import_calendar_recovery(
+     return {"success": True, "imported": {"sessions": len(sessions)}}
+ 
+ 
++def _clean_timestamp(ts_raw: Optional[str]) -> Optional[datetime]:
++    """Best-effort ISO parser for timestamps stored in DB."""
++    if not ts_raw:
++        return None
++    try:
++        cleaned = ts_raw.replace("Z", "+00:00")
++        if "T" not in cleaned and " " in cleaned:
++            cleaned = cleaned.replace(" ", "T")
++        return datetime.fromisoformat(cleaned)
++    except Exception:
++        return None
++
++
+ @app.get("/api/sessions")
+-def list_sessions(current_user: dict = Depends(get_current_user)):
++def list_sessions(timezone: str = "Asia/Shanghai", current_user: dict = Depends(get_current_user)):
+     """
+     List all sessions for current user.
+-    Returns: Array of session metadata (without full editor state)
++    Returns: Array of session metadata (without full editor state) plus local day key + first line.
+     """
+     user_id = current_user["user_id"]
++    try:
++        from zoneinfo import ZoneInfo
++        tz = ZoneInfo(timezone)
++    except Exception:
++        raise HTTPException(status_code=400, detail="Invalid timezone")
++
+     sessions = database.list_sessions(user_id)
+-    return {"sessions": sessions}
++    enriched = []
++    for s in sessions:
++        dt = _clean_timestamp(s.get("created_at") or s.get("updated_at"))
++        date_key = dt.astimezone(tz).strftime("%Y-%m-%d") if dt else None
++        enriched.append({**s, "date_key": date_key})
++
++    return {"sessions": enriched}
+ 
+ @app.get("/api/sessions/aggregate")
+ def get_sessions_aggregate(timezone: str = "Asia/Shanghai", current_user: dict = Depends(get_current_user)):
+
+*** FILE: frontend/src/App.tsx ***
+@@ -3028,6 +3028,7 @@ export default function App() {
+           onEntryDeleted={handleCalendarEntryDeleted}
+           onClose={() => setShowCalendarPopup(false)}
+           timezone={userTimezone}
++          initialDateKey={getLocalDayKey(state?.createdAt, userTimezone) ?? getTodayKeyInTimezone(userTimezone)}
+         />
+       )}
+     </>
+
+*** FILE: frontend/src/api/voiceApi.ts ***
+@@ -390,10 +390,14 @@ export async function saveSession(sessionId: string, editorState: any, name?: st
+ }
+ 
+ /**
+- * List all sessions
++ * List all sessions (metadata only). If timezone is provided, the backend will include a local-day key.
+  */
+-export async function listSessions(): Promise<any[]> {
+-  const response = await fetch(`${API_BASE}/api/sessions`, {
++export async function listSessions(timezone?: string): Promise<any[]> {
++  const url = timezone
++    ? `${API_BASE}/api/sessions?timezone=${encodeURIComponent(timezone)}`
++    : `${API_BASE}/api/sessions`;
++
++  const response = await fetch(url, {
+     headers: getAuthHeaders()
+   });
+ 
+
+*** FILE: frontend/src/components/CalendarPopup.tsx ***
+@@ -8,67 +8,106 @@ import {
+   deleteEntry,
+   type CalendarEntry
+ } from '../utils/calendarStorage';
+-import { loadSessionsGroupedByDate } from '../utils/sessionGrouping';
+ import { useAuth } from '../contexts/AuthContext';
++import { parseFlexibleTimestamp } from '../utils/timezone';
+ 
+ interface Props {
+   onLoadEntry: (entry: CalendarEntry) => void;
+   onClose: () => void;
+   currentEntryId?: string | null;
+   onEntryDeleted?: (entryId: string) => void;
+   timezone: string;
++  initialDateKey?: string | null;
+ }
+ 
+-export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, onEntryDeleted, timezone }: Props) {
++type CalendarListEntry = {
++  id: string;
++  timestamp: number;
++  firstLine: string;
++  state?: CalendarEntry['state'];
++};
++
++export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, onEntryDeleted, timezone, initialDateKey }: Props) {
+   const { isAuthenticated } = useAuth();
+   const { t, i18n } = useTranslation();
+   const dateLocale = getDateLocale(i18n.language);
+-  const [currentMonth, setCurrentMonth] = useState(new Date());
+-  const [selectedDate, setSelectedDate] = useState<string | null>(getTodayKey());
+-  const [calendarData, setCalendarData] = useState<Record<string, CalendarEntry[]>>({});
++  const [currentMonth, setCurrentMonth] = useState(() => {
++    if (initialDateKey) {
++      const [y, m] = initialDateKey.split('-').map(Number);
++      return new Date(y, m - 1, 1);
++    }
++    return new Date();
++  });
++  const [selectedDate, setSelectedDate] = useState<string | null>(initialDateKey ?? getTodayKey());
++  const [calendarData, setCalendarData] = useState<Record<string, CalendarListEntry[]>>({});
++
++  useEffect(() => {
++    if (initialDateKey) {
++      setSelectedDate(initialDateKey);
++      const [y, m] = initialDateKey.split('-').map(Number);
++      setCurrentMonth(new Date(y, m - 1, 1));
++    }
++  }, [initialDateKey]);
+ 
+-  // @@@ Shared loader for calendar data (DB or localStorage)
+   const refreshCalendarData = useCallback(async () => {
+     if (isAuthenticated) {
+       try {
+-        const { listSessions, getSession } = await import('../api/voiceApi');
+-        const grouped = await loadSessionsGroupedByDate(listSessions, getSession, {
+-          requireName: true,
+-          timezone
++        const { listSessions } = await import('../api/voiceApi');
++        const sessions = await listSessions(timezone);
++        const grouped: Record<string, CalendarListEntry[]> = {};
++
++        sessions.forEach((session: any) => {
++          const dateKey = session.date_key || getTodayKey();
++          const tsRaw = session.updated_at || session.created_at;
++          const ts = parseFlexibleTimestamp(tsRaw)?.getTime() ?? Date.now();
++          const firstLine = session.first_line || session.name || 'Untitled';
++          if (!grouped[dateKey]) grouped[dateKey] = [];
++          grouped[dateKey].push({
++            id: session.id,
++            timestamp: ts,
++            firstLine
++          });
+         });
++
+         setCalendarData(grouped);
+         return;
+       } catch (error) {
+         console.error('Failed to load calendar from database:', error);
+       }
+     }
+-    setCalendarData(getCalendarData());
++    const localData = getCalendarData();
++    const mapped: Record<string, CalendarListEntry[]> = {};
++    Object.entries(localData).forEach(([dateKey, entries]) => {
++      mapped[dateKey] = entries.map((entry) => ({
++        id: entry.id,
++        timestamp: entry.timestamp,
++        firstLine: entry.firstLine,
++        state: entry.state
++      }));
++    });
++    setCalendarData(mapped);
+   }, [isAuthenticated, timezone]);
+ 
+-  // @@@ Initial load
+   useEffect(() => {
+     refreshCalendarData();
+   }, [refreshCalendarData]);
+ 
+   const today = getTodayKey();
+   const datesWithEntries = Object.keys(calendarData);
+ 
+-  // Calculate calendar grid
+   const year = currentMonth.getFullYear();
+   const month = currentMonth.getMonth();
+   const firstDay = new Date(year, month, 1);
+   const lastDay = new Date(year, month + 1, 0);
+   const daysInMonth = lastDay.getDate();
+-  const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday
++  const startingDayOfWeek = firstDay.getDay();
+ 
+   const days: Array<{ date: number; dateKey: string; hasEntries: boolean; isToday: boolean } | null> = [];
+ 
+-  // Add empty slots for days before month starts
+   for (let i = 0; i < startingDayOfWeek; i++) {
+     days.push(null);
+   }
+ 
+-  // Add days of the month
+   for (let date = 1; date <= daysInMonth; date++) {
+     const dateObj = new Date(year, month, date);
+     const dateKey = getDateKey(dateObj);
+@@ -91,25 +130,23 @@ export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, on
+   const handleDateClick = (dateKey: string) => {
+     setSelectedDate(dateKey);
+   };
++
+   const weekdayFormatter = new Intl.DateTimeFormat(dateLocale, { weekday: 'short' });
+   const weekdayLabels = Array.from({ length: 7 }, (_, idx) => weekdayFormatter.format(new Date(Date.UTC(2023, 0, idx + 1))));
+ 
+   const handleDeleteEntry = async (dateKey: string, entryId: string) => {
+     if (confirm(t('calendar.deleteConfirm'))) {
+       if (isAuthenticated) {
+         try {
+-          // Delete from database
+           const { deleteSession } = await import('../api/voiceApi');
+           await deleteSession(entryId);
+-
+           await refreshCalendarData();
+           onEntryDeleted?.(entryId);
+         } catch (error) {
+           console.error('Failed to delete from database:', error);
+           alert(t('calendar.deleteError'));
+         }
+       } else {
+-        // Guest mode: delete from localStorage
+         deleteEntry(dateKey, entryId);
+         setCalendarData(getCalendarData());
+         onEntryDeleted?.(entryId);
+@@ -119,6 +156,33 @@ export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, on
+ 
+   const selectedEntries = selectedDate ? calendarData[selectedDate] || [] : [];
+ 
++  const handleOpenEntry = async (entry: CalendarListEntry) => {
++    if (isAuthenticated) {
++      try {
++        const { getSession } = await import('../api/voiceApi');
++        const full = await getSession(entry.id);
++        if (!full?.editor_state) {
++          alert(t('calendar.loadError'));
++          return;
++        }
++        const payload: CalendarEntry = {
++          id: entry.id,
++          timestamp: entry.timestamp,
++          state: full.editor_state,
++          firstLine: entry.firstLine
++        };
++        onLoadEntry(payload);
++        onClose();
++      } catch (error) {
++        console.error('Failed to load session:', error);
++        alert(t('calendar.loadError'));
++      }
++    } else if (entry.state) {
++      onLoadEntry(entry as CalendarEntry);
++      onClose();
++    }
++  };
++
+   return (
+     <div
+       style={{
+@@ -127,136 +191,136 @@ export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, on
+         left: 0,
+         right: 0,
+         bottom: 0,
+-        background: 'rgba(0,0,0,0.3)',
++        background: 'rgba(0,0,0,0.4)',
+         display: 'flex',
+         alignItems: 'center',
+         justifyContent: 'center',
+         zIndex: 2000,
+-        backdropFilter: 'blur(2px)'
++        backdropFilter: 'blur(4px)'
+       }}
+       onClick={onClose}
+     >
+       <div
++        role="presentation"
+         style={{
+-          background: '#fffef9',
+-          border: '2px solid #d0c4b0',
+-          borderRadius: '12px',
+-          width: '90%',
+-          maxWidth: '600px',
+-          maxHeight: '80vh',
+-          overflow: 'auto',
+-          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+-          fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++          display: 'flex',
++          gap: '24px',
++          alignItems: 'flex-start',
++          justifyContent: 'center',
++          maxWidth: '1100px',
++          width: 'min(94vw, 1100px)',
++          maxHeight: '85vh',
++          margin: '0 auto'
+         }}
+-        onClick={(e) => e.stopPropagation()}
+       >
+-        {/* Header */}
+-        <div style={{
+-          padding: '20px',
+-          borderBottom: '1px solid #e0d4c0',
+-          display: 'flex',
+-          justifyContent: 'space-between',
+-          alignItems: 'center',
+-          gap: '12px'
+-        }}>
+-          <div style={{ flex: 1 }}>
+-            <h2 style={{
+-              margin: 0,
+-              fontSize: '18px',
+-              fontWeight: 600,
+-              color: '#333'
+-            }}>
+-              {t('calendar.title')}
+-            </h2>
+-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#777' }}>
+-              {t('calendar.subtitle')}
+-            </p>
+-          </div>
+-          <button
+-            onClick={onClose}
+-            style={{
+-              border: 'none',
+-              background: 'transparent',
+-              fontSize: '24px',
+-              cursor: 'pointer',
+-              color: '#666',
+-              padding: '0 8px',
+-              lineHeight: 1
+-            }}
+-          >
+-            ×
+-          </button>
+-        </div>
+-
+-        <div style={{ padding: '20px' }}>
+-          {/* Month navigation */}
++        {/* Calendar grid - LEFT */}
++        <div
++          onClick={(e) => e.stopPropagation()}
++          style={{
++            flex: '0 0 auto',
++            width: '460px',
++            background: 'linear-gradient(145deg, #fffef9 0%, #faf8f3 100%)',
++            border: '2px solid #d0c4b0',
++            borderRadius: '16px',
++            padding: '20px',
++            boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
++            fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++          }}
++        >
++          {/* Month header */}
+           <div style={{
+             display: 'flex',
+-            justifyContent: 'space-between',
+             alignItems: 'center',
+-            marginBottom: '16px'
++            justifyContent: 'space-between',
++            marginBottom: '20px'
+           }}>
+             <button
+               onClick={handlePrevMonth}
+               style={{
+-                border: '1px solid #d0c4b0',
+-                background: '#fff',
+-                borderRadius: '4px',
+-                padding: '6px 12px',
++                border: 'none',
++                background: 'transparent',
+                 cursor: 'pointer',
+-                fontSize: '14px',
+-                fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++                fontSize: '20px',
++                padding: '8px 12px',
++                borderRadius: '8px',
++                color: '#666',
++                transition: 'all 0.2s'
++              }}
++              onMouseEnter={(e) => {
++                e.currentTarget.style.background = '#f0ebe0';
++                e.currentTarget.style.color = '#333';
++              }}
++              onMouseLeave={(e) => {
++                e.currentTarget.style.background = 'transparent';
++                e.currentTarget.style.color = '#666';
+               }}
+             >
+-              {t('calendar.prev')}
++              ‹
+             </button>
+             <div style={{
+-              fontSize: '16px',
++              fontSize: '20px',
+               fontWeight: 600,
+-              color: '#333'
++              color: '#2c2c2c',
++              letterSpacing: '0.5px'
+             }}>
+               {currentMonth.toLocaleDateString(dateLocale, { month: 'long', year: 'numeric' })}
+             </div>
+             <button
+               onClick={handleNextMonth}
+               style={{
+-                border: '1px solid #d0c4b0',
+-                background: '#fff',
+-                borderRadius: '4px',
+-                padding: '6px 12px',
++                border: 'none',
++                background: 'transparent',
+                 cursor: 'pointer',
+-                fontSize: '14px',
+-                fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++                fontSize: '20px',
++                padding: '8px 12px',
++                borderRadius: '8px',
++                color: '#666',
++                transition: 'all 0.2s'
++              }}
++              onMouseEnter={(e) => {
++                e.currentTarget.style.background = '#f0ebe0';
++                e.currentTarget.style.color = '#333';
++              }}
++              onMouseLeave={(e) => {
++                e.currentTarget.style.background = 'transparent';
++                e.currentTarget.style.color = '#666';
+               }}
+             >
+-              {t('calendar.next')}
++              ›
+             </button>
+           </div>
+ 
+-          {/* Calendar grid */}
++          {/* Weekday headers */}
+           <div style={{
+             display: 'grid',
+             gridTemplateColumns: 'repeat(7, 1fr)',
+             gap: '4px',
+-            marginBottom: '20px'
++            marginBottom: '8px'
+           }}>
+-            {/* Day headers */}
+             {weekdayLabels.map((label, idx) => (
+               <div key={`${label}-${idx}`} style={{
+                 textAlign: 'center',
+                 fontSize: '12px',
+                 fontWeight: 600,
+-                color: '#888',
+-                padding: '4px 0'
++                color: '#999',
++                padding: '8px 0',
++                textTransform: 'uppercase',
++                letterSpacing: '0.5px'
+               }}>
+                 {label}
+               </div>
+             ))}
++          </div>
+ 
+-            {/* Days */}
++          {/* Days grid */}
++          <div style={{
++            display: 'grid',
++            gridTemplateColumns: 'repeat(7, 1fr)',
++            gap: '6px'
++          }}>
+             {days.map((day, idx) => {
+               if (!day) {
+-                return <div key={`empty-${idx}`} />;
++                return <div key={`empty-${idx}`} style={{ aspectRatio: '1' }} />;
+               }
+ 
+               const isSelected = selectedDate === day.dateKey;
+@@ -266,87 +330,155 @@ export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, on
+                   key={day.dateKey}
+                   onClick={() => handleDateClick(day.dateKey)}
+                   style={{
+-                    border: day.isToday ? '2px solid #333' : '1px solid #e0d4c0',
+-                    background: isSelected ? '#e3f2fd' : day.hasEntries ? '#fff' : '#fafafa',
+-                    borderRadius: '6px',
+-                    padding: '8px',
++                    aspectRatio: '1',
++                    border: 'none',
++                    background: isSelected
++                      ? 'linear-gradient(135deg, #4a90d9 0%, #357abd 100%)'
++                      : day.hasEntries
++                        ? '#fff'
++                        : 'transparent',
++                    borderRadius: '10px',
+                     cursor: 'pointer',
+-                    fontSize: '14px',
++                    fontSize: '15px',
+                     fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
+                     position: 'relative',
+-                    minHeight: '40px',
+                     display: 'flex',
+                     flexDirection: 'column',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+-                    transition: 'all 0.2s'
++                    transition: 'all 0.2s',
++                    boxShadow: isSelected
++                      ? '0 4px 12px rgba(74, 144, 217, 0.4)'
++                      : day.hasEntries
++                        ? '0 2px 8px rgba(0,0,0,0.08)'
++                        : 'none',
++                    color: isSelected && !day.isToday ? '#fff' : '#333',
++                    fontWeight: day.isToday || isSelected ? 700 : 400
+                   }}
+                   onMouseEnter={(e) => {
+                     if (!isSelected) {
+-                      e.currentTarget.style.background = '#f5f5f5';
++                      e.currentTarget.style.background = '#f0ebe0';
++                      e.currentTarget.style.transform = 'scale(1.05)';
+                     }
+                   }}
+                   onMouseLeave={(e) => {
+                     if (!isSelected) {
+-                      e.currentTarget.style.background = day.hasEntries ? '#fff' : '#fafafa';
++                      e.currentTarget.style.background = day.hasEntries ? '#fff' : 'transparent';
++                      e.currentTarget.style.transform = 'scale(1)';
+                     }
+                   }}
+                 >
+-                  <div style={{ fontWeight: day.isToday ? 600 : 400 }}>
+-                    {day.date}
+-                  </div>
++                  {day.isToday ? (
++                    <span style={{
++                      display: 'inline-flex',
++                      alignItems: 'center',
++                      justifyContent: 'center',
++                      width: 28,
++                      height: 28,
++                      borderRadius: '50%',
++                      border: '2px solid #fb8c00',
++                      color: '#333',
++                      background: isSelected ? 'rgba(255,255,255,0.9)' : 'transparent'
++                    }}>
++                      {day.date}
++                    </span>
++                  ) : (
++                    <span>{day.date}</span>
++                  )}
+                   {day.hasEntries && (
+                     <div style={{
+-                      width: '6px',
+-                      height: '6px',
++                      position: 'absolute',
++                      bottom: '6px',
++                      width: '5px',
++                      height: '5px',
+                       borderRadius: '50%',
+-                      background: '#2196F3',
+-                      marginTop: '2px'
++                      background: isSelected ? 'rgba(255,255,255,0.8)' : '#4a90d9'
+                     }} />
+                   )}
+                 </button>
+               );
+             })}
+           </div>
++        </div>
+ 
+-          {/* Entry list */}
+-          {selectedDate && (
+-            <div>
++        {/* Entry list - RIGHT */}
++        {selectedDate && (
++          <div
++            style={{
++              flex: '1 1 380px',
++              minWidth: '320px',
++              maxWidth: '480px',
++              maxHeight: '70vh',
++              display: 'flex',
++              flexDirection: 'column'
++            }}
++          >
++            {/* Header */}
++            <div
++              onClick={(e) => e.stopPropagation()}
++              style={{
++                background: 'rgba(255,255,255,0.95)',
++                borderRadius: '12px 12px 0 0',
++                padding: '16px 20px',
++                borderBottom: '1px solid #e0d4c0',
++                backdropFilter: 'blur(8px)',
++                boxShadow: '0 -4px 20px rgba(0,0,0,0.05)'
++              }}
++            >
+               <div style={{
+-                fontSize: '14px',
++                fontSize: '16px',
+                 fontWeight: 600,
+-                color: '#666',
+-                marginBottom: '12px',
+-                borderBottom: '1px solid #e0d4c0',
+-                paddingBottom: '8px'
++                color: '#444',
++                fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
+               }}>
+                 {selectedDate === today
+                   ? t('calendar.todayLabel')
+                   : new Date(selectedDate + 'T00:00:00').toLocaleDateString(dateLocale, {
+-                      year: 'numeric',
+-                      month: 'long',
+-                      day: 'numeric',
+-                      weekday: 'long'
+-                    })}
+-                {selectedEntries.length > 0 && ` (${t('calendar.entriesLabel', { count: selectedEntries.length })})`}
++                    year: 'numeric',
++                    month: 'long',
++                    day: 'numeric',
++                    weekday: 'short'
++                  })}
+               </div>
++              {selectedEntries.length > 0 && (
++                <div style={{
++                  fontSize: '13px',
++                  color: '#888',
++                  marginTop: '4px'
++                }}>
++                  {t('calendar.entriesLabel', { count: selectedEntries.length })}
++                </div>
++              )}
++            </div>
+ 
++            {/* Entries list */}
++            <div
++              onClick={(e) => e.stopPropagation()}
++              style={{
++                background: 'rgba(255,255,255,0.92)',
++                borderRadius: '0 0 12px 12px',
++                padding: '12px',
++                flex: 1,
++                overflow: 'auto',
++                backdropFilter: 'blur(8px)',
++                boxShadow: '0 12px 40px rgba(0,0,0,0.15)'
++              }}
++            >
+               {selectedEntries.length === 0 ? (
+                 <div style={{
+                   textAlign: 'center',
+                   color: '#999',
+-                  padding: '20px',
+-                  fontSize: '14px'
++                  padding: '32px 20px',
++                  fontSize: '14px',
++                  fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
+                 }}>
+                   {t('calendar.noEntriesForDate')}
+                 </div>
+               ) : (
+                 <div style={{
+                   display: 'flex',
+                   flexDirection: 'column',
+-                  gap: '8px',
+-                  maxHeight: '200px',
+-                  overflow: 'auto'
++                  gap: '10px'
+                 }}>
+                   {selectedEntries.map((entry) => {
+                     const isCurrentEntry = currentEntryId === entry.id;
+@@ -359,85 +491,100 @@ export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, on
+                       <div
+                         key={entry.id}
+                         style={{
+-                          border: isCurrentEntry ? '2px solid #4CAF50' : '1px solid #d0c4b0',
+-                          borderRadius: '6px',
+-                          padding: '12px',
+-                          background: isCurrentEntry ? '#f0fff4' : '#fff',
++                          borderRadius: '10px',
++                          padding: '14px 16px',
++                          background: isCurrentEntry
++                            ? 'linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%)'
++                            : '#fff',
+                           display: 'flex',
+                           justifyContent: 'space-between',
+                           alignItems: 'center',
+                           gap: '12px',
+-                          boxShadow: isCurrentEntry ? '0 0 0 1px rgba(76, 175, 80, 0.1)' : 'none'
++                          boxShadow: isCurrentEntry
++                            ? '0 2px 12px rgba(76, 175, 80, 0.2), inset 0 0 0 2px #4CAF50'
++                            : '0 2px 8px rgba(0,0,0,0.06)',
++                          transition: 'all 0.2s',
++                          minWidth: 0
+                         }}
+                       >
+                         <button
+                           title={t('calendar.openButton')}
+-                          onClick={() => onLoadEntry(entry)}
++                          onClick={() => handleOpenEntry(entry)}
+                           style={{
+                             flex: 1,
+                             textAlign: 'left',
+                             border: 'none',
+                             background: 'transparent',
+                             cursor: 'pointer',
+                             padding: 0,
+-                            fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++                            fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
++                            minWidth: 0
+                           }}
+                         >
+                           <div style={{
+                             display: 'flex',
+                             alignItems: 'center',
+-                            gap: '8px',
+-                            marginBottom: '4px'
++                            gap: '10px',
++                            marginBottom: '6px'
+                           }}>
+                             <div style={{
+                               fontSize: '12px',
+-                              color: '#999'
++                              color: '#888',
++                              fontWeight: 500,
++                              flexShrink: 0
+                             }}>
+                               {time}
+                             </div>
+                             {isCurrentEntry && (
+                               <span style={{
+-                                fontSize: '11px',
++                                fontSize: '10px',
+                                 letterSpacing: '0.05em',
+                                 textTransform: 'uppercase',
+-                                padding: '2px 6px',
++                                padding: '3px 8px',
+                                 borderRadius: '999px',
+-                                border: '1px solid #4CAF50',
+-                                color: '#256029',
+-                                background: '#e8f5e9',
+-                                fontWeight: 600
++                                background: '#4CAF50',
++                                color: '#fff',
++                                fontWeight: 600,
++                                flexShrink: 0
+                               }}>
+                                 {t('calendar.currentEntryLabel')}
+                               </span>
+                             )}
+                           </div>
+                           <div style={{
+                             fontSize: '14px',
+-                            color: '#333'
++                            color: '#333',
++                            lineHeight: 1.4,
++                            overflow: 'hidden',
++                            textOverflow: 'ellipsis',
++                            whiteSpace: 'nowrap',
++                            display: 'block',
++                            maxWidth: '100%'
+                           }}>
+                             {entry.firstLine}
+                           </div>
+                         </button>
+                         <button
+                           onClick={() => handleDeleteEntry(selectedDate, entry.id)}
+                           style={{
+-                            border: '1px solid #d44',
+-                            background: '#fff',
+-                            borderRadius: '4px',
+-                            padding: '4px 8px',
++                            border: 'none',
++                            background: 'transparent',
++                            borderRadius: '6px',
++                            padding: '6px 10px',
+                             cursor: 'pointer',
+                             fontSize: '12px',
+-                            color: '#d44',
++                            color: '#999',
+                             fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif",
+-                            transition: 'all 0.2s'
++                            transition: 'all 0.2s',
++                            flexShrink: 0
+                           }}
+                           onMouseEnter={(e) => {
+-                            e.currentTarget.style.background = '#d44';
+-                            e.currentTarget.style.color = '#fff';
++                            e.currentTarget.style.background = '#fee';
++                            e.currentTarget.style.color = '#d44';
+                           }}
+                           onMouseLeave={(e) => {
+-                            e.currentTarget.style.background = '#fff';
+-                            e.currentTarget.style.color = '#d44';
++                            e.currentTarget.style.background = 'transparent';
++                            e.currentTarget.style.color = '#999';
+                           }}
+                         >
+                           {t('calendar.deleteButton')}
+@@ -448,8 +595,8 @@ export default function CalendarPopup({ onLoadEntry, onClose, currentEntryId, on
+                 </div>
+               )}
+             </div>
+-          )}
+-        </div>
++          </div>
++        )}
+       </div>
+     </div>
+   );
+
+*** FILE: frontend/src/components/CollectionsView.tsx ***
+@@ -533,7 +533,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, friendToSelect, onF
+       if (isAuthenticated) {
+         try {
+           const { listSessions, getSession } = await import('../api/voiceApi');
+-          const groupedEntries = await loadSessionsGroupedByDate(listSessions, getSession, {
++          const groupedEntries = await loadSessionsGroupedByDate(() => listSessions(timezone), getSession, {
+             requireName: true,
+             timezone
+           });

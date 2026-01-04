@@ -1,0 +1,23 @@
+{
+  "sha": "f22ba0c2caf239b5d52191ae1b80783731b1e4db",
+  "message": "Remove video file, keep screenshots only",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-07T14:15:53Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-07T14:15:53Z"
+  },
+  "stats": {
+    "total": 0,
+    "additions": 0,
+    "deletions": 0
+  },
+  "files_count": 1,
+  "parents": [
+    "e5dcc21a74434799d6c4c71c5282191ff6a2b39b"
+  ]
+}

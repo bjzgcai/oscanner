@@ -1,0 +1,23 @@
+{
+  "sha": "5fc58fec75ce9c955b74d9816434e1bc9cac3b30",
+  "message": "modularize textcell and voiceinput",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-11T13:58:41Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-11T13:58:41Z"
+  },
+  "stats": {
+    "total": 802,
+    "additions": 468,
+    "deletions": 334
+  },
+  "files_count": 4,
+  "parents": [
+    "a5cc6080a1837a8688356eb468647ea2f0cd4d78"
+  ]
+}

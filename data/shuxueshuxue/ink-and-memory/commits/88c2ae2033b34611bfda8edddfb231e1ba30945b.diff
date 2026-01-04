@@ -1,0 +1,154 @@
+*** FILE: frontend/src/components/CollectionsView.tsx ***
+@@ -197,7 +197,6 @@ const INITIAL_PAST_DAYS = 10;
+ const INITIAL_FUTURE_DAYS = 10;
+ const CHUNK_SIZE = 14;
+ const MAX_PAST_DAYS = 365;
+-const MAX_FUTURE_DAYS = 365;
+ const LOAD_THRESHOLD_PX = 200;
+ const VIRTUAL_BUFFER = 5;
+ 
+@@ -412,13 +411,12 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+   const [initialLoading, setInitialLoading] = useState(true);
+   const [loadingCommentsForDate, setLoadingCommentsForDate] = useState<string | null>(null);
+   const [loadingPast, setLoadingPast] = useState(false);
+-  const [loadingFuture, setLoadingFuture] = useState(false);
+   const [hasMorePast, setHasMorePast] = useState(true);
+-  const [hasMoreFuture, setHasMoreFuture] = useState(true);
+   const [scrollTopValue, setScrollTopValue] = useState(0);
+   const [viewportHeight, setViewportHeight] = useState(0);
+   const [pendingInitialScroll, setPendingInitialScroll] = useState(true);
+   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
++  const topSentinelRef = useRef<HTMLDivElement | null>(null);
+   const loadedRangesRef = useRef<Set<string>>(new Set());
+ 
+   const mergeSessions = useCallback((sessions: SessionSummary[]) => {
+@@ -489,9 +487,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+ 
+     setInitialLoading(true);
+     setLoadingPast(false);
+-    setLoadingFuture(false);
+     setHasMorePast(true);
+-    setHasMoreFuture(true);
+     setPendingInitialScroll(true);
+     setDays(buildDayRange(start, end));
+     setSessionSummaries(new Map());
+@@ -605,39 +601,6 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+     setLoadingPast(false);
+   }, [days, hasMorePast, isAuthenticated, loadRange, loadingPast]);
+ 
+-  const loadFutureChunk = useCallback(async () => {
+-    if (loadingFuture || !hasMoreFuture || days.length === 0) return;
+-    setLoadingFuture(true);
+-    const lastDay = days[days.length - 1];
+-    const lastDate = startOfDay(new Date(lastDay.date));
+-    const desiredEnd = addDays(lastDate, CHUNK_SIZE);
+-    const maxDate = addDays(startOfDay(new Date()), MAX_FUTURE_DAYS);
+-    const actualEnd = desiredEnd > maxDate ? maxDate : desiredEnd;
+-    const actualStart = addDays(lastDate, 1);
+-
+-    if (actualStart.getTime() > actualEnd.getTime()) {
+-      setHasMoreFuture(false);
+-      setLoadingFuture(false);
+-      return;
+-    }
+-
+-    const newDays = buildDayRange(actualStart, actualEnd);
+-
+-    setDays(prev => {
+-      const existing = new Set(prev.map(d => d.date));
+-      const merged = [...prev, ...newDays.filter(d => !existing.has(d.date))];
+-      return merged;
+-    });
+-
+-    if (isAuthenticated) {
+-      await loadRange(actualStart, actualEnd);
+-    }
+-
+-    const reachedMax = actualEnd.getTime() >= maxDate.getTime();
+-    setHasMoreFuture(!reachedMax);
+-    setLoadingFuture(false);
+-  }, [days, hasMoreFuture, isAuthenticated, loadRange, loadingFuture]);
+-
+   // @@@ Group items by date
+   const timelineByDate = useMemo(() => {
+     const map = new Map<string, TimelineEntryData>();
+@@ -667,16 +630,30 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+     const container = scrollContainerRef.current;
+     if (!container) return;
+ 
++    const observer = new IntersectionObserver(
++      (entries) => {
++        entries.forEach(entry => {
++          if (entry.isIntersecting && entry.target === topSentinelRef.current) {
++            loadPastChunk();
++          }
++        });
++      },
++      {
++        root: container,
++        rootMargin: `${LOAD_THRESHOLD_PX}px 0px`,
++        threshold: 0
++      }
++    );
++
++    if (topSentinelRef.current) observer.observe(topSentinelRef.current);
++
+     const handleScroll = () => {
+       const top = container.scrollTop;
+       setScrollTopValue(top);
+ 
+       if (top < LOAD_THRESHOLD_PX) {
+         loadPastChunk();
+       }
+-      if (top + container.clientHeight > container.scrollHeight - LOAD_THRESHOLD_PX) {
+-        loadFutureChunk();
+-      }
+     };
+ 
+     const handleResize = () => {
+@@ -688,10 +665,11 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+     handleResize();
+ 
+     return () => {
++      observer.disconnect();
+       container.removeEventListener('scroll', handleScroll);
+       window.removeEventListener('resize', handleResize);
+     };
+-  }, [loadFutureChunk, loadPastChunk]);
++  }, [loadPastChunk]);
+ 
+   // @@@ Set initial scroll position to show today's row centered
+   useLayoutEffect(() => {
+@@ -878,6 +856,32 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+           }}
+         />
+ 
++        {/* Manual load controls */}
++        {hasMorePast && (
++          <button
++            onClick={loadPastChunk}
++            disabled={loadingPast}
++            style={{
++              position: 'absolute',
++              top: '0.5rem',
++              left: '50%',
++              transform: 'translateX(-50%)',
++              padding: '6px 12px',
++              border: '1px solid #b8a896',
++              background: loadingPast ? '#eee' : '#f7f0e6',
++              borderRadius: '6px',
++              cursor: loadingPast ? 'wait' : 'pointer',
++              zIndex: 20,
++              fontSize: '12px'
++            }}
++          >
++            {loadingPast ? 'Loading…' : 'Load earlier days'}
++          </button>
++        )}
++
++        {/* Sentinels for infinite load */}
++        <div ref={topSentinelRef} style={{ position: 'absolute', top: 0, height: '1px', width: '100%' }} />
++
+         {/* Cards */}
+         {renderedDays.map((day, localIndex) => {
+           const globalIndex = renderStart + localIndex;

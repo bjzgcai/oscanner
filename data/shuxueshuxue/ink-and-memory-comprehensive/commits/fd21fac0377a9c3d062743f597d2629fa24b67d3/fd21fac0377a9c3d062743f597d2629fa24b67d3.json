@@ -1,0 +1,20 @@
+{
+  "hash": "fd21fac0377a9c3d062743f597d2629fa24b67d3",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 2 15:57:36 2025 +0800",
+  "subject": "Remove remaining ProseMirror/TipTap CSS (64 lines)",
+  "files": [
+    "backend/data/ink-and-memory.db",
+    "frontend/src/App.css"
+  ],
+  "diff": "commits/fd21fac0377a9c3d062743f597d2629fa24b67d3/fd21fac0377a9c3d062743f597d2629fa24b67d3.diff",
+  "related_files": {
+    "backend/data/ink-and-memory.db": [
+      "frontend/src/App.css"
+    ],
+    "frontend/src/App.css": [
+      "backend/data/ink-and-memory.db"
+    ]
+  }
+}

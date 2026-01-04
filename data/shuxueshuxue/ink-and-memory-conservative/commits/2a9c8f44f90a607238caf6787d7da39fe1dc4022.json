@@ -1,0 +1,23 @@
+{
+  "sha": "2a9c8f44f90a607238caf6787d7da39fe1dc4022",
+  "message": "remove visitor mode from frontend",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-16T07:59:55Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-16T07:59:55Z"
+  },
+  "stats": {
+    "total": 60,
+    "additions": 3,
+    "deletions": 57
+  },
+  "files_count": 2,
+  "parents": [
+    "5fc58fec75ce9c955b74d9816434e1bc9cac3b30"
+  ]
+}

@@ -1,0 +1,235 @@
+*** MODIFIED: frontend/src/App.tsx (+15/-2) ***
+@@ -499,10 +499,19 @@ export default function App() {
+           setState(engine.getState());
+         }
+ 
+-        // @@@ Load selectedState from localStorage for guest mode
++        // @@@ Load selectedState with daily reset check
+         const savedState = localStorage.getItem(STORAGE_KEYS.SELECTED_STATE);
+-        if (savedState) {
++        const savedDate = localStorage.getItem('selected-state-date');
++        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
++
++        // Reset state if it's a new day
++        if (savedState && savedDate === today) {
+           setSelectedState(savedState);
++        } else {
++          // New day - clear the selection to show cube again
++          localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
++          localStorage.removeItem('selected-state-date');
++          setSelectedState(null);
+         }
+       }
+     };
+@@ -1042,17 +1051,21 @@ export default function App() {
+ 
+   const handleStateChoose = useCallback(async (stateId: string) => {
+     setSelectedState(stateId);
++    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+ 
+     // @@@ Save to database if authenticated, localStorage if guest
+     if (isAuthenticated) {
+       try {
+         const { savePreferences } = await import('./api/voiceApi');
+         await savePreferences({ selected_state: stateId });
++        // Also save date to localStorage for daily reset check
++        localStorage.setItem('selected-state-date', today);
+       } catch (error) {
+         console.error('Failed to save state to database:', error);
+       }
+     } else {
+       localStorage.setItem(STORAGE_KEYS.SELECTED_STATE, stateId);
++      localStorage.setItem('selected-state-date', today);
+     }
+   }, [isAuthenticated]);
+ 
+
+*** MODIFIED: frontend/src/components/StateChooser.tsx (+67/-39) ***
+@@ -1,4 +1,4 @@
+-import { useState, useEffect } from 'react';
++import { useState, useEffect, useRef } from 'react';
+ import { StateCube } from './StateCube';
+ import type { StateConfig } from '../types/voice';
+ 
+@@ -10,11 +10,16 @@ interface Props {
+ 
+ export default function StateChooser({ stateConfig, selectedState, onChoose }: Props) {
+   const [isExpanded, setIsExpanded] = useState(!selectedState);
++  const [shouldAnimate, setShouldAnimate] = useState(false);
++  const indicatorRef = useRef<HTMLDivElement>(null);
+ 
+   // @@@ Collapse when selectedState is set externally
+   useEffect(() => {
+     if (selectedState) {
+       setIsExpanded(false);
++      // Trigger highlight animation
++      setShouldAnimate(true);
++      setTimeout(() => setShouldAnimate(false), 600);
+     }
+   }, [selectedState]);
+ 
+@@ -76,49 +81,71 @@ export default function StateChooser({ stateConfig, selectedState, onChoose }: P
+   };
+ 
+   return (
+-    <div style={{
+-      padding: '0',
+-      fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
+-    }}>
+-      {/* Compact view when state is selected */}
+-      {selectedStateData && !isExpanded ? (
+-        <div style={{
+-          display: 'flex',
+-          alignItems: 'center',
+-          gap: 16,
+-          cursor: 'pointer'
+-        }}
+-        onClick={() => setIsExpanded(true)}
+-        >
+-          {/* Date */}
+-          <div style={{
+-            fontSize: 13,
+-            color: '#666',
+-            fontWeight: 400
+-          }}>
+-            {dateString}
+-          </div>
++    <>
++      {/* @@@ Keyframe animation for highlight effect */}
++      <style>{`
++        @keyframes stateHighlight {
++          0% {
++            transform: scale(1);
++            box-shadow: 0 0 0 0 rgba(100, 150, 255, 0.4);
++          }
++          50% {
++            transform: scale(1.05);
++            box-shadow: 0 0 0 8px rgba(100, 150, 255, 0);
++          }
++          100% {
++            transform: scale(1);
++            box-shadow: 0 0 0 0 rgba(100, 150, 255, 0);
++          }
++        }
++      `}</style>
+ 
+-          {/* Mini icon + state name */}
++      <div style={{
++        padding: '0',
++        fontFamily: "'Excalifont', 'Xiaolai', 'Georgia', serif"
++      }}>
++        {/* Compact view when state is selected */}
++        {selectedStateData && !isExpanded ? (
+           <div style={{
+             display: 'flex',
+             alignItems: 'center',
+-            gap: 10,
+-            padding: '4px 12px',
+-            background: 'rgba(255,255,255,0.6)',
+-            borderRadius: 6,
+-            border: '1px solid rgba(0,0,0,0.08)',
+-            transition: 'all 0.2s'
+-          }}
+-          onMouseEnter={(e) => {
+-            e.currentTarget.style.background = 'rgba(255,255,255,0.9)';
+-            e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)';
+-          }}
+-          onMouseLeave={(e) => {
+-            e.currentTarget.style.background = 'rgba(255,255,255,0.6)';
+-            e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';
++            gap: 16,
++            cursor: 'pointer'
+           }}
++          onClick={() => setIsExpanded(true)}
+           >
++            {/* Date */}
++            <div style={{
++              fontSize: 13,
++              color: '#666',
++              fontWeight: 400
++            }}>
++              {dateString}
++            </div>
++
++            {/* Mini icon + state name */}
++            <div
++              ref={indicatorRef}
++              style={{
++                display: 'flex',
++                alignItems: 'center',
++                gap: 10,
++                padding: '4px 12px',
++                background: 'rgba(255,255,255,0.6)',
++                borderRadius: 6,
++                border: '1px solid rgba(0,0,0,0.08)',
++                transition: 'all 0.2s',
++                animation: shouldAnimate ? 'stateHighlight 0.6s ease-out' : 'none'
++              }}
++              onMouseEnter={(e) => {
++                e.currentTarget.style.background = 'rgba(255,255,255,0.9)';
++                e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)';
++              }}
++              onMouseLeave={(e) => {
++                e.currentTarget.style.background = 'rgba(255,255,255,0.6)';
++                e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';
++              }}
++            >
+             {/* Shrunken state icon */}
+             <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+               {selectedState && getMiniStateIcon(selectedState)}
+@@ -182,6 +209,7 @@ export default function StateChooser({ stateConfig, selectedState, onChoose }: P
+           </div>
+         </>
+       )}
+-    </div>
++      </div>
++    </>
+   );
+ }
+
+*** MODIFIED: frontend/src/components/StateCube.tsx (+38/-0) ***
+@@ -396,6 +396,44 @@ export function StateCube({ onStateSelect, stateConfig }: StateCubeProps) {
+     };
+   }, []);
+ 
++  // @@@ Idle animation: slowly rotate cube after 3 seconds of inactivity
++  useEffect(() => {
++    if (isDragging || isSnapping) return;
++
++    let idleTimeoutId: number;
++    let idleAnimationId: number;
++    const baseRotation = rotation; // Capture current rotation when idle starts
++
++    // Wait 3 seconds before starting idle animation
++    idleTimeoutId = window.setTimeout(() => {
++      const startTime = performance.now();
++      const idleRotationSpeed = 0.0002; // Very slow rotation
++
++      const animateIdle = (currentTime: number) => {
++        const elapsed = currentTime - startTime;
++        const angle = elapsed * idleRotationSpeed;
++
++        // Rotate slowly around Y axis (left-right)
++        const idleRotation = Quaternion.fromAxisAngle({ x: 0, y: 1, z: 0 }, angle);
++        const newRotation = idleRotation.multiply(baseRotation);
++
++        setRotation(newRotation);
++        idleAnimationId = requestAnimationFrame(animateIdle);
++      };
++
++      idleAnimationId = requestAnimationFrame(animateIdle);
++    }, 3000);
++
++    return () => {
++      if (idleTimeoutId) {
++        clearTimeout(idleTimeoutId);
++      }
++      if (idleAnimationId) {
++        cancelAnimationFrame(idleAnimationId);
++      }
++    };
++  }, [isDragging, isSnapping]);
++
+   // @@@ Simple SVG icon generator for each state
+   const getStateIcon = (stateId: string) => {
+     const iconProps = { width: 40, height: 40, viewBox: "0 0 100 100", style: { margin: '0 auto' } };

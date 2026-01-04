@@ -1,0 +1,61 @@
+{
+  "sha": "88c2ae2033b34611bfda8edddfb231e1ba30945b",
+  "node_id": "C_kwDOP2Zrm9oAKDg4YzJhZTIwMzNiMzQ2MTFiZmRhOGVkZGRmYjIzMWUxYmEzMDk0NWI",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T06:42:27Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-10T06:42:27Z"
+    },
+    "message": "timeline dynamic load",
+    "tree": {
+      "sha": "4c76d5ab9d912c0cf55690df1986618accbf1d6b",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/4c76d5ab9d912c0cf55690df1986618accbf1d6b"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/88c2ae2033b34611bfda8edddfb231e1ba30945b",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/88c2ae2033b34611bfda8edddfb231e1ba30945b",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/88c2ae2033b34611bfda8edddfb231e1ba30945b",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/88c2ae2033b34611bfda8edddfb231e1ba30945b/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "1f5162bf90a37e8ea57b6a640d9b4a4cc197bf0f",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/1f5162bf90a37e8ea57b6a640d9b4a4cc197bf0f",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/1f5162bf90a37e8ea57b6a640d9b4a4cc197bf0f"
+    }
+  ],
+  "stats": {
+    "total": 88,
+    "additions": 46,
+    "deletions": 42
+  },
+  "files": [
+    {
+      "sha": "ce125b37385ace692c94494d60ae9b725da9f61b",
+      "filename": "frontend/src/components/CollectionsView.tsx",
+      "status": "modified",
+      "additions": 46,
+      "deletions": 42,
+      "changes": 88,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/88c2ae2033b34611bfda8edddfb231e1ba30945b/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/88c2ae2033b34611bfda8edddfb231e1ba30945b/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2Fcomponents%2FCollectionsView.tsx?ref=88c2ae2033b34611bfda8edddfb231e1ba30945b",
+      "patch": "@@ -197,7 +197,6 @@ const INITIAL_PAST_DAYS = 10;\n const INITIAL_FUTURE_DAYS = 10;\n const CHUNK_SIZE = 14;\n const MAX_PAST_DAYS = 365;\n-const MAX_FUTURE_DAYS = 365;\n const LOAD_THRESHOLD_PX = 200;\n const VIRTUAL_BUFFER = 5;\n \n@@ -412,13 +411,12 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n   const [initialLoading, setInitialLoading] = useState(true);\n   const [loadingCommentsForDate, setLoadingCommentsForDate] = useState<string | null>(null);\n   const [loadingPast, setLoadingPast] = useState(false);\n-  const [loadingFuture, setLoadingFuture] = useState(false);\n   const [hasMorePast, setHasMorePast] = useState(true);\n-  const [hasMoreFuture, setHasMoreFuture] = useState(true);\n   const [scrollTopValue, setScrollTopValue] = useState(0);\n   const [viewportHeight, setViewportHeight] = useState(0);\n   const [pendingInitialScroll, setPendingInitialScroll] = useState(true);\n   const scrollContainerRef = useRef<HTMLDivElement | null>(null);\n+  const topSentinelRef = useRef<HTMLDivElement | null>(null);\n   const loadedRangesRef = useRef<Set<string>>(new Set());\n \n   const mergeSessions = useCallback((sessions: SessionSummary[]) => {\n@@ -489,9 +487,7 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n \n     setInitialLoading(true);\n     setLoadingPast(false);\n-    setLoadingFuture(false);\n     setHasMorePast(true);\n-    setHasMoreFuture(true);\n     setPendingInitialScroll(true);\n     setDays(buildDayRange(start, end));\n     setSessionSummaries(new Map());\n@@ -605,39 +601,6 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n     setLoadingPast(false);\n   }, [days, hasMorePast, isAuthenticated, loadRange, loadingPast]);\n \n-  const loadFutureChunk = useCallback(async () => {\n-    if (loadingFuture || !hasMoreFuture || days.length === 0) return;\n-    setLoadingFuture(true);\n-    const lastDay = days[days.length - 1];\n-    const lastDate = startOfDay(new Date(lastDay.date));\n-    const desiredEnd = addDays(lastDate, CHUNK_SIZE);\n-    const maxDate = addDays(startOfDay(new Date()), MAX_FUTURE_DAYS);\n-    const actualEnd = desiredEnd > maxDate ? maxDate : desiredEnd;\n-    const actualStart = addDays(lastDate, 1);\n-\n-    if (actualStart.getTime() > actualEnd.getTime()) {\n-      setHasMoreFuture(false);\n-      setLoadingFuture(false);\n-      return;\n-    }\n-\n-    const newDays = buildDayRange(actualStart, actualEnd);\n-\n-    setDays(prev => {\n-      const existing = new Set(prev.map(d => d.date));\n-      const merged = [...prev, ...newDays.filter(d => !existing.has(d.date))];\n-      return merged;\n-    });\n-\n-    if (isAuthenticated) {\n-      await loadRange(actualStart, actualEnd);\n-    }\n-\n-    const reachedMax = actualEnd.getTime() >= maxDate.getTime();\n-    setHasMoreFuture(!reachedMax);\n-    setLoadingFuture(false);\n-  }, [days, hasMoreFuture, isAuthenticated, loadRange, loadingFuture]);\n-\n   // @@@ Group items by date\n   const timelineByDate = useMemo(() => {\n     const map = new Map<string, TimelineEntryData>();\n@@ -667,16 +630,30 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n     const container = scrollContainerRef.current;\n     if (!container) return;\n \n+    const observer = new IntersectionObserver(\n+      (entries) => {\n+        entries.forEach(entry => {\n+          if (entry.isIntersecting && entry.target === topSentinelRef.current) {\n+            loadPastChunk();\n+          }\n+        });\n+      },\n+      {\n+        root: container,\n+        rootMargin: `${LOAD_THRESHOLD_PX}px 0px`,\n+        threshold: 0\n+      }\n+    );\n+\n+    if (topSentinelRef.current) observer.observe(topSentinelRef.current);\n+\n     const handleScroll = () => {\n       const top = container.scrollTop;\n       setScrollTopValue(top);\n \n       if (top < LOAD_THRESHOLD_PX) {\n         loadPastChunk();\n       }\n-      if (top + container.clientHeight > container.scrollHeight - LOAD_THRESHOLD_PX) {\n-        loadFutureChunk();\n-      }\n     };\n \n     const handleResize = () => {\n@@ -688,10 +665,11 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n     handleResize();\n \n     return () => {\n+      observer.disconnect();\n       container.removeEventListener('scroll', handleScroll);\n       window.removeEventListener('resize', handleResize);\n     };\n-  }, [loadFutureChunk, loadPastChunk]);\n+  }, [loadPastChunk]);\n \n   // @@@ Set initial scroll position to show today's row centered\n   useLayoutEffect(() => {\n@@ -878,6 +856,32 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin\n           }}\n         />\n \n+        {/* Manual load controls */}\n+        {hasMorePast && (\n+          <button\n+            onClick={loadPastChunk}\n+            disabled={loadingPast}\n+            style={{\n+              position: 'absolute',\n+              top: '0.5rem',\n+              left: '50%',\n+              transform: 'translateX(-50%)',\n+              padding: '6px 12px',\n+              border: '1px solid #b8a896',\n+              background: loadingPast ? '#eee' : '#f7f0e6',\n+              borderRadius: '6px',\n+              cursor: loadingPast ? 'wait' : 'pointer',\n+              zIndex: 20,\n+              fontSize: '12px'\n+            }}\n+          >\n+            {loadingPast ? 'Loading\u2026' : 'Load earlier days'}\n+          </button>\n+        )}\n+\n+        {/* Sentinels for infinite load */}\n+        <div ref={topSentinelRef} style={{ position: 'absolute', top: 0, height: '1px', width: '100%' }} />\n+\n         {/* Cards */}\n         {renderedDays.map((day, localIndex) => {\n           const globalIndex = renderStart + localIndex;"
+    }
+  ]
+}

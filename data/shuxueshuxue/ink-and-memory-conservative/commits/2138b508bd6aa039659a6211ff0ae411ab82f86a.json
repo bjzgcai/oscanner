@@ -1,0 +1,23 @@
+{
+  "sha": "2138b508bd6aa039659a6211ff0ae411ab82f86a",
+  "message": "Add overlap feedback loop to prevent repetitive comment suggestions\n\nFrontend:\n- Track overlappedPhrases in EditorState (persistent across requests)\n- Add rejected phrases to state when overlap detected\n- Pass overlappedPhrases array to backend API calls\n- Add migration for old state (ensure field exists on load)\n\nBackend:\n- Accept overlapped_phrases parameter in analyze_text()\n- Pass through to stateless_analyzer\n- Add \"REJECTED PHRASES\" section to LLM prompt\n- Explicit warnings to avoid re-suggesting overlapping phrases\n\nThis prevents the system from getting stuck in loops where it\nrepeatedly suggests variations of the same phrase that were\nalready rejected due to overlap (e.g., \"worst model\", \"by far\nthe worst model\", etc.)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-30T03:04:51Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-30T03:04:51Z"
+  },
+  "stats": {
+    "total": 38,
+    "additions": 30,
+    "deletions": 8
+  },
+  "files_count": 4,
+  "parents": [
+    "c5d760b6a1ed874b63f6de7585d9280c5125208e"
+  ]
+}

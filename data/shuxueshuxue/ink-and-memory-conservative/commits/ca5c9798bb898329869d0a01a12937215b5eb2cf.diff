@@ -1,0 +1,22 @@
+*** MODIFIED: frontend/src/App.css (+1/-0) ***
+@@ -120,6 +120,7 @@
+ /* Only non-top cards can pop up on hover */
+ .voice-comment:not(.top-card):hover {
+   z-index: 1000 !important;
++  transform: translateY(0) !important;
+   box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+ }
+ 
+
+*** MODIFIED: frontend/src/App.tsx (+2/-2) ***
+@@ -103,8 +103,8 @@ function App() {
+             color={voice.color}
+             isTopCard={index === voices.length - 1}
+             style={{
+-              zIndex: voices.length - index,
+-              transform: `translateY(${index * 30}%)`,
++              zIndex: index + 1,
++              transform: `translateY(${(voices.length - 1 - index) * 30}%)`,
+             }}
+           />
+         ))}

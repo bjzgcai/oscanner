@@ -1,0 +1,23 @@
+{
+  "sha": "dfb265c42068bc56793eae66a3c26cd661de4ee4",
+  "message": "Aggressive cleanup and refactoring\n\n- Created shared voice config to eliminate duplication\n- Removed unused template files (README, vite.svg, react.svg, assets folder)\n- Simplified index.css to only essential styles\n- Removed redundant props and state (text state, value prop chain)\n- Streamlined component interfaces\n- Consolidated trigger definitions in single source of truth\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-01T12:20:28Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-01T12:20:28Z"
+  },
+  "stats": {
+    "total": 222,
+    "additions": 25,
+    "deletions": 197
+  },
+  "files_count": 9,
+  "parents": [
+    "0ec0ecce3db148dd243d31c53feedd9eaa52527f"
+  ]
+}

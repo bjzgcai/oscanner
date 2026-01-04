@@ -1,0 +1,23 @@
+{
+  "sha": "9eccd63da64da70f8e813dc684cc60afab2805d7",
+  "message": "Remove AGENTS.md from repo",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-23T12:20:09Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-23T12:20:09Z"
+  },
+  "stats": {
+    "total": 32,
+    "additions": 0,
+    "deletions": 32
+  },
+  "files_count": 1,
+  "parents": [
+    "bfc7a2dfd7bea36e1b1baf400f2aca0f42eb178e"
+  ]
+}

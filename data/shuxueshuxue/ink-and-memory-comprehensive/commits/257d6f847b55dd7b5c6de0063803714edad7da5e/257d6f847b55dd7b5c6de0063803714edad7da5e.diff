@@ -1,0 +1,56 @@
+commit 257d6f847b55dd7b5c6de0063803714edad7da5e
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Oct 8 10:13:35 2025 +0800
+
+    Fix architecture: use relative positioning with negative margins instead of absolute
+
+diff --git a/frontend/src/App.css b/frontend/src/App.css
+index fc356a0..a536901 100644
+--- a/frontend/src/App.css
++++ b/frontend/src/App.css
+@@ -110,10 +110,7 @@
+ }
+ 
+ .voice-comment {
+-  position: absolute;
+-  top: 0;
+-  left: 0;
+-  right: 0;
++  position: relative;
+   padding: 1rem;
+   border-left: 4px solid;
+   border-radius: 4px;
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 5af8ff4..6f8319c 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -107,7 +107,7 @@ function App() {
+             isTopCard={false}
+             style={{
+               zIndex: index + 1,
+-              transform: `translateY(${index * 55}%)`,
++              marginTop: index === 0 ? 0 : '-45%',
+             }}
+           />
+         ))}
+diff --git a/frontend/src/components/VoicesPanel.tsx b/frontend/src/components/VoicesPanel.tsx
+index 6a2b78d..651f990 100644
+--- a/frontend/src/components/VoicesPanel.tsx
++++ b/frontend/src/components/VoicesPanel.tsx
+@@ -8,15 +8,11 @@ interface VoicesPanelProps {
+ }
+ 
+ export default function VoicesPanel({ stackedCards, latestCard, stackedCount }: VoicesPanelProps) {
+-  // Calculate minimum height needed: base card height + offsets
+-  // Assume ~100px per card, plus 55% offsets
+-  const stackHeightPx = stackedCount > 0 ? 100 + (stackedCount - 1) * 55 : 0;
+-
+   return (
+     <BookPage side="right">
+       <div className="voices-container">
+         {stackedCount > 0 && (
+-          <div className="voice-stack" style={{ minHeight: `${stackHeightPx}px` }}>
++          <div className="voice-stack">
+             {stackedCards}
+           </div>
+         )}

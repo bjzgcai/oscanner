@@ -1,0 +1,358 @@
+commit 382ec7b66b0f1d2cd8009f1205425387d1f014fb
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Nov 18 23:02:13 2025 +0800
+
+    Improve deck UI: fancy create button and editing in expanded section
+    
+    - Enhanced Create New Deck button with gradient, shadow, sparkle emoji
+    - Moved deck name/description editing to expanded section as form fields
+    - Header now purely for expand/collapse (single click)
+    - Removed UX conflict between editing and expanding
+    - Auto-save on blur for deck settings
+
+diff --git a/frontend/src/components/DeckManager.tsx b/frontend/src/components/DeckManager.tsx
+index 657a660..fd89c42 100644
+--- a/frontend/src/components/DeckManager.tsx
++++ b/frontend/src/components/DeckManager.tsx
+@@ -61,8 +61,6 @@ export default function DeckManager({ onUpdate }: Props) {
+   const [editingVoice, setEditingVoice] = useState<string | null>(null);
+   const [editingField, setEditingField] = useState<'name' | 'prompt' | null>(null);
+   const [iconPickerOpen, setIconPickerOpen] = useState<string | null>(null); // @@@ Track which voice's icon picker is open
+-  const [editingDeck, setEditingDeck] = useState<string | null>(null); // @@@ Track which deck is being edited
+-  const [deckEditingField, setDeckEditingField] = useState<'name' | 'description' | null>(null); // @@@ Track which deck field
+   const [deckIconPickerOpen, setDeckIconPickerOpen] = useState<string | null>(null); // @@@ Track which deck's icon picker is open
+   const [creatingDeck, setCreatingDeck] = useState(false);
+   const [creatingVoice, setCreatingVoice] = useState<string | null>(null);
+@@ -157,8 +155,6 @@ export default function DeckManager({ onUpdate }: Props) {
+     try {
+       await updateDeck(deckId, data);
+       await loadDecks(true);
+-      setEditingDeck(null);
+-      setDeckEditingField(null);
+       onUpdate?.();
+     } catch (err: any) {
+       alert(`Failed to update deck: ${err.message}`);
+@@ -381,27 +377,35 @@ export default function DeckManager({ onUpdate }: Props) {
+             onClick={handleCreateDeck}
+             disabled={creatingDeck}
+             style={{
+-              padding: '12px 24px',
++              padding: '14px 28px',
+               marginBottom: '8px',
+-              background: '#f9a875',
++              background: 'linear-gradient(135deg, #f9a875 0%, #f89560 100%)',
+               color: 'white',
+               border: 'none',
+-              borderRadius: '8px',
++              borderRadius: '12px',
+               cursor: creatingDeck ? 'not-allowed' : 'pointer',
+-              fontSize: '14px',
+-              fontWeight: '500',
++              fontSize: '15px',
++              fontWeight: '600',
+               opacity: creatingDeck ? 0.6 : 1,
+-              transition: 'all 0.2s ease',
+-              alignSelf: 'flex-start'
++              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
++              alignSelf: 'flex-start',
++              boxShadow: '0 4px 12px rgba(249, 168, 117, 0.3)',
++              letterSpacing: '0.3px'
+             }}
+             onMouseEnter={(e) => {
+-              if (!creatingDeck) e.currentTarget.style.background = '#f89560';
++              if (!creatingDeck) {
++                e.currentTarget.style.transform = 'translateY(-2px)';
++                e.currentTarget.style.boxShadow = '0 6px 20px rgba(249, 168, 117, 0.4)';
++              }
+             }}
+             onMouseLeave={(e) => {
+-              if (!creatingDeck) e.currentTarget.style.background = '#f9a875';
++              if (!creatingDeck) {
++                e.currentTarget.style.transform = 'translateY(0)';
++                e.currentTarget.style.boxShadow = '0 4px 12px rgba(249, 168, 117, 0.3)';
++              }
+             }}
+           >
+-            {creatingDeck ? t('deck.actions.creating') : t('deck.actions.create')}
++            {creatingDeck ? t('deck.actions.creating') : `✨ ${t('deck.actions.create')}`}
+           </button>
+ 
+           {/* My Decks Section Header */}
+@@ -418,7 +422,6 @@ export default function DeckManager({ onUpdate }: Props) {
+           {decks.map(deck => {
+             const isExpanded = expandedDecks.has(deck.id);
+             const isSystem = !!deck.is_system; // @@@ Convert to boolean to prevent React from rendering "0"
+-            const isDeckEditing = editingDeck === deck.id;
+             const Icon = iconMap[deck.icon as keyof typeof iconMap] || FaBrain;
+             const colorHex = COLORS[deck.color as keyof typeof COLORS]?.hex || '#4a90e2';
+             const voiceCount = deck.voice_count || deck.voices?.length || 0;
+@@ -438,13 +441,15 @@ export default function DeckManager({ onUpdate }: Props) {
+               >
+                 {/* Deck Header */}
+                 <div
++                  onClick={() => toggleDeck(deck.id)}
+                   style={{
+                     padding: 20,
+                     background: isSystem ? '#f9f9f9' : '#fafafa',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: 16,
+-                    transition: 'background 0.2s'
++                    transition: 'background 0.2s',
++                    cursor: 'pointer'
+                   }}
+                 >
+                   {/* Expand/Collapse Icon */}
+@@ -581,132 +586,36 @@ export default function DeckManager({ onUpdate }: Props) {
+                     })()}
+                   </div>
+ 
+-                  {/* Deck Info with inline editing */}
++                  {/* Deck Info - Display Only */}
+                   <div style={{ flex: 1, minWidth: 0 }}>
+-                    {/* Deck Name */}
+-                    {!isDeckEditing || deckEditingField !== 'name' ? (
+-                      <div
+-                        onClick={(e) => {
+-                          e.stopPropagation();
+-                          if (!isSystem) {
+-                            setEditingDeck(deck.id);
+-                            setDeckEditingField('name');
+-                          }
+-                        }}
+-                        style={{
+-                          fontSize: 20,
+-                          fontWeight: 700,
+-                          color: '#2c2c2c',
+-                          marginBottom: 4,
+-                          cursor: isSystem ? 'default' : 'pointer',
+-                          transition: 'opacity 0.2s'
+-                        }}
+-                        onMouseEnter={(e) => {
+-                          if (!isSystem) e.currentTarget.style.opacity = '0.7';
+-                        }}
+-                        onMouseLeave={(e) => {
+-                          if (!isSystem) e.currentTarget.style.opacity = '1';
+-                        }}
+-                      >
+-                        {deck.name}
+-                        {isSystem && (
+-                          <span style={{
+-                            marginLeft: 12,
+-                            fontSize: 12,
+-                            fontWeight: 500,
+-                            color: '#888',
+-                            background: '#e0e0e0',
+-                            padding: '2px 8px',
+-                            borderRadius: 4
+-                          }}>
+-                            {t('deck.labels.system')}
+-                          </span>
+-                        )}
+-                      </div>
+-                    ) : (
+-                      <input
+-                        autoFocus
+-                        defaultValue={deck.name}
+-                        onClick={(e) => e.stopPropagation()}
+-                        onBlur={(e) => {
+-                          handleUpdateDeck(deck.id, { name: e.target.value });
+-                        }}
+-                        onKeyDown={(e) => {
+-                          if (e.key === 'Enter') {
+-                            e.currentTarget.blur();
+-                          } else if (e.key === 'Escape') {
+-                            setEditingDeck(null);
+-                            setDeckEditingField(null);
+-                          }
+-                        }}
+-                        style={{
+-                          width: '100%',
+-                          fontSize: 20,
+-                          fontWeight: 700,
+-                          color: '#2c2c2c',
+-                          padding: '4px 8px',
+-                          border: '2px solid #4a90e2',
+-                          borderRadius: 4,
+-                          background: '#f0f8ff',
+-                          marginBottom: 4
+-                        }}
+-                      />
+-                    )}
++                    <div style={{
++                      fontSize: 20,
++                      fontWeight: 700,
++                      color: '#2c2c2c',
++                      marginBottom: 4
++                    }}>
++                      {deck.name}
++                      {isSystem && (
++                        <span style={{
++                          marginLeft: 12,
++                          fontSize: 12,
++                          fontWeight: 500,
++                          color: '#888',
++                          background: '#e0e0e0',
++                          padding: '2px 8px',
++                          borderRadius: 4
++                        }}>
++                          {t('deck.labels.system')}
++                        </span>
++                      )}
++                    </div>
+ 
+-                    {/* Deck Description */}
+-                    {!isDeckEditing || deckEditingField !== 'description' ? (
+-                      <div
+-                        onClick={(e) => {
+-                          e.stopPropagation();
+-                          if (!isSystem) {
+-                            setEditingDeck(deck.id);
+-                            setDeckEditingField('description');
+-                          }
+-                        }}
+-                        style={{
+-                          fontSize: 14,
+-                          color: '#666',
+-                          cursor: isSystem ? 'default' : 'pointer',
+-                          transition: 'opacity 0.2s'
+-                        }}
+-                        onMouseEnter={(e) => {
+-                          if (!isSystem) e.currentTarget.style.opacity = '0.7';
+-                        }}
+-                        onMouseLeave={(e) => {
+-                          if (!isSystem) e.currentTarget.style.opacity = '1';
+-                        }}
+-                      >
+-                        {deck.description || t('deck.labels.noDescription')}
+-                      </div>
+-                    ) : (
+-                      <textarea
+-                        autoFocus
+-                        defaultValue={deck.description || ''}
+-                        onClick={(e) => e.stopPropagation()}
+-                        onBlur={(e) => {
+-                          handleUpdateDeck(deck.id, { description: e.target.value });
+-                        }}
+-                        onKeyDown={(e) => {
+-                          if (e.key === 'Escape') {
+-                            setEditingDeck(null);
+-                            setDeckEditingField(null);
+-                          }
+-                        }}
+-                        style={{
+-                          width: '100%',
+-                          minHeight: '60px',
+-                          fontSize: 14,
+-                          color: '#666',
+-                          padding: '6px 8px',
+-                          border: '2px solid #4a90e2',
+-                          borderRadius: 4,
+-                          background: '#f0f8ff',
+-                          fontFamily: 'inherit',
+-                          resize: 'vertical',
+-                          boxSizing: 'border-box'
+-                        }}
+-                      />
+-                    )}
++                    <div style={{
++                      fontSize: 14,
++                      color: '#666'
++                    }}>
++                      {deck.description || t('deck.labels.noDescription')}
++                    </div>
+ 
+                     <div style={{
+                       fontSize: 12,
+@@ -859,6 +768,91 @@ export default function DeckManager({ onUpdate }: Props) {
+                 {/* Voices List (Expanded) */}
+                 {isExpanded && (
+                   <div style={{ padding: 20, background: '#fafafa' }}>
++                    {/* @@@ Deck Edit Form (only for user-owned decks) */}
++                    {!isSystem && (
++                      <div style={{
++                        background: '#fff',
++                        border: '2px solid #e0e0e0',
++                        borderRadius: 8,
++                        padding: 16,
++                        marginBottom: 16
++                      }}>
++                        <h4 style={{
++                          margin: '0 0 12px 0',
++                          fontSize: 14,
++                          fontWeight: 600,
++                          color: '#666'
++                        }}>
++                          Deck Settings
++                        </h4>
++
++                        {/* Deck Name Field */}
++                        <div style={{ marginBottom: 12 }}>
++                          <label style={{
++                            display: 'block',
++                            fontSize: 12,
++                            fontWeight: 500,
++                            color: '#888',
++                            marginBottom: 4
++                          }}>
++                            Name
++                          </label>
++                          <input
++                            type="text"
++                            defaultValue={deck.name}
++                            onBlur={(e) => {
++                              if (e.target.value !== deck.name) {
++                                handleUpdateDeck(deck.id, { name: e.target.value });
++                              }
++                            }}
++                            onClick={(e) => e.stopPropagation()}
++                            style={{
++                              width: '100%',
++                              padding: '8px 12px',
++                              fontSize: 14,
++                              border: '1px solid #ddd',
++                              borderRadius: 6,
++                              fontFamily: 'inherit',
++                              boxSizing: 'border-box'
++                            }}
++                          />
++                        </div>
++
++                        {/* Deck Description Field */}
++                        <div>
++                          <label style={{
++                            display: 'block',
++                            fontSize: 12,
++                            fontWeight: 500,
++                            color: '#888',
++                            marginBottom: 4
++                          }}>
++                            Description
++                          </label>
++                          <textarea
++                            defaultValue={deck.description || ''}
++                            onBlur={(e) => {
++                              if (e.target.value !== deck.description) {
++                                handleUpdateDeck(deck.id, { description: e.target.value });
++                              }
++                            }}
++                            onClick={(e) => e.stopPropagation()}
++                            style={{
++                              width: '100%',
++                              minHeight: 80,
++                              padding: '8px 12px',
++                              fontSize: 14,
++                              border: '1px solid #ddd',
++                              borderRadius: 6,
++                              fontFamily: 'inherit',
++                              resize: 'vertical',
++                              boxSizing: 'border-box'
++                            }}
++                          />
++                        </div>
++                      </div>
++                    )}
++
+                     {deck.voices && deck.voices.length > 0 && (
+                       <div style={{
+                         display: 'grid',

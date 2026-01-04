@@ -1,0 +1,27 @@
+{
+  "hash": "c1615716493cf107168609c880e808d153eb00b7",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Nov 5 14:44:21 2025 +0800",
+  "subject": "Fix date persistence bug: separate session name from date",
+  "files": [
+    "frontend/src/App.tsx",
+    "frontend/src/components/StateChooser.tsx",
+    "frontend/src/components/StateCube.tsx"
+  ],
+  "diff": "commits/c1615716493cf107168609c880e808d153eb00b7/c1615716493cf107168609c880e808d153eb00b7.diff",
+  "related_files": {
+    "frontend/src/App.tsx": [
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/components/StateCube.tsx"
+    ],
+    "frontend/src/components/StateChooser.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/StateCube.tsx"
+    ],
+    "frontend/src/components/StateCube.tsx": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/StateChooser.tsx"
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "hash": "cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Oct 7 22:01:22 2025 +0800",
+  "subject": "Move demo video to assets folder and update README reference",
+  "files": [
+    "README.md",
+    "assets/demo.mov",
+    "demo.mov"
+  ],
+  "diff": "commits/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1/cefa11a21eaf6f012f839e8223a58d8e51ec6bb1.diff",
+  "related_files": {
+    "README.md": [
+      "assets/demo.mov",
+      "demo.mov"
+    ],
+    "assets/demo.mov": [
+      "README.md",
+      "demo.mov"
+    ],
+    "demo.mov": [
+      "README.md",
+      "assets/demo.mov"
+    ]
+  }
+}

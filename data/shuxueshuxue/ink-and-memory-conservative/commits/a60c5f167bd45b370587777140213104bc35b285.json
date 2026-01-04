@@ -1,0 +1,23 @@
+{
+  "sha": "a60c5f167bd45b370587777140213104bc35b285",
+  "message": "Hover only changes z-index, not position",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-08T01:26:18Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-08T01:26:18Z"
+  },
+  "stats": {
+    "total": 3,
+    "additions": 1,
+    "deletions": 2
+  },
+  "files_count": 1,
+  "parents": [
+    "ca5c9798bb898329869d0a01a12937215b5eb2cf"
+  ]
+}

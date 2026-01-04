@@ -1,0 +1,18 @@
+commit 96e83b7937ab958b2f726ebf723f45bfceedfdaa
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Tue Dec 9 22:17:06 2025 +0800
+
+    fix background scrolling
+
+diff --git a/frontend/src/App.css b/frontend/src/App.css
+index 622bd95..5977385 100644
+--- a/frontend/src/App.css
++++ b/frontend/src/App.css
+@@ -240,6 +240,7 @@
+     );
+   background-size: 100% 100%;
+   background-position: 0 0;
++  background-attachment: local; /* Scroll lines with content instead of fixing to viewport */
+ }
+ 
+ /* Scrollbar styling for simplified version */

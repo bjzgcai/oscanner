@@ -1,0 +1,68 @@
+commit cb9f63c65885cfaeb9615f89dee9706f8a455d7a
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Dec 3 13:18:22 2025 +0800
+
+    Add CI workflows for backend and frontend
+
+diff --git a/.github/workflows/ci-backend.yml b/.github/workflows/ci-backend.yml
+new file mode 100644
+index 0000000..ecae2c5
+--- /dev/null
++++ b/.github/workflows/ci-backend.yml
+@@ -0,0 +1,25 @@
++name: Check Backend (CI)
++
++on:
++  pull_request:
++    branches: [main]
++    paths:
++      - "backend/**"
++      - ".github/workflows/ci-backend.yml"
++
++jobs:
++  build-check:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++
++      - uses: docker/setup-buildx-action@v3
++
++      # We build, but we DO NOT push. This verifies the build succeeds.
++      - name: Build Docker Image (Dry Run)
++        run: |
++          docker buildx build \
++            --platform linux/amd64 \
++            -t test-build \
++            --load \
++            backend
+diff --git a/.github/workflows/ci-frontend.yml b/.github/workflows/ci-frontend.yml
+new file mode 100644
+index 0000000..77cd7eb
+--- /dev/null
++++ b/.github/workflows/ci-frontend.yml
+@@ -0,0 +1,25 @@
++name: Check Frontend (CI)
++
++on:
++  pull_request:
++    branches: [main]
++    paths:
++      - "frontend/**"
++      - ".github/workflows/ci-frontend.yml"
++
++jobs:
++  build-check:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++
++      - uses: actions/setup-node@v4
++        with:
++          node-version: 20
++
++      - name: Install & Build
++        working-directory: frontend
++        run: |
++          npm ci
++          npm run build
++

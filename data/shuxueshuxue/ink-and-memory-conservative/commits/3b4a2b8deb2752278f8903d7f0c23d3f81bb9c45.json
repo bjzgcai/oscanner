@@ -1,0 +1,23 @@
+{
+  "sha": "3b4a2b8deb2752278f8903d7f0c23d3f81bb9c45",
+  "message": "Add meta prompt system and state-based emotional context\n\nThis commit introduces a comprehensive prompt hierarchy system and multiple UX improvements:\n\n**Meta Prompt System:**\n- Add global meta prompt that applies to all voice personas\n- Integrate with existing import/export/use-default system\n- Thread meta prompt through chat and comment analysis flows\n- Default emphasizes mental well-being over pure role-playing\n\n**State Chooser System:**\n- Add emotional state selection widget (default: happy, ok, unhappy)\n- Implement three-tier prompt hierarchy: Meta → State → Voice\n- Add persistent but collapsible state chooser UI\n- Store selected state in localStorage for session continuity\n- Allow full configuration of states in settings pane\n\n**Settings Page Reorganization:**\n- Restructure settings with fixed header and scrollable content\n- Add three sections: Meta Prompt, User States, Voice Personas\n- Implement unified import/export including all three systems\n- Add auto-scroll to bottom when adding new voice\n\n**UI/UX Improvements:**\n- Add subtle pulse animation to chat send button when processing\n- Fix dropdown auto-scroll to follow keyboard navigation\n- Remove dropdown bottom-to-top cycling behavior\n- Fix scroll jump bug using manual position calculation\n\n**Backend Integration:**\n- Thread state_prompt through server.py and stateless_analyzer.py\n- Add debugging logs for meta_prompt and state_prompt\n- Update both chat_with_voice and analyze_text endpoints\n\n**Reactivity Fixes:**\n- Fix useCallback dependency arrays to include selectedState and stateConfig\n- Ensure state changes immediately affect existing chat widgets\n\nFiles modified:\n- Backend: server.py, stateless_analyzer.py\n- Frontend: App.tsx, voiceApi.ts, VoiceSettings.tsx, EditorEngine.ts\n- Frontend: AgentDropdown.tsx, ChatWidgetUI.tsx, voice.ts, voiceStorage.ts\n- New: StateChooser.tsx\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T12:26:54Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-26T12:26:54Z"
+  },
+  "stats": {
+    "total": 711,
+    "additions": 674,
+    "deletions": 37
+  },
+  "files_count": 11,
+  "parents": [
+    "a4eb52998c60b0de1bbf875423f681091b5eb39a"
+  ]
+}

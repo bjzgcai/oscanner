@@ -1,0 +1,23 @@
+{
+  "sha": "f8c36faae0c010101cf078841c8a43558080a3ba",
+  "message": "add license",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-03T14:52:25Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-12-03T14:52:25Z"
+  },
+  "stats": {
+    "total": 21,
+    "additions": 21,
+    "deletions": 0
+  },
+  "files_count": 1,
+  "parents": [
+    "8f30b2a7dbc41c0864854f4a04cec5526859a525"
+  ]
+}

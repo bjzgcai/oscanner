@@ -1,0 +1,85 @@
+*** FILE: frontend/src/components/CollectionsView.tsx ***
+@@ -171,19 +171,6 @@ function generateTimelineDays(): TimelineDay[] {
+   return allTimelineDays;
+ }
+ 
+-// @@@ Helper function for interesting placeholders
+-function getPlaceholderText(t: (key: string, options?: any) => string, daysOffset: number): string {
+-  if (daysOffset === 0) return t('timelinePlaceholders.today');
+-
+-  const key = `timelinePlaceholders.${daysOffset}`;
+-  const translation = t(key, { defaultValue: '' });
+-  if (translation && translation !== key) {
+-    return translation;
+-  }
+-
+-  return t('timelinePlaceholders.default');
+-}
+-
+ // @@@ Extract and truncate beginning of text for timeline preview
+ function getTextPreview(text: string, maxLength: number = 60): string {
+   if (!text || text.trim().length === 0) return '';
+@@ -215,7 +202,6 @@ interface TimelineCardProps {
+   dayData?: TimelineEntryData;
+   hasData: boolean;
+   isGenerating: boolean;
+-  placeholder: string;
+   textByDate: Map<string, string>;
+   firstLineByDate: Map<string, string>;
+   dateLocale: string;
+@@ -230,7 +216,6 @@ function TimelineCard({
+   dayData,
+   hasData,
+   isGenerating,
+-  placeholder,
+   textByDate,
+   firstLineByDate,
+   dateLocale,
+@@ -244,11 +229,11 @@ function TimelineCard({
+   const firstLine = firstLineByDate.get(day.date);
+   const commentCount = dayData?.comments?.length || 0;
+ 
+-  let description = placeholder;
++  let description = '';
+   if (isGenerating) {
+     description = t('timeline.generating');
+   } else if (day.isToday && !dayData?.picture) {
+-    description = placeholder;
++    description = '';
+   } else if (firstLine) {
+     description = firstLine;
+   } else if (textContent) {
+@@ -313,7 +298,7 @@ function TimelineCard({
+         <div style={{
+           fontSize: '12px',
+           color: '#888',
+-          fontStyle: (!textContent && (day.isToday || !dayData?.comments?.length)) ? 'italic' : 'normal',
++          fontStyle: description ? 'normal' : 'normal',
+           overflow: 'hidden',
+           textOverflow: 'ellipsis',
+           display: '-webkit-box',
+@@ -392,7 +377,7 @@ function TimelineCard({
+             fontSize: '20px',
+             color: '#bbb',
+           }}>
+-            {isGenerating ? '⏳' : '📷'}
++            {isGenerating ? '⏳' : ''}
+           </div>
+         )}
+       </div>
+@@ -780,7 +765,6 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+           const dayData = timelineByDate.get(day.date);
+           const hasData = !!dayData;
+           const isGenerating = generatingForDate === day.date;
+-          const placeholder = getPlaceholderText(t, day.daysOffset);
+           const isLeftSide = index % 2 === 0;
+ 
+           // Each card occupies a "slot" but overlaps with neighbors
+@@ -825,7 +809,6 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, timezone }: Timelin
+                 dayData={dayData}
+                 hasData={hasData}
+                 isGenerating={isGenerating}
+-                placeholder={placeholder}
+                 textByDate={textByDate}
+                 firstLineByDate={firstLineByDate}
+                 dateLocale={dateLocale}

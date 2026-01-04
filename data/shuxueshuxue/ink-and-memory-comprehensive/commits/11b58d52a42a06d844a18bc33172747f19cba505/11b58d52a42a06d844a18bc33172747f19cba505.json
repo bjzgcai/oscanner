@@ -1,0 +1,27 @@
+{
+  "hash": "11b58d52a42a06d844a18bc33172747f19cba505",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Oct 22 10:13:47 2025 +0800",
+  "subject": "Add calendar view with memory preview and enhance UI",
+  "files": [
+    "frontend/public/placeholder-memory.png",
+    "frontend/src/components/AnalysisView.tsx",
+    "frontend/src/components/CalendarView.tsx"
+  ],
+  "diff": "commits/11b58d52a42a06d844a18bc33172747f19cba505/11b58d52a42a06d844a18bc33172747f19cba505.diff",
+  "related_files": {
+    "frontend/public/placeholder-memory.png": [
+      "frontend/src/components/AnalysisView.tsx",
+      "frontend/src/components/CalendarView.tsx"
+    ],
+    "frontend/src/components/AnalysisView.tsx": [
+      "frontend/public/placeholder-memory.png",
+      "frontend/src/components/CalendarView.tsx"
+    ],
+    "frontend/src/components/CalendarView.tsx": [
+      "frontend/public/placeholder-memory.png",
+      "frontend/src/components/AnalysisView.tsx"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "sha": "948c570895f15df95e651917eed1cc2c27bee571",
+  "message": "Fix migration dialog appearing repeatedly after clicking Skip\n\nChanges:\n- Set migration flag to 'skipped' instead of 'true' when user skips\n- Migration check now distinguishes between:\n  * 'skipped' - User explicitly skipped, don't show again\n  * 'true' - Migration completed successfully\n  * null/undefined - Migration not attempted yet\n- Only force re-migration if flag is 'true' AND calendar entries exist\n\nThis prevents the annoying loop where:\n1. User logs in as guest\n2. Logs back into account\n3. Clicks \"Skip\" on migration dialog\n4. Refreshes page\n5. Dialog appears again (BUG - now fixed!)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T10:38:20Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T10:38:20Z"
+  },
+  "stats": {
+    "total": 20,
+    "additions": 14,
+    "deletions": 6
+  },
+  "files_count": 2,
+  "parents": [
+    "1b1850ee59ec6f6e8a67106f429eae56542c1133"
+  ]
+}

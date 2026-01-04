@@ -1,0 +1,61 @@
+{
+  "sha": "96e83b7937ab958b2f726ebf723f45bfceedfdaa",
+  "node_id": "C_kwDOP2Zrm9oAKDk2ZTgzYjc5MzdhYjk1OGIyZjcyNmViZjcyM2Y0NWJmY2VlZGZkYWE",
+  "commit": {
+    "author": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-09T14:17:06Z"
+    },
+    "committer": {
+      "name": "lexicalmathical",
+      "email": "lexicalmathical@gmail.com",
+      "date": "2025-12-09T14:17:06Z"
+    },
+    "message": "fix background scrolling",
+    "tree": {
+      "sha": "406a06ce467c691a13651eb51fa1df2f3ca0305a",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/trees/406a06ce467c691a13651eb51fa1df2f3ca0305a"
+    },
+    "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/git/commits/96e83b7937ab958b2f726ebf723f45bfceedfdaa",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/96e83b7937ab958b2f726ebf723f45bfceedfdaa",
+  "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/96e83b7937ab958b2f726ebf723f45bfceedfdaa",
+  "comments_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/96e83b7937ab958b2f726ebf723f45bfceedfdaa/comments",
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "8fdf2fefe3ee6ac46e468813248563ebe228d8ed",
+      "url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/commits/8fdf2fefe3ee6ac46e468813248563ebe228d8ed",
+      "html_url": "https://github.com/shuxueshuxue/ink-and-memory/commit/8fdf2fefe3ee6ac46e468813248563ebe228d8ed"
+    }
+  ],
+  "stats": {
+    "total": 1,
+    "additions": 1,
+    "deletions": 0
+  },
+  "files": [
+    {
+      "sha": "5977385a9eb3fcb44acbd15024103479947b1909",
+      "filename": "frontend/src/App.css",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 0,
+      "changes": 1,
+      "blob_url": "https://github.com/shuxueshuxue/ink-and-memory/blob/96e83b7937ab958b2f726ebf723f45bfceedfdaa/frontend%2Fsrc%2FApp.css",
+      "raw_url": "https://github.com/shuxueshuxue/ink-and-memory/raw/96e83b7937ab958b2f726ebf723f45bfceedfdaa/frontend%2Fsrc%2FApp.css",
+      "contents_url": "https://api.github.com/repos/shuxueshuxue/ink-and-memory/contents/frontend%2Fsrc%2FApp.css?ref=96e83b7937ab958b2f726ebf723f45bfceedfdaa",
+      "patch": "@@ -240,6 +240,7 @@\n     );\n   background-size: 100% 100%;\n   background-position: 0 0;\n+  background-attachment: local; /* Scroll lines with content instead of fixing to viewport */\n }\n \n /* Scrollbar styling for simplified version */"
+    }
+  ]
+}

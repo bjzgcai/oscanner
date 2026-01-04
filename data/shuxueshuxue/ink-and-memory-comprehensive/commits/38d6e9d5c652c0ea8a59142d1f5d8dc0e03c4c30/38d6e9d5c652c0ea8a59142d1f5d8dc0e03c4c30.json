@@ -1,0 +1,20 @@
+{
+  "hash": "38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 2 18:44:46 2025 +0800",
+  "subject": "CRITICAL FIX: Save entries to database when authenticated",
+  "files": [
+    "backend/data/ink-and-memory.db",
+    "frontend/src/App.tsx"
+  ],
+  "diff": "commits/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30/38d6e9d5c652c0ea8a59142d1f5d8dc0e03c4c30.diff",
+  "related_files": {
+    "backend/data/ink-and-memory.db": [
+      "frontend/src/App.tsx"
+    ],
+    "frontend/src/App.tsx": [
+      "backend/data/ink-and-memory.db"
+    ]
+  }
+}

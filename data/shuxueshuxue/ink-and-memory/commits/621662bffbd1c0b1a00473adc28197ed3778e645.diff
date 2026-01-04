@@ -1,0 +1,23 @@
+*** FILE: frontend/src/App.tsx ***
+@@ -854,16 +854,19 @@ export default function App() {
+         const { saveSession } = await import('./api/voiceApi');
+         await saveSession(emptyState.sessionId, emptyState);
+         console.log(`✅ Created new session: ${newSessionId}`);
++        // @@@ Wait for save to complete BEFORE reloading
++        window.location.reload();
+       } catch (error) {
+         console.error('Failed to create new session in database:', error);
++        // Reload anyway to clear UI
++        window.location.reload();
+       }
+     } else {
+       // For guest users: clear localStorage
+       localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
+       localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
++      window.location.reload();
+     }
+-
+-    window.location.reload();
+   }, [isAuthenticated]);
+ 
+   const handleSaveToday = useCallback(() => {

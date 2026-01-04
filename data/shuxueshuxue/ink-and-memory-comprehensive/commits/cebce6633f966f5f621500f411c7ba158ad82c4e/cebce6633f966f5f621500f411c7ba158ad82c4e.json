@@ -1,0 +1,14 @@
+{
+  "hash": "cebce6633f966f5f621500f411c7ba158ad82c4e",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Dec 9 21:46:00 2025 +0800",
+  "subject": "change image generation timeout",
+  "files": [
+    "backend/config.py"
+  ],
+  "diff": "commits/cebce6633f966f5f621500f411c7ba158ad82c4e/cebce6633f966f5f621500f411c7ba158ad82c4e.diff",
+  "related_files": {
+    "backend/config.py": []
+  }
+}

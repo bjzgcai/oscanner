@@ -1,0 +1,23 @@
+{
+  "sha": "14a17a5f3b66ba672ae505ada7ae6984e2b94e8e",
+  "message": "Add deployment support: UUID fallback and server IP configuration\n\n- Add UUID fallback for non-secure contexts (crypto.randomUUID not available)\n- Update API base URL to server IP (101.201.227.31:8765)\n- Configure backend to listen on 0.0.0.0 for external access\n\nReady for pilot test deployment",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-13T05:27:53Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-13T05:27:53Z"
+  },
+  "stats": {
+    "total": 17,
+    "additions": 15,
+    "deletions": 2
+  },
+  "files_count": 2,
+  "parents": [
+    "478699f649305881d00688d818150862c4582208"
+  ]
+}

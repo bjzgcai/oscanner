@@ -1,0 +1,102 @@
+*** MODIFIED: frontend/src/components/AnalysisView.tsx (+65/-25) ***
+@@ -89,35 +89,75 @@ export default function AnalysisView() {
+ 
+   // Collect all notes when component mounts
+   useEffect(() => {
+-    const calendarData = getCalendarData();
+-    const notes: string[] = [];
+-    let entryCount = 0;
+-    const uniqueDays = new Set<string>();
+-
+-    // Collect all text from all entries
+-    Object.keys(calendarData).forEach(dateKey => {
+-      uniqueDays.add(dateKey);
+-      calendarData[dateKey].forEach(entry => {
+-        entryCount++;
+-        entry.state.cells
+-          .filter(cell => cell.type === 'text')
+-          .forEach(cell => {
+-            const content = (cell as TextCell).content.trim();
+-            if (content) {
+-              notes.push(content);
++    const loadNotesData = async () => {
++      let calendarData: Record<string, any[]> = {};
++
++      // @@@ Load from database if authenticated, localStorage if guest
++      if (isAuthenticated) {
++        try {
++          const { listSessions, getSession } = await import('../api/voiceApi');
++          const sessions = await listSessions();
++
++          // Group sessions by date
++          const grouped: Record<string, any[]> = {};
++          for (const session of sessions) {
++            const fullSession = await getSession(session.id);
++            let dateKey = session.created_at?.split('T')[0];
++            if (session.name && /^\d{4}-\d{2}-\d{2}/.test(session.name)) {
++              dateKey = session.name.split(' - ')[0];
++            }
++            if (!dateKey) continue;
++
++            if (!grouped[dateKey]) {
++              grouped[dateKey] = [];
+             }
+-          });
++            grouped[dateKey].push({
++              id: session.id,
++              timestamp: new Date(session.created_at || Date.now()).getTime(),
++              state: fullSession.editor_state,
++              firstLine: session.name || 'Untitled'
++            });
++          }
++          calendarData = grouped;
++        } catch (error) {
++          console.error('Failed to load from database:', error);
++          calendarData = getCalendarData(); // Fallback
++        }
++      } else {
++        calendarData = getCalendarData();
++      }
++
++      const notes: string[] = [];
++      let entryCount = 0;
++      const uniqueDays = new Set<string>();
++
++      // Collect all text from all entries
++      Object.keys(calendarData).forEach(dateKey => {
++        uniqueDays.add(dateKey);
++        calendarData[dateKey].forEach(entry => {
++          entryCount++;
++          entry.state.cells
++            .filter((cell: any) => cell.type === 'text')
++            .forEach((cell: any) => {
++              const content = (cell as TextCell).content.trim();
++              if (content) {
++                notes.push(content);
++              }
++            });
++        });
+       });
+-    });
+ 
+-    const allText = notes.join('\n\n');
++      const allText = notes.join('\n\n');
+ 
+-    setAllNotes(allText);
+-    setStats({
+-      totalDays: uniqueDays.size,
+-      totalWords: countWords(allText),
+-      totalEntries: entryCount
+-    });
++      setAllNotes(allText);
++      setStats({
++        totalDays: uniqueDays.size,
++        totalWords: countWords(allText),
++        totalEntries: entryCount
++      });
++    };
++
++    loadNotesData();
+ 
+     // @@@ Load saved reports history from database if authenticated, localStorage if guest
+     const loadReports = async () => {

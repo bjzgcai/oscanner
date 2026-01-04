@@ -1,0 +1,251 @@
+*** MODIFIED: README.md (+170/-57) ***
+@@ -1,78 +1,191 @@
+-# Consciousness
++# Ink and Memory
+ 
+-**Your thoughts have thoughts about your thoughts.**
++A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.
+ 
+-An introspective writing companion where different aspects of your psyche provide real-time commentary as you write.
++https://github.com/user-attachments/assets/demo.mov
+ 
+-**Main Goal:** 情感陪伴，生活建议 (Emotional companionship, life advice)
++## ✨ Features
+ 
+-## UI Design
++- **Living Commentary**: As you write, distinct inner voices (Logic, Empathy, Volition, etc.) spontaneously comment on your thoughts
++- **Dynamic Highlighting**: Voice-triggered phrases are highlighted with watercolor-style brushstrokes
++- **Stateful Analysis**: LLM-powered backend remembers past comments and avoids repetition
++- **Multilingual**: Supports both English and Chinese text with matching commentary language
++- **Binder Aesthetic**: Beautiful notebook-style UI with ring binders and handwritten fonts
+ 
+-![Book UI Design](assets/book-ui-design.png)
++## 🎭 The Voices
+ 
+-## Design Principles
++13 Disco Elysium-inspired archetypes provide commentary:
+ 
+-- **Something to take away** - Each session produces insights worth keeping
+-- **Actively prompt user** - Voices ask questions, don't just comment
+-- **Make the process interesting** - Real-time feedback keeps engagement
+-- **Long-term retrospection** - Statistics, patterns, relationship mapping over time
+-- **Community** - Note polish with auto image generation, sharing features
++- **Logic**: Wield raw intellectual power
++- **Empathy**: Work your mirror neurons
++- **Volition**: Keep your morale up
++- **Inland Empire**: Hunches and gut feelings
++- **Drama**: Detect lies and perform
++- **Authority**: Assert yourself
++- **Half Light**: Fight or flight
++- **Shivers**: Tune in to the city
++- **Composure**: Keep your poker face
++- *...and more*
+ 
+-## Structure
++## 🏗️ Architecture
+ 
+-```
+-consciousness/
+-├── frontend/
+-│   ├── src/
+-│   │   ├── components/
+-│   │   │   ├── WritingArea.tsx     # Main writing input
+-│   │   │   ├── Voice.tsx           # Individual voice component
+-│   │   │   └── VoicesPanel.tsx     # Container for all voices
+-│   │   ├── hooks/
+-│   │   │   └── useSSE.ts           # Server-sent events hook
+-│   │   ├── App.tsx
+-│   │   └── main.tsx
+-│   ├── package.json
+-│   └── vite.config.ts
+-└── backend/
+-    ├── main.py                      # PolyCLI orchestration server
+-    ├── voices/
+-    │   ├── logic.py                 # Logic voice agent
+-    │   ├── emotion.py               # Emotion voice agent
+-    │   ├── doubt.py                 # Doubt voice agent
+-    │   ├── memory.py                # Memory voice agent
+-    │   └── intuition.py             # Intuition voice agent
+-    └── requirements.txt
+-```
++### Frontend (React + TypeScript)
++- TipTap editor with custom voice highlighting extension
++- 5-second polling with >10 character change threshold
++- Instant phrase detection and highlighting
++- Excalifont + Xiaolai fonts for handwritten aesthetic
+ 
+-## Implementation
++### Backend (Python + PolyCLI)
++- **Stateful Analyzer**: Tracks existing comments, prunes deleted phrases
++- **Density Control**: Max 1 voice per persona, 1 comment per sentence
++- **LLM Integration**: GPT-4 via free API proxy
++- **Session Registry**: Web control panel for monitoring
+ 
+-### Frontend
+-- **React + TypeScript** - UI components
+-- **Vite** - Build tool
+-- **EventSource API** - SSE for voice streaming
++## 🚀 Setup
+ 
+-### Backend (PolyCLI)
+-- **HTTP API** - Send user text, get analysis
+-- **SSE Stream** - Real-time voice comments
+-- **Session Persistence** - Save conversations
+-- **Multi-agent Orchestration** - Voices as PolyAgents
++### Prerequisites
++- Python 3.11+
++- Node.js 18+
++- [uv](https://github.com/astral-sh/uv) for Python package management
+ 
+-## Shipping Strategy
++### Backend
+ 
+-**Web first, then mobile app**
++```bash
++cd backend
++
++# Create virtual environment and install dependencies
++uv venv
++source .venv/bin/activate  # On Windows: .venv\Scripts\activate
++
++# Install PolyCLI (from parent directory)
++cd ~/Codebase/PolyCLI
++uv pip install -e .
++
++cd ~/Codebase/ink-and-memory/backend
++
++# Install additional dependencies
++uv pip install beautifulsoup4 requests 'httpx[socks]'
++
++# Create models.json with your LLM API config
++cat > models.json << 'EOC'
++{
++  "models": {
++    "gpt-4o-dou": {
++      "endpoint": "https://api.example.com/v1",
++      "api_key": "your-api-key",
++      "model": "openai/chatgpt-4o-latest"
++    }
++  }
++}
++EOC
++
++# Start server
++python server.py
++```
+ 
+-## Getting Started
++Server runs at `http://localhost:8765`
++
++### Frontend
+ 
+ ```bash
+-# Frontend
+ cd frontend
+-npm create vite@latest . -- --template react-ts
++
++# Install dependencies
+ npm install
++
++# Start dev server
+ npm run dev
++```
+ 
+-# Backend
+-cd backend
+-pip install polycli
+-python main.py
+-```
+\ No newline at end of file
++App runs at `http://localhost:5173`
++
++## 📖 Usage
++
++1. Start both backend and frontend servers
++2. Open `http://localhost:5173` in your browser
++3. Start writing your thoughts
++4. Every 5 seconds (if you've written >10 new characters), voices will comment
++5. Delete text to remove its associated comments
++6. Highlights show which phrases triggered each voice
++
++## 🎨 Design Philosophy
++
++### Vibe-Coding
++This project was built using "observe-code-observe-code" rapid iteration:
++- Minimal planning, maximal experimentation
++- See `backend/archive/vibe-coding-scraper-example/` for a documented example
++
++### Minimal Implementation
++- Simple is better than complex
++- Code buys features with complexity - spend wisely
++- `@@@` comments mark tricky parts for easy navigation
++
++## 🔧 Technical Highlights
++
++### Stateful Commentary System
++```python
++class StatefulVoiceAnalyzer:
++    def analyze(self, agent, text):
++        # 1. Prune deleted comments
++        self._prune_deleted_comments(text)
++
++        # 2. Only ask LLM for NEW comments
++        # (shows existing comments to avoid repetition)
++
++        # 3. Enforce density rules
++        # (1 per persona, 1 per sentence)
++
++        # 4. Return ALL comments (old + new)
++```
++
++### Polling Strategy
++```typescript
++// Every 5 seconds, check if text changed >10 chars
++useEffect(() => {
++  const interval = setInterval(async () => {
++    if (textDiff > 10 && !isAnalyzing) {
++      const voices = await analyzeText(currentText);
++      setVoiceTriggers(voices);
++    }
++  }, 5000);
++  return () => clearInterval(interval);
++}, []);
++```
++
++### Sentence Splitting (Multilingual)
++```python
++# English: .!?  Chinese: 。！？  Also: newlines
++re.split(r'[.!?。！？]+|\n+', text)
++```
++
++## 📁 Project Structure
++
++```
++ink-and-memory/
++├── backend/
++│   ├── server.py              # PolyCLI Session Registry server
++│   ├── stateful_analyzer.py   # Core voice detection logic
++│   ├── config.py              # Voice archetypes & prompts
++│   └── archive/               # Learning examples
++├── frontend/
++│   ├── src/
++│   │   ├── components/        # React components
++│   │   ├── extensions/        # TipTap voice highlighting
++│   │   └── api/               # Backend API client
++│   └── public/                # Fonts & assets
++└── demo.mov                   # Demo video
++```
++
++## 🤝 Contributing
++
++This is a personal experimental project, but feel free to fork and adapt!
++
++## 📜 License
++
++MIT
++
++## 🙏 Credits
++
++- Inspired by [Disco Elysium](https://discoelysium.com/)
++- Built with [PolyCLI](https://github.com/shuxueshuxue/PolyCLI)
++- Fonts: [Excalifont](https://github.com/excalidraw/excalidraw) & Xiaolai

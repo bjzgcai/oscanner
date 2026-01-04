@@ -1,0 +1,1233 @@
+*** MODIFIED: backend/database.py (+101/-12) ***
+@@ -50,6 +50,10 @@ def init_db():
+         migrate_v1(db)
+     if current_version < 2:
+         migrate_v2(db)
++    if current_version < 3:
++        migrate_v3(db)
++    if current_version < 4:
++        migrate_v4(db)
+ 
+     db.commit()
+     db.close()
+@@ -166,6 +170,60 @@ def migrate_v2(db):
+ 
+     print("✅ Migration v2 completed")
+ 
++def migrate_v3(db):
++    """Add thumbnail_base64 field to daily_pictures."""
++    print("📦 Running migration v3: Add thumbnail support for images")
++
++    # Add thumbnail_base64 column to daily_pictures
++    db.execute("""
++    ALTER TABLE daily_pictures ADD COLUMN thumbnail_base64 TEXT
++    """)
++
++    # Record migration
++    db.execute("INSERT INTO schema_version (version) VALUES (3)")
++
++    print("✅ Migration v3 completed")
++
++def migrate_v4(db):
++    """Remove UNIQUE constraint on (user_id, date) to allow multiple pictures per day."""
++    print("📦 Running migration v4: Allow multiple pictures per day")
++
++    # @@@ SQLite doesn't support DROP CONSTRAINT, so we need to recreate the table
++    # Create new table without UNIQUE constraint
++    db.execute("""
++    CREATE TABLE daily_pictures_new (
++      id INTEGER PRIMARY KEY AUTOINCREMENT,
++      user_id INTEGER NOT NULL,
++      date TEXT NOT NULL,
++      image_base64 TEXT NOT NULL,
++      prompt TEXT,
++      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
++      thumbnail_base64 TEXT,
++      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
++    )
++    """)
++
++    # Copy all data from old table to new table
++    db.execute("""
++    INSERT INTO daily_pictures_new (id, user_id, date, image_base64, prompt, created_at, thumbnail_base64)
++    SELECT id, user_id, date, image_base64, prompt, created_at, thumbnail_base64
++    FROM daily_pictures
++    """)
++
++    # Drop old table
++    db.execute("DROP TABLE daily_pictures")
++
++    # Rename new table to original name
++    db.execute("ALTER TABLE daily_pictures_new RENAME TO daily_pictures")
++
++    # Recreate index (without UNIQUE constraint)
++    db.execute("CREATE INDEX idx_pictures_user_date ON daily_pictures(user_id, date)")
++
++    # Record migration
++    db.execute("INSERT INTO schema_version (version) VALUES (4)")
++
++    print("✅ Migration v4 completed")
++
+ # ========== User Management ==========
+ 
+ def create_user(email: str, password_hash: str, display_name: str = None) -> int:
+@@ -219,7 +277,7 @@ def save_session(user_id: int, session_id: str, editor_state: dict, name: str =
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(id) DO UPDATE SET
+           editor_state_json = excluded.editor_state_json,
+-          name = excluded.name,
++          name = COALESCE(excluded.name, name),
+           updated_at = CURRENT_TIMESTAMP
+         """, (session_id, user_id, name, json.dumps(editor_state)))
+         db.commit()
+@@ -270,33 +328,64 @@ def delete_session(user_id: int, session_id: str):
+ 
+ # ========== Daily Pictures ==========
+ 
+-def save_daily_picture(user_id: int, date: str, image_base64: str, prompt: str = None):
+-    """Save or update daily picture."""
++def save_daily_picture(user_id: int, date: str, image_base64: str, prompt: str = None, thumbnail_base64: str = None):
++    """Save daily picture (replaces any existing picture for this user+date)."""
+     db = get_db()
+     try:
++        # @@@ Delete old pictures for this user+date combination first
++        # This ensures only ONE picture per day while avoiding UNIQUE constraint timezone issues
+         db.execute("""
+-        INSERT INTO daily_pictures (user_id, date, image_base64, prompt)
+-        VALUES (?, ?, ?, ?)
+-        ON CONFLICT(user_id, date) DO UPDATE SET
+-          image_base64 = excluded.image_base64,
+-          prompt = excluded.prompt
+-        """, (user_id, date, image_base64, prompt))
++        DELETE FROM daily_pictures
++        WHERE user_id = ? AND date = ?
++        """, (user_id, date))
++
++        # Insert the new picture
++        db.execute("""
++        INSERT INTO daily_pictures (user_id, date, image_base64, thumbnail_base64, prompt)
++        VALUES (?, ?, ?, ?, ?)
++        """, (user_id, date, image_base64, thumbnail_base64, prompt))
++
+         db.commit()
+     finally:
+         db.close()
+ 
+ def get_daily_pictures(user_id: int, limit: int = 30):
+-    """Get recent daily pictures."""
++    """Get recent daily pictures (returns ONLY thumbnails for fast timeline loading)."""
+     db = get_db()
+     try:
++        # @@@ Use COALESCE to return thumbnail, fallback to full image only if needed
++        # This prevents loading full images when thumbnails exist
+         rows = db.execute("""
+-        SELECT date, image_base64, prompt, created_at
++        SELECT date, COALESCE(thumbnail_base64, image_base64) as base64, prompt, created_at
+         FROM daily_pictures
+         WHERE user_id = ?
+         ORDER BY date DESC
+         LIMIT ?
+         """, (user_id, limit)).fetchall()
+-        return [dict(row) for row in rows]
++        return [{
++            'date': row['date'],
++            'base64': row['base64'],
++            'prompt': row['prompt'] or '',
++            'created_at': row['created_at']
++        } for row in rows]
++    finally:
++        db.close()
++
++def get_daily_picture_full(user_id: int, date: str):
++    """Get full resolution image for a specific date (on-demand loading)."""
++    db = get_db()
++    try:
++        row = db.execute("""
++        SELECT image_base64
++        FROM daily_pictures
++        WHERE user_id = ? AND date = ?
++        ORDER BY created_at DESC
++        LIMIT 1
++        """, (user_id, date)).fetchone()
++
++        if row:
++            return row['image_base64']
++        return None
+     finally:
+         db.close()
+ 
+
+*** MODIFIED: backend/server.py (+75/-12) ***
+@@ -408,13 +408,56 @@ def generate_daily_picture(all_notes: str):
+                         # Extract base64 data (without the data URI prefix)
+                         base64_data = image_data.split(',', 1)[1]
+ 
+-                        print(f"✅ Image generated successfully")
+-                        print(f"   Size: {len(base64_data)} chars")
+-
+-                        return {
+-                            "image_base64": base64_data,
+-                            "prompt": image_description  # Return the creative description
+-                        }
++                        # @@@ Convert to JPEG and create thumbnail
++                        try:
++                            import base64
++                            from io import BytesIO
++                            from PIL import Image
++
++                            # Decode PNG
++                            img_bytes = base64.b64decode(base64_data)
++                            img = Image.open(BytesIO(img_bytes))
++
++                            # Convert to RGB (JPEG doesn't support transparency)
++                            if img.mode in ('RGBA', 'LA', 'P'):
++                                rgb_img = Image.new('RGB', img.size, (255, 255, 255))
++                                if img.mode == 'RGBA':
++                                    rgb_img.paste(img, mask=img.split()[-1])
++                                else:
++                                    rgb_img.paste(img)
++                                img = rgb_img
++
++                            # Full JPEG (quality 85)
++                            full_output = BytesIO()
++                            img.save(full_output, format='JPEG', quality=85, optimize=True)
++                            full_jpeg = base64.b64encode(full_output.getvalue()).decode('utf-8')
++
++                            # Thumbnail JPEG (400px width, quality 60)
++                            thumb_width = 400
++                            thumb_height = int(img.height * (thumb_width / img.width))
++                            thumb_img = img.resize((thumb_width, thumb_height), Image.Resampling.LANCZOS)
++
++                            thumb_output = BytesIO()
++                            thumb_img.save(thumb_output, format='JPEG', quality=60, optimize=True)
++                            thumb_jpeg = base64.b64encode(thumb_output.getvalue()).decode('utf-8')
++
++                            print(f"✅ Image generated successfully")
++                            print(f"   Original PNG: {len(base64_data)} chars")
++                            print(f"   Full JPEG: {len(full_jpeg)} chars ({100 * len(full_jpeg) / len(base64_data):.1f}%)")
++                            print(f"   Thumbnail: {len(thumb_jpeg)} chars ({100 * len(thumb_jpeg) / len(base64_data):.1f}%)")
++
++                            return {
++                                "image_base64": full_jpeg,
++                                "thumbnail_base64": thumb_jpeg,
++                                "prompt": image_description
++                            }
++                        except Exception as e:
++                            print(f"⚠️ JPEG conversion failed: {e}, using original PNG")
++                            return {
++                                "image_base64": base64_data,
++                                "thumbnail_base64": base64_data,  # Fallback to full image
++                                "prompt": image_description
++                            }
+ 
+             if attempt < config.IMAGE_RETRY_MAX_ATTEMPTS:
+                 print(f"⚠️ No image in response, retrying...")
+@@ -837,7 +880,7 @@ def get_pictures(
+     current_user: dict = Depends(get_current_user)
+ ):
+     """
+-    Get recent daily pictures for current user.
++    Get recent daily pictures for current user (thumbnails only for fast loading).
+ 
+     Query params:
+     - limit: Max number of pictures to return (default 30)
+@@ -846,6 +889,25 @@ def get_pictures(
+     pictures = database.get_daily_pictures(user_id, limit)
+     return {"pictures": pictures}
+ 
++@app.get("/api/pictures/{date}/full")
++def get_picture_full(
++    date: str,
++    current_user: dict = Depends(get_current_user)
++):
++    """
++    Get full resolution image for a specific date (on-demand loading).
++
++    Path params:
++    - date: Date in YYYY-MM-DD format
++    """
++    user_id = current_user['user_id']
++    full_image = database.get_daily_picture_full(user_id, date)
++
++    if not full_image:
++        raise HTTPException(status_code=404, detail="Picture not found for this date")
++
++    return {"image_base64": full_image}
++
+ @app.post("/api/pictures")
+ def save_picture(
+     request: dict,
+@@ -864,12 +926,13 @@ def save_picture(
+     user_id = current_user['user_id']
+     date = request.get('date')
+     image_base64 = request.get('image_base64')
++    thumbnail_base64 = request.get('thumbnail_base64')
+     prompt = request.get('prompt', '')
+ 
+     if not date or not image_base64:
+         raise HTTPException(status_code=400, detail="date and image_base64 required")
+ 
+-    database.save_daily_picture(user_id, date, image_base64, prompt)
++    database.save_daily_picture(user_id, date, image_base64, prompt, thumbnail_base64)
+     return {"success": True}
+ 
+ # ========== Preferences Endpoints ==========
+@@ -1003,17 +1066,17 @@ async def generate_image_api(request_data: dict):
+     """
+     @@@ Generate artistic image from notes (sync API).
+ 
+-    This may take longer (60s timeout) due to image generation.
++    This may take longer (120s timeout) due to image generation.
+     """
+     async with httpx.AsyncClient() as client:
+         response = await client.post(
+             "http://localhost:8765/polycli/api/trigger-sync",
+             json={
+                 "session_id": "generate_daily_picture",
+                 "params": request_data,
+-                "timeout": 60.0  # Image generation takes longer
++                "timeout": 120.0  # Image generation takes ~90s without proxy
+             },
+-            timeout=65.0
++            timeout=125.0
+         )
+         return response.json()
+ 
+
+*** MODIFIED: backend/stateless_analyzer.py (+2/-2) ***
+@@ -153,13 +153,13 @@ def analyze_stateless(agent: PolyAgent, text: str, applied_comments: List[dict],
+             user_name = v.get("name", key)
+             name_to_key[user_name] = key
+ 
+-        # Override icon/color with config values
++        # @@@ Map LLM's name back to key for frontend voiceConfigs[key] lookup
+         llm_voice_name = voice.get("voice")
+         archetype_key = name_to_key.get(llm_voice_name)
+         if archetype_key and archetype_key in voice_archetypes:
+             voice["icon"] = voice_archetypes[archetype_key]["icon"]
+             voice["color"] = voice_archetypes[archetype_key]["color"]
+-            voice["voice"] = llm_voice_name
++            voice["voice"] = archetype_key  # Return key, not name
+ 
+         return {"voices": [voice], "new_voices_added": 1}
+     else:
+
+*** MODIFIED: frontend/src/App.tsx (+39/-15) ***
+@@ -268,6 +268,8 @@ export default function App() {
+   const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'about'>('writing');
+   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
+   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
++  const [metaPrompt, setMetaPrompt] = useState<string>('');
++  const [loadedStateConfig, setLoadedStateConfig] = useState<StateConfig | null>(null);
+   const [defaultVoiceConfigs, setDefaultVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+ 
+   const engineRef = useRef<EditorEngine | null>(null);
+@@ -357,6 +359,8 @@ export default function App() {
+   // @@@ Update engine when voice configs change
+   useEffect(() => {
+     if (engineRef.current && Object.keys(voiceConfigs).length > 0) {
++      console.log('📢 App: voiceConfigs changed, updating engine. Enabled:',
++        Object.entries(voiceConfigs).filter(([_, v]) => v.enabled).map(([k]) => k));
+       engineRef.current.setVoiceConfigs(voiceConfigs);
+     }
+   }, [voiceConfigs]);
+@@ -444,24 +448,29 @@ export default function App() {
+ 
+           // Load the most recent session or current session
+           let sessionToLoad = null;
++          let loadedSessionId: string | undefined = undefined;
+           const currentSessionId = 'current-session';
+           const currentSession = sessions.find(s => s.id === currentSessionId);
+ 
+           if (currentSession) {
+             // Load current session
+             const fullSession = await getSession(currentSessionId);
+             sessionToLoad = fullSession.editor_state;
++            loadedSessionId = currentSessionId;
+           } else if (sessions.length > 0) {
+             // Load most recent session
+             const mostRecent = sessions.sort((a, b) =>
+               new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+             )[0];
+             const fullSession = await getSession(mostRecent.id);
+             sessionToLoad = fullSession.editor_state;
++            loadedSessionId = mostRecent.id;
+           }
+ 
+-          if (sessionToLoad) {
++          if (sessionToLoad && loadedSessionId) {
+             engine.loadState(sessionToLoad);
++            // @@@ CRITICAL: Set currentEntryId to the loaded session ID
++            engine.setCurrentEntryId(loadedSessionId);
+             setState(engine.getState());
+ 
+             // Initialize localTexts from loaded state
+@@ -480,6 +489,12 @@ export default function App() {
+             if (prefs.voice_configs) {
+               setVoiceConfigs(prefs.voice_configs);
+             }
++            if (prefs.meta_prompt) {
++              setMetaPrompt(prefs.meta_prompt);
++            }
++            if (prefs.state_config) {
++              setLoadedStateConfig(prefs.state_config);
++            }
+             if (prefs.selected_state !== undefined && prefs.selected_state !== null) {
+               setSelectedState(prefs.selected_state);
+             }
+@@ -542,20 +557,19 @@ export default function App() {
+ 
+   // @@@ Auto-save to database for authenticated users
+   useEffect(() => {
+-    if (!isAuthenticated || !state || !engineRef.current) return;
++    if (!isAuthenticated || !state) return;
++
++    // @@@ currentEntryId is always defined after engine initialization
++    if (!state.currentEntryId) {
++      console.error('BUG: currentEntryId should always be defined after engine init');
++      return;
++    }
+ 
+     const autoSaveTimer = setTimeout(async () => {
+       try {
+-        // Use currentEntryId if exists, otherwise create new UUID
+-        let sessionId = state.currentEntryId;
+-        if (!sessionId) {
+-          sessionId = crypto.randomUUID();
+-          engineRef.current?.setCurrentEntryId(sessionId);
+-        }
+-
+         const { saveSession } = await import('./api/voiceApi');
+-        // Auto-save without name (unsaved draft)
+-        await saveSession(sessionId, state);
++        // Auto-save without name (preserves existing name if any)
++        await saveSession(state.currentEntryId!, state);
+         console.log('Auto-saved to database');
+       } catch (error) {
+         console.error('Auto-save failed:', error);
+@@ -883,7 +897,7 @@ export default function App() {
+       weightPath: [],
+       overlappedPhrases: [],
+       sessionId: newSessionId,
+-      currentEntryId: undefined
++      currentEntryId: newSessionId  // @@@ Set currentEntryId to maintain invariant I5
+     };
+ 
+     // @@@ Load empty state directly into engine (immediate UI update)
+@@ -895,7 +909,7 @@ export default function App() {
+       // @@@ Save to database in background
+       try {
+         const { saveSession } = await import('./api/voiceApi');
+-        await saveSession(emptyState.sessionId, emptyState);
++        await saveSession(emptyState.currentEntryId!, emptyState);
+       } catch (error) {
+         console.error('Failed to save new session:', error);
+       }
+@@ -1013,20 +1027,26 @@ export default function App() {
+     metaPrompt: string;
+     stateConfig: StateConfig;
+   }) => {
++    console.log('App: handleVoiceConfigsSave called, isAuthenticated:', isAuthenticated);
+     setVoiceConfigs(data.voices);
+ 
+     // @@@ Save to database if authenticated
+     if (isAuthenticated) {
+       try {
++        console.log('App: Saving preferences to database...');
+         const { savePreferences } = await import('./api/voiceApi');
+         await savePreferences({
+           voice_configs: data.voices,
+           meta_prompt: data.metaPrompt,
+           state_config: data.stateConfig
+         });
++        console.log('App: Preferences saved to database successfully');
+       } catch (error) {
+-        console.error('Failed to save preferences to database:', error);
++        console.error('App: Failed to save preferences to database:', error);
++        throw error; // Propagate error to show alert
+       }
++    } else {
++      console.log('App: Guest mode, skipping database save');
+     }
+   }, [isAuthenticated]);
+ 
+@@ -1887,6 +1907,7 @@ export default function App() {
+                       onKill={() => handleCommentKill(displayedComment.id)}
+                       onSendChatMessage={(msg) => handleCommentChatSend(displayedComment.id, msg)}
+                       isChatProcessing={commentChatProcessing.has(displayedComment.id)}
++                      voiceConfigs={voiceConfigs}
+                     />
+                     );
+                   });
+@@ -1982,6 +2003,9 @@ export default function App() {
+         }}>
+           <VoiceSettings
+             defaultVoices={defaultVoiceConfigs}
++            currentVoices={voiceConfigs}
++            currentMetaPrompt={metaPrompt}
++            currentStateConfig={loadedStateConfig}
+             onSave={handleVoiceConfigsSave}
+           />
+         </div>
+@@ -1997,7 +2021,7 @@ export default function App() {
+         display: currentView === 'timeline' ? 'flex' : 'none',
+         overflow: 'hidden'
+       }}>
+-        <CollectionsView isVisible={currentView === 'timeline'} />
++        <CollectionsView isVisible={currentView === 'timeline'} voiceConfigs={voiceConfigs} />
+       </div>
+       {currentView === 'analysis' && (
+         <div style={{
+
+*** MODIFIED: frontend/src/api/voiceApi.ts (+23/-3) ***
+@@ -47,6 +47,7 @@ interface SyncResponse {
+     traits?: any[];  // For traits analysis
+     patterns?: any[];  // For patterns analysis
+     image_base64?: string;  // For image generation
++    thumbnail_base64?: string;  // Thumbnail for image generation
+     prompt?: string;  // Image generation prompt
+   };
+   error?: string;
+@@ -179,7 +180,7 @@ export async function analyzePatterns(allNotes: string): Promise<any[]> {
+ /**
+  * Generate a daily picture based on user's notes (sync API - no polling!)
+  */
+-export async function generateDailyPicture(allNotes: string): Promise<{ image_base64: string; prompt: string }> {
++export async function generateDailyPicture(allNotes: string): Promise<{ image_base64: string; thumbnail_base64?: string; prompt: string }> {
+   const response = await fetch(`${API_BASE}/api/generate-image`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+@@ -195,6 +196,7 @@ export async function generateDailyPicture(allNotes: string): Promise<{ image_ba
+   if (data.result?.image_base64) {
+     return {
+       image_base64: data.result.image_base64,
++      thumbnail_base64: data.result.thumbnail_base64,
+       prompt: data.result.prompt || 'Generated from your notes'
+     };
+   }
+@@ -314,13 +316,14 @@ export async function deleteSession(sessionId: string): Promise<void> {
+ /**
+  * Save daily picture
+  */
+-export async function saveDailyPicture(date: string, imageBase64: string, prompt: string): Promise<void> {
++export async function saveDailyPicture(date: string, imageBase64: string, prompt: string, thumbnailBase64?: string): Promise<void> {
+   const response = await fetch(`${API_BASE}/api/pictures`, {
+     method: 'POST',
+     headers: getAuthHeaders(),
+     body: JSON.stringify({
+       date,
+       image_base64: imageBase64,
++      thumbnail_base64: thumbnailBase64,
+       prompt
+     })
+   });
+@@ -332,7 +335,7 @@ export async function saveDailyPicture(date: string, imageBase64: string, prompt
+ }
+ 
+ /**
+- * Get daily pictures
++ * Get daily pictures (thumbnails only for fast timeline loading)
+  */
+ export async function getDailyPictures(limit: number = 30): Promise<any[]> {
+   const response = await fetch(`${API_BASE}/api/pictures?limit=${limit}`, {
+@@ -348,6 +351,23 @@ export async function getDailyPictures(limit: number = 30): Promise<any[]> {
+   return data.pictures;
+ }
+ 
++/**
++ * Get full resolution image for a specific date (on-demand loading)
++ */
++export async function getDailyPictureFull(date: string): Promise<string> {
++  const response = await fetch(`${API_BASE}/api/pictures/${date}/full`, {
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Get full picture failed');
++  }
++
++  const data = await response.json();
++  return data.image_base64;
++}
++
+ /**
+  * Save user preferences
+  */
+
+*** MODIFIED: frontend/src/components/AnalysisView.tsx (+4/-1) ***
+@@ -101,6 +101,9 @@ export default function AnalysisView() {
+           // Group sessions by date
+           const grouped: Record<string, any[]> = {};
+           for (const session of sessions) {
++            // @@@ Skip unnamed sessions (working drafts not saved yet)
++            if (!session.name) continue;
++
+             const fullSession = await getSession(session.id);
+ 
+             // @@@ BUGFIX: Extract date from timestamp (format: "2025-11-02 10:42:17" or "2025-11-02T10:42:17")
+@@ -120,7 +123,7 @@ export default function AnalysisView() {
+               id: session.id,
+               timestamp: new Date(session.created_at || Date.now()).getTime(),
+               state: fullSession.editor_state,
+-              firstLine: session.name || 'Untitled'
++              firstLine: session.name
+             });
+           }
+           calendarData = grouped;
+
+*** MODIFIED: frontend/src/components/CalendarPopup.tsx (+4/-1) ***
+@@ -32,6 +32,9 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+           const grouped: Record<string, CalendarEntry[]> = {};
+ 
+           for (const session of sessions) {
++            // @@@ Skip unnamed sessions (working drafts not saved yet)
++            if (!session.name) continue;
++
+             const fullSession = await getSession(session.id);
+ 
+             // @@@ BUGFIX: Extract date from timestamp (format: "2025-11-02 10:42:17" or "2025-11-02T10:42:17")
+@@ -51,7 +54,7 @@ export default function CalendarPopup({ onLoadEntry, onClose }: Props) {
+               id: session.id,
+               timestamp: new Date(session.created_at || Date.now()).getTime(),
+               state: fullSession.editor_state,
+-              firstLine: session.name || 'Untitled'
++              firstLine: session.name
+             });
+           }
+ 
+
+*** MODIFIED: frontend/src/components/CollectionsView.tsx (+212/-41) ***
+@@ -13,7 +13,7 @@ interface TimelineDay {
+   daysOffset: number;
+ }
+ 
+-export default function CollectionsView({ isVisible }: { isVisible: boolean }) {
++export default function CollectionsView({ isVisible, voiceConfigs }: { isVisible: boolean; voiceConfigs: Record<string, any> }) {
+   return (
+     <div style={{
+       width: '100%',
+@@ -23,7 +23,7 @@ export default function CollectionsView({ isVisible }: { isVisible: boolean }) {
+       background: '#f8f0e6',
+       overflow: 'hidden'
+     }}>
+-      <TimelinePage isVisible={isVisible} />
++      <TimelinePage isVisible={isVisible} voiceConfigs={voiceConfigs} />
+     </div>
+   );
+ }
+@@ -81,6 +81,16 @@ function getIconForVoice(icon: string): string {
+ }
+ 
+ // @@@ Helper to format dates consistently
++// @@@ Helper to get date in local timezone as YYYY-MM-DD
++// Prevents timezone issues where UTC date differs from user's local date
++function getLocalDateString(date?: Date | string): string {
++  const d = date ? new Date(date) : new Date();
++  const year = d.getFullYear();
++  const month = String(d.getMonth() + 1).padStart(2, '0');
++  const day = String(d.getDate()).padStart(2, '0');
++  return `${year}-${month}-${day}`;
++}
++
+ function formatDate(date: Date | string): string {
+   return new Date(date).toLocaleDateString('en-US', {
+     year: 'numeric',
+@@ -90,17 +100,18 @@ function formatDate(date: Date | string): string {
+ }
+ 
+ // @@@ Generate timeline days (7 past + today + 7 future)
++// Returns dates in YYYY-MM-DD format to match database storage
+ function generateTimelineDays(): TimelineDay[] {
+   const today = new Date();
+-  const todayStr = formatDate(today);
++  const todayStr = getLocalDateString(today);
+   const allTimelineDays: TimelineDay[] = [];
+ 
+   // Add past 7 days
+   for (let i = 7; i >= 1; i--) {
+     const pastDate = new Date(today);
+     pastDate.setDate(today.getDate() - i);
+     allTimelineDays.push({
+-      date: formatDate(pastDate),
++      date: getLocalDateString(pastDate),
+       isPast: true,
+       isFuture: false,
+       isToday: false,
+@@ -122,7 +133,7 @@ function generateTimelineDays(): TimelineDay[] {
+     const futureDate = new Date(today);
+     futureDate.setDate(today.getDate() + i);
+     allTimelineDays.push({
+-      date: formatDate(futureDate),
++      date: getLocalDateString(futureDate),
+       isPast: false,
+       isFuture: true,
+       isToday: false,
+@@ -212,38 +223,56 @@ async function getAllNotesFromSessions(isAuthenticated: boolean): Promise<string
+   return allText.join('\n\n---\n\n');
+ }
+ 
+-// @@@ Timeline page - combines pictures and starred comments by date
+-function TimelinePage({ isVisible }: { isVisible: boolean }) {
++// @@@ Timeline page - combines pictures and comments by date
++function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceConfigs: Record<string, any> }) {
+   const { isAuthenticated } = useAuth();
+   const [starredComments, setStarredComments] = useState<Commentor[]>([]);
+-  const [pictures, setPictures] = useState<Array<{ date: string; base64: string; prompt: string }>>([]);
++  const [allCommentsByDate, setAllCommentsByDate] = useState<Map<string, Commentor[]>>(new Map());
++  const [pictures, setPictures] = useState<Array<{ date: string; base64: string; full_base64?: string; prompt: string }>>([]);
+   const [generatingForDate, setGeneratingForDate] = useState<string | null>(null);
+-  const [viewingImage, setViewingImage] = useState<{ base64: string; prompt: string; date: string } | null>(null);
++  const [viewingImage, setViewingImage] = useState<{ base64: string; full_base64?: string; prompt: string; date: string } | null>(null);
+   const [initialLoading, setInitialLoading] = useState(true);
++  const [loadingCommentsForDate, setLoadingCommentsForDate] = useState<string | null>(null);
+   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+ 
+   useEffect(() => {
+     const loadData = async () => {
+-      // @@@ Load starred comments from database if authenticated, localStorage if guest
++      // @@@ Load all comments grouped by date from database if authenticated, localStorage if guest
+       if (isAuthenticated) {
+         try {
+           const { listSessions, getSession } = await import('../api/voiceApi');
+           const sessions = await listSessions();
+           const allStarred: Commentor[] = [];
++          const commentsByDate = new Map<string, Commentor[]>();
+ 
+           for (const session of sessions) {
+             try {
+               const fullSession = await getSession(session.id);
+-              const starred = fullSession.editor_state?.commentors?.filter((c: Commentor) => c.feedback === 'star') || [];
++              const comments = fullSession.editor_state?.commentors || [];
++
++              // Collect starred comments for timeline cards
++              const starred = comments.filter((c: Commentor) => c.feedback === 'star');
+               allStarred.push(...starred);
++
++              // Group ALL comments by date (for image modal display)
++              // @@@ Use each comment's appliedAt timestamp (not session's created_at) to handle timezone properly
++              comments.filter((c: Commentor) => c.appliedAt).forEach((comment: Commentor) => {
++                const commentDate = new Date(comment.appliedAt || comment.computedAt);
++                const date = getLocalDateString(commentDate);
++                if (!commentsByDate.has(date)) {
++                  commentsByDate.set(date, []);
++                }
++                commentsByDate.get(date)!.push(comment);
++              });
+             } catch (err) {
+               console.error(`Failed to load session ${session.id}:`, err);
+             }
+           }
+ 
+           setStarredComments(allStarred);
++          setAllCommentsByDate(commentsByDate);
+         } catch (error) {
+-          console.error('Failed to load starred comments from database:', error);
++          console.error('Failed to load comments from database:', error);
+         }
+       } else {
+         // Guest mode: load from localStorage
+@@ -253,8 +282,17 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+             const state = JSON.parse(savedState);
+             const starred = state.commentors?.filter((c: Commentor) => c.feedback === 'star') || [];
+             setStarredComments(starred);
++
++            // For guest mode, all comments are from today
++            const today = formatDate(new Date());
++            const allComments = state.commentors?.filter((c: Commentor) => c.appliedAt) || [];
++            const commentsByDate = new Map<string, Commentor[]>();
++            if (allComments.length > 0) {
++              commentsByDate.set(today, allComments);
++            }
++            setAllCommentsByDate(commentsByDate);
+           } catch (e) {
+-            console.error('Failed to load starred comments:', e);
++            console.error('Failed to load comments:', e);
+           }
+         }
+       }
+@@ -264,10 +302,10 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+         try {
+           const { getDailyPictures } = await import('../api/voiceApi');
+           const dbPictures = await getDailyPictures(30);
+-          // Convert database format to app format
++          // @@@ Backend returns ONLY thumbnails for fast loading (full images loaded on-demand)
+           const formattedPictures = dbPictures.map(p => ({
+             date: p.date,
+-            base64: p.image_base64,
++            base64: p.base64,  // Thumbnail only
+             prompt: p.prompt || ''
+           }));
+           setPictures(formattedPictures);
+@@ -277,7 +315,14 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+           const savedPictures = localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES);
+           if (savedPictures) {
+             try {
+-              setPictures(JSON.parse(savedPictures));
++              const parsed = JSON.parse(savedPictures);
++              // @@@ Strip full_base64 from old cached data (keep only thumbnails)
++              const thumbnailsOnly = parsed.map((p: any) => ({
++                date: p.date,
++                base64: p.base64,
++                prompt: p.prompt
++              }));
++              setPictures(thumbnailsOnly);
+             } catch (e) {
+               console.error('Failed to load pictures:', e);
+             }
+@@ -288,7 +333,14 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+         const savedPictures = localStorage.getItem(STORAGE_KEYS.DAILY_PICTURES);
+         if (savedPictures) {
+           try {
+-            setPictures(JSON.parse(savedPictures));
++            const parsed = JSON.parse(savedPictures);
++            // @@@ Strip full_base64 from old cached data (keep only thumbnails)
++            const thumbnailsOnly = parsed.map((p: any) => ({
++              date: p.date,
++              base64: p.base64,
++              prompt: p.prompt
++            }));
++            setPictures(thumbnailsOnly);
+           } catch (e) {
+             console.error('Failed to load pictures:', e);
+           }
+@@ -301,19 +353,20 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+     loadData();
+   }, [isAuthenticated]);
+ 
+-  // @@@ Group items by date
++  // @@@ Group items by date (using YYYY-MM-DD format to match timeline days)
+   const timelineByDate = new Map<string, { picture?: any; comments: Commentor[] }>();
+ 
+   starredComments.forEach(comment => {
+-    const date = formatDate(new Date(comment.appliedAt || comment.computedAt));
++    const commentDate = new Date(comment.appliedAt || comment.computedAt);
++    const date = getLocalDateString(commentDate);  // Convert to YYYY-MM-DD
+     if (!timelineByDate.has(date)) {
+       timelineByDate.set(date, { comments: [] });
+     }
+     timelineByDate.get(date)!.comments.push(comment);
+   });
+ 
+   pictures.forEach(pic => {
+-    const date = formatDate(pic.date);
++    const date = pic.date;  // Already in YYYY-MM-DD format from database
+     if (!timelineByDate.has(date)) {
+       timelineByDate.set(date, { comments: [] });
+     }
+@@ -346,6 +399,75 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+     });
+   }, [isVisible, initialLoading]);
+ 
++  // @@@ Reload comments for a specific date from backend
++  const reloadCommentsForDate = async (dateStr: string) => {
++    // dateStr is in YYYY-MM-DD format
++    setLoadingCommentsForDate(dateStr);
++
++    try {
++      if (isAuthenticated) {
++        const { listSessions, getSession } = await import('../api/voiceApi');
++        const sessions = await listSessions();
++        const commentsForDate: Commentor[] = [];
++
++        for (const session of sessions) {
++          // @@@ Get all comments from session and group by their appliedAt timestamp
++          try {
++            const fullSession = await getSession(session.id);
++            const comments = fullSession.editor_state?.commentors || [];
++
++            // Filter comments that belong to this date (using appliedAt timestamp, not session created_at)
++            comments.filter((c: Commentor) => c.appliedAt).forEach((comment: Commentor) => {
++              const commentDate = new Date(comment.appliedAt || comment.computedAt);
++              const date = getLocalDateString(commentDate);
++              if (date === dateStr) {
++                commentsForDate.push(comment);
++              }
++            });
++          } catch (err) {
++            console.error(`Failed to load session ${session.id}:`, err);
++          }
++        }
++
++        // Update allCommentsByDate for this specific date (using YYYY-MM-DD as key)
++        setAllCommentsByDate(prev => {
++          const next = new Map(prev);
++          next.set(dateStr, commentsForDate);
++          return next;
++        });
++      }
++    } catch (error) {
++      console.error('Failed to reload comments for date:', error);
++    } finally {
++      setLoadingCommentsForDate(null);
++    }
++  };
++
++  const handleImageClick = async (picture: { base64: string; full_base64?: string; prompt: string; date: string }) => {
++    setViewingImage(picture);
++
++    // Load full image on-demand if not already loaded
++    if (!picture.full_base64 && isAuthenticated) {
++      try {
++        const { getDailyPictureFull } = await import('../api/voiceApi');
++        const fullImage = await getDailyPictureFull(picture.date);
++
++        // Update the picture object with full image
++        const updatedPicture = { ...picture, full_base64: fullImage };
++        setViewingImage(updatedPicture);
++
++        // Also update pictures array so we don't reload next time
++        setPictures(prev => prev.map(p =>
++          p.date === picture.date ? updatedPicture : p
++        ));
++      } catch (error) {
++        console.error('Failed to load full image:', error);
++      }
++    }
++
++    await reloadCommentsForDate(picture.date);
++  };
++
+   const handleGenerateForDate = async (dateStr: string) => {
+     // @@@ Block image generation for guests
+     if (!isAuthenticated) {
+@@ -363,21 +485,23 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+       }
+ 
+       const { generateDailyPicture, saveDailyPicture } = await import('../api/voiceApi');
+-      const { image_base64, prompt } = await generateDailyPicture(allNotes);
++      const { image_base64, thumbnail_base64, prompt } = await generateDailyPicture(allNotes);
++
++      // @@@ Use the dateStr parameter passed from the clicked card (already in YYYY-MM-DD format)
++      const pictureDate = dateStr;
+ 
+       const newPicture = {
+-        date: new Date().toISOString(),
+-        base64: image_base64,
++        date: pictureDate,  // @@@ Use date from clicked card
++        base64: thumbnail_base64 || image_base64,  // @@@ Only thumbnail for fast timeline
+         prompt: prompt
++        // @@@ NO full_base64 - it will be loaded on-demand when clicking
+       };
+ 
+       // @@@ Save to database (requires auth)
+-      const pictureDate = new Date(newPicture.date).toISOString().split('T')[0]; // YYYY-MM-DD format
+-      await saveDailyPicture(pictureDate, image_base64, prompt);
++      await saveDailyPicture(pictureDate, image_base64, prompt, thumbnail_base64);
+ 
+-      // @@@ Update local state
+-      const normalizedNewDate = formatDate(newPicture.date);
+-      const updated = pictures.filter(p => formatDate(p.date) !== normalizedNewDate);
++      // @@@ Update local state - remove old picture for this date if exists
++      const updated = pictures.filter(p => p.date !== pictureDate);
+ 
+       updated.unshift(newPicture);
+       setPictures(updated);
+@@ -484,7 +608,7 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+                 textAlign: 'center',
+                 marginBottom: '1.5rem'
+               }}>
+-                {day.isToday ? 'Today' : day.date}
++                {day.isToday ? 'Today' : formatDate(day.date)}
+               </div>
+ 
+               {/* Card content */}
+@@ -506,7 +630,7 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+                       cursor: 'pointer',
+                       transition: 'all 0.2s'
+                     }}
+-                    onClick={() => setViewingImage(dayData.picture)}
++                    onClick={() => handleImageClick(dayData.picture)}
+                     onMouseEnter={e => {
+                       e.currentTarget.style.transform = 'scale(1.02)';
+                       e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+@@ -517,7 +641,7 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+                     }}
+                     >
+                       <img
+-                        src={`data:image/png;base64,${dayData.picture.base64}`}
++                        src={`data:image/${dayData.picture.base64?.startsWith('iVBOR') ? 'png' : 'jpeg'};base64,${dayData.picture.base64}`}
+                         alt={dayData.picture.prompt}
+                         style={{
+                           width: '100%',
+@@ -676,7 +800,7 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+                 position: 'relative'
+               }}>
+                 <img
+-                  src={`data:image/png;base64,${viewingImage.base64}`}
++                  src={`data:image/${(viewingImage.full_base64 || viewingImage.base64)?.startsWith('iVBOR') ? 'png' : 'jpeg'};base64,${viewingImage.full_base64 || viewingImage.base64}`}
+                   alt="Generated image"
+                   style={{
+                     maxWidth: '100%',
+@@ -756,12 +880,54 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+                   boxSizing: 'border-box'
+                 }}>
+                   {(() => {
+-                    const dateData = Array.from(timelineByDate.entries()).find(([_, data]) =>
+-                      data.picture?.base64 === viewingImage.base64
+-                    );
+-                    const comments = dateData?.[1]?.comments || [];
++                    // @@@ Priority filtering: starred → chatted → last → none
++                    // Use raw YYYY-MM-DD format to match Map keys
++                    const imageDate = viewingImage.date;
++
++                    // Show loading state while fetching comments
++                    if (loadingCommentsForDate === imageDate) {
++                      return (
++                        <div style={{
++                          textAlign: 'center',
++                          color: '#999',
++                          fontSize: '14px',
++                          fontStyle: 'italic',
++                          padding: '2rem 1rem'
++                        }}>
++                          Loading comments...
++                        </div>
++                      );
++                    }
++
++                    const allCommentsForDate = allCommentsByDate.get(imageDate) || [];
++
++                    let commentsToDisplay: Commentor[] = [];
++
++                    // Priority 1: Starred comments
++                    const starredForDate = allCommentsForDate.filter(c => c.feedback === 'star');
++                    if (starredForDate.length > 0) {
++                      commentsToDisplay = starredForDate;
++                    } else {
++                      // Priority 2: One chatted comment (has chatHistory)
++                      const chattedComments = allCommentsForDate.filter(c => c.chatHistory && c.chatHistory.length > 0);
++                      if (chattedComments.length > 0) {
++                        // Take the most recent chatted comment
++                        const mostRecentChatted = chattedComments.sort((a, b) =>
++                          (b.appliedAt || b.computedAt) - (a.appliedAt || a.computedAt)
++                        )[0];
++                        commentsToDisplay = [mostRecentChatted];
++                      } else {
++                        // Priority 3: Last comment (by timestamp)
++                        if (allCommentsForDate.length > 0) {
++                          const lastComment = allCommentsForDate.sort((a, b) =>
++                            (b.appliedAt || b.computedAt) - (a.appliedAt || a.computedAt)
++                          )[0];
++                          commentsToDisplay = [lastComment];
++                        }
++                      }
++                    }
+ 
+-                    if (comments.length === 0) {
++                    if (commentsToDisplay.length === 0) {
+                       return (
+                         <div style={{
+                           textAlign: 'center',
+@@ -770,7 +936,7 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+                           fontStyle: 'italic',
+                           padding: '2rem 1rem'
+                         }}>
+-                          No starred comments for this day
++                          No comments for this day
+                         </div>
+                       );
+                     }
+@@ -782,7 +948,7 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+                         gap: '1rem',
+                         minWidth: 0
+                       }}>
+-                        {comments.map((comment) => (
++                        {commentsToDisplay.map((comment) => (
+                           <div
+                             key={comment.id}
+                             style={{
+@@ -802,8 +968,13 @@ function TimelinePage({ isVisible }: { isVisible: boolean }) {
+                               minWidth: 0
+                             }}>
+                               <span style={{ fontSize: '18px', flexShrink: 0 }}>{getIconForVoice(comment.icon)}</span>
+-                              <span style={{ fontWeight: 600, fontSize: '14px', color: '#333', flexShrink: 0 }}>{comment.voice}</span>
+-                              <span style={{ fontSize: '14px', marginLeft: 'auto', flexShrink: 0 }}>⭐</span>
++                              <span style={{ fontWeight: 600, fontSize: '14px', color: '#333', flexShrink: 0 }}>{voiceConfigs[comment.voice]?.name || comment.voice}</span>
++                              {comment.feedback === 'star' && (
++                                <span style={{ fontSize: '14px', marginLeft: 'auto', flexShrink: 0 }}>⭐</span>
++                              )}
++                              {comment.chatHistory && comment.chatHistory.length > 0 && (
++                                <span style={{ fontSize: '14px', marginLeft: comment.feedback === 'star' ? '0.5rem' : 'auto', flexShrink: 0 }}>💬</span>
++                              )}
+                             </div>
+                             <div style={{
+                               fontSize: '12px',
+
+*** MODIFIED: frontend/src/components/CommentCard.tsx (+6/-4) ***
+@@ -55,7 +55,8 @@ export function CommentGroupCard({
+   onStar,
+   onKill,
+   onSendChatMessage,
+-  isChatProcessing
++  isChatProcessing,
++  voiceConfigs
+ }: {
+   comments: Commentor[];
+   currentIndex: number;
+@@ -67,6 +68,7 @@ export function CommentGroupCard({
+   onKill: () => void;
+   onSendChatMessage: (message: string) => void;
+   isChatProcessing: boolean;
++  voiceConfigs: Record<string, any>;
+ }) {
+   const [isHovered, setIsHovered] = React.useState(false);
+   const [inputValue, setInputValue] = React.useState('');
+@@ -344,7 +346,7 @@ export function CommentGroupCard({
+               WebkitBoxOrient: 'vertical',
+               overflow: 'hidden'
+             }}>
+-              <strong style={{ fontWeight: 600 }}>{currentComment.voice}:</strong> {currentComment.comment}
++              <strong style={{ fontWeight: 600 }}>{voiceConfigs[currentComment.voice]?.name || currentComment.voice}:</strong> {currentComment.comment}
+             </div>
+           </div>
+         </div>
+@@ -373,7 +375,7 @@ export function CommentGroupCard({
+                     marginBottom: '2px',
+                     fontWeight: 500,
+                   }}>
+-                    {msg.role === 'assistant' ? currentComment.voice : 'You'}
++                    {msg.role === 'assistant' ? (voiceConfigs[currentComment.voice]?.name || currentComment.voice) : 'You'}
+                   </div>
+                   <div style={{
+                     fontSize: '13px',
+@@ -418,7 +420,7 @@ export function CommentGroupCard({
+                   }
+                 }}
+                 onClick={(e) => e.stopPropagation()}
+-                placeholder={`Reply to ${currentComment.voice}...`}
++                placeholder={`Reply to ${voiceConfigs[currentComment.voice]?.name || currentComment.voice}...`}
+                 disabled={isChatProcessing}
+                 style={{
+                   flex: 1,
+
+*** MODIFIED: frontend/src/components/VoiceSettings.tsx (+44/-19) ***
+@@ -1,6 +1,6 @@
+ import { useState, useEffect, useRef } from 'react';
+ import type { VoiceConfig, StateConfig, UserState } from '../types/voice';
+-import { getVoices, saveVoices, clearVoices, getMetaPrompt, saveMetaPrompt, getStateConfig, saveStateConfig } from '../utils/voiceStorage';
++import { saveVoices, clearVoices, getMetaPrompt, saveMetaPrompt, getStateConfig, saveStateConfig } from '../utils/voiceStorage';
+ import {
+   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass
+@@ -49,40 +49,65 @@ const ICON_LABELS = {
+ 
+ interface Props {
+   defaultVoices: Record<string, VoiceConfig>;
++  currentVoices: Record<string, VoiceConfig>;
++  currentMetaPrompt: string;
++  currentStateConfig: StateConfig | null;
+   onSave: (data: {
+     voices: Record<string, VoiceConfig>;
+     metaPrompt: string;
+     stateConfig: StateConfig;
+-  }) => void;
++  }) => void | Promise<void>;
+ }
+ 
+-export default function VoiceSettings({ defaultVoices, onSave }: Props) {
++export default function VoiceSettings({ defaultVoices, currentVoices, currentMetaPrompt, currentStateConfig, onSave }: Props) {
+   const [voices, setVoices] = useState<Record<string, VoiceConfig>>({});
+   const [metaPrompt, setMetaPrompt] = useState<string>('');
+   const [stateConfig, setStateConfig] = useState<StateConfig>(getStateConfig());
+   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+   const scrollContainerRef = useRef<HTMLDivElement>(null);
+ 
+-  // @@@ Sync with defaultVoices prop (handles async fetch + Use Default button)
++  // @@@ Use currentVoices from database (for authenticated users) or defaultVoices fallback
+   useEffect(() => {
+-    if (Object.keys(defaultVoices).length > 0) {
+-      const stored = getVoices();
+-      setVoices(stored || defaultVoices);
++    if (Object.keys(currentVoices).length > 0) {
++      setVoices(currentVoices);
++    } else if (Object.keys(defaultVoices).length > 0) {
++      setVoices(defaultVoices);
+     }
+-  }, [defaultVoices]);
++  }, [currentVoices, defaultVoices]);
+ 
+-  // @@@ Load meta prompt from localStorage
++  // @@@ Use currentMetaPrompt from database or fallback to localStorage/default
+   useEffect(() => {
+-    setMetaPrompt(getMetaPrompt());
+-  }, []);
+-
+-  const handleSave = () => {
+-    saveVoices(voices);
+-    saveMetaPrompt(metaPrompt);
+-    saveStateConfig(stateConfig);
+-    onSave({ voices, metaPrompt, stateConfig });
+-    setSaveStatus('saved');
+-    setTimeout(() => setSaveStatus('idle'), 2000);
++    if (currentMetaPrompt) {
++      setMetaPrompt(currentMetaPrompt);
++    } else {
++      setMetaPrompt(getMetaPrompt());
++    }
++  }, [currentMetaPrompt]);
++
++  // @@@ Use currentStateConfig from database or fallback to localStorage/default
++  useEffect(() => {
++    if (currentStateConfig) {
++      setStateConfig(currentStateConfig);
++    } else {
++      setStateConfig(getStateConfig());
++    }
++  }, [currentStateConfig]);
++
++  const handleSave = async () => {
++    console.log('VoiceSettings: handleSave called');
++    try {
++      saveVoices(voices);
++      saveMetaPrompt(metaPrompt);
++      saveStateConfig(stateConfig);
++      console.log('VoiceSettings: localStorage saved, calling onSave callback');
++      await onSave({ voices, metaPrompt, stateConfig });
++      console.log('VoiceSettings: onSave callback completed');
++      setSaveStatus('saved');
++      setTimeout(() => setSaveStatus('idle'), 2000);
++    } catch (error) {
++      console.error('VoiceSettings: Save failed:', error);
++      alert('Failed to save settings. Check console for details.');
++    }
+   };
+ 
+   const handleDefault = () => {
+
+*** MODIFIED: frontend/src/engine/EditorEngine.ts (+6/-2) ***
+@@ -42,7 +42,7 @@ export interface Commentor {
+   id: string;
+   phrase: string;       // Highlighted phrase
+   comment: string;      // The comment
+-  voice: string;        // Voice name
++  voice: string;        // Voice key (for voiceConfigs[key] lookup)
+   icon: string;         // Icon identifier
+   color: string;        // Color identifier
+   appliedAt?: number;   // Timestamp when applied (if applied)
+@@ -129,13 +129,16 @@ export class EditorEngine {
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
+-      sessionId
++      sessionId,
++      currentEntryId: sessionId  // @@@ Set currentEntryId synchronously to prevent duplicate UUIDs
+     };
+   }
+ 
+   // @@@ Update voice configurations from settings
+   setVoiceConfigs(configs: Record<string, any>) {
+     this.voiceConfigs = configs;
++    console.log('📢 EditorEngine: voiceConfigs updated, enabled voices:',
++      Object.entries(configs).filter(([_, v]) => v.enabled).map(([k]) => k));
+   }
+ 
+   // @@@ Update a specific text cell by ID
+@@ -371,6 +374,7 @@ export class EditorEngine {
+           };
+         }
+       }
++      console.log('🔍 EditorEngine: Sending to backend, enabled voices:', Object.keys(backendVoices));
+ 
+       // Send only APPLIED commentors to backend
+       const appliedCommentors = this.state.commentors.filter(c => c.appliedAt);

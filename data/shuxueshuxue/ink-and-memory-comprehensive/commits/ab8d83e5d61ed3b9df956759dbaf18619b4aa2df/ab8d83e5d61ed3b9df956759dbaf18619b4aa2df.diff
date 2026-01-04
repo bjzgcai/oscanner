@@ -1,0 +1,9 @@
+commit ab8d83e5d61ed3b9df956759dbaf18619b4aa2df
+Merge: 4c0c4c8 524938e
+Author: F2J <98064968+shuxueshuxue@users.noreply.github.com>
+Date:   Sat Jan 3 12:39:13 2026 +0800
+
+    Merge pull request #30 from zhuchenyu2008/main
+    
+    移动端写作界面的“重置”按钮换成与桌面端一致的“+”按钮
+

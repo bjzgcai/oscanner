@@ -1,0 +1,127 @@
+commit 09cad170ec4d3bc28dd497667ef2116fda46520d
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Fri Nov 7 15:27:59 2025 +0800
+
+    Fix auto-scroll issue with scroll preservation and textarea initialization
+    
+    - Preserve scroll position on state changes (not during typing)
+    - Auto-size textareas on mount and when cells added/deleted
+    - Remove conflicting useLayoutEffect that sized all textareas
+    - Rely on existing targeted resize in handleTextChange for typing
+    
+    Note: Has effect ordering issue - scroll restoration runs before
+    textarea resize, will be fixed in next commit.
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 38e5f8e..70c60f0 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
++import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+ import { EditorEngine } from './engine/EditorEngine';
+ import type { EditorState, Commentor, TextCell } from './engine/EditorEngine';
+ import { ChatWidget } from './engine/ChatWidget';
+@@ -271,7 +271,8 @@ export default function App() {
+ 
+   // @@@ Per-cell textarea refs for positioning and style calculations
+   const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+-  const containerRef = useRef<HTMLDivElement>(null);
++  const scrollContainerRef = useRef<HTMLDivElement>(null);  // @@@ Track scroll container for position preservation
++  const savedScrollTop = useRef<number>(0);  // @@@ Save scroll position across re-renders
+   // @@@ Force re-render when refs are ready
+   const [refsReady, setRefsReady] = useState(0);
+   const refsReadyTriggered = useRef(false);
+@@ -288,6 +289,29 @@ export default function App() {
+   const [_suggestionSnapshot, setSuggestionSnapshot] = useState<string>('');  // Not used yet
+   const suggestionTimerRef = useRef<number | null>(null);
+ 
++  // @@@ CRITICAL: Preserve scroll position across NON-TYPING re-renders
++  // useLayoutEffect runs synchronously after DOM mutations but BEFORE browser paint
++  // This prevents visible scroll jumps when state updates trigger re-renders
++  // Skip during typing to let browser naturally scroll to cursor
++  useLayoutEffect(() => {
++    if (scrollContainerRef.current && savedScrollTop.current > 0) {
++      // Only restore if we have a saved position and container exists
++      scrollContainerRef.current.scrollTop = savedScrollTop.current;
++    }
++  }, [state]);  // Only run when engine state changes (not on typing)
++
++  // @@@ Initialize textarea heights on mount for saved content
++  // This runs when refs are ready AND when cells are added/deleted
++  // Prevents the issue where loaded notes require typing in each cell to expand
++  useLayoutEffect(() => {
++    if (refsReady > 0) {  // Only after refs are ready
++      textareaRefs.current.forEach((textarea) => {
++        textarea.style.height = 'auto';
++        textarea.style.height = textarea.scrollHeight + 'px';
++      });
++    }
++  }, [refsReady, state?.cells.length]);  // Run when refs ready OR when cells added/deleted
++
+   // @@@ Trigger re-render when returning to writing view to recalculate comment positions
+   useEffect(() => {
+     if (currentView === 'writing') {
+@@ -1892,7 +1916,6 @@ export default function App() {
+           )}
+ 
+           <div
+-            ref={containerRef}
+             style={{
+               flex: 1,
+               position: 'relative',
+@@ -1908,15 +1931,23 @@ export default function App() {
+               width: '100%',
+               margin: '0 auto'
+             }}>
+-              <div className="notebook-lines" style={{
+-                flex: 1,
+-                position: 'relative',
+-                overflow: 'auto',
+-                padding: '20px',
+-                paddingLeft: isMobile ? '20px' : '80px',  // @@@ Extra left padding for floating toolbar
+-                paddingBottom: '80px',  // Extra space for smooth scrolling to bottom
+-                backgroundColor: '#fffef9'  // @@@ Cream paper background for notebook lines
+-              }}>
++              <div
++                ref={scrollContainerRef}  // @@@ Track scroll container for position preservation
++                className="notebook-lines"
++                onScroll={(e) => {
++                  // @@@ Save scroll position whenever user scrolls manually
++                  const target = e.currentTarget;
++                  savedScrollTop.current = target.scrollTop;
++                }}
++                style={{
++                  flex: 1,
++                  position: 'relative',
++                  overflow: 'auto',
++                  padding: '20px',
++                  paddingLeft: isMobile ? '20px' : '80px',  // @@@ Extra left padding for floating toolbar
++                  paddingBottom: '80px',  // Extra space for smooth scrolling to bottom
++                  backgroundColor: '#fffef9'  // @@@ Cream paper background for notebook lines
++                }}>
+                 <div style={{
+                   position: 'relative',
+                   maxWidth: '600px'
+@@ -1973,9 +2004,6 @@ export default function App() {
+                                   refsReadyTriggered.current = true;
+                                   setRefsReady(prev => prev + 1);
+                                 }
+-                                // @@@ Force height to match scrollHeight to prevent internal scrolling
+-                                el.style.height = 'auto';
+-                                el.style.height = el.scrollHeight + 'px';
+                               } else {
+                                 textareaRefs.current.delete(cell.id);
+                               }
+@@ -1989,11 +2017,6 @@ export default function App() {
+                             onClick={(e) => handleCursorChange(cell.id, e)}
+                             onKeyUp={(e) => handleCursorChange(cell.id, e)}
+                             onKeyDown={(e) => handleKeyDown(cell.id, e)}
+-                            onFocus={(e) => {
+-                              // @@@ Prevent browser from scrolling element into view on focus
+-                              // This stops the "lift up" effect when clicking after scrolling
+-                              e.preventDefault();
+-                            }}
+                             placeholder={idx === 0 ? "Start writing..." : "Continue writing..."}
+                             style={{
+                               width: '100%',

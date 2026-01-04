@@ -1,0 +1,637 @@
+*** MODIFIED: backend/database.py (+38/-0) ***
+@@ -1084,6 +1084,44 @@ def list_sessions(user_id: int):
+     finally:
+         db.close()
+ 
++def get_all_sessions_with_text(user_id: int) -> list[dict]:
++    """
++    Get all sessions for a user with text extracted from text cells.
++    Returns [{id, name, created_at, updated_at, text}]
++    """
++    db = get_db()
++    try:
++        rows = db.execute("""
++        SELECT id, name, editor_state_json, created_at, updated_at
++        FROM user_sessions
++        WHERE user_id = ?
++        ORDER BY updated_at DESC
++        """, (user_id,)).fetchall()
++
++        sessions = []
++        for row in rows:
++            try:
++                state = json.loads(row['editor_state_json'])
++                text = '\n\n'.join(
++                    cell.get('content', '')
++                    for cell in state.get('cells', [])
++                    if cell.get('type') == 'text' and cell.get('content', '').strip()
++                ).strip()
++            except Exception:
++                text = ''
++
++            item = {
++                'id': row['id'],
++                'name': row['name'],
++                'created_at': row['created_at'],
++                'updated_at': row['updated_at'],
++                'text': text,
++            }
++            sessions.append(item)
++        return sessions
++    finally:
++        db.close()
++
+ def delete_session(user_id: int, session_id: str):
+     """Delete a session."""
+     db = get_db()
+
+*** MODIFIED: backend/server.py (+96/-28) ***
+@@ -39,6 +39,13 @@ def normalize_language_code(language: Optional[str]) -> str:
+     return "en"
+ 
+ 
++
++
++def _load_all_notes_text(user_id: int) -> str:
++    sessions = database.get_all_sessions_with_text(user_id)
++    texts = [s.get("text", "") for s in sessions if (s.get("text") or "").strip()]
++    return "\n\n".join(texts)
++
+ def resolve_language(_user_id: int, requested_language: Optional[str] = None) -> str:
+     """Return a supported language code, falling back to default."""
+     if requested_language:
+@@ -344,17 +351,18 @@ def analyze_text(
+     name="Analyze Echoes",
+     description="Find recurring themes and topics in all user notes",
+     params={
+-        "all_notes": {"type": "str"},
+         "user_id": {"type": "int"},
+         "language": {"type": "str"},
+     },
+     category="Analysis",
+ )
+-def analyze_echoes(all_notes: str, user_id: int, language: str = "en"):
++def analyze_echoes(user_id: int, language: str = "en"):
+     """Analyze recurring themes and topics across all notes."""
++    notes = _load_all_notes_text(user_id)
++    if not notes.strip():
++        return {"echoes": []}
+     print(f"\n{'=' * 60}")
+     print(f"🔄 analyze_echoes() called")
+-    print(f"   Notes length: {len(all_notes)} chars")
+     language_code = normalize_language_code(language)
+     print(f"   Language: {language_code}")
+     print(f"{'=' * 60}\n")
+@@ -365,7 +373,7 @@ def analyze_echoes(all_notes: str, user_id: int, language: str = "en"):
+ 
+ Notes:
+ ---
+-{all_notes}
++{notes}
+ ---
+ 
+ Find 3-5 echoes (recurring themes) that appear across different entries. For each echo:
+@@ -400,17 +408,18 @@ def analyze_echoes(all_notes: str, user_id: int, language: str = "en"):
+     name="Analyze Traits",
+     description="Identify personality traits and characteristics from user notes",
+     params={
+-        "all_notes": {"type": "str"},
+         "user_id": {"type": "int"},
+         "language": {"type": "str"},
+     },
+     category="Analysis",
+ )
+-def analyze_traits(all_notes: str, user_id: int, language: str = "en"):
++def analyze_traits(user_id: int, language: str = "en"):
+     """Analyze personality traits from all notes."""
++    notes = _load_all_notes_text(user_id)
++    if not notes.strip():
++        return {"traits": []}
+     print(f"\n{'=' * 60}")
+     print(f"👤 analyze_traits() called")
+-    print(f"   Notes length: {len(all_notes)} chars")
+     language_code = normalize_language_code(language)
+     print(f"   Language: {language_code}")
+     print(f"{'=' * 60}\n")
+@@ -421,7 +430,7 @@ def analyze_traits(all_notes: str, user_id: int, language: str = "en"):
+ 
+ Notes:
+ ---
+-{all_notes}
++{notes}
+ ---
+ 
+ Identify 4-6 personality traits that are evident from the writing. For each trait:
+@@ -456,17 +465,20 @@ def analyze_traits(all_notes: str, user_id: int, language: str = "en"):
+     name="Analyze Patterns",
+     description="Identify behavioral patterns and habits from user notes",
+     params={
+-        "all_notes": {"type": "str"},
+         "user_id": {"type": "int"},
+         "language": {"type": "str"},
+     },
+     category="Analysis",
+ )
+-def analyze_patterns(all_notes: str, user_id: int, language: str = "en"):
++def analyze_patterns(
++    user_id: int, language: str = "en"
++):
+     """Analyze behavioral patterns from all notes."""
++    notes = _load_all_notes_text(user_id)
++    if not notes.strip():
++        return {"patterns": []}
+     print(f"\n{'=' * 60}")
+     print(f"🔍 analyze_patterns() called")
+-    print(f"   Notes length: {len(all_notes)} chars")
+     language_code = normalize_language_code(language)
+     print(f"   Language: {language_code}")
+     print(f"{'=' * 60}\n")
+@@ -477,7 +489,7 @@ def analyze_patterns(all_notes: str, user_id: int, language: str = "en"):
+ 
+ Notes:
+ ---
+-{all_notes}
++{notes}
+ ---
+ 
+ Identify 3-5 behavioral patterns or habits. For each pattern:
+@@ -512,28 +524,29 @@ def analyze_patterns(all_notes: str, user_id: int, language: str = "en"):
+     name="Generate Daily Picture",
+     description="Generate an artistic image based on user's daily notes",
+     params={
+-        "all_notes": {"type": "str"},
+         "user_id": {"type": "int"},
+         "target_date": {"type": "str"},  # Optional: YYYY-MM-DD format
+     },
+     category="Creative",
+ )
+-def generate_daily_picture(all_notes: str, user_id: int, target_date: str = None):
++def generate_daily_picture(user_id: int, target_date: str = None):
+     """Generate an image based on the essence of user's daily notes.
+ 
+     Args:
+-        all_notes: Text content from user's notes
+         user_id: User ID
+         target_date: Optional date string (YYYY-MM-DD). If None, uses today.
+     """
+     from datetime import datetime
+ 
++    notes = _load_all_notes_text(user_id)
++    if not notes.strip():
++        return {"image_base64": "", "thumbnail_base64": "", "prompt": ""}
++
+     if target_date is None:
+         target_date = datetime.now().strftime("%Y-%m-%d")
+ 
+     print(f"\n{'=' * 60}")
+     print(f"🎨 generate_daily_picture() called")
+-    print(f"   Notes length: {len(all_notes)} chars")
+     print(f"   Target date: {target_date}")
+     print(f"{'=' * 60}\n")
+ 
+@@ -569,7 +582,7 @@ def generate_daily_picture(all_notes: str, user_id: int, target_date: str = None
+ 
+ Notes:
+ ---
+-{all_notes}
++{notes}
+ ---
+ {recent_prompts_text}
+ Create an EXTREMELY SIMPLE image description (1-2 sentences):
+@@ -1230,13 +1243,75 @@ def import_calendar_recovery(
+ def list_sessions(current_user: dict = Depends(get_current_user)):
+     """
+     List all sessions for current user.
+-
+     Returns: Array of session metadata (without full editor state)
+     """
+     user_id = current_user["user_id"]
+     sessions = database.list_sessions(user_id)
+     return {"sessions": sessions}
+ 
++@app.get("/api/sessions/aggregate")
++def get_sessions_aggregate(timezone: str = "Asia/Shanghai", current_user: dict = Depends(get_current_user)):
++    """
++    Aggregate stats across all sessions for the user.
++    Returns stats only (no concatenated text) and per-session summaries.
++    """
++    user_id = current_user["user_id"]
++    sessions = database.get_all_sessions_with_text(user_id)
++
++    total_entries = 0
++    total_words = 0
++    days = set()
++
++    try:
++        from datetime import datetime
++        from zoneinfo import ZoneInfo
++        tz = ZoneInfo(timezone)
++    except Exception:
++        raise HTTPException(status_code=400, detail="Invalid timezone")
++
++    for s in sessions:
++        text = s.get("text", "") or ""
++        if text.strip():
++            total_entries += 1
++            total_words += len(text.split())
++        # derive local date from updated_at or created_at
++        ts_raw = s.get("updated_at") or s.get("created_at")
++        if ts_raw:
++            try:
++                cleaned = ts_raw.replace("Z", "+00:00")
++                if "T" not in cleaned and " " in cleaned:
++                    cleaned = cleaned.replace(" ", "T")
++                dt = datetime.fromisoformat(cleaned)
++                local_dt = dt.astimezone(tz)
++                days.add(local_dt.strftime("%Y-%m-%d"))
++            except Exception:
++                continue
++
++    stats = {
++        "total_days": len(days),
++        "total_entries": total_entries,
++        "total_words": total_words,
++    }
++
++    # Strip text from response; include length hint only
++    summaries = [
++        {
++            "id": s["id"],
++            "name": s.get("name"),
++            "created_at": s.get("created_at"),
++            "updated_at": s.get("updated_at"),
++            "has_text": bool((s.get("text") or "").strip()),
++            "word_count": len((s.get("text") or "").split()) if s.get("text") else 0,
++        }
++        for s in sessions
++    ]
++
++    return {
++        "stats": stats,
++        "sessions": summaries,
++        "timezone": timezone,
++    }
++
+ 
+ @app.get("/api/sessions/{session_id}")
+ def get_session(session_id: str, current_user: dict = Depends(get_current_user)):
+@@ -1254,6 +1329,8 @@ def get_session(session_id: str, current_user: dict = Depends(get_current_user))
+     return session
+ 
+ 
++
++
+ @app.delete("/api/sessions/{session_id}")
+ def delete_session_endpoint(
+     session_id: str, current_user: dict = Depends(get_current_user)
+@@ -1805,22 +1882,13 @@ def get_friend_timeline(
+         raise HTTPException(status_code=403, detail="Not friends or friend not found")
+     return {"pictures": timeline}
+ 
++
+ @app.websocket("/ws/speech-recognition")
+ async def speech_recognition(websocket: WebSocket):
+     # TODO: find a way of authentication for websocket
+     await websocket.accept()
+     await init_speech_recognition(websocket)
+ 
+-# @@@ Removed /api/analyze wrapper - frontend now calls /polycli/api/trigger-sync directly
+-
+-# @@@ Removed /api/chat wrapper - frontend now calls /polycli/api/trigger-sync directly
+-
+-# @@@ Removed /api/generate-image wrapper - frontend now calls /polycli/api/trigger-sync directly
+-# @@@ Removed /api/analyze-echoes wrapper - frontend now calls /polycli/api/trigger-sync directly
+-# @@@ Removed /api/analyze-traits wrapper - frontend now calls /polycli/api/trigger-sync directly
+-# @@@ Removed /api/analyze-patterns wrapper - frontend now calls /polycli/api/trigger-sync directly
+-
+-# ========== Mount PolyCLI Control Panel ==========
+ 
+ registry = get_registry()
+ # @@@ Pass auth_callback to enable authentication for /polycli/api/trigger-sync
+
+*** MODIFIED: frontend/src/api/voiceApi.ts (+25/-8) ***
+@@ -208,7 +208,7 @@ export async function chatWithVoice(
+ /**
+  * Analyze echoes (recurring themes) from all notes (PolyCLI direct call)
+  */
+-export async function analyzeEchoes(allNotes: string): Promise<any[]> {
++export async function analyzeEchoes(): Promise<any[]> {
+   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+   const language = getUILanguage();
+ 
+@@ -220,7 +220,7 @@ export async function analyzeEchoes(allNotes: string): Promise<any[]> {
+     },
+     body: JSON.stringify({
+       session_id: 'analyze_echoes',
+-      params: { all_notes: allNotes, language },
++      params: { language },
+       timeout: 60
+     })
+   });
+@@ -237,7 +237,7 @@ export async function analyzeEchoes(allNotes: string): Promise<any[]> {
+ /**
+  * Analyze traits (personality characteristics) from all notes (PolyCLI direct call)
+  */
+-export async function analyzeTraits(allNotes: string): Promise<any[]> {
++export async function analyzeTraits(): Promise<any[]> {
+   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+   const language = getUILanguage();
+ 
+@@ -249,7 +249,7 @@ export async function analyzeTraits(allNotes: string): Promise<any[]> {
+     },
+     body: JSON.stringify({
+       session_id: 'analyze_traits',
+-      params: { all_notes: allNotes, language },
++      params: { language },
+       timeout: 60
+     })
+   });
+@@ -266,7 +266,7 @@ export async function analyzeTraits(allNotes: string): Promise<any[]> {
+ /**
+  * Analyze patterns (behavioral patterns) from all notes (PolyCLI direct call)
+  */
+-export async function analyzePatterns(allNotes: string): Promise<any[]> {
++export async function analyzePatterns(): Promise<any[]> {
+   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+   const language = getUILanguage();
+ 
+@@ -278,7 +278,7 @@ export async function analyzePatterns(allNotes: string): Promise<any[]> {
+     },
+     body: JSON.stringify({
+       session_id: 'analyze_patterns',
+-      params: { all_notes: allNotes, language },
++      params: { language },
+       timeout: 60
+     })
+   });
+@@ -295,7 +295,7 @@ export async function analyzePatterns(allNotes: string): Promise<any[]> {
+ /**
+  * Generate a daily picture based on user's notes (PolyCLI direct call)
+  */
+-export async function generateDailyPicture(allNotes: string): Promise<{ image_base64: string; thumbnail_base64?: string; prompt: string }> {
++export async function generateDailyPicture(): Promise<{ image_base64: string; thumbnail_base64?: string; prompt: string }> {
+   const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+ 
+   const response = await fetch(`${API_BASE}/polycli/api/trigger-sync`, {
+@@ -306,7 +306,7 @@ export async function generateDailyPicture(allNotes: string): Promise<{ image_ba
+     },
+     body: JSON.stringify({
+       session_id: 'generate_daily_picture',
+-      params: { all_notes: allNotes },
++      params: { },
+       timeout: 60
+     })
+   });
+@@ -406,6 +406,23 @@ export async function listSessions(): Promise<any[]> {
+   return data.sessions;
+ }
+ 
++export async function fetchSessionsAggregate(timezone: string): Promise<{
++  stats: { total_days: number; total_entries: number; total_words: number };
++  sessions: Array<{ id: string; name?: string; created_at?: string; updated_at?: string; has_text: boolean; word_count: number }>;
++  timezone: string;
++}> {
++  const response = await fetch(`${API_BASE}/api/sessions/aggregate?timezone=${encodeURIComponent(timezone)}`, {
++    headers: getAuthHeaders()
++  });
++
++  if (!response.ok) {
++    const error = await response.json();
++    throw new Error(error.detail || 'Aggregate sessions failed');
++  }
++
++  return await response.json();
++}
++
+ /**
+  * Get a specific session
+  */
+
+*** MODIFIED: frontend/src/components/AnalysisView.tsx (+17/-82) ***
+@@ -75,7 +75,6 @@ export default function AnalysisView() {
+   const formatDaysLabel = (count: number) => t('analysis.statsLabels.daysCount', { count });
+   const formatEntriesLabel = (count: number) => t('analysis.statsLabels.entriesCount', { count });
+   const formatWordsLabel = (value: number) => t('analysis.statsLabels.wordsCount', { value: value.toLocaleString() });
+-  const [allNotes, setAllNotes] = useState('');
+   const [echoes, setEchoes] = useState<Echo[]>([]);
+   const [traits, setTraits] = useState<Trait[]>([]);
+   const [patterns, setPatterns] = useState<Pattern[]>([]);
+@@ -97,79 +96,20 @@ export default function AnalysisView() {
+   // Collect all notes when component mounts
+   useEffect(() => {
+     const loadNotesData = async () => {
+-      let calendarData: Record<string, any[]> = {};
+-
+-      // @@@ Load from database if authenticated, localStorage if guest
+-      if (isAuthenticated) {
+-        try {
+-          const { listSessions, getSession } = await import('../api/voiceApi');
+-          const sessions = await listSessions();
+-
+-          // Group sessions by date
+-          const grouped: Record<string, any[]> = {};
+-          for (const session of sessions) {
+-            // @@@ Skip unnamed sessions (working drafts not saved yet)
+-            if (!session.name) continue;
+-
+-            const fullSession = await getSession(session.id);
+-
+-            // @@@ BUGFIX: Extract date from timestamp (format: "2025-11-02 10:42:17" or "2025-11-02T10:42:17")
+-            // Just take first 10 characters to get "YYYY-MM-DD"
+-            let dateKey = session.created_at?.substring(0, 10);
+-
+-            // Prefer date from session name if it has one
+-            if (session.name && /^\d{4}-\d{2}-\d{2}/.test(session.name)) {
+-              dateKey = session.name.split(' - ')[0];
+-            }
+-            if (!dateKey) continue;
+-
+-            if (!grouped[dateKey]) {
+-              grouped[dateKey] = [];
+-            }
+-            grouped[dateKey].push({
+-              id: session.id,
+-              timestamp: new Date(session.created_at || Date.now()).getTime(),
+-              state: fullSession.editor_state,
+-              firstLine: session.name
+-            });
+-          }
+-          calendarData = grouped;
+-        } catch (error) {
+-          console.error('Failed to load from database:', error);
+-          calendarData = getCalendarData(); // Fallback
+-        }
+-      } else {
+-        calendarData = getCalendarData();
+-      }
+-
+-      const notes: string[] = [];
+-      let entryCount = 0;
+-      const uniqueDays = new Set<string>();
+-
+-      // Collect all text from all entries
+-      Object.keys(calendarData).forEach(dateKey => {
+-        uniqueDays.add(dateKey);
+-        calendarData[dateKey].forEach(entry => {
+-          entryCount++;
+-          entry.state.cells
+-            .filter((cell: any) => cell.type === 'text')
+-            .forEach((cell: any) => {
+-              const content = (cell as TextCell).content.trim();
+-              if (content) {
+-                notes.push(content);
+-              }
+-            });
++      try {
++        const { fetchSessionsAggregate } = await import('../api/voiceApi');
++        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai';
++        const aggregate = await fetchSessionsAggregate(timezone);
++        setStats({
++          totalDays: aggregate.stats.total_days,
++          totalWords: aggregate.stats.total_words,
++          totalEntries: aggregate.stats.total_entries
+         });
+-      });
+-
+-      const allText = notes.join('\n\n');
+-
+-      setAllNotes(allText);
+-      setStats({
+-        totalDays: uniqueDays.size,
+-        totalWords: countWords(allText),
+-        totalEntries: entryCount
+-      });
++      } catch (e) {
++        console.error('Failed to load aggregate stats:', e);
++        // Fallback to zeroed stats for now
++        setStats({ totalDays: 0, totalWords: 0, totalEntries: 0 });
++      }
+     };
+ 
+     loadNotesData();
+@@ -232,11 +172,6 @@ export default function AnalysisView() {
+       return;
+     }
+ 
+-    if (!allNotes.trim()) {
+-      setError('No notes found. Save some entries first.');
+-      return;
+-    }
+-
+     setError('');
+ 
+     // @@@ Capture results to save to localStorage (state updates are async!)
+@@ -266,17 +201,17 @@ export default function AnalysisView() {
+     // Analyze all three in parallel
+     [echoesResult, traitsResult, patternsResult] = await Promise.all([
+       analyzeWithState(
+-        () => analyzeEchoes(allNotes),
++        () => analyzeEchoes(),
+         'echoes',
+         result => setEchoes(result)
+       ),
+       analyzeWithState(
+-        () => analyzeTraits(allNotes),
++        () => analyzeTraits(),
+         'traits',
+         result => setTraits(result)
+       ),
+       analyzeWithState(
+-        () => analyzePatterns(allNotes),
++        () => analyzePatterns(),
+         'patterns',
+         result => setPatterns(result)
+       )
+@@ -308,7 +243,7 @@ export default function AnalysisView() {
+             entries: stats.totalEntries,
+             words: stats.totalWords
+           }
+-        }, allNotes);
++        });
+ 
+         // Reload reports from database
+         const dbReports = await getAnalysisReports(MAX_SAVED_REPORTS);
+
+*** MODIFIED: frontend/src/components/CollectionsView.tsx (+5/-60) ***
+@@ -388,60 +388,6 @@ function renderTimelineCard({
+ }
+ 
+ // @@@ Get all notes from all sessions (localStorage for guest, database for authenticated)
+-async function getAllNotesFromSessions(isAuthenticated: boolean): Promise<string> {
+-  const allText: string[] = [];
+-
+-  if (isAuthenticated) {
+-    // @@@ Load from database for authenticated users
+-    try {
+-      const { listSessions, getSession } = await import('../api/voiceApi');
+-      const sessions = await listSessions();
+-
+-      for (const session of sessions) {
+-        try {
+-          const fullSession = await getSession(session.id);
+-          if (fullSession.editor_state?.cells) {
+-            const text = fullSession.editor_state.cells
+-              .filter((c: any) => c.type === 'text')
+-              .map((c: any) => c.content)
+-              .join('\n\n');
+-            if (text.trim()) {
+-              allText.push(text);
+-            }
+-          }
+-        } catch (err) {
+-          console.error(`Failed to load session ${session.id}:`, err);
+-        }
+-      }
+-    } catch (error) {
+-      console.error('Failed to load sessions from database:', error);
+-    }
+-  } else {
+-    // @@@ Load from localStorage for guests
+-    const keys = Object.keys(localStorage);
+-    for (const key of keys) {
+-      if (key === STORAGE_KEYS.EDITOR_STATE || key.startsWith(`${STORAGE_KEYS.EDITOR_STATE}_`)) {
+-        try {
+-          const state = JSON.parse(localStorage.getItem(key) || '{}');
+-          if (state.cells) {
+-            const text = state.cells
+-              .filter((c: any) => c.type === 'text')
+-              .map((c: any) => c.content)
+-              .join('\n\n');
+-            if (text.trim()) {
+-              allText.push(text);
+-            }
+-          }
+-        } catch (e) {
+-          console.error('Failed to parse session:', key, e);
+-        }
+-      }
+-    }
+-  }
+-
+-  return allText.join('\n\n---\n\n');
+-}
+-
+ // @@@ Timeline page - combines pictures and comments by date
+ const MAX_RECENT_FRIENDS = 6;
+ 
+@@ -997,15 +943,14 @@ function TimelinePage({ isVisible, voiceConfigs, dateLocale, friendToSelect, onF
+     setGeneratingForDate(dateStr);
+ 
+     try {
+-      const allNotes = await getAllNotesFromSessions(isAuthenticated);
+-      if (!allNotes.trim()) {
+-        alert('Write some notes first to generate an image!');
++      const { generateDailyPicture, saveDailyPicture } = await import('../api/voiceApi');
++      const { image_base64, thumbnail_base64, prompt } = await generateDailyPicture(); // Backend uses DB text
++
++      if (!image_base64) {
++        alert('No notes found to generate an image. Please write and save entries first.');
+         return;
+       }
+ 
+-      const { generateDailyPicture, saveDailyPicture } = await import('../api/voiceApi');
+-      const { image_base64, thumbnail_base64, prompt } = await generateDailyPicture(allNotes);
+-
+       // @@@ Use the dateStr parameter passed from the clicked card (already in YYYY-MM-DD format)
+       const pictureDate = dateStr;
+ 

@@ -1,0 +1,23 @@
+{
+  "sha": "e6da5ee76c7ec78e9b510f256048f38860583c6b",
+  "message": "Replace Disco Elysium voices with Echo system (6 Chinese personas)\n\n- Replace 13 Disco Elysium voices with 6 Echo Chinese voice personas\n- Add file-based prompt loading system (backend/prompts/*.md)\n- Extract and condense prompts from echo.md to ~35-45 lines each\n- Update config.py to load prompts from files dynamically\n- New voices: 接纳者, 拆解者, 启动者, 照镜者, 连接者, 幽默者\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-05T01:24:18Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-05T01:24:18Z"
+  },
+  "stats": {
+    "total": 318,
+    "additions": 262,
+    "deletions": 56
+  },
+  "files_count": 7,
+  "parents": [
+    "8053a8a180c9b1fb8c60f5c436db476ce5111838"
+  ]
+}

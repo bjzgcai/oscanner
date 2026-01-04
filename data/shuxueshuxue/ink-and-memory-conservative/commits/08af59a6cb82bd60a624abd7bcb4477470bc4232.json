@@ -1,0 +1,23 @@
+{
+  "sha": "08af59a6cb82bd60a624abd7bcb4477470bc4232",
+  "message": "Add icons and position-based ordering for voices\n\n- Installed react-icons package\n- Added Font Awesome icons for each voice (brain, heart, question, cloud)\n- Voices now ordered by position of trigger phrase in text\n- Updated VoiceComment component with icon display\n- Added CSS for icon and header layout\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-01T13:00:33Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-01T13:00:33Z"
+  },
+  "stats": {
+    "total": 73,
+    "additions": 61,
+    "deletions": 12
+  },
+  "files_count": 6,
+  "parents": [
+    "cbe523c0c28863b4fa58db99cbd8a07e4f3105ba"
+  ]
+}

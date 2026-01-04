@@ -1,0 +1,14 @@
+{
+  "hash": "86bddd0c3efa51e0e7600a68b2cc682a2683bb71",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sat Dec 20 10:31:01 2025 +0800",
+  "subject": "fix open new session in new day",
+  "files": [
+    "frontend/src/hooks/useSessionLifecycle.ts"
+  ],
+  "diff": "commits/86bddd0c3efa51e0e7600a68b2cc682a2683bb71/86bddd0c3efa51e0e7600a68b2cc682a2683bb71.diff",
+  "related_files": {
+    "frontend/src/hooks/useSessionLifecycle.ts": []
+  }
+}

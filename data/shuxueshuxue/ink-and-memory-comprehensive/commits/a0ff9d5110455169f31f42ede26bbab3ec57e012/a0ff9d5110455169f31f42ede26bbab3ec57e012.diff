@@ -1,0 +1,66 @@
+commit a0ff9d5110455169f31f42ede26bbab3ec57e012
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Sun Nov 2 15:32:56 2025 +0800
+
+    Fix comment positioning bug on page refresh
+    
+    Root cause: StateChooser height changes when state loads
+    - On initial render: no selection → expanded (tall)
+    - After state loads from storage: collapsed (short)
+    - Height difference (~40-60px) caused layout shift
+    - Comments positioned based on initial tall layout
+    - After collapse, content shifts up but positions don't update
+    - Clicking textarea triggered re-render → positions fixed
+    
+    Solution: Add selectedState to commentGroups dependency array
+    - Positions now recalculate when StateChooser collapses
+    - Fixes misalignment on page refresh without click
+    
+    🤖 Generated with [Claude Code](https://claude.com/claude-code)
+    
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index c3be0b2..817ae61 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
++import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+ import { EditorEngine } from './engine/EditorEngine';
+ import type { EditorState, Commentor, TextCell } from './engine/EditorEngine';
+ import { ChatWidget } from './engine/ChatWidget';
+@@ -301,7 +301,6 @@ export default function App() {
+   // @@@ Force re-render when refs are ready
+   const [refsReady, setRefsReady] = useState(0);
+   const refsReadyTriggered = useRef(false);
+-  const layoutStableTriggered = useRef(false);
+ 
+   // @@@ Comment alignment state
+   const [commentsAligned, setCommentsAligned] = useState(false);
+@@ -310,16 +309,6 @@ export default function App() {
+   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
+   const [commentChatProcessing, setCommentChatProcessing] = useState<Set<string>>(new Set());
+ 
+-  // @@@ Force position recalculation after layout settles (fixes refresh bug)
+-  useLayoutEffect(() => {
+-    if (refsReady > 0 && !layoutStableTriggered.current) {
+-      layoutStableTriggered.current = true;
+-      // Trigger another increment after layout completes
+-      // This ensures positions are calculated AFTER all textarea heights are adjusted
+-      setRefsReady(prev => prev + 1);
+-    }
+-  }, [refsReady]);
+-
+   // @@@ Trigger re-render when returning to writing view to recalculate comment positions
+   useEffect(() => {
+     if (currentView === 'writing') {
+@@ -642,7 +631,7 @@ export default function App() {
+     });
+ 
+     return groups;
+-  }, [state?.commentors, state, refsReady]);
++  }, [state?.commentors, state, refsReady, selectedState]);
+ 
+   useEffect(() => {
+     if (!commentGroups) return;

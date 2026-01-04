@@ -1,0 +1,14 @@
+{
+  "hash": "c471d6501dbb94474f69391b8465cb68485e3eb2",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Fri Oct 31 19:08:10 2025 +0800",
+  "subject": "clear legacy documents",
+  "files": [
+    "REFACTOR.md"
+  ],
+  "diff": "commits/c471d6501dbb94474f69391b8465cb68485e3eb2/c471d6501dbb94474f69391b8465cb68485e3eb2.diff",
+  "related_files": {
+    "REFACTOR.md": []
+  }
+}

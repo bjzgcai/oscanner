@@ -1,0 +1,14 @@
+{
+  "hash": "382ec7b66b0f1d2cd8009f1205425387d1f014fb",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Tue Nov 18 23:02:13 2025 +0800",
+  "subject": "Improve deck UI: fancy create button and editing in expanded section",
+  "files": [
+    "frontend/src/components/DeckManager.tsx"
+  ],
+  "diff": "commits/382ec7b66b0f1d2cd8009f1205425387d1f014fb/382ec7b66b0f1d2cd8009f1205425387d1f014fb.diff",
+  "related_files": {
+    "frontend/src/components/DeckManager.tsx": []
+  }
+}

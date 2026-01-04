@@ -1,0 +1,23 @@
+{
+  "sha": "cbe523c0c28863b4fa58db99cbd8a07e4f3105ba",
+  "message": "Add color coding to voice comments\n\nEach voice now has its own color scheme:\n- Logic: blue\n- Emotion: pink\n- Doubt: yellow\n- Memory: green\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-01T12:39:01Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-01T12:39:01Z"
+  },
+  "stats": {
+    "total": 25,
+    "additions": 22,
+    "deletions": 3
+  },
+  "files_count": 2,
+  "parents": [
+    "dfb265c42068bc56793eae66a3c26cd661de4ee4"
+  ]
+}

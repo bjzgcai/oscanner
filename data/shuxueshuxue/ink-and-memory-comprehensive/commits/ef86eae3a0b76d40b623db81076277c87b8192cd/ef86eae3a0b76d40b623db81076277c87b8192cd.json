@@ -1,0 +1,20 @@
+{
+  "hash": "ef86eae3a0b76d40b623db81076277c87b8192cd",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Fri Dec 26 17:09:00 2025 +0800",
+  "subject": "Fix state chooser to refresh session before saving",
+  "files": [
+    "frontend/src/App.tsx",
+    "frontend/src/hooks/useSessionLifecycle.ts"
+  ],
+  "diff": "commits/ef86eae3a0b76d40b623db81076277c87b8192cd/ef86eae3a0b76d40b623db81076277c87b8192cd.diff",
+  "related_files": {
+    "frontend/src/App.tsx": [
+      "frontend/src/hooks/useSessionLifecycle.ts"
+    ],
+    "frontend/src/hooks/useSessionLifecycle.ts": [
+      "frontend/src/App.tsx"
+    ]
+  }
+}

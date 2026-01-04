@@ -1,0 +1,75 @@
+{
+  "hash": "c6f51ce06d26de49a4992d06a21b388030381f6c",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Thu Dec 18 21:23:08 2025 +0800",
+  "subject": "bug fix, move hardcoded models to config",
+  "files": [
+    "backend/config.py",
+    "backend/server.py",
+    "backend/stateless_analyzer.py",
+    "frontend/src/App.tsx",
+    "frontend/src/components/StateChooser.tsx",
+    "frontend/src/hooks/useComments.ts",
+    "frontend/src/hooks/useSessionLifecycle.ts"
+  ],
+  "diff": "commits/c6f51ce06d26de49a4992d06a21b388030381f6c/c6f51ce06d26de49a4992d06a21b388030381f6c.diff",
+  "related_files": {
+    "backend/config.py": [
+      "backend/server.py",
+      "backend/stateless_analyzer.py",
+      "frontend/src/App.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/hooks/useComments.ts",
+      "frontend/src/hooks/useSessionLifecycle.ts"
+    ],
+    "backend/server.py": [
+      "backend/config.py",
+      "backend/stateless_analyzer.py",
+      "frontend/src/App.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/hooks/useComments.ts",
+      "frontend/src/hooks/useSessionLifecycle.ts"
+    ],
+    "backend/stateless_analyzer.py": [
+      "backend/config.py",
+      "backend/server.py",
+      "frontend/src/App.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/hooks/useComments.ts",
+      "frontend/src/hooks/useSessionLifecycle.ts"
+    ],
+    "frontend/src/App.tsx": [
+      "backend/config.py",
+      "backend/server.py",
+      "backend/stateless_analyzer.py",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/hooks/useComments.ts",
+      "frontend/src/hooks/useSessionLifecycle.ts"
+    ],
+    "frontend/src/components/StateChooser.tsx": [
+      "backend/config.py",
+      "backend/server.py",
+      "backend/stateless_analyzer.py",
+      "frontend/src/App.tsx",
+      "frontend/src/hooks/useComments.ts",
+      "frontend/src/hooks/useSessionLifecycle.ts"
+    ],
+    "frontend/src/hooks/useComments.ts": [
+      "backend/config.py",
+      "backend/server.py",
+      "backend/stateless_analyzer.py",
+      "frontend/src/App.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/hooks/useSessionLifecycle.ts"
+    ],
+    "frontend/src/hooks/useSessionLifecycle.ts": [
+      "backend/config.py",
+      "backend/server.py",
+      "backend/stateless_analyzer.py",
+      "frontend/src/App.tsx",
+      "frontend/src/components/StateChooser.tsx",
+      "frontend/src/hooks/useComments.ts"
+    ]
+  }
+}

@@ -1,0 +1,328 @@
+*** MODIFIED: backend/tools/session_inserter.py (+1/-2) ***
+@@ -63,8 +63,7 @@ def build_editor_state(session_id: str, text: str, created_at_iso: str) -> dict:
+         "tasks": [],
+         "weightPath": [],
+         "overlappedPhrases": [],
+-        "sessionId": session_id,
+-        "currentEntryId": session_id,
++        "id": session_id,
+         "selectedState": None,
+         "createdAt": created_at_iso
+     }
+
+*** MODIFIED: frontend/src/App.tsx (+52/-37) ***
+@@ -14,7 +14,7 @@ import {
+ import TopNavBar from './components/TopNavBar';
+ import DeckManager from './components/DeckManager';
+ import CalendarPopup from './components/CalendarPopup';
+-import { saveEntryToToday, type CalendarEntry } from './utils/calendarStorage';
++import { type CalendarEntry } from './utils/calendarStorage';
+ import CollectionsView from './components/CollectionsView';
+ import AnalysisView from './components/AnalysisView';
+ import AboutView from './components/AboutView';
+@@ -339,6 +339,10 @@ export default function App() {
+       return nextState;
+     }
+ 
++    if (state && !state.id) {
++      throw new Error('Editor state is missing id');
++    }
++
+     return state;
+   }, [state]);
+ 
+@@ -350,16 +354,13 @@ export default function App() {
+   const saveSessionToDatabase = useCallback(async (editorState: EditorState, firstLine?: string) => {
+     const line = firstLine ?? getFirstLineFromState(editorState);
+     const { saveSession } = await import('./api/voiceApi');
+-    const idToSave = editorState.currentEntryId || crypto.randomUUID();
++    const idToSave = editorState.id || crypto.randomUUID();
+     await saveSession(idToSave, editorState, line);
+ 
+     if (engineRef.current) {
+-      const liveId = engineRef.current.getState().currentEntryId;
+-      const snapshotId = editorState.currentEntryId;
+-      const isSafeToUpdate =
+-        !liveId ||
+-        liveId === idToSave ||
+-        (snapshotId && liveId === snapshotId);
++      const liveId = engineRef.current.getState().id;
++      const snapshotId = editorState.id;
++      const isSafeToUpdate = liveId === idToSave || liveId === snapshotId;
+ 
+       if (isSafeToUpdate) {
+         engineRef.current.setCurrentEntryId(idToSave);
+@@ -648,9 +649,11 @@ export default function App() {
+           }
+ 
+           if (sessionToLoad && loadedSessionId) {
+-            engine.loadState(sessionToLoad);
+-            // @@@ CRITICAL: Set currentEntryId to the loaded session ID
+-            engine.setCurrentEntryId(loadedSessionId);
++            const normalizedState: EditorState = {
++              ...sessionToLoad,
++              id: sessionToLoad.id || (sessionToLoad as any)?.currentEntryId || (sessionToLoad as any)?.sessionId || loadedSessionId
++            };
++            engine.loadState(normalizedState);
+             setState(engine.getState());
+ 
+             // Initialize localTexts from loaded state
+@@ -807,16 +810,16 @@ export default function App() {
+       if (!stateSnapshot) return;
+ 
+       if (engineRef.current) {
+-        const liveId = engineRef.current.getState().currentEntryId;
+-        const snapshotId = stateSnapshot.currentEntryId;
++        const liveId = engineRef.current.getState().id;
++        const snapshotId = stateSnapshot.id;
+         if (liveId && snapshotId && liveId !== snapshotId) {
+           console.warn(`✋ Auto-save aborted: timer captured ${snapshotId} but editor is now on ${liveId}`);
+           return;
+         }
+       }
+ 
+-      if (!stateSnapshot.currentEntryId) {
+-        console.error('BUG: currentEntryId should always be defined after engine init');
++      if (!stateSnapshot.id) {
++        console.error('BUG: session id should always be defined after engine init');
+         return;
+       }
+ 
+@@ -1209,8 +1212,7 @@ export default function App() {
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
+-      sessionId: newSessionId,
+-      currentEntryId: newSessionId,
++      id: newSessionId,
+       selectedState: resolvedSelectedState ?? undefined,
+       createdAt: new Date().toISOString()
+     };
+@@ -1269,9 +1271,8 @@ export default function App() {
+           const firstTextCell = state.cells.find(c => c.type === 'text') as TextCell | undefined;
+           const firstLine = firstTextCell?.content.split('\n')[0].trim() || 'Untitled';
+ 
+-          // @@@ Ensure we have a valid sessionId
+           const { saveSession } = await import('./api/voiceApi');
+-          const sessionId = state.currentEntryId || crypto.randomUUID();
++          const sessionId = state.id || crypto.randomUUID();
+           console.log('📋 Saving session:', sessionId, 'with name:', firstLine);
+           await saveSession(sessionId, state, firstLine);
+           console.log('✅ Current session saved successfully');
+@@ -1318,7 +1319,7 @@ export default function App() {
+       // @@@ Save to database in background
+       try {
+         const { saveSession } = await import('./api/voiceApi');
+-        await saveSession(emptyState.currentEntryId!, emptyState);
++        await saveSession(emptyState.id, emptyState);
+       } catch (error) {
+         console.error('Failed to save new session:', error);
+       }
+@@ -1331,24 +1332,40 @@ export default function App() {
+ 
+   const handleSaveToday = useCallback(async () => {
+     if (!engineRef.current) return;
++    if (!isAuthenticated) {
++      const toast = document.createElement('div');
++      toast.textContent = 'Please sign in to save';
++      toast.style.cssText = `
++        position: fixed;
++        top: 70px;
++        right: 20px;
++        background: #f44336;
++        color: white;
++        padding: 12px 20px;
++        borderRadius: 6px;
++        fontSize: 14px;
++        fontFamily: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
++        zIndex: 10000;
++        boxShadow: 0 4px 12px rgba(0,0,0,0.15);
++      `;
++      document.body.appendChild(toast);
++      setTimeout(() => {
++        toast.style.opacity = '0';
++        toast.style.transition = 'opacity 0.3s';
++        setTimeout(() => document.body.removeChild(toast), 300);
++      }, 2000);
++      return;
++    }
+     const currentState = ensureStateForPersistence();
+     if (!currentState) return;
+ 
+     try {
+-      const hadExistingId = Boolean(currentState.currentEntryId);
+-      let updatedFlag = hadExistingId;
+-
+-      if (isAuthenticated) {
+-        const firstLine = getFirstLineFromState(currentState);
+-        const savedSessionId = await saveSessionToDatabase(currentState, firstLine);
+-        engineRef.current.setCurrentEntryId(savedSessionId);
+-      } else {
+-        const entryId = saveEntryToToday(currentState);
+-        engineRef.current.setCurrentEntryId(entryId);
+-      }
++      const firstLine = getFirstLineFromState(currentState);
++      const savedSessionId = await saveSessionToDatabase(currentState, firstLine);
++      engineRef.current.setCurrentEntryId(savedSessionId);
+ 
+       const toast = document.createElement('div');
+-      toast.textContent = updatedFlag ? 'Saved (updated)' : 'Saved';
++      toast.textContent = 'Saved';
+       toast.style.cssText = `
+         position: fixed;
+         top: 70px;
+@@ -1400,13 +1417,11 @@ export default function App() {
+ 
+     const nextState: EditorState = {
+       ...entry.state,
+-      currentEntryId: entry.id,
++      id: entry.id,
+       createdAt: entry.state.createdAt ?? new Date().toISOString()
+     };
+ 
+     engineRef.current.loadState(nextState);
+-    engineRef.current.setCurrentEntryId(entry.id);
+-
+     if (nextState.selectedState !== undefined) {
+       setSelectedState(nextState.selectedState);
+     }
+@@ -1426,7 +1441,7 @@ export default function App() {
+ 
+   const handleCalendarEntryDeleted = useCallback((entryId: string) => {
+     if (!entryId || !engineRef.current) return;
+-    const currentId = engineRef.current.getState().currentEntryId;
++    const currentId = engineRef.current.getState().id;
+     if (currentId === entryId) {
+       startDetachedBlankSession();
+     }
+@@ -2771,7 +2786,7 @@ export default function App() {
+       {showCalendarPopup && (
+         <CalendarPopup
+           onLoadEntry={handleLoadEntry}
+-          currentEntryId={state?.currentEntryId}
++          currentEntryId={state?.id}
+           onEntryDeleted={handleCalendarEntryDeleted}
+           onClose={() => setShowCalendarPopup(false)}
+           timezone={userTimezone}
+
+*** MODIFIED: frontend/src/engine/EditorEngine.ts (+12/-10) ***
+@@ -13,8 +13,7 @@ export interface EditorState {
+   tasks: Task[];
+   weightPath: WeightEntry[];
+   overlappedPhrases: string[];  // @@@ Phrases rejected due to overlap (feedback to backend)
+-  sessionId: string;
+-  currentEntryId?: string;  // Track which calendar entry is being edited (for overwrite on save)
++  id: string;
+   selectedState?: string | null;  // @@@ Emotional state for this session (stored per-session)
+   createdAt?: string;  // @@@ ISO timestamp when session was created
+ }
+@@ -132,8 +131,7 @@ export class EditorEngine {
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
+-      sessionId,
+-      currentEntryId: sessionId  // @@@ Set currentEntryId synchronously to prevent duplicate UUIDs
++      id: sessionId
+     };
+   }
+ 
+@@ -234,17 +232,17 @@ export class EditorEngine {
+ 
+   // @@@ Restore editor to pristine state while starting a fresh session
+   private resetEditorToBlank() {
+-    const { selectedState, sessionId, currentEntryId, createdAt } = this.state;
++    const { selectedState, createdAt } = this.state;
+     const preservedTimestamp = createdAt ?? new Date().toISOString();
++    const newSessionId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+ 
+     this.state = {
+       cells: [{ id: generateId(), type: 'text', content: '' }],
+       commentors: [],
+       tasks: [],
+       weightPath: [],
+       overlappedPhrases: [],
+-      sessionId,
+-      currentEntryId: currentEntryId ?? sessionId,
++      id: newSessionId,
+       selectedState,
+       createdAt: preservedTimestamp
+     };
+@@ -433,7 +431,7 @@ export class EditorEngine {
+         ? stateConfig.states[selectedState].prompt
+         : '';
+ 
+-      const result = await analyzeText(text, this.state.sessionId, appliedCommentors, metaPrompt, statePrompt, this.state.overlappedPhrases);
++      const result = await analyzeText(text, this.state.id, appliedCommentors, metaPrompt, statePrompt, this.state.overlappedPhrases);
+ 
+       // Backend returns at most ONE voice
+       if (result.voices.length > 0) {
+@@ -705,7 +703,10 @@ export class EditorEngine {
+ 
+   // @@@ Load state from storage
+   loadState(state: EditorState) {
+-    this.state = state;
++    if (!state.id) {
++      throw new Error('EditorState.id is required when loading');
++    }
++    this.state = { ...state };
+     // @@@ Ensure overlappedPhrases field exists (migration for old state)
+     if (!this.state.overlappedPhrases) {
+       this.state.overlappedPhrases = [];
+@@ -717,7 +718,8 @@ export class EditorEngine {
+ 
+   // @@@ Set current entry ID (for calendar overwrite tracking)
+   setCurrentEntryId(entryId: string | undefined) {
+-    this.state.currentEntryId = entryId;
++    if (!entryId) return;
++    this.state.id = entryId;
+     this.notifyChange();
+   }
+ 
+
+*** MODIFIED: frontend/src/utils/calendarStorage.ts (+8/-6) ***
+@@ -59,20 +59,20 @@ export function saveEntryToToday(state: EditorState): string {
+   const today = getTodayKey();
+ 
+   // @@@ Check if we're overwriting an existing entry
+-  if (state.currentEntryId) {
++  if (state.id) {
+     // Find and update the existing entry across all dates
+     for (const dateKey of Object.keys(data)) {
+-      const entryIndex = data[dateKey].findIndex(e => e.id === state.currentEntryId);
++      const entryIndex = data[dateKey].findIndex(e => e.id === state.id);
+       if (entryIndex !== -1) {
+         // Update existing entry
+         data[dateKey][entryIndex] = {
+-          id: state.currentEntryId,
++          id: state.id,
+           timestamp: Date.now(),
+           state: state,
+           firstLine: extractFirstLine(state)
+         };
+         saveCalendarData(data);
+-        return state.currentEntryId;
++        return state.id;
+       }
+     }
+   }
+@@ -82,8 +82,9 @@ export function saveEntryToToday(state: EditorState): string {
+     data[today] = [];
+   }
+ 
++  const generatedId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+   const entry: CalendarEntry = {
+-    id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
++    id: generatedId,
+     timestamp: Date.now(),
+     state: state,
+     firstLine: extractFirstLine(state)
+@@ -92,7 +93,8 @@ export function saveEntryToToday(state: EditorState): string {
+   data[today].push(entry);
+   saveCalendarData(data);
+ 
+-  return entry.id;
++  state.id = generatedId;
++  return generatedId;
+ }
+ 
+ export function getEntriesForDate(dateKey: string): CalendarEntry[] {

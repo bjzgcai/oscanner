@@ -1,0 +1,849 @@
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  listDecks,
+  getDeck,
+  createDeck,
+  updateDeck,
+  deleteDeck,
+  forkDeck,
+  syncDeck,
+  createVoice,
+  updateVoice,
+  deleteVoice,
+  publishDeck,
+  type Deck,
+  type Voice
+} from '../api/voiceApi';
+import DeckEditorModal from './DeckEditorModal';
+import { COLORS, iconMap } from './deckVisuals';
+
+interface Props {
+  onUpdate?: () => void;
+}
+
+export default function DeckManager({ onUpdate }: Props) {
+  const { t } = useTranslation();
+  const spinnerKeyframes = useMemo(() => (
+    `@keyframes deck-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`
+  ), []);
+  const [decks, setDecks] = useState<Deck[]>([]);
+  const [communityDecks, setCommunityDecks] = useState<Deck[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deckIconPickerOpen, setDeckIconPickerOpen] = useState<string | null>(null); // @@@ Track which deck's icon+color picker is open
+  const [creatingDeck, setCreatingDeck] = useState(false);
+  const [creatingVoice, setCreatingVoice] = useState<string | null>(null);
+  const [publishWarning, setPublishWarning] = useState<string | null>(null);
+  const [selectedVoiceByDeck, setSelectedVoiceByDeck] = useState<Record<string, string | null>>({});
+  const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
+
+  // @@@ Scroll position preservation
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    loadDecks();
+    loadCommunityDecks();
+  }, []);
+
+  useEffect(() => {
+    setSelectedVoiceByDeck(prev => {
+      let changed = false;
+      const next = { ...prev };
+
+      decks.forEach((deck) => {
+        const voiceIds = deck.voices?.map(v => v.id) || [];
+        const currentSelection = next[deck.id];
+
+        if (voiceIds.length === 0) {
+          if (currentSelection !== null) {
+            next[deck.id] = null;
+            changed = true;
+          }
+          return;
+        }
+
+        if (!currentSelection || !voiceIds.includes(currentSelection)) {
+          next[deck.id] = voiceIds[0];
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [decks]);
+
+  async function loadDecks(preserveScroll = false) {
+    // @@@ Save scroll position before reload
+    const savedScrollTop = preserveScroll && scrollContainerRef.current
+      ? scrollContainerRef.current.scrollTop
+      : 0;
+
+    try {
+      if (!preserveScroll) {
+        setLoading(true);
+      }
+      const fetchedDecks = await listDecks();
+
+      // Load voices for each deck
+      const decksWithVoices = await Promise.all(
+        fetchedDecks.map(async (deck) => {
+          try {
+            return await getDeck(deck.id);
+          } catch (err) {
+            console.error(`Failed to load voices for deck ${deck.id}:`, err);
+            return deck;
+          }
+        })
+      );
+
+      setDecks(decksWithVoices);
+      setError(null);
+
+      // @@@ Restore scroll position after render
+      if (preserveScroll && scrollContainerRef.current) {
+        setTimeout(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = savedScrollTop;
+          }
+        }, 0);
+      }
+    } catch (err: any) {
+      console.error('Failed to load decks:', err);
+      setError(err.message || 'Failed to load decks');
+    } finally {
+      if (!preserveScroll) {
+        setLoading(false);
+      }
+    }
+  }
+
+  function toggleDeck(deckId: string) {
+    setActiveDeckId(deckId);
+  }
+
+  async function handleForkDeck(deckId: string) {
+    try {
+      await forkDeck(deckId);
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to fork deck: ${err.message}`);
+    }
+  }
+
+  async function handleToggleDeck(deckId: string, currentEnabled: boolean) {
+    try {
+      await updateDeck(deckId, { enabled: !currentEnabled });
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to toggle deck: ${err.message}`);
+    }
+  }
+
+  async function handleUpdateDeck(deckId: string, data: Partial<Deck>) {
+    try {
+      await updateDeck(deckId, data);
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to update deck: ${err.message}`);
+    }
+  }
+
+  async function handleDeleteDeck(deckId: string) {
+    if (!confirm(t('deck.confirm.delete'))) return;
+
+    try {
+      await deleteDeck(deckId);
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to delete deck: ${err.message}`);
+    }
+  }
+
+  async function handleSyncDeck(deckId: string) {
+    if (!confirm(t('deck.confirm.sync'))) return;
+
+    try {
+      const result = await syncDeck(deckId);
+      alert(`✅ Synced ${result.synced_voices} voices with original template`);
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to sync deck: ${err.message}`);
+    }
+  }
+
+  async function handleToggleVoice(voiceId: string, currentEnabled: boolean) {
+    try {
+      await updateVoice(voiceId, { enabled: !currentEnabled });
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to toggle voice: ${err.message}`);
+    }
+  }
+
+  async function handleUpdateVoice(voiceId: string, data: Partial<Voice>) {
+    try {
+      await updateVoice(voiceId, data);
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to update voice: ${err.message}`);
+    }
+  }
+
+  async function handleDeleteVoice(voiceId: string) {
+    if (!confirm('Delete this voice?')) return;
+
+    try {
+      await deleteVoice(voiceId);
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to delete voice: ${err.message}`);
+    }
+  }
+
+  async function loadCommunityDecks() {
+    try {
+      const published = await listDecks(true);
+      setCommunityDecks(published);
+    } catch (err: any) {
+      console.error('Failed to load community decks:', err);
+    }
+  }
+
+  async function handleCreateDeck() {
+    setCreatingDeck(true);
+    try {
+      const newDeck = await createDeck({
+        name: 'New Deck',
+        description: 'Describe your deck here',
+        icon: 'brain',
+        color: 'blue'
+      });
+      await loadDecks(true);
+      setActiveDeckId(newDeck.deck_id);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to create deck: ${err.message}`);
+    } finally {
+      setCreatingDeck(false);
+    }
+  }
+
+  async function handleAddVoice(deckId: string) {
+    setCreatingVoice(deckId);
+    try {
+      const { voice_id: newVoiceId } = await createVoice({
+        deck_id: deckId,
+        name: 'New Voice',
+        system_prompt: 'You are a helpful assistant.',
+        icon: 'brain',
+        color: 'blue'
+      });
+      setSelectedVoiceByDeck(prev => ({ ...prev, [deckId]: newVoiceId }));
+      await loadDecks(true);
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to create voice: ${err.message}`);
+    } finally {
+      setCreatingVoice(null);
+    }
+  }
+
+  async function handlePublishClick(deck: Deck) {
+    if (deck.published) {
+      handlePublishToggle(deck.id);
+    } else {
+      setPublishWarning(deck.id);
+    }
+  }
+
+  async function handlePublishToggle(deckId: string) {
+    try {
+      const result = await publishDeck(deckId);
+      alert(result.published ? t('deck.messages.publishSuccess') : t('deck.messages.unpublishSuccess'));
+      await loadDecks(true);
+      await loadCommunityDecks();
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed: ${err.message}`);
+    } finally {
+      setPublishWarning(null);
+    }
+  }
+
+  async function handleInstallDeck(deckId: string) {
+    try {
+      await forkDeck(deckId);
+      alert(t('deck.messages.installSuccess'));
+      await loadDecks(true);
+      await loadCommunityDecks();
+      onUpdate?.();
+    } catch (err: any) {
+      alert(`Failed to install deck: ${err.message}`);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        minHeight: '100vh',
+        background: '#f8f0e6'
+      }}>
+        <style>{spinnerKeyframes}</style>
+        <div style={{
+          fontSize: 18,
+          color: '#666',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.75rem',
+          textAlign: 'center'
+        }}>
+          <span style={{
+            width: '18px',
+            height: '18px',
+            borderRadius: '50%',
+            border: '2px solid rgba(0,0,0,0.1)',
+            borderTopColor: '#666',
+            animation: 'deck-spin 0.9s linear infinite'
+          }} />
+          Loading decks…
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: '#f8f0e6',
+        gap: 16
+      }}>
+        <div style={{ fontSize: 18, color: '#e74c3c' }}>❌ {error}</div>
+        <button
+          onClick={() => loadDecks()}
+          style={{
+            padding: '8px 16px',
+            background: '#2c2c2c',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer'
+          }}
+        >
+          {t('deck.actions.retry')}
+        </button>
+      </div>
+    );
+  }
+
+  const activeDeck = decks.find(d => d.id === activeDeckId) || null;
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f8f0e6', overflow: 'hidden' }}>
+      {/* Scrollable Content with embedded header */}
+      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Embedded Header */}
+          <div style={{
+            padding: '0 0 24px 0',
+            borderBottom: '2px solid #d0c4b0'
+          }}>
+            <h1 style={{
+              margin: 0,
+              fontSize: 28,
+              fontWeight: 700,
+              color: '#2c2c2c',
+              fontFamily: 'Georgia, serif',
+              letterSpacing: '-0.5px'
+            }}>
+              {t('deck.heading')}
+            </h1>
+            <p style={{
+              margin: '6px 0 0',
+              fontSize: 14,
+              color: '#666',
+              fontStyle: 'italic'
+            }}>
+              {t('deck.subheading')}
+            </p>
+          </div>
+          {/* Create New Deck Button */}
+          <button
+            onClick={handleCreateDeck}
+            disabled={creatingDeck}
+            style={{
+              padding: '14px 28px',
+              marginBottom: '8px',
+              background: 'linear-gradient(135deg, #f9a875 0%, #f89560 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              cursor: creatingDeck ? 'not-allowed' : 'pointer',
+              fontSize: '15px',
+              fontWeight: '600',
+              opacity: creatingDeck ? 0.6 : 1,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              alignSelf: 'flex-start',
+              boxShadow: '0 4px 12px rgba(249, 168, 117, 0.3)',
+              letterSpacing: '0.3px'
+            }}
+            onMouseEnter={(e) => {
+              if (!creatingDeck) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(249, 168, 117, 0.4)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!creatingDeck) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(249, 168, 117, 0.3)';
+              }
+            }}
+          >
+            {creatingDeck ? t('deck.actions.creating') : `✨ ${t('deck.actions.create')}`}
+          </button>
+
+          {/* My Decks Section Header */}
+          <h3 style={{
+            margin: '8px 0',
+            fontSize: '16px',
+            fontWeight: '500',
+            color: '#2c2c2c'
+          }}>
+            {t('deck.sections.myDecks')}
+          </h3>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+            gap: 14
+          }}>
+            {decks.map(deck => {
+              const isSystem = !!deck.is_system;
+              const Icon = iconMap[deck.icon as keyof typeof iconMap] || iconMap.brain;
+              const colorHex = COLORS[deck.color as keyof typeof COLORS]?.hex || '#4a90e2';
+              const voiceCount = deck.voice_count || deck.voices?.length || 0;
+              const voiceCountLabel = t('deck.labels.voiceCount', { count: voiceCount });
+
+              return (
+                <div
+                  key={deck.id}
+                  onClick={() => toggleDeck(deck.id)}
+                  style={{
+                    background: '#fff',
+                    border: `2px solid ${isSystem ? '#d0c4b0' : colorHex}`,
+                    borderRadius: 10,
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.08)',
+                    padding: 12,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    cursor: 'pointer',
+                    transition: 'transform 0.15s, box-shadow 0.15s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 6px 14px rgba(0,0,0,0.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 3px 10px rgba(0,0,0,0.08)';
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <div
+                      style={{ position: 'relative' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div
+                        data-deck-icon={deck.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isSystem) {
+                            setDeckIconPickerOpen(deckIconPickerOpen === deck.id ? null : deck.id);
+                          }
+                        }}
+                        style={{
+                          width: 46,
+                          height: 46,
+                          borderRadius: 23,
+                          background: `linear-gradient(135deg, ${colorHex} 0%, ${colorHex}cc 100%)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#fff',
+                          flexShrink: 0,
+                          boxShadow: `0 3px 8px ${colorHex}40`,
+                          cursor: isSystem ? 'default' : 'pointer',
+                          transition: 'transform 0.2s, box-shadow 0.2s'
+                        }}
+                      >
+                        <Icon size={22} />
+                      </div>
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: '#2c2c2c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {deck.name}
+                        </div>
+                        {isSystem && (
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: '#777',
+                            background: '#ededed',
+                            padding: '2px 6px',
+                            borderRadius: 6
+                          }}>
+                            System
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#555', lineHeight: 1.4, maxHeight: 36, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {deck.description || t('deck.labels.noDescription')}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#888' }}>{voiceCountLabel}</div>
+                    </div>
+
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleDeck(deck.id, deck.enabled);
+                      }}
+                      style={{
+                        width: 42,
+                        height: 20,
+                        borderRadius: 10,
+                        background: deck.enabled ? colorHex : '#ccc',
+                        position: 'relative',
+                        cursor: 'pointer',
+                        transition: 'background 0.3s',
+                        flexShrink: 0
+                      }}
+                      title={deck.enabled ? 'Disable deck' : 'Enable deck'}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: 2,
+                        left: deck.enabled ? 22 : 2,
+                        width: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        background: '#fff',
+                        transition: 'left 0.3s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                    {isSystem ? (
+                      <button
+                        onClick={() => handleForkDeck(deck.id)}
+                        style={{
+                          padding: '6px 10px',
+                          background: colorHex,
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: 600
+                        }}
+                      >
+                        Fork
+                      </button>
+                    ) : (
+                      <>
+                        {deck.parent_id && (
+                          <button
+                            onClick={() => handleSyncDeck(deck.id)}
+                            style={{
+                              padding: '6px 10px',
+                              background: '#81b7d2',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            Sync
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handlePublishClick(deck)}
+                          style={{
+                            padding: '6px 10px',
+                            background: deck.published ? '#f39c7a' : '#b47ed7',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 600
+                          }}
+                        >
+                          {deck.published ? 'Unpub' : 'Pub'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDeck(deck.id)}
+                          style={{
+                            padding: '6px 10px',
+                            background: '#e8956c',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 600
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* @@@ Community Decks Section */}
+          <hr style={{ margin: '32px 0', border: '1px solid #d0c4b0' }} />
+
+          <h3 style={{
+            margin: '16px 0',
+            fontSize: '16px',
+            fontWeight: '500',
+            color: '#2c2c2c'
+          }}>
+            {t('deck.sections.community', { count: communityDecks.length })}
+          </h3>
+
+          {communityDecks.length === 0 ? (
+            <p style={{
+              color: '#999',
+              fontSize: '14px',
+              fontStyle: 'italic',
+              textAlign: 'center',
+              padding: '32px 0'
+            }}>
+              {t('deck.communityEmpty')}
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {communityDecks.map(deck => {
+            const Icon = iconMap[deck.icon as keyof typeof iconMap] || iconMap.brain;
+                const colorHex = COLORS[deck.color as keyof typeof COLORS]?.hex || '#4a90e2';
+
+                return (
+                  <div
+                    key={deck.id}
+                    style={{
+                      background: '#fff',
+                      border: `2px solid ${colorHex}`,
+                      borderRadius: 12,
+                      padding: 20,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      transition: 'all 0.3s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
+                        {/* Deck Icon */}
+                        <div style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 28,
+                          background: `linear-gradient(135deg, ${colorHex} 0%, ${colorHex}cc 100%)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#fff',
+                          flexShrink: 0,
+                          boxShadow: `0 3px 8px ${colorHex}40`
+                        }}>
+                          <Icon size={28} />
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 18,
+                            fontWeight: 700,
+                            color: '#2c2c2c',
+                            marginBottom: 4
+                          }}>
+                            {deck.name}
+                          </div>
+                          <div style={{
+                            fontSize: 14,
+                            color: '#666',
+                            marginBottom: 4
+                          }}>
+                            {deck.description || 'No description'}
+                          </div>
+                          <div style={{
+                            fontSize: 12,
+                            color: '#999'
+                          }}>
+                            {t('deck.communityMeta', {
+                              author: deck.author_name || t('deck.labels.anonymous'),
+                              voices: deck.voice_count || 0,
+                              installs: deck.install_count || 0
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleInstallDeck(deck.id)}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#27ae60',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          flexShrink: 0
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(39, 174, 96, 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        {t('deck.actions.install')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Deck editor modal */}
+      {activeDeck && (
+        <DeckEditorModal
+          deck={activeDeck}
+          isSystem={!!activeDeck.is_system}
+          selectedVoiceId={selectedVoiceByDeck[activeDeck.id] || activeDeck.voices?.[0]?.id || null}
+          onSelectVoice={(voiceId) => setSelectedVoiceByDeck(prev => ({ ...prev, [activeDeck.id]: voiceId }))}
+          onClose={() => setActiveDeckId(null)}
+          creatingVoiceId={creatingVoice}
+          onAddVoice={handleAddVoice}
+          onUpdateDeck={handleUpdateDeck}
+          onUpdateVoice={handleUpdateVoice}
+          onToggleVoice={handleToggleVoice}
+          onDeleteVoice={handleDeleteVoice}
+        />
+      )}
+
+      {/* @@@ Publish Warning Modal */}
+      {publishWarning && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}
+          onClick={() => setPublishWarning(null)}
+        >
+          <div
+            className="modal-content"
+            style={{
+              background: 'white',
+              padding: '24px',
+              borderRadius: '8px',
+              maxWidth: '400px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+              {t('deck.publishWarning.heading')}
+            </h3>
+
+            <p style={{ marginBottom: '16px', lineHeight: '1.5', fontSize: '14px' }}>
+              <span dangerouslySetInnerHTML={{ __html: t('deck.publishWarning.body') }} />
+            </p>
+
+            <p style={{ marginBottom: '16px', color: '#e74c3c', fontSize: '13px', lineHeight: '1.5' }}>
+              {t('deck.publishWarning.note')}
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setPublishWarning(null)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#ccc',
+                  color: '#2c2c2c',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500
+                }}
+              >
+                {t('deck.publishWarning.cancel')}
+              </button>
+              <button
+                onClick={() => handlePublishToggle(publishWarning)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#9b59b6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500
+                }}
+              >
+                {t('deck.publishWarning.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

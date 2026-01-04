@@ -1,0 +1,23 @@
+{
+  "sha": "2d472c31713e9f096816a2331c1627d41c3f89e8",
+  "message": "Reduce inspiration timer to 2 seconds and clean up verbose console logs\n\n- Changed inspiration trigger delay from 5 seconds to 2 seconds for faster feedback\n- Removed repetitive debug logs from module load, useEffect, and EditorEngine\n- Kept important backend API call log for debugging\n- Cleaned up logs that were repeating on every HMR reload and state change\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-06T11:03:55Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-06T11:03:55Z"
+  },
+  "stats": {
+    "total": 137,
+    "additions": 37,
+    "deletions": 100
+  },
+  "files_count": 2,
+  "parents": [
+    "cb5c9121367bd4961d9dde2a0231f6a6bb9c4044"
+  ]
+}

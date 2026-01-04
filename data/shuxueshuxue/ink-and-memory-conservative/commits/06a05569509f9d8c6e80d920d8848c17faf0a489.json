@@ -1,0 +1,23 @@
+{
+  "sha": "06a05569509f9d8c6e80d920d8848c17faf0a489",
+  "message": "Delete App.tsx",
+  "author": {
+    "name": "zhuchenyu2008",
+    "email": "132262479+zhuchenyu2008@users.noreply.github.com",
+    "date": "2026-01-01T04:42:17Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2026-01-01T04:42:17Z"
+  },
+  "stats": {
+    "total": 1859,
+    "additions": 0,
+    "deletions": 1859
+  },
+  "files_count": 1,
+  "parents": [
+    "30342e323a3836d3f87753b06b83ec5c7b6e5bf2"
+  ]
+}

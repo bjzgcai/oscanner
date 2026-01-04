@@ -1,0 +1,170 @@
+*** FILE: README.md ***
+@@ -35,11 +35,18 @@ You can add friends and view their timelines alongside your own. This feature is
+ 
+ ---
+ 
+-## The Voices
++## Default Voice Decks
+ 
+-Ink & Memory features 16 distinct voices, organized into three decks. Each voice has its own unique personality and perspective.
++Ink & Memory ships with three carefully crafted decks containing 16 voices to get you started. These are designed to offer different perspectives on your writing—but they're just the beginning.
+ 
+-### The Introspection Deck
++**You're not limited to these voices.** The deck system lets you:
++- 🔀 **Fork** any deck to create your own customized version
++- ✏️ **Edit** voice personalities, prompts, icons, and colors
++- ➕ **Create** entirely new voices from scratch
++- 🌐 **Explore** the community store for decks made by other users
++- 📤 **Publish** your own decks to share with the community
++
++### The Introspection Deck (Default)
+ This deck is focused on self-reflection and personal growth.
+ 
+ | Icon | Name | Description |
+@@ -75,13 +82,55 @@ This deck examines your writing through the lens of different philosophical scho
+ 
+ ---
+ 
+-## Technical Deep Dive
++### Creating Your Own Voices
++
++Each voice is defined by:
++- **A system prompt** that shapes its personality and perspective
++- **An icon** for visual identification
++- **A color** that tints its highlights in your text
++
++When you fork a deck, you get full control over all these elements. Want a voice that channels your favorite philosopher? A critic that focuses on narrative structure? A cheerleader for your creative projects? Build it yourself or find it in the community store.
++
++---
++
++## How the Voices Work
++
++As you write, Ink & Memory analyzes your text using a **trace-based energy system**. Here's what happens behind the scenes:
++
++1. **Energy Accumulates** — As you type, the system builds up "energy" based on your writing.
++2. **Threshold Triggers** — When enough energy accumulates, the AI analyzes your recent text.
++3. **Voices Respond** — Enabled voices scan for phrases that resonate with their personality.
++4. **Comments Appear** — Relevant voices highlight phrases and offer their perspective in the margin.
+ 
+-Ink & Memory is built on a modern, robust technology stack:
++This creates an organic, non-intrusive experience where comments appear naturally as you write, rather than constantly interrupting you.
+ 
+-*   **Frontend:** A beautiful and responsive interface built with **React** and **TypeScript**. We use **Vite** for a fast and efficient development experience, and the **TipTap** editor for a smooth and customizable writing surface. A custom **EditorEngine** manages the editor state and communicates with the backend.
+-*   **Backend:** A powerful and scalable API built with **FastAPI** and **Python**. We use the **PolyCLI** library to orchestrate calls to Large Language Models (LLMs), constructing detailed prompts to generate high-quality, context-aware comments from the different AI personas. A **Stateless Analyzer** is at the core of the "voices" feature.
+-*   **Database:** A reliable and efficient **SQLite** database stores all your data, including users, sessions, preferences, decks, voices, and friends.
++---
++
++## Technical Architecture
++
++Ink & Memory is built on a modern stack designed for real-time AI interaction:
++
++### Frontend
++- **React 19 + TypeScript** — Type-safe, component-based UI.
++- **Vite** — Fast dev server and builds.
++- **TipTap** — Extensible rich text editing with custom extensions for voice highlights.
++- **Custom EditorEngine** — Manages editor state, comments, and chat widgets.
++
++### Backend
++- **FastAPI + Python** — High-performance async API server.
++- **PolyCLI** — Orchestrates LLM calls with structured prompts and retry logic.
++- **Stateless Analyzer** — Core voice analysis engine that keeps context without server-side state.
++- **SQLite + WAL** — Reliable storage with concurrent read support.
++
++### AI Integration
++- **Multi-model support** — Works with GPT-4, Claude, DeepSeek, and Gemini.
++- **Structured outputs** — Pydantic models ensure type-safe LLM responses.
++- **Daily image generation** — Automatic visual summaries of your writing.
++
++### Key Design Decisions
++- **Deck-based architecture** — Voices are organized into forkable, shareable decks.
++- **Parent-child relationships** — Forked decks can sync updates from their source.
++- **Community store** — Published decks are discoverable and installable by other users.
+ 
+ ---
+ 
+
+*** FILE: README.zh.md ***
+@@ -36,11 +36,18 @@ Ink & Memory 的核心是一个简洁、极简的写作环境。编辑器旨在
+ 
+ ---
+ 
+-## 认识这些声音
++## 默认声音卡组
+ 
+-Ink & Memory 包含 16 个独特的声音，分为三个卡组。每个声音都有其独特的个性和视角。
++Ink & Memory 预装了三个精心设计的卡组，包含 16 个声音，帮助你快速开始。这些声音旨在从不同角度审视你的写作——但这仅仅是个开始。
+ 
+-### 内省卡组
++**你不必局限于这些声音。** 卡组系统允许你：
++- 🔀 **复刻** 任何卡组，创建自己的定制版本
++- ✏️ **编辑** 声音的个性、提示词、图标和颜色
++- ➕ **创建** 全新的声音
++- 🌐 **探索** 社区商店中其他用户创建的卡组
++- 📤 **发布** 自己的卡组与社区分享
++
++### 内省卡组（默认）
+ 该卡组专注于自我反思和个人成长。
+ 
+ | 图标 | 名称 | 描述 |
+@@ -76,13 +83,55 @@ Ink & Memory 包含 16 个独特的声音，分为三个卡组。每个声音都
+ 
+ ---
+ 
+-## 技术深入解析
++### 创建你的专属声音
++
++每个声音由以下要素构成：
++- **系统提示词**：塑造它的个性和视角
++- **图标**：用于视觉识别
++- **颜色**：为文本高亮上色
++
++复刻一个卡组后，你可以完全掌控这些元素。想要一个更贴近你喜欢的哲学家的声音？一个专注叙事结构的评论者？一个为创意项目加油的伙伴？自己动手构建，或在社区商店直接找到。
++
++---
++
++## 声音如何工作
++
++在你写作时，Ink & Memory 使用**基于轨迹的能量系统**来分析文本。背后发生的事情是：
++
++1. **能量累积** —— 输入越多，系统获得的“能量”越高。
++2. **阈值触发** —— 能量达到阈值时，AI 会分析你刚写下的内容。
++3. **声音响应** —— 已启用的声音根据各自的个性寻找共鸣片段。
++4. **评论出现** —— 相关的声音会高亮短语，并在侧边给出观点。
+ 
+-Ink & Memory 构建于一个现代、强大的技术栈之上：
++这让评论像自然冒出来一样，而不是频繁打断你的写作。
+ 
+-*   **前端:** 一个美观且响应迅速的界面，使用 **React** 和 **TypeScript** 构建。我们使用 **Vite** 来获得快速高效的开发体验，并使用 **TipTap** 编辑器来实现流畅且可自定义的写作界面。一个定制的 **EditorEngine** 负责管理编辑器状态并与后端通信。
+-*   **后端:** 一个强大且可扩展的 API，使用 **FastAPI** 和 **Python** 构建。我们使用 **PolyCLI** 库来协调对大型语言模型 (LLM) 的调用，构建详细的提示以从不同的人工智能角色生成高质量、与上下文相关的评论。一个 **Stateless Analyzer** 是“声音”功能的核心。
+-*   **数据库:** 一个可靠且高效的 **SQLite** 数据库，用于存储你的所有数据，包括用户、会话、偏好、卡组、声音和好友。
++---
++
++## 技术架构
++
++Ink & Memory 基于为实时 AI 交互设计的现代栈：
++
++### 前端
++- **React 19 + TypeScript** —— 类型安全的组件式界面。
++- **Vite** —— 迅速的开发与构建体验。
++- **TipTap** —— 可扩展的富文本编辑，并有自定义扩展用于声音高亮。
++- **自研 EditorEngine** —— 管理编辑状态、评论和聊天部件。
++
++### 后端
++- **FastAPI + Python** —— 高性能异步 API 服务。
++- **PolyCLI** —— 以结构化提示协调 LLM 调用与重试。
++- **Stateless Analyzer** —— 核心的声音分析引擎，无需服务器会话状态。
++- **SQLite + WAL** —— 稳定存储，支持并发读取。
++
++### AI 集成
++- **多模型支持** —— 兼容 GPT-4、Claude、DeepSeek、Gemini 等。
++- **结构化输出** —— 使用 Pydantic 确保类型安全的模型返回。
++- **每日图片生成** —— 自动为你的写作生成视觉摘要。
++
++### 关键设计决策
++- **卡组架构** —— 声音被组织为可复刻、可分享的卡组。
++- **父子关系** —— 复刻的卡组可从源卡组同步更新。
++- **社区商店** —— 已发布的卡组可被其他用户发现与安装。
+ 
+ ---
+ 
+

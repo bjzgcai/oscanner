@@ -1,0 +1,47 @@
+*** FILE: frontend/src/App.tsx ***
+@@ -316,7 +316,7 @@ export default function App() {
+         const v = data as any;
+         converted[name] = {
+           name,
+-          systemPrompt: v.tagline,
++          systemPrompt: v.systemPrompt,  // @@@ Fixed: was v.tagline (wrong field name)
+           enabled: true,
+           icon: v.icon,
+           color: v.color
+@@ -1412,21 +1412,30 @@ export default function App() {
+       const textarea = e.currentTarget;
+       setTimeout(() => {
+         if (textarea) {
+-          // Get cursor position in textarea
++          // @@@ Use exact caret coordinates for dropdown positioning
+           const cursorPos = textarea.selectionStart;
+           const textBeforeCursor = textarea.value.substring(0, cursorPos);
+ 
+-          // Count lines before cursor
+-          const linesBefore = textBeforeCursor.split('\n').length - 1;
++          // Count lines and get current line text for horizontal position
++          const lines = textBeforeCursor.split('\n');
++          const linesBefore = lines.length - 1;
++          const currentLineText = lines[lines.length - 1];
+ 
+-          // Calculate approximate cursor position
++          // Get computed styles
+           const computedStyle = window.getComputedStyle(textarea);
+           const lineHeight = parseFloat(computedStyle.lineHeight) || 32;
++          const fontSize = parseFloat(computedStyle.fontSize) || 18;
+           const rect = textarea.getBoundingClientRect();
++          const padding = parseFloat(computedStyle.paddingLeft) || 0;
+ 
+-          // Position dropdown at cursor (with small offset)
++          // Approximate horizontal position based on character width
++          // Using 0.6 * fontSize as average character width (monospace-like estimation)
++          const charWidth = fontSize * 0.6;
++          const horizontalOffset = padding + (currentLineText.length * charWidth);
++
++          // Position dropdown at caret
+           setDropdownPosition({
+-            x: rect.left + 10,
++            x: rect.left + horizontalOffset,
+             y: rect.top + (linesBefore * lineHeight) + lineHeight + 5
+           });
+           setDropdownTriggerCellId(cellId);

@@ -1,0 +1,7 @@
+*** MODIFIED: .github/workflows/deploy-backend.yml (+1/-0) ***
+@@ -67,4 +67,5 @@ jobs:
+               "docker run --name ink-backend --restart unless-stopped \
+                 -p 127.0.0.1:8765:8765 \
+                 -v /root/ink-and-memory/backend/data:/app/data \
++                -e BACKEND_VERSION=${IMAGE_TAG} \
+                 ${IMAGE_TAG}"

@@ -1,0 +1,24 @@
+*** FILE: frontend/src/components/TopNavBar.tsx ***
+@@ -13,10 +13,11 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+   const [showUserMenu, setShowUserMenu] = useState(false);
+   const buttonStyle = (isActive: boolean) => ({
+     height: '100%',
+-    padding: '0 20px',
++    minWidth: 120,
++    padding: '0 26px',
+     border: 'none',
+     background: isActive ? 'rgba(44, 44, 44, 0.08)' : 'transparent',
+-    fontSize: 14,
++    fontSize: 16,
+     fontWeight: isActive ? 600 : 400,
+     cursor: 'pointer',
+     display: 'flex',
+@@ -36,7 +37,7 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+       left: 0,
+       top: 0,
+       right: 0,
+-      height: 48,
++      height: 52,
+       background: '#f8f0e6',
+       borderBottom: '1px solid #d0c4b0',
+       display: 'flex',

@@ -1,0 +1,434 @@
+commit f76dac9f96494069d1c0fec2a8faf0db7e8624aa
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Sun Nov 2 13:56:07 2025 +0800
+
+    Fix critical auth bugs: data loading and user profile
+    
+    Fixes two critical issues after migration:
+    
+    1. **Data not loading after migration**:
+       - App now loads from database when authenticated
+       - Loads current/most recent session on mount
+       - Loads pictures from database (not localStorage)
+       - Loads user preferences (voice configs, selected state)
+       - Auto-saves to database every 3 seconds (authenticated users)
+       - Guest mode still uses localStorage
+    
+    2. **User profile button not working**:
+       - Added onClick handler to profile button
+       - Shows dropdown menu with user info and logout
+       - Displays first letter of name/email as avatar
+       - Clean dropdown UI with backdrop
+    
+    Technical changes:
+    - App.tsx: Load data from database on mount if authenticated
+    - App.tsx: Auto-save to database with 3s debounce
+    - App.tsx: Only save to localStorage in guest mode
+    - CollectionsView.tsx: Load pictures from database
+    - LeftSidebar.tsx: Add user menu dropdown with logout
+    
+    Database is now the source of truth for authenticated users!
+    
+    🤖 Generated with [Claude Code](https://claude.com/claude-code)
+    
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index db3fcfe..e92db19 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -388,29 +388,96 @@ export default function App() {
+ 
+     engine.subscribe((newState) => {
+       setState({ ...newState });
+-      localStorage.setItem('ink_memory_state', JSON.stringify(newState));
++      // Only save to localStorage if not authenticated (guest mode)
++      if (!isAuthenticated) {
++        localStorage.setItem('ink_memory_state', JSON.stringify(newState));
++      }
+     });
+ 
+-    const saved = localStorage.getItem('ink_memory_state');
+-    if (saved) {
+-      try {
+-        const parsed = JSON.parse(saved);
+-        engine.loadState(parsed);
+-        setState(engine.getState());
+-
+-        // Initialize localTexts from loaded state
+-        const texts = new Map<string, string>();
+-        parsed.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
+-          texts.set(c.id, c.content || '');
+-        });
+-        setLocalTexts(texts);
+-      } catch (e) {
+-        console.error('Failed to load saved state:', e);
++    // Load initial state
++    const loadInitialState = async () => {
++      if (isAuthenticated) {
++        // @@@ Load from database if authenticated
++        try {
++          const { listSessions, getSession, getPreferences } = await import('./api/voiceApi');
++
++          // Get list of sessions
++          const sessions = await listSessions();
++
++          // Load the most recent session or current session
++          let sessionToLoad = null;
++          const currentSessionId = 'current-session';
++          const currentSession = sessions.find(s => s.id === currentSessionId);
++
++          if (currentSession) {
++            // Load current session
++            const fullSession = await getSession(currentSessionId);
++            sessionToLoad = fullSession.editor_state;
++          } else if (sessions.length > 0) {
++            // Load most recent session
++            const mostRecent = sessions.sort((a, b) =>
++              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
++            )[0];
++            const fullSession = await getSession(mostRecent.id);
++            sessionToLoad = fullSession.editor_state;
++          }
++
++          if (sessionToLoad) {
++            engine.loadState(sessionToLoad);
++            setState(engine.getState());
++
++            // Initialize localTexts from loaded state
++            const texts = new Map<string, string>();
++            sessionToLoad.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
++              texts.set(c.id, c.content || '');
++            });
++            setLocalTexts(texts);
++          } else {
++            setState(engine.getState());
++          }
++
++          // Load preferences
++          try {
++            const prefs = await getPreferences();
++            if (prefs.voice_configs) {
++              setVoiceConfigs(prefs.voice_configs);
++            }
++            if (prefs.selected_state) {
++              setSelectedState(prefs.selected_state);
++            }
++          } catch (err) {
++            console.log('No preferences found, using defaults');
++          }
++        } catch (error) {
++          console.error('Failed to load from database:', error);
++          setState(engine.getState());
++        }
++      } else {
++        // Load from localStorage for guest mode
++        const saved = localStorage.getItem('ink_memory_state');
++        if (saved) {
++          try {
++            const parsed = JSON.parse(saved);
++            engine.loadState(parsed);
++            setState(engine.getState());
++
++            // Initialize localTexts from loaded state
++            const texts = new Map<string, string>();
++            parsed.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
++              texts.set(c.id, c.content || '');
++            });
++            setLocalTexts(texts);
++          } catch (e) {
++            console.error('Failed to load saved state:', e);
++          }
++        } else {
++          setState(engine.getState());
++        }
+       }
+-    } else {
+-      setState(engine.getState());
+-    }
+-  }, []);
++    };
++
++    loadInitialState();
++  }, [isAuthenticated]);
+ 
+   // @@@ Sync localTexts from state when not composing
+   useEffect(() => {
+@@ -429,6 +496,23 @@ export default function App() {
+     }
+   }, [state, composingCells]);
+ 
++  // @@@ Auto-save to database for authenticated users
++  useEffect(() => {
++    if (!isAuthenticated || !state) return;
++
++    const autoSaveTimer = setTimeout(async () => {
++      try {
++        const { saveSession } = await import('./api/voiceApi');
++        await saveSession('current-session', state, 'Current Session');
++        console.log('Auto-saved to database');
++      } catch (error) {
++        console.error('Auto-save failed:', error);
++      }
++    }, 3000); // Save 3 seconds after last change
++
++    return () => clearTimeout(autoSaveTimer);
++  }, [state, isAuthenticated]);
++
+   // @@@ Group comments by 2-row blocks, accounting for widgets between cells
+   const commentGroups = useMemo(() => {
+     const groups = new Map<string, {
+diff --git a/frontend/src/components/CollectionsView.tsx b/frontend/src/components/CollectionsView.tsx
+index 5425587..3bfb80a 100644
+--- a/frontend/src/components/CollectionsView.tsx
++++ b/frontend/src/components/CollectionsView.tsx
+@@ -194,30 +194,60 @@ function TimelinePage() {
+   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+ 
+   useEffect(() => {
+-    // Load starred comments
+-    const savedState = localStorage.getItem('ink_memory_state');
+-    if (savedState) {
+-      try {
+-        const state = JSON.parse(savedState);
+-        const starred = state.commentors?.filter((c: Commentor) => c.feedback === 'star') || [];
+-        setStarredComments(starred);
+-      } catch (e) {
+-        console.error('Failed to load starred comments:', e);
++    const loadData = async () => {
++      // Load starred comments from localStorage (not migrated yet)
++      const savedState = localStorage.getItem('ink_memory_state');
++      if (savedState) {
++        try {
++          const state = JSON.parse(savedState);
++          const starred = state.commentors?.filter((c: Commentor) => c.feedback === 'star') || [];
++          setStarredComments(starred);
++        } catch (e) {
++          console.error('Failed to load starred comments:', e);
++        }
+       }
+-    }
+ 
+-    // Load pictures
+-    const savedPictures = localStorage.getItem('daily-pictures');
+-    if (savedPictures) {
+-      try {
+-        setPictures(JSON.parse(savedPictures));
+-      } catch (e) {
+-        console.error('Failed to load pictures:', e);
++      // @@@ Load pictures from database if authenticated
++      if (isAuthenticated) {
++        try {
++          const { getDailyPictures } = await import('../api/voiceApi');
++          const dbPictures = await getDailyPictures(30);
++          // Convert database format to app format
++          const formattedPictures = dbPictures.map(p => ({
++            date: p.date,
++            base64: p.image_base64,
++            prompt: p.prompt || ''
++          }));
++          setPictures(formattedPictures);
++        } catch (error) {
++          console.error('Failed to load pictures from database:', error);
++          // Fallback to localStorage
++          const savedPictures = localStorage.getItem('daily-pictures');
++          if (savedPictures) {
++            try {
++              setPictures(JSON.parse(savedPictures));
++            } catch (e) {
++              console.error('Failed to load pictures:', e);
++            }
++          }
++        }
++      } else {
++        // Guest mode: load from localStorage
++        const savedPictures = localStorage.getItem('daily-pictures');
++        if (savedPictures) {
++          try {
++            setPictures(JSON.parse(savedPictures));
++          } catch (e) {
++            console.error('Failed to load pictures:', e);
++          }
++        }
+       }
+-    }
+ 
+-    setInitialLoading(false);
+-  }, []);
++      setInitialLoading(false);
++    };
++
++    loadData();
++  }, [isAuthenticated]);
+ 
+   // @@@ Group items by date
+   const timelineByDate = new Map<string, { picture?: any; comments: Commentor[] }>();
+@@ -289,14 +319,15 @@ function TimelinePage() {
+       const pictureDate = new Date(newPicture.date).toISOString().split('T')[0]; // YYYY-MM-DD format
+       await saveDailyPicture(pictureDate, image_base64, prompt);
+ 
+-      // @@@ Overwrite existing picture for this date instead of adding new
++      // @@@ Update local state
+       const normalizedNewDate = formatDate(newPicture.date);
+-
+       const updated = pictures.filter(p => formatDate(p.date) !== normalizedNewDate);
+ 
+       updated.unshift(newPicture);
+       setPictures(updated);
+-      localStorage.setItem('daily-pictures', JSON.stringify(updated));
++
++      // Don't save to localStorage for authenticated users (database is source of truth)
++      // localStorage.setItem('daily-pictures', JSON.stringify(updated));
+     } catch (error) {
+       console.error('Image generation failed:', error);
+       alert('Failed to generate image. Please try again.');
+diff --git a/frontend/src/components/LeftSidebar.tsx b/frontend/src/components/LeftSidebar.tsx
+index 469a2f5..8a37ecb 100644
+--- a/frontend/src/components/LeftSidebar.tsx
++++ b/frontend/src/components/LeftSidebar.tsx
+@@ -1,9 +1,14 @@
++import { useState } from 'react';
++import { useAuth } from '../contexts/AuthContext';
++
+ interface Props {
+   currentView: 'writing' | 'settings' | 'timeline' | 'analysis' | 'about';
+   onViewChange: (view: 'writing' | 'settings' | 'timeline' | 'analysis' | 'about') => void;
+ }
+ 
+ export default function LeftSidebar({ currentView, onViewChange }: Props) {
++  const { user, logout } = useAuth();
++  const [showUserMenu, setShowUserMenu] = useState(false);
+   const buttonStyle = (isActive: boolean) => ({
+     height: '100%',
+     padding: '0 20px',
+@@ -182,33 +187,103 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+         </svg>
+       </button>
+ 
+-      <button
+-        style={{
+-          width: 28,
+-          height: 28,
+-          borderRadius: 14,
+-          display: 'flex',
+-          alignItems: 'center',
+-          justifyContent: 'center',
+-          background: '#4CAF50',
+-          border: 'none',
+-          cursor: 'pointer',
+-          transition: 'all 0.2s',
+-          color: '#fff',
+-          fontSize: 12,
+-          fontWeight: 600,
+-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+-        }}
+-        onMouseEnter={e => {
+-          e.currentTarget.style.background = '#45a049';
+-        }}
+-        onMouseLeave={e => {
+-          e.currentTarget.style.background = '#4CAF50';
+-        }}
+-        title="User Profile"
+-      >
+-        U
+-      </button>
++      <div style={{ position: 'relative' }}>
++        <button
++          onClick={() => setShowUserMenu(!showUserMenu)}
++          style={{
++            width: 28,
++            height: 28,
++            borderRadius: 14,
++            display: 'flex',
++            alignItems: 'center',
++            justifyContent: 'center',
++            background: '#4CAF50',
++            border: 'none',
++            cursor: 'pointer',
++            transition: 'all 0.2s',
++            color: '#fff',
++            fontSize: 12,
++            fontWeight: 600,
++            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
++          }}
++          onMouseEnter={e => {
++            e.currentTarget.style.background = '#45a049';
++          }}
++          onMouseLeave={e => {
++            e.currentTarget.style.background = '#4CAF50';
++          }}
++          title="User Profile"
++        >
++          {user?.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
++        </button>
++
++        {showUserMenu && (
++          <>
++            <div
++              style={{
++                position: 'fixed',
++                top: 0,
++                left: 0,
++                right: 0,
++                bottom: 0,
++                zIndex: 998
++              }}
++              onClick={() => setShowUserMenu(false)}
++            />
++            <div style={{
++              position: 'absolute',
++              top: '100%',
++              right: 0,
++              marginTop: 8,
++              width: 200,
++              background: '#fff',
++              border: '1px solid #d0c4b0',
++              borderRadius: 8,
++              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
++              zIndex: 999,
++              overflow: 'hidden'
++            }}>
++              <div style={{
++                padding: '12px 16px',
++                borderBottom: '1px solid #e8e8e8',
++                fontSize: 13
++              }}>
++                <div style={{ fontWeight: 600, marginBottom: 4 }}>
++                  {user?.display_name || 'User'}
++                </div>
++                <div style={{ fontSize: 11, color: '#666' }}>
++                  {user?.email}
++                </div>
++              </div>
++              <button
++                onClick={() => {
++                  logout();
++                  setShowUserMenu(false);
++                }}
++                style={{
++                  width: '100%',
++                  padding: '10px 16px',
++                  border: 'none',
++                  background: 'transparent',
++                  textAlign: 'left',
++                  fontSize: 13,
++                  cursor: 'pointer',
++                  transition: 'background 0.2s',
++                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto'
++                }}
++                onMouseEnter={e => {
++                  e.currentTarget.style.background = '#f5f5f5';
++                }}
++                onMouseLeave={e => {
++                  e.currentTarget.style.background = 'transparent';
++                }}
++              >
++                Logout
++              </button>
++            </div>
++          </>
++        )}
++      </div>
+     </div>
+   );
+ }

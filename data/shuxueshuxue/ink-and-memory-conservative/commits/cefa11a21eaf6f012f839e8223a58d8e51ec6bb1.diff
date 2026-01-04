@@ -1,0 +1,37 @@
+*** MODIFIED: README.md (+9/-8) ***
+@@ -2,7 +2,7 @@
+ 
+ A journaling interface inspired by Disco Elysium, where your inner voices comment on your thoughts as you write.
+ 
+-https://github.com/user-attachments/assets/demo.mov
++![Demo](assets/demo.mov)
+ 
+ ## ✨ Features
+ 
+@@ -162,18 +162,19 @@ re.split(r'[.!?。！？]+|\n+', text)
+ 
+ ```
+ ink-and-memory/
++├── assets/
++│   └── demo.mov               # Demo video
+ ├── backend/
+ │   ├── server.py              # PolyCLI Session Registry server
+ │   ├── stateful_analyzer.py   # Core voice detection logic
+ │   ├── config.py              # Voice archetypes & prompts
+ │   └── archive/               # Learning examples
+-├── frontend/
+-│   ├── src/
+-│   │   ├── components/        # React components
+-│   │   ├── extensions/        # TipTap voice highlighting
+-│   │   └── api/               # Backend API client
+-│   └── public/                # Fonts & assets
+-└── demo.mov                   # Demo video
++└── frontend/
++    ├── src/
++    │   ├── components/        # React components
++    │   ├── extensions/        # TipTap voice highlighting
++    │   └── api/               # Backend API client
++    └── public/                # Fonts & assets
+ ```
+ 
+ ## 🤝 Contributing

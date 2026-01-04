@@ -1,0 +1,23 @@
+{
+  "sha": "aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1",
+  "message": "Add comprehensive README with demo video",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-07T13:54:26Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-07T13:54:26Z"
+  },
+  "stats": {
+    "total": 227,
+    "additions": 170,
+    "deletions": 57
+  },
+  "files_count": 2,
+  "parents": [
+    "4a329010b16261df9e7118d5ded94f45c9543613"
+  ]
+}

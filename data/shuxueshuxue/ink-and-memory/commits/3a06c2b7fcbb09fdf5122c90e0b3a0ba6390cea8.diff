@@ -1,0 +1,631 @@
+*** FILE: README.md ***
+@@ -1,211 +1,170 @@
+-# Ink & Memory · English | [中文](README.zh.md)
++# Ink & Memory
++
+ <p align="center">
+   <img src="assets/banner.png" alt="Ink & Memory Banner" width="700"/>
+ </p>
+ 
+-**Ink & Memory** is a journaling studio inspired by the inner monologues of the video game *Disco Elysium*. It’s a space to write, reflect, and hear your own thoughts echoed back to you through a cast of distinct inner voices. As you type, a council of archetypes chimes in, offering perspective, guidance, and a touch of the absurd.
++<p align="center">
++  <a href="README.zh.md">中文</a> · English
++</p>
+ 
+-This is more than just a notebook. It's a daily writing companion that saves your work, organizes your thoughts, and helps you discover the patterns in your own thinking. It supports both English and Chinese, adapting to your language on the fly.
++> *Write. Reflect. Listen to the voices within.*
+ 
+----
++**Ink & Memory** is a journaling studio inspired by the inner monologues of *Disco Elysium*. As you write, a council of distinct personas chimes in—offering perspective, asking questions, or pointing out the absurdity of it all.
+ 
+-## Core Features
++This isn't just another notes app. It's a daily writing companion that saves your work, organizes your thoughts, and helps you notice patterns in your own thinking. It speaks both English and Chinese, switching seamlessly as you write.
+ 
+-### The Writing Experience
+-At the heart of Ink & Memory is a clean, minimalist writing environment. The editor is designed to be a distraction-free space for your thoughts. As you write, the system automatically saves your work, so you never have to worry about losing a single word.
++---
+ 
+-### The Inner Council
+-As you write, a council of 16 inner voices will comment on your text, highlighting key phrases and offering their unique perspectives. These voices are inspired by a variety of archetypes, from the analytical "Unpacker" to the gentle "Holder". This feature is powered by a sophisticated AI system that analyzes your writing in real-time.
++## What Makes It Different
+ 
+ <p align="center">
+-  <img src="assets/writing-area.png" alt="Ink & Memory UI" width="700"/>
++  <img src="assets/writing-area.png" alt="Writing with inner voices" width="700"/>
+ </p>
+ 
+-### The Timeline and Calendar
+-Every writing session is automatically saved and organized into a timeline and a calendar. This allows you to easily look back at your past entries, see your progress, and rediscover old ideas.
++**A clean writing space.** No toolbar clutter. Just a calm surface for your thoughts, with automatic saving so nothing gets lost.
+ 
+-### Daily Image Generation
+-Each day, the system automatically generates a unique image based on the content of your writing. This creates a beautiful and evocative visual representation of your thoughts and feelings over time.
++**A council of inner voices.** As you type, different personas highlight phrases and offer their takes—from the pattern-spotting Mirror to the darkly funny Absurdist. They appear as gentle watercolor highlights in the margins, never interrupting your flow.
+ 
+-### Customizable Decks
+-The 16 voices are organized into three "decks": the **Introspection Deck**, the **Scholar Deck**, and the **Philosophy Deck**. You can enable or disable decks to customize which voices are active, and you can even create your own decks with your own custom voices.
++**Your timeline, visualized.** Every session is saved to a calendar. Each day generates a unique image from your writing—a visual diary that grows with you.
+ 
+-### Friend Timelines
+-You can add friends and view their timelines alongside your own. This feature is designed to foster a sense of connection and shared experience, allowing you to see what your friends are writing and thinking about.
++**Fully customizable.** Don't like a voice? Edit it. Want new perspectives? Create your own deck. Share your creations with the community or discover what others have made.
+ 
+ ---
+ 
+-## Default Voice Decks
+-
+-Ink & Memory ships with three carefully crafted decks containing 16 voices to get you started. These are designed to offer different perspectives on your writing—but they're just the beginning.
++## The Voices
+ 
+-**You're not limited to these voices.** The deck system lets you:
+-- 🔀 **Fork** any deck to create your own customized version
+-- ✏️ **Edit** voice personalities, prompts, icons, and colors
+-- ➕ **Create** entirely new voices from scratch
+-- 🌐 **Explore** the community store for decks made by other users
+-- 📤 **Publish** your own decks to share with the community
++The voices are organized into three decks. Enable the ones that resonate; disable the rest.
+ 
+-### The Introspection Deck (Default)
+-This deck is focused on self-reflection and personal growth.
++### Introspection Deck
++*For processing emotions and understanding yourself*
+ 
+-| Icon | Name | Description |
++| | Voice | What it does |
+ |---|---|---|
+-| 🧠 | **The Unpacker** | An analyst who dissects complex situations into clear, understandable structures. |
+-| ❤️ | **The Holder** | A gentle and supportive companion who validates the user's emotions. |
+-| 👁️ | **The Mirror** | An observer who points out recurring patterns in the user's behavior and thoughts. |
+-| 👊 | **The Starter** | A motivator who breaks down tasks into small steps and pushes the user to take action. |
+-| 🧭 | **The Weaver** | An observer who finds hidden themes and connections in the user's writing. |
+-| 🎭 | **The Absurdist** | A voice that uses black humor to point out the absurdity of the user's situation. |
++| ❤️ | **Holder** | Offers gentle validation and support |
++| 👁️ | **Mirror** | Reflects patterns you might not notice |
++| 👊 | **Starter** | Breaks paralysis with tiny first steps |
++| 🧭 | **Weaver** | Finds hidden threads connecting your thoughts |
++| 🎭 | **Absurdist** | Lightens heaviness with dark humor |
+ 
+-### The Scholar Deck
+-This deck offers academic and intellectual perspectives on your writing.
++### Scholar Deck
++*For intellectual and academic perspectives*
+ 
+-| Icon | Name | Description |
++| | Voice | What it does |
+ |---|---|---|
+-| 🧭 | **The Linguist** | Analyzes your writing from the perspective of linguistic structure, semantics, and pragmatics. |
+-| 👁️ | **The Painter** | Focuses on aesthetics, visual imagery, and mood. |
+-| 💡 | **The Physicist** | Applies the laws of physics, mechanics, and energy to your writing. |
+-| 🧠 | **The Computer Scientist** | Uses algorithms, data structures, and complexity to analyze your thoughts. |
+-| ❤️ | **The Doctor** | Offers a medical, physiological, and psychological perspective. |
+-| 🧭 | **The Historian** | Provides historical context, cultural background, and identifies patterns. |
++| 🧭 | **Linguist** | Analyzes structure, semantics, meaning |
++| 👁️ | **Painter** | Focuses on imagery, aesthetics, mood |
++| 💡 | **Physicist** | Applies principles of energy and systems |
++| 🧠 | **Computer Scientist** | Thinks in algorithms and complexity |
++| ❤️ | **Doctor** | Offers health and psychological angles |
++| 🧭 | **Historian** | Provides context and historical patterns |
+ 
+-### The Philosophy Deck
+-This deck examines your writing through the lens of different philosophical schools of thought.
++### Philosophy Deck
++*For examining life through different lenses*
+ 
+-| Icon | Name | Description |
++| | Voice | What it does |
+ |---|---|---|
+-| 🛡️ | **The Stoic** | Emphasizes reason, self-control, and the acceptance of the uncontrollable. |
+-| 💨 | **The Taoist** | Focuses on wu-wei (effortless action), natural flow, and simplicity. |
+-| 🤔 | **The Existentialist** | Emphasizes choice, freedom, responsibility, and the creation of meaning. |
+-| 👊 | **The Pragmatist** | Focuses on practical effects, usefulness, and real-world results. |
+-
+----
+-
+-### Creating Your Own Voices
+-
+-Each voice is defined by:
+-- **A system prompt** that shapes its personality and perspective
+-- **An icon** for visual identification
+-- **A color** that tints its highlights in your text
+-
+-When you fork a deck, you get full control over all these elements. Want a voice that channels your favorite philosopher? A critic that focuses on narrative structure? A cheerleader for your creative projects? Build it yourself or find it in the community store.
+-
+----
+-
+-## How the Voices Work
+-
+-As you write, Ink & Memory analyzes your text using a **trace-based energy system**. Here's what happens behind the scenes:
+-
+-1. **Energy Accumulates** — As you type, the system builds up "energy" based on your writing.
+-2. **Threshold Triggers** — When enough energy accumulates, the AI analyzes your recent text.
+-3. **Voices Respond** — Enabled voices scan for phrases that resonate with their personality.
+-4. **Comments Appear** — Relevant voices highlight phrases and offer their perspective in the margin.
+-
+-This creates an organic, non-intrusive experience where comments appear naturally as you write, rather than constantly interrupting you.
+-
+----
+-
+-## Technical Architecture
+-
+-Ink & Memory is built on a modern stack designed for real-time AI interaction:
+-
+-### Frontend
+-- **React 19 + TypeScript** — Type-safe, component-based UI.
+-- **Vite** — Fast dev server and builds.
+-- **TipTap** — Extensible rich text editing with custom extensions for voice highlights.
+-- **Custom EditorEngine** — Manages editor state, comments, and chat widgets.
++| 🛡️ | **Stoic** | Emphasizes what you can and can't control |
++| 💨 | **Taoist** | Points toward effortless action and flow |
++| 🤔 | **Existentialist** | Asks about choice, freedom, meaning |
++| 👊 | **Pragmatist** | Focuses on what actually works |
+ 
+-### Backend
+-- **FastAPI + Python** — High-performance async API server.
+-- **PolyCLI** — Orchestrates LLM calls with structured prompts and retry logic.
+-- **Stateless Analyzer** — Core voice analysis engine that keeps context without server-side state.
+-- **SQLite + WAL** — Reliable storage with concurrent read support.
++### Making Your Own
+ 
+-### AI Integration
+-- **Multi-model support** — Works with GPT-4, Claude, DeepSeek, and Gemini.
+-- **Structured outputs** — Pydantic models ensure type-safe LLM responses.
+-- **Daily image generation** — Automatic visual summaries of your writing.
+-
+-### Key Design Decisions
+-- **Deck-based architecture** — Voices are organized into forkable, shareable decks.
+-- **Parent-child relationships** — Forked decks can sync updates from their source.
+-- **Community store** — Published decks are discoverable and installable by other users.
++Each voice is just a system prompt, an icon, and a color. Fork any deck to customize it. Create voices that channel your favorite thinker, focus on specific aspects of your life, or just make you laugh. Share them in the community store.
+ 
+ ---
+ 
+ ## Getting Started
+ 
+-### Prerequisites
+-- Python 3.11+
++### You'll Need
++- Python 3.11+ with [uv](https://github.com/astral-sh/uv)
+ - Node.js 18+
+-- [uv](https://github.com/astral-sh/uv) for Python package management
+ 
+-### Backend
++### Backend Setup
++
+ ```bash
+ cd backend
+ uv venv
+-source .venv/bin/activate   # Windows: .venv\Scripts\activate
++source .venv/bin/activate  # Windows: .venv\Scripts\activate
+ uv pip install -r requirements.txt
++```
+ 
+-# Create a models.json file for your LLM configuration
+-# The endpoint and api_key are examples, please use your own
+-cat > models.json <<'EOC'
++Create a `models.json` file for your LLM:
++
++```json
+ {
+   "models": {
+-    "gpt-4o-dou": {
+-      "endpoint": "https://api.example.com/v1",
+-      "api_key": "your-api-key",
+-      "model": "openai/chatgpt-4o-latest"
++    "default": {
++      "endpoint": "https://api.your-provider.com/v1",
++      "api_key": "your-key-here",
++      "model": "gpt-4o"
+     }
+   }
+ }
+-EOC
++```
++
++Then start the server:
+ 
+-python server.py
++```bash
++python server.py  # Runs on http://localhost:8765
+ ```
+-The backend will be running at `http://localhost:8765`.
+ 
+-### Frontend
++### Frontend Setup
++
+ ```bash
+ cd frontend
+ npm install
+-npm run dev
++npm run dev  # Runs on http://localhost:5173
+ ```
+-The frontend will be running at `http://localhost:5173`.
+ 
+ ---
+ 
+-## Roadmap
++## How It Works
+ 
+-We have a lot of ideas for the future of Ink & Memory. Here are some of the things we're working on:
++The voice system uses a **trace-based energy model**:
+ 
+-*   **More Voices and Decks:** We plan to continue expanding the library of voices and decks, offering even more perspectives on your writing.
+-*   **Richer, More Immersive Experience:** We’re exploring new ways to visualize your entries, your progress, and your connections with friends.
+-*   **A Platform for Creativity:** We want to make Ink & Memory a place where you can not only write, but also create, share, and collaborate with others.
+-*   **Mobile App:** We're working on a mobile version of Ink & Memory, so you can write and reflect on the go.
++1. **Energy builds** as you write
++2. **Threshold triggers** analysis of recent text
++3. **Voices scan** for phrases that match their personality
++4. **Comments appear** as watercolor highlights in the margin
++
++This creates an organic rhythm—voices chime in naturally rather than constantly interrupting.
+ 
+ ---
+ 
+-## Contributing
++## Technical Stack
+ 
+-Ink & Memory is an open-source project, and we welcome contributions from the community. If you’re interested in contributing, please feel free to fork the repository, make your changes, and submit a pull request.
++**Frontend:** React 19 + TypeScript, Vite, TipTap editor with custom extensions
+ 
+-Here are some of the ways you can contribute:
++**Backend:** FastAPI + Python, PolyCLI for LLM orchestration, SQLite with WAL mode
+ 
+-*   **Report bugs:** If you find a bug, please open an issue on our GitHub repository.
+-*   **Suggest features:** If you have an idea for a new feature, please open an issue to discuss it.
+-*   **Write code:** If you're a developer, we'd love for you to help us build new features and fix bugs.
+-*   **Create new voices and decks:** If you have an idea for a new voice or deck, we'd love to hear it.
++**AI:** Multi-model support (GPT-4, Claude, DeepSeek, Gemini), structured outputs via Pydantic
++
++**Architecture:** Deck-based voice system with parent-child relationships, community store for sharing
+ 
+ ---
+ 
+-## License
++## Roadmap
++
++- More voices and community-created decks
++- Richer visualizations of your writing patterns
++- Mobile app for writing on the go
++- Collaborative features
+ 
+-MIT
++---
++
++## Contributing
+ 
+-## Credits
++This is open source. We'd love your help.
+ 
+-- Inspired by [Disco Elysium](https://discoelysium.com/)
+-- Built with [PolyCLI](https://github.com/shuxueshuxue/PolyCLI)
+-- Fonts: [Excalifont](https://github.com/excalidraw/excalidraw) & Xiaolai
++- **Found a bug?** Open an issue
++- **Have an idea?** Let's discuss it
++- **Want to code?** PRs welcome
++- **Created a cool deck?** Share it with the community
++
++---
++
++<p align="center">
++  <i>Your thoughts deserve to be heard—even by yourself.</i>
++</p>
+
+*** FILE: README.zh.md ***
+@@ -1,212 +1,170 @@
+-# Ink & Memory · [English](README.md) | 中文
++# Ink & Memory
+ 
+ <p align="center">
+   <img src="assets/banner.png" alt="Ink & Memory 横幅" width="700"/>
+ </p>
+ 
+-**Ink & Memory** 是一款受电子游戏《极乐迪斯科》启发而创作的日记工作室。在这里，你可以写作、反思，并通过一系列独特的内心声音，听到自己思想的回响。当你打字时，一个由不同原型组成的“内在委员会”会加入对话，提供观点、引导，甚至一丝荒诞的幽默。
++<p align="center">
++  中文 · <a href="README.md">English</a>
++</p>
+ 
+-这不仅仅是一个笔记本。它是一个日常写作伴侣，能够保存你的作品、整理你的思绪，并帮助你发现自己思维中的模式。它支持中英双语，并能根据你的输入语言自动切换。
++> *书写、反思、倾听内心的声音。*
+ 
+----
++**Ink & Memory** 是一款受《极乐迪斯科》启发的日记工作室。当你写作时，一群性格迥异的内心声音会加入对话——提供视角、提出问题，或者点出你处境的荒诞之处。
+ 
+-## 核心功能
++这不只是一个笔记本，而是一个日常写作伴侣。它保存你的作品、整理你的思绪，帮助你发现自己思维中的模式。它同时支持中英文，并能根据你的输入自动切换。
+ 
+-### 写作体验
+-Ink & Memory 的核心是一个简洁、极简的写作环境。编辑器旨在提供一个无干扰的空间，让你专注于自己的思想。在你写作时，系统会自动保存你的工作，所以你永远不用担心丢失任何一个字。
++---
+ 
+-### 内在委员会
+-在你写作时，一个由 16 个内心声音组成的委员会将对你的文本进行评论，突出关键短语，并提供它们独特的视角。这些声音的灵感来自多种原型，从善于分析的“拆解者”到温柔的“接纳者”。此功能由一个能实时分析你写作的复杂人工智能系统驱动。
++## 它有什么不同
+ 
+ <p align="center">
+-  <img src="assets/writing-area.png" alt="Ink & Memory 用户界面" width="700"/>
++  <img src="assets/writing-area.png" alt="写作界面" width="700"/>
+ </p>
+ 
+-### 时间线与日历
+-每一次写作都会被自动保存，并组织成时间线和日历。这使你可以轻松回顾过去的内容，查看自己的进展，并重新发现旧日的想法。
++**简洁的写作空间。** 没有工具栏的干扰，只有一个平静的书写界面，自动保存让你无需担心丢失任何内容。
+ 
+-### 每日图片生成
+-每一天，系统都会根据你的写作内容自动生成一张独特的图片。这为你一段时间以来的思绪和情感，创造了一个美丽而富有表现力的视觉记录。
++**一组内心声音。** 当你打字时，不同的角色会高亮你的短语并给出他们的见解——从善于观察的「照镜者」到黑色幽默的「幽默者」。它们以淡雅的水彩高亮出现在边栏，从不打断你的思路。
+ 
+-### 自定义卡组
+-16 个声音被组织成三个“卡组”：**内省卡组**、**学者卡组**和**哲学卡组**。你可以启用或禁用这些卡组，以自定义哪些声音处于活跃状态。你甚至可以创建包含自己声音的专属卡组。
++**可视化的时间线。** 每次写作都会保存到日历中。每一天都会根据你的内容生成一张独特的图片——一本与你一同成长的视觉日记。
+ 
+-### 好友时间线
+-你可以添加好友，并在自己的时间线旁边查看他们的时间线。此功能旨在培养一种连接感和共享体验，让你能看到朋友们在写些什么、想些什么。
++**完全可定制。** 不喜欢某个声音？编辑它。想要新的视角？创建自己的卡组。把你的作品分享到社区，或者发现别人的创作。
+ 
+ ---
+ 
+-## 默认声音卡组
+-
+-Ink & Memory 预装了三个精心设计的卡组，包含 16 个声音，帮助你快速开始。这些声音旨在从不同角度审视你的写作——但这仅仅是个开始。
++## 这些声音
+ 
+-**你不必局限于这些声音。** 卡组系统允许你：
+-- 🔀 **复刻** 任何卡组，创建自己的定制版本
+-- ✏️ **编辑** 声音的个性、提示词、图标和颜色
+-- ➕ **创建** 全新的声音
+-- 🌐 **探索** 社区商店中其他用户创建的卡组
+-- 📤 **发布** 自己的卡组与社区分享
++这些声音被组织成三个卡组。启用与你共鸣的，禁用其余的。
+ 
+-### 内省卡组（默认）
+-该卡组专注于自我反思和个人成长。
++### 内省卡组
++*用于处理情绪和理解自我*
+ 
+-| 图标 | 名称 | 描述 |
++| | 声音 | 作用 |
+ |---|---|---|
+-| 🧠 | **拆解者** | 一位分析师，能将复杂情况拆解成清晰易懂的结构。 |
+-| ❤️ | **接纳者** | 一位温柔的支持型伴侣，能够认可用户的情绪。 |
+-| 👁️ | **照镜者** | 一位观察者，能指出用户行为和思想中反复出现的模式。 |
+-| 👊 | **启动者** | 一位激励者，能将任务分解成小步骤，并推动用户采取行动。 |
+-| 🧭 | **连接者** | 一位观察者，能在用户的写作中发现隐藏的主题和联系。 |
+-| 🎭 | **幽默者** | 一个用黑色幽默指出用户处境荒谬之处的声音。 |
++| ❤️ | **接纳者** | 提供温柔的认可与支持 |
++| 👁️ | **照镜者** | 反映你可能没注意到的模式 |
++| 👊 | **启动者** | 用微小的第一步打破拖延 |
++| 🧭 | **连接者** | 找到连接你思绪的隐藏线索 |
++| 🎭 | **幽默者** | 用黑色幽默化解沉重 |
+ 
+ ### 学者卡组
+-该卡组为你的写作提供学术和智识层面的视角。
++*提供智识和学术视角*
+ 
+-| 图标 | 名称 | 描述 |
++| | 声音 | 作用 |
+ |---|---|---|
+-| 🧭 | **语言学家** | 从语言结构、语义和语用学的角度分析你的写作。 |
+-| 👁️ | **画家** | 专注于美学、视觉意象和情绪。 |
+-| 💡 | **物理学家** | 将物理定律、力学和能量应用于你的写作。 |
+-| 🧠 | **计算机科学家** | 使用算法、数据结构和复杂度来分析你的思想。 |
+-| ❤️ | **医生** | 提供医学、生理学和心理健康方面的视角。 |
+-| 🧭 | **历史学家** | 提供历史背景、文化背景，并识别模式。 |
++| 🧭 | **语言学家** | 分析结构、语义、含义 |
++| 👁️ | **画家** | 关注意象、美学、情绪 |
++| 💡 | **物理学家** | 应用能量和系统的原理 |
++| 🧠 | **计算机科学家** | 用算法和复杂度思考 |
++| ❤️ | **医生** | 提供健康和心理学视角 |
++| 🧭 | **历史学家** | 提供背景和历史模式 |
+ 
+ ### 哲学卡组
+-该卡组通过不同哲学流派的视角来审视你的写作。
++*通过不同哲学流派审视人生*
+ 
+-| 图标 | 名称 | 描述 |
++| | 声音 | 作用 |
+ |---|---|---|
+-| 🛡️ | **斯多葛派** | 强调理性、自我控制和接受不可控之事。 |
+-| 💨 | **道家** | 专注于无为、顺其自然和简约。 |
+-| 🤔 | **存在主义者** | 强调选择、自由、责任和创造意义。 |
+-| 👊 | **实用主义者** | 关注实际效果、实用性和现实世界的结果。 |
++| 🛡️ | **斯多葛派** | 强调你能控制和不能控制的 |
++| 💨 | **道家** | 指向无为和顺其自然 |
++| 🤔 | **存在主义者** | 追问选择、自由、意义 |
++| 👊 | **实用主义者** | 关注什么真正有效 |
+ 
+----
++### 创建你自己的
+ 
+-### 创建你的专属声音
+-
+-每个声音由以下要素构成：
+-- **系统提示词**：塑造它的个性和视角
+-- **图标**：用于视觉识别
+-- **颜色**：为文本高亮上色
+-
+-复刻一个卡组后，你可以完全掌控这些元素。想要一个更贴近你喜欢的哲学家的声音？一个专注叙事结构的评论者？一个为创意项目加油的伙伴？自己动手构建，或在社区商店直接找到。
+-
+----
+-
+-## 声音如何工作
+-
+-在你写作时，Ink & Memory 使用**基于轨迹的能量系统**来分析文本。背后发生的事情是：
+-
+-1. **能量累积** —— 输入越多，系统获得的“能量”越高。
+-2. **阈值触发** —— 能量达到阈值时，AI 会分析你刚写下的内容。
+-3. **声音响应** —— 已启用的声音根据各自的个性寻找共鸣片段。
+-4. **评论出现** —— 相关的声音会高亮短语，并在侧边给出观点。
+-
+-这让评论像自然冒出来一样，而不是频繁打断你的写作。
+-
+----
+-
+-## 技术架构
+-
+-Ink & Memory 基于为实时 AI 交互设计的现代栈：
+-
+-### 前端
+-- **React 19 + TypeScript** —— 类型安全的组件式界面。
+-- **Vite** —— 迅速的开发与构建体验。
+-- **TipTap** —— 可扩展的富文本编辑，并有自定义扩展用于声音高亮。
+-- **自研 EditorEngine** —— 管理编辑状态、评论和聊天部件。
+-
+-### 后端
+-- **FastAPI + Python** —— 高性能异步 API 服务。
+-- **PolyCLI** —— 以结构化提示协调 LLM 调用与重试。
+-- **Stateless Analyzer** —— 核心的声音分析引擎，无需服务器会话状态。
+-- **SQLite + WAL** —— 稳定存储，支持并发读取。
+-
+-### AI 集成
+-- **多模型支持** —— 兼容 GPT-4、Claude、DeepSeek、Gemini 等。
+-- **结构化输出** —— 使用 Pydantic 确保类型安全的模型返回。
+-- **每日图片生成** —— 自动为你的写作生成视觉摘要。
+-
+-### 关键设计决策
+-- **卡组架构** —— 声音被组织为可复刻、可分享的卡组。
+-- **父子关系** —— 复刻的卡组可从源卡组同步更新。
+-- **社区商店** —— 已发布的卡组可被其他用户发现与安装。
++每个声音只是一个系统提示词、一个图标和一种颜色。复刻任何卡组来定制它。创建能表达你喜欢的思想家、关注生活特定方面、或者仅仅让你发笑的声音。在社区商店分享它们。
+ 
+ ---
+ 
+ ## 开始使用
+ 
+-### 先决条件
+-- Python 3.11+
++### 你需要
++- Python 3.11+ 和 [uv](https://github.com/astral-sh/uv)
+ - Node.js 18+
+-- [uv](https://github.com/astral-sh/uv) (用于 Python 包管理)
+ 
+-### 后端
++### 后端设置
++
+ ```bash
+ cd backend
+ uv venv
+-source .venv/bin/activate   # Windows: .venv\Scripts\activate
++source .venv/bin/activate  # Windows: .venv\Scripts\activate
+ uv pip install -r requirements.txt
++```
+ 
+-# 为你的 LLM 配置创建一个 models.json 文件
+-# 此处的 endpoint 和 api_key 仅为示例，请使用你自己的
+-cat > models.json <<'EOC'
++创建 `models.json` 文件配置你的大语言模型：
++
++```json
+ {
+   "models": {
+-    "gpt-4o-dou": {
+-      "endpoint": "https://api.example.com/v1",
+-      "api_key": "your-api-key",
+-      "model": "openai/chatgpt-4o-latest"
++    "default": {
++      "endpoint": "https://api.your-provider.com/v1",
++      "api_key": "your-key-here",
++      "model": "gpt-4o"
+     }
+   }
+ }
+-EOC
++```
+ 
+-python server.py
++然后启动服务器：
++
++```bash
++python server.py  # 运行在 http://localhost:8765
+ ```
+-后端将运行在 `http://localhost:8765`。
+ 
+-### 前端
++### 前端设置
++
+ ```bash
+ cd frontend
+ npm install
+-npm run dev
++npm run dev  # 运行在 http://localhost:5173
+ ```
+-前端将运行在 `http://localhost:5173`。
+ 
+ ---
+ 
+-## 路线图
++## 它如何工作
++
++声音系统使用**基于轨迹的能量模型**：
+ 
+-我们对 Ink & Memory 的未来有很多想法。以下是我们正在进行的一些工作：
++1. **能量累积**——随着你的输入而增长
++2. **阈值触发**——分析你最近写下的内容
++3. **声音扫描**——寻找与其个性匹配的短语
++4. **评论出现**——以水彩高亮的形式出现在边栏
+ 
+-*   **更多的声音和卡组:** 我们计划继续扩展声音和卡组的库，为你的写作提供更多视角。
+-*   **更丰富、更沉浸的体验:** 我们正在探索新的方式来可视化你的条目、你的进展以及你与朋友的联系。
+-*   **一个创造力的平台:** 我们希望让 Ink & Memory 成为一个你不仅可以写作，还可以与他人创作、分享和协作的地方。
+-*   **移动应用:** 我们正在开发 Ink & Memory 的移动版本，这样你就可以随时随地写作和反思。
++这创造了一种自然的节奏——声音们自然地加入，而不是不断打断。
+ 
+ ---
+ 
+-## 贡献
++## 技术栈
+ 
+-Ink & Memory 是一个开源项目，我们欢迎社区的贡献。如果你有兴趣贡献，请随时 fork 仓库，进行更改，然后提交拉取请求。
++**前端：** React 19 + TypeScript，Vite，带有自定义扩展的 TipTap 编辑器
+ 
+-以下是一些你可以贡献的方式：
++**后端：** FastAPI + Python，PolyCLI 用于 LLM 编排，SQLite WAL 模式
+ 
+-*   **报告错误:** 如果你发现一个错误，请在我们的 GitHub 仓库中开启一个 issue。
+-*   **建议功能:** 如果你对新功能有想法，请开启一个 issue 来讨论它。
+-*   **编写代码:** 如果你是一名开发者，我们很乐意你帮助我们构建新功能和修复错误。
+-*   **创建新的声音和卡组:** 如果你对新的声音或卡组有想法，我们很乐意听到。
++**AI：** 多模型支持（GPT-4、Claude、DeepSeek、Gemini），通过 Pydantic 实现结构化输出
++
++**架构：** 基于卡组的声音系统，父子关系继承，社区商店用于分享
++
++---
++
++## 路线图
++
++- 更多声音和社区创建的卡组
++- 更丰富的写作模式可视化
++- 移动端应用，随时随地写作
++- 协作功能
+ 
+ ---
+ 
+-## 许可证
++## 参与贡献
++
++这是一个开源项目，我们欢迎你的参与。
+ 
+-MIT
++- **发现了 bug？** 提一个 issue
++- **有想法？** 我们来讨论
++- **想写代码？** 欢迎 PR
++- **创建了很棒的卡组？** 分享给社区
+ 
+-## 致谢
++---
+ 
+-- 灵感来自 [《极乐迪斯科》](https://discoelysium.com/)
+-- 使用 [PolyCLI](https://github.com/shuxueshuxue/PolyCLI) 构建
+-- 字体: [Excalifont](https://github.com/excalidraw/excalidraw) & 小赖
++<p align="center">
++  <i>你的思想值得被倾听——哪怕是被你自己。</i>
++</p>
+
+*** FILE: backend/config.py ***
+@@ -7,6 +7,7 @@
+ MODEL = "claude-haiku-4.5"
+ MODEL = "deepseek-v3.2"
+ MODEL = "gemini-3-pro-preview"
++MODEL = "mistral-small-creative"
+ MODEL = "claude-sonnet-4.5"
+ 
+ # @@@ Sparsity control

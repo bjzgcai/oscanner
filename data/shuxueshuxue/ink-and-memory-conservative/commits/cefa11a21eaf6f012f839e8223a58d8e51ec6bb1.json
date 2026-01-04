@@ -1,0 +1,23 @@
+{
+  "sha": "cefa11a21eaf6f012f839e8223a58d8e51ec6bb1",
+  "message": "Move demo video to assets folder and update README reference",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-07T14:01:22Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-10-07T14:01:22Z"
+  },
+  "stats": {
+    "total": 17,
+    "additions": 9,
+    "deletions": 8
+  },
+  "files_count": 2,
+  "parents": [
+    "aa3d8c8c16f2270df5aa4635285c51bc8dfba2c1"
+  ]
+}

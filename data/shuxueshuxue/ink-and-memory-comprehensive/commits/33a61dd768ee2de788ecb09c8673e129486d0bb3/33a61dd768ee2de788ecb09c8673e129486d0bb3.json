@@ -1,0 +1,14 @@
+{
+  "hash": "33a61dd768ee2de788ecb09c8673e129486d0bb3",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Dec 7 19:42:03 2025 +0800",
+  "subject": "edit authors part",
+  "files": [
+    "frontend/src/components/AboutView.tsx"
+  ],
+  "diff": "commits/33a61dd768ee2de788ecb09c8673e129486d0bb3/33a61dd768ee2de788ecb09c8673e129486d0bb3.diff",
+  "related_files": {
+    "frontend/src/components/AboutView.tsx": []
+  }
+}

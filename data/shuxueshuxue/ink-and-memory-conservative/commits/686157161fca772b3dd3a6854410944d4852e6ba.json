@@ -1,0 +1,23 @@
+{
+  "sha": "686157161fca772b3dd3a6854410944d4852e6ba",
+  "message": "Remove unused legacy code and test files\n\nDeleted frontend components (7 files, ~500 lines):\n- BinderRing.tsx, BinderRings.tsx (decorative UI, unused)\n- BookPage.tsx (unused UI component)\n- CalendarView.tsx (replaced by CollectionsView timeline)\n- CalendarWidget.tsx (unused calendar component)\n- VoiceComment.tsx (replaced by inline comment system)\n- VoicesPanel.tsx (unused panel)\n\nDeleted backend files (5 files, ~400 lines):\n- server_old.py (old stateless server implementation)\n- test_migration.py, test_real_migration.py (one-time migration tests)\n- archive/vibe-coding-scraper-example/ (old example code)\n- test_data/ (test data no longer needed)\n\nBuild verified passing. Bundle size unchanged (341.78 kB).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:03:55Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:03:55Z"
+  },
+  "stats": {
+    "total": 1771,
+    "additions": 0,
+    "deletions": 1771
+  },
+  "files_count": 13,
+  "parents": [
+    "d817eb1015ca1978387287811e6dce7e51b91635"
+  ]
+}

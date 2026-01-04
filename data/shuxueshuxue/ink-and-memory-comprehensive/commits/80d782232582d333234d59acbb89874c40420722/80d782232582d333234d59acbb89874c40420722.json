@@ -1,0 +1,14 @@
+{
+  "hash": "80d782232582d333234d59acbb89874c40420722",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Fri Nov 21 18:15:22 2025 +0800",
+  "subject": "Rewrite README with full capability overview",
+  "files": [
+    "README.md"
+  ],
+  "diff": "commits/80d782232582d333234d59acbb89874c40420722/80d782232582d333234d59acbb89874c40420722.diff",
+  "related_files": {
+    "README.md": []
+  }
+}

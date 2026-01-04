@@ -1,0 +1,63 @@
+*** FILE: frontend/src/App.css ***
+@@ -116,13 +116,17 @@
+   cursor: pointer;
+ }
+ 
+-/* @@@ Stacking: each card offset by 30% of card height */
+-.voice-comment:hover {
++/* @@@ Stacking: latest card on top, older cards stack below */
++/* Only non-top cards can pop up on hover */
++.voice-comment:not(.top-card):hover {
+   z-index: 1000 !important;
+-  transform: translateY(0) !important;
+   box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+ }
+ 
++.top-card {
++  cursor: default;
++}
++
+ .voice-header {
+   display: flex;
+   align-items: center;
+
+*** FILE: frontend/src/App.tsx ***
+@@ -101,9 +101,10 @@ function App() {
+             text={voice.text}
+             icon={voice.icon}
+             color={voice.color}
++            isTopCard={index === voices.length - 1}
+             style={{
+-              zIndex: voices.length - index,
+-              transform: `translateY(${index * 30}%)`,
++              zIndex: index + 1,
++              transform: `translateY(${(voices.length - 1 - index) * 30}%)`,
+             }}
+           />
+         ))}
+
+*** FILE: frontend/src/components/VoiceComment.tsx ***
+@@ -6,6 +6,7 @@ interface VoiceCommentProps {
+   text: string;
+   icon: string;
+   color: string;
++  isTopCard: boolean;
+   style?: CSSProperties;
+ }
+ 
+@@ -24,13 +25,13 @@ const colorMap: Record<string, { background: string; border: string }> = {
+   purple: { background: '#f3e6ff', border: '#b366ff' },
+ };
+ 
+-export default function VoiceComment({ voice, text, icon, color, style }: VoiceCommentProps) {
++export default function VoiceComment({ voice, text, icon, color, isTopCard, style }: VoiceCommentProps) {
+   const Icon = iconMap[icon as keyof typeof iconMap];
+   const colors = colorMap[color] || { background: '#f0f0f0', border: '#ccc' };
+ 
+   return (
+     <div
+-      className="voice-comment"
++      className={`voice-comment ${isTopCard ? 'top-card' : ''}`}
+       style={{
+         backgroundColor: colors.background,
+         borderColor: colors.border,

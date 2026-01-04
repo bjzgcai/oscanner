@@ -1,0 +1,39 @@
+import { useEditor, EditorContent } from '@tiptap/react';
+import { useEffect } from 'react';
+import StarterKit from '@tiptap/starter-kit';
+import { VoiceHighlight, type VoiceTrigger } from '../extensions/VoiceHighlight';
+
+interface EditableTextAreaProps {
+  onChange: (text: string) => void;
+  triggers: VoiceTrigger[];
+  onCursorChange?: (position: number) => void;
+}
+
+export default function EditableTextArea({ onChange, triggers, onCursorChange }: EditableTextAreaProps) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      VoiceHighlight.configure({ triggers })
+    ],
+    onUpdate: ({ editor }) => {
+      onChange(editor.getText());
+      onCursorChange?.(editor.state.selection.from);
+    },
+    onSelectionUpdate: ({ editor }) => {
+      onCursorChange?.(editor.state.selection.from);
+    },
+    autofocus: true,
+  });
+
+  // @@@ Dynamic trigger updates - Update highlights when triggers change
+  useEffect(() => {
+    if (editor && editor.isEditable) {
+      // Force recalculation by creating a new transaction with meta
+      const tr = editor.state.tr;
+      tr.setMeta('voiceHighlight', { triggers });
+      editor.view.dispatch(tr);
+    }
+  }, [triggers, editor]);
+
+  return <div className="editable-text-area"><EditorContent editor={editor} /></div>;
+}

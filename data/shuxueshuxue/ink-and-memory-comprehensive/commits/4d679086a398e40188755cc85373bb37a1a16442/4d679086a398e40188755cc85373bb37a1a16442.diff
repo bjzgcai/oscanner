@@ -1,0 +1,21 @@
+commit 4d679086a398e40188755cc85373bb37a1a16442
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Wed Oct 8 09:18:59 2025 +0800
+
+    Reverse z-index mapping for correct stacking
+
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 1bcda2c..531e5e1 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -103,8 +103,8 @@ function App() {
+             color={voice.color}
+             isTopCard={index === voices.length - 1}
+             style={{
+-              zIndex: index + 1,
+-              transform: `translateY(${(voices.length - 1 - index) * 30}%)`,
++              zIndex: voices.length - index,
++              transform: `translateY(${index * 30}%)`,
+             }}
+           />
+         ))}

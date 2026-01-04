@@ -1,0 +1,73 @@
+*** MODIFIED: frontend/src/App.css (+0/-65) ***
+@@ -68,71 +68,6 @@
+   overflow-wrap: break-word;
+ }
+ 
+-/* Editable text area overlay */
+-.editable-text-area {
+-  width: 100%;
+-  height: 100%;
+-  box-sizing: border-box;
+-  display: flex;
+-  flex-direction: column;
+-  overflow: hidden;
+-}
+-
+-.editable-text-area .ProseMirror {
+-  flex: 1;
+-  width: 100%;
+-  padding: 2rem;
+-  padding-right: 4rem;
+-  font-size: 1.2rem;
+-  line-height: 1.8;
+-  font-family: 'Excalifont', 'Xiaolai', 'Georgia', serif;
+-  color: #333 !important;
+-  background: #fffef9 !important;
+-  outline: none;
+-  box-sizing: border-box;
+-  cursor: text;
+-  overflow-y: auto;
+-  overflow-x: hidden;
+-  scrollbar-width: none; /* Firefox */
+-  -ms-overflow-style: none; /* IE/Edge */
+-}
+-
+-.editable-text-area .ProseMirror::-webkit-scrollbar {
+-  display: none; /* Chrome/Safari */
+-}
+-
+-.editable-text-area .ProseMirror p {
+-  margin: 0.5rem 0;
+-  color: #333 !important;
+-}
+-
+-.editable-text-area .ProseMirror p:first-child {
+-  margin-top: 0;
+-}
+-
+-.editable-text-area .ProseMirror * {
+-  color: inherit !important;
+-}
+-
+-/* Placeholder styling */
+-.editable-text-area .ProseMirror p.is-editor-empty:first-child::before {
+-  content: attr(data-placeholder);
+-  color: #aaa;
+-  pointer-events: none;
+-  height: 0;
+-  float: left;
+-}
+-
+-/* Blockquote styling for quoted comments */
+-.editable-text-area .ProseMirror blockquote {
+-  margin: 1rem 0;
+-  padding: 0.5rem 1rem;
+-  border-left: 4px solid #8b7355;
+-  background: #f9f5ed;
+-  font-style: italic;
+-  color: #555;
+-}
+-
+ .voice-comment {
+   padding: 1rem;
+   border-left: 4px solid;

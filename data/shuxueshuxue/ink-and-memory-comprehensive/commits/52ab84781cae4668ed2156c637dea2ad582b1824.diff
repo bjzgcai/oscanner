@@ -1,0 +1,43 @@
+*** FILE: frontend/src/App.tsx ***
+@@ -17,7 +17,6 @@ import { type CalendarEntry } from './utils/calendarStorage';
+ import CollectionsView from './components/CollectionsView';
+ import AnalysisView from './components/AnalysisView';
+ import AboutView from './components/AboutView';
+-import FriendsView from './components/FriendsView';
+ import AgentDropdown from './components/AgentDropdown';
+ import ChatWidgetUI from './components/ChatWidgetUI';
+ import StateChooser from './components/StateChooser';
+@@ -99,7 +98,7 @@ export default function App() {
+     }
+   }, [currentLanguage, i18n]);
+ 
+-  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks' | 'friends'>('writing');
++  const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks'>('writing');
+   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
+   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, VoiceConfig>>({});
+ 
+@@ -2285,23 +2284,6 @@ export default function App() {
+         </div>
+       )}
+ 
+-      {currentView === 'friends' && (
+-        <div style={{
+-          position: 'fixed',
+-          top: 48,
+-          left: 0,
+-          right: 0,
+-          bottom: 0,
+-          background: '#f8f0e6',
+-          display: 'flex',
+-          overflow: 'hidden'
+-        }}>
+-          <FriendsView
+-            isVisible={currentView === 'friends'}
+-          />
+-        </div>
+-      )}
+-
+       {/* Warning Dialog */}
+       {showWarning && (
+         <div style={{
+

@@ -1,0 +1,20 @@
+{
+  "hash": "948c570895f15df95e651917eed1cc2c27bee571",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 2 18:38:20 2025 +0800",
+  "subject": "Fix migration dialog appearing repeatedly after clicking Skip",
+  "files": [
+    "backend/data/ink-and-memory.db",
+    "frontend/src/App.tsx"
+  ],
+  "diff": "commits/948c570895f15df95e651917eed1cc2c27bee571/948c570895f15df95e651917eed1cc2c27bee571.diff",
+  "related_files": {
+    "backend/data/ink-and-memory.db": [
+      "frontend/src/App.tsx"
+    ],
+    "frontend/src/App.tsx": [
+      "backend/data/ink-and-memory.db"
+    ]
+  }
+}

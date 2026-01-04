@@ -1,0 +1,27 @@
+{
+  "hash": "adda5e7288db885babac02005215aedaa9c50221",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sun Nov 2 15:50:36 2025 +0800",
+  "subject": "Clean up verbose console.log statements",
+  "files": [
+    "frontend/src/App.tsx",
+    "frontend/src/api/voiceApi.ts",
+    "frontend/src/engine/EditorEngine.ts"
+  ],
+  "diff": "commits/adda5e7288db885babac02005215aedaa9c50221/adda5e7288db885babac02005215aedaa9c50221.diff",
+  "related_files": {
+    "frontend/src/App.tsx": [
+      "frontend/src/api/voiceApi.ts",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/api/voiceApi.ts": [
+      "frontend/src/App.tsx",
+      "frontend/src/engine/EditorEngine.ts"
+    ],
+    "frontend/src/engine/EditorEngine.ts": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/voiceApi.ts"
+    ]
+  }
+}

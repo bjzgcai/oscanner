@@ -1,0 +1,44 @@
+{
+  "repository": "shuxueshuxue/ink-and-memory",
+  "url": "https://github.com/shuxueshuxue/ink-and-memory",
+  "extraction_type": "conservative",
+  "description": "Diff-only (minimal)",
+  "extraction_date": "2026-01-03T04:39:13Z",
+  "stats": {
+    "total_commits": 263,
+    "total_authors": 5,
+    "unique_files_changed": 151,
+    "total_additions": 55070,
+    "total_deletions": 25243,
+    "total_changes": 80313,
+    "avg_additions_per_commit": 209,
+    "avg_deletions_per_commit": 96
+  },
+  "authors": [
+    "F2J",
+    "Shaobin-Jiang",
+    "lexicalmathical",
+    "shuxueshuxue",
+    "zhuchenyu2008"
+  ],
+  "structure": {
+    "commits/": "263 commits (JSON metadata + diffs only)",
+    "commits_index.json": "Minimal index of all commits",
+    "repo_info.json": "Basic repository metadata",
+    "statistics.json": "This file - extraction statistics"
+  },
+  "what_is_included": [
+    "Commit metadata (author, date, message, stats)",
+    "Full diffs for all commits",
+    "Basic repository information",
+    "Commit statistics and summaries"
+  ],
+  "what_is_NOT_included": [
+    "File contents (neither current nor historical)",
+    "Repository clone",
+    "Repository file tree/structure",
+    "Pull requests",
+    "Issues",
+    "Full API objects"
+  ]
+}

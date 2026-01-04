@@ -1,0 +1,27 @@
+{
+  "hash": "a7f1a346cca78c7a5ac04ec9bf77c2aa0e8b4563",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Thu Oct 30 09:22:46 2025 +0800",
+  "subject": "Code cleanup: remove temporary test files",
+  "files": [
+    "backend/proxy_config.py",
+    "backend/test_image_gen.py",
+    "frontend/src/App.old.tsx"
+  ],
+  "diff": "commits/a7f1a346cca78c7a5ac04ec9bf77c2aa0e8b4563/a7f1a346cca78c7a5ac04ec9bf77c2aa0e8b4563.diff",
+  "related_files": {
+    "backend/proxy_config.py": [
+      "backend/test_image_gen.py",
+      "frontend/src/App.old.tsx"
+    ],
+    "backend/test_image_gen.py": [
+      "backend/proxy_config.py",
+      "frontend/src/App.old.tsx"
+    ],
+    "frontend/src/App.old.tsx": [
+      "backend/proxy_config.py",
+      "backend/test_image_gen.py"
+    ]
+  }
+}

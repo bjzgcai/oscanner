@@ -1,0 +1,111 @@
+{
+  "hash": "dfb265c42068bc56793eae66a3c26cd661de4ee4",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Wed Oct 1 20:20:28 2025 +0800",
+  "subject": "Aggressive cleanup and refactoring",
+  "files": [
+    "frontend/README.md",
+    "frontend/public/vite.svg",
+    "frontend/src/App.tsx",
+    "frontend/src/assets/react.svg",
+    "frontend/src/components/EditableTextArea.tsx",
+    "frontend/src/components/WritingArea.tsx",
+    "frontend/src/config/voices.ts",
+    "frontend/src/extensions/VoiceHighlight.ts",
+    "frontend/src/index.css"
+  ],
+  "diff": "commits/dfb265c42068bc56793eae66a3c26cd661de4ee4/dfb265c42068bc56793eae66a3c26cd661de4ee4.diff",
+  "related_files": {
+    "frontend/README.md": [
+      "frontend/public/vite.svg",
+      "frontend/src/App.tsx",
+      "frontend/src/assets/react.svg",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/config/voices.ts",
+      "frontend/src/extensions/VoiceHighlight.ts",
+      "frontend/src/index.css"
+    ],
+    "frontend/public/vite.svg": [
+      "frontend/README.md",
+      "frontend/src/App.tsx",
+      "frontend/src/assets/react.svg",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/config/voices.ts",
+      "frontend/src/extensions/VoiceHighlight.ts",
+      "frontend/src/index.css"
+    ],
+    "frontend/src/App.tsx": [
+      "frontend/README.md",
+      "frontend/public/vite.svg",
+      "frontend/src/assets/react.svg",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/config/voices.ts",
+      "frontend/src/extensions/VoiceHighlight.ts",
+      "frontend/src/index.css"
+    ],
+    "frontend/src/assets/react.svg": [
+      "frontend/README.md",
+      "frontend/public/vite.svg",
+      "frontend/src/App.tsx",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/config/voices.ts",
+      "frontend/src/extensions/VoiceHighlight.ts",
+      "frontend/src/index.css"
+    ],
+    "frontend/src/components/EditableTextArea.tsx": [
+      "frontend/README.md",
+      "frontend/public/vite.svg",
+      "frontend/src/App.tsx",
+      "frontend/src/assets/react.svg",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/config/voices.ts",
+      "frontend/src/extensions/VoiceHighlight.ts",
+      "frontend/src/index.css"
+    ],
+    "frontend/src/components/WritingArea.tsx": [
+      "frontend/README.md",
+      "frontend/public/vite.svg",
+      "frontend/src/App.tsx",
+      "frontend/src/assets/react.svg",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/config/voices.ts",
+      "frontend/src/extensions/VoiceHighlight.ts",
+      "frontend/src/index.css"
+    ],
+    "frontend/src/config/voices.ts": [
+      "frontend/README.md",
+      "frontend/public/vite.svg",
+      "frontend/src/App.tsx",
+      "frontend/src/assets/react.svg",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/extensions/VoiceHighlight.ts",
+      "frontend/src/index.css"
+    ],
+    "frontend/src/extensions/VoiceHighlight.ts": [
+      "frontend/README.md",
+      "frontend/public/vite.svg",
+      "frontend/src/App.tsx",
+      "frontend/src/assets/react.svg",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/config/voices.ts",
+      "frontend/src/index.css"
+    ],
+    "frontend/src/index.css": [
+      "frontend/README.md",
+      "frontend/public/vite.svg",
+      "frontend/src/App.tsx",
+      "frontend/src/assets/react.svg",
+      "frontend/src/components/EditableTextArea.tsx",
+      "frontend/src/components/WritingArea.tsx",
+      "frontend/src/config/voices.ts",
+      "frontend/src/extensions/VoiceHighlight.ts"
+    ]
+  }
+}

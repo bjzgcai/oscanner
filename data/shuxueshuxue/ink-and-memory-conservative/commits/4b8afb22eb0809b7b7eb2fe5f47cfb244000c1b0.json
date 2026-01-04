@@ -1,0 +1,23 @@
+{
+  "sha": "4b8afb22eb0809b7b7eb2fe5f47cfb244000c1b0",
+  "message": "Update README screenshot and mention language support",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-21T10:12:38Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-21T10:12:38Z"
+  },
+  "stats": {
+    "total": 7,
+    "additions": 2,
+    "deletions": 5
+  },
+  "files_count": 2,
+  "parents": [
+    "744cedb6c07d146ebfabaea3a5b53544493ac5d7"
+  ]
+}

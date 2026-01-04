@@ -1,0 +1,23 @@
+{
+  "sha": "cf68fa89311d10529746f6c595157b324670b144",
+  "message": "Fix Start Fresh: update state directly, no reload needed\n\nRoot cause: Reload-based approach had multiple issues\n1. Created session with random id (session_xxx)\n2. On reload, page loads 'current-session' (hardcoded)\n3. New session never loaded → old content remained\n\nNew approach: Update engine state directly\n- Load empty state into engine immediately → instant UI update\n- Save new session to database in background\n- No reload needed → no race conditions\n- Clear localTexts map → textarea displays empty\n\nBenefits:\n- Immediate response (no reload delay)\n- No race conditions\n- Simpler logic\n- Works for both authenticated and guest users\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:44:51Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T07:44:51Z"
+  },
+  "stats": {
+    "total": 42,
+    "additions": 23,
+    "deletions": 19
+  },
+  "files_count": 1,
+  "parents": [
+    "621662bffbd1c0b1a00473adc28197ed3778e645"
+  ]
+}

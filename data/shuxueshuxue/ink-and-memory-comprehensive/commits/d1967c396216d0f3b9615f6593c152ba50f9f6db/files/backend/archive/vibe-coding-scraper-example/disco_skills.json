@@ -1,0 +1,98 @@
+{
+  "Logic": {
+    "name": "Logic",
+    "description": "Logic\n\n\n\n\n\n\nDetails\n\nAttribute\nIntellect\n\n\n\nNavigation\n\nNext Skill\nEncyclopedia\n\n\n\nLogic is a skill under the Intellect attribute in Disco Elysium.\n\nWield raw intellectual power. Deduce the world.\n\nCool for: Analysts, Pure Rationalists, Obviously Logicians."
+  },
+  "Encyclopedia": {
+    "name": "Encyclopedia",
+    "description": "Encyclopedia\n\n\n\n\n\n\nDetails\n\nAttribute\nIntellect\n\n\n\nNavigation\n\nPrevious Skill\nLogic\n\n\nNext Skill\nRhetoric\n\n\n\nEncyclopedia is a skill under the Intellect attribute in Disco Elysium.\n\nCall upon all your knowledge. Produce fascinating trivia.\n\nCool for: Thinkers, Historians, Trivia Freaks"
+  },
+  "Rhetoric": {
+    "name": "Rhetoric",
+    "description": "Rhetoric\n\n\n\n\n\n\nDetails\n\nAttribute\nIntellect\n\n\n\nNavigation\n\nPrevious Skill\nEncyclopedia\n\n\nNext Skill\nDrama\n\n\n\nRhetoric is a skill under the Intellect attribute in Disco Elysium.\n\nPractice the art of persuasion. Enjoy rigorous intellectual discourse.\n\nCool for: Ideologues, Conversationalists, Would-Be-Politicians"
+  },
+  "Drama": {
+    "name": "Drama",
+    "description": "Drama\n\n\n\n\n\n\nDetails\n\nAttribute\nIntellect\n\n\n\nNavigation\n\nPrevious Skill\nRhetoric\n\n\nNext Skill\nConceptualization\n\n\n\nDrama is a skill under the Intellect attribute in Disco Elysium.\n\nPlay the actor. Lie and detect lies.\n\nCool for: Undercover Cops, Thespians of the Stage, Psychopaths"
+  },
+  "Conceptualization": {
+    "name": "Conceptualization",
+    "description": "Conceptualization\n\n\n\n\n\n\nDetails\n\nAttribute\nIntellect\n\n\n\nNavigation\n\nPrevious Skill\nDrama\n\n\nNext Skill\nVisual Calculus\n\n\n\nConceptualization is a skill under the Intellect attribute in Disco Elysium.\n\nUnderstand creativity. See Art in the world.\n\nCool for: Creatives, Psychedelic Fanciers, Critics."
+  },
+  "Visual_Calculus": {
+    "name": "Visual Calculus",
+    "description": "Visual Calculus\n\n\n\n\n\n\nDetails\n\nAttribute\nIntellect\n\n\n\nNavigation\n\nPrevious Skill\nConceptualization\n\n\n\nVisual Calculus is a skill under the Intellect attribute in Disco Elysium.\n\nReconstruct crime scenes. Make laws of physics work for the Law.\n\nCool for: Forensics Scientists, Tactical Fighters, Math-Minded People"
+  },
+  "Volition": {
+    "name": "Volition",
+    "description": "Volition\n\n\n\n\n\n\nDetails\n\nAttribute\nPsyche\n\n\n\nNavigation\n\nNext Skill\nInland Empire\n\n\n\nVolition is a skill under the Psyche attribute in Disco Elysium.\n\nHold yourself together. Keep your Morale up.\n\nCool for: Sane People, Well-Adjusted Cops, The Non-Suicidal"
+  },
+  "Inland_Empire": {
+    "name": "Inland Empire",
+    "description": "Inland Empire\n\n\n\n\n\n\nDetails\n\nAttribute\nPsyche\n\n\n\nNavigation\n\nPrevious Skill\nVolition\n\n\nNext Skill\nEmpathy\n\n\n\nInland Empire is a skill under the Psyche attribute in Disco Elysium.\n\nHunches and gut feelings. Dreams in waking life.\n\nCool for: Dreamers, Para-Natural Investigators, Mental Creators"
+  },
+  "Empathy": {
+    "name": "Empathy",
+    "description": "Empathy\n\n\n\n\n\n\nDetails\n\nAttribute\nPsyche\n\n\n\nNavigation\n\nPrevious Skill\nInland Empire\n\n\nNext Skill\nAuthority\n\n\n\nEmpathy is a skill under the Psyche attribute in Disco Elysium.\n\nUnderstand others. Work your mirror neurons.\n\nCool for: Judges of Character, Interviewers, Interrogators"
+  },
+  "Authority": {
+    "name": "Authority",
+    "description": "Authority\n\n\n\n\n\n\nDetails\n\nAttribute\nPsyche\n\n\n\nNavigation\n\nPrevious Skill\nEmpathy\n\n\nNext Skill\nEsprit de Corps\n\n\n\nAuthority is a skill under the Psyche attribute in Disco Elysium.\n\nIntimidate the public. Assert yourself.\n\nCool for: Leaders, Experts of Psychological Warfare, Respect-Junkies"
+  },
+  "Esprit_de_Corps": {
+    "name": "Esprit de Corps",
+    "description": "Esprit de Corps\n\n\n\n\n\n\nDetails\n\nAttribute\nPsyche\n\n\n\nNavigation\n\nPrevious Skill\nAuthority\n\n\nNext Skill\nSuggestion\n\n\n\nEsprit de Corps is a skill under the Psyche attribute in Disco Elysium.\n\nConnect to Station 41. Understand cop culture.\n\nCool for: Cops, Cop-Aficionados, Pretend-Cops"
+  },
+  "Suggestion": {
+    "name": "Suggestion",
+    "description": "Suggestion\n\n\n\n\n\n\nDetails\n\nAttribute\nPsyche\n\n\n\nNavigation\n\nPrevious Skill\nEsprit de Corps\n\n\n\nSuggestion is a skill under the Psyche attribute in Disco Elysium.\n\nCharm men and women. Play the puppet-master.\n\nCool for: Diplomats, Charmers, Sociopaths"
+  },
+  "Endurance": {
+    "name": "Endurance",
+    "description": "Endurance\n\n\n\n\n\n\nDetails\n\nAttribute\nPhysique\n\n\n\nNavigation\n\nNext Skill\nPain Threshold\n\n\n\nEndurance is a skill under the Physique attribute in Disco Elysium.\n\nTake the blows. Don’t let the world kill you.\n\nCool for: Fighters who can take a hit, Lookouts who don’t sleep, Human Batteries"
+  },
+  "Pain_Threshold": {
+    "name": "Pain Threshold",
+    "description": "Pain Threshold\n\n\n\n\n\n\nDetails\n\nAttribute\nPhysique\n\n\n\nNavigation\n\nPrevious Skill\nEndurance\n\n\nNext Skill\nPhysical Instrument\n\n\n\nPain Threshold is a skill under the Physique attribute in Disco Elysium.\n\nShrug off the pain. They’ll have to hurt you more.\n\nCool for: Unstoppable Fighters, Guys who don’t die, Masochists"
+  },
+  "Physical_Instrument": {
+    "name": "Physical Instrument",
+    "description": "Physical Instrument\n\n\n\n\n\n\nDetails\n\nAttribute\nPhysique\n\n\n\nNavigation\n\nPrevious Skill\nPain Threshold\n\n\nNext Skill\nElectrochemistry\n\n\n\nPhysical Instrument is a skill under the Physique attribute in Disco Elysium.\n\nFlex powerful muscles. Enjoy healthy organs.\n\nCool for: Muscle Men, Bare Knuckle Brawlers, Gym Teachers"
+  },
+  "Electrochemistry": {
+    "name": "Electrochemistry",
+    "description": "Electrochemistry\n\n\n\n\n\n\nDetails\n\nAttribute\nPhysique\n\n\n\nNavigation\n\nPrevious Skill\nPhysical Instrument\n\n\nNext Skill\nShivers\n\n\n\nElectrochemistry is a skill under the Physique attribute in Disco Elysium.\n\nGo to party planet. Love and be loved by drugs.\n\nCool for: High-Fliers, Party Enthusiasts, Cops who need Lightning"
+  },
+  "Shivers": {
+    "name": "Shivers",
+    "description": "Shivers\n\n\n\n\n\n\nDetails\n\nAttribute\nPhysique\n\n\n\nNavigation\n\nPrevious Skill\nElectrochemistry\n\n\nNext Skill\nHalf Light\n\n\n\nShivers is a skill under the Physique attribute in Disco Elysium.\n\nRaise the hair on your neck. Tune in to the city.\n\nCool for: City Lovers, The Wisest of the Street Wise, The Genuinely Supra-Natural"
+  },
+  "Half_Light": {
+    "name": "Half Light",
+    "description": "Half Light\n\n\n\n\n\n\nDetails\n\nAttribute\nPhysique\n\n\n\nNavigation\n\nPrevious Skill\nShivers\n\n\n\nHalf Light is a skill under the Physique attribute in Disco Elysium.\n\nLet the body take control. Threaten people.\n\nCool for: High-Strung Investigators, Shoot-Now-Ask-Questions-Later Cops, Surprise Haters"
+  },
+  "Hand-Eye_Coordination": {
+    "name": "Hand-Eye Coordination",
+    "description": "Hand-Eye Coordination\n\n\n\n\n\n\nDetails\n\nAttribute\nMotorics\n\n\n\nNavigation\n\nNext Skill\nPerception\n\n\n\nHand/Eye Coordination is a skill under the Motorics attribute in Disco Elysium.\n\nReady? Aim and fire.\n\nCool for: Trick-Shooters, Snipers, Jugglers"
+  },
+  "Perception": {
+    "name": "Perception",
+    "description": "Perception\n\n\n\n\n\n\nDetails\n\nAttribute\nMotorics\n\n\n\nNavigation\n\nPrevious Skill\nHand/Eye Coordination\n\n\nNext Skill\nReaction Speed\n\n\n\nPerception is a skill under the Motorics attribute in Disco Elysium.\n\nSee, hear and smell everything. Let no detail go unnoticed.\n\nCool for: Fine Detail Detectives, Sensualists, Urban Scavengers"
+  },
+  "Reaction_Speed": {
+    "name": "Reaction Speed",
+    "description": "Reaction Speed\n\n\n\n\n\n\nDetails\n\nAttribute\nMotorics\n\n\n\nNavigation\n\nPrevious Skill\nPerception\n\n\nNext Skill\nSavoir Faire\n\n\n\nReaction Speed is a skill under the Motorics attribute in Disco Elysium.\n\nThe quickest to react. An untouchable man.\n\nCool for: Shot-Dodgers, Thinkers on their Feet, Pinball-Heads"
+  },
+  "Savoir_Faire": {
+    "name": "Savoir Faire",
+    "description": "Savoir Faire\n\n\n\n\n\n\nDetails\n\nAttribute\nMotorics\n\n\n\nNavigation\n\nPrevious Skill\nReaction Speed\n\n\nNext Skill\nInterfacing\n\n\n\nSavoir Faire is a skill under the Motorics attribute in Disco Elysium.\n\nSneak under their noses. Stun with immense panache.\n\nCool for: Acrobats, Thieves, Unbearable Show-Offs"
+  },
+  "Interfacing": {
+    "name": "Interfacing",
+    "description": "Interfacing\n\n\n\n\n\n\nDetails\n\nAttribute\nMotorics\n\n\n\nNavigation\n\nPrevious Skill\nSavoir Faire\n\n\nNext Skill\nComposure\n\n\n\nInterfacing is a skill under the Motorics attribute in Disco Elysium.\n\nMaster machines. Pick locks and pockets.\n\nCool for: Machinists, Tinkerers, Instrument Players"
+  },
+  "Composure": {
+    "name": "Composure",
+    "description": "Composure\n\n\n\n\n\n\nDetails\n\nAttribute\nMotorics\n\n\n\nNavigation\n\nPrevious Skill\nInterfacing\n\n\n\nComposure is a skill under the Motorics attribute in Disco Elysium.\n\nStraighten your back. Keep your poker face.\n\nCool for: Card Players, Military Fetishists, Cool People"
+  }
+}

@@ -1,0 +1,144 @@
+*** MODIFIED: backend/stateful_analyzer.py (+68/-5) ***
+@@ -169,11 +169,63 @@ def analyze(self, agent: PolyAgent, text: str) -> list[dict]:
+             for name, v in config.VOICE_ARCHETYPES.items()
+         ])
+ 
++        # @@@ Build list of occupied sentences AND used personas to guide LLM
+         existing_summary = ""
+         if self.comments:
+-            existing_summary = "\n\nEXISTING COMMENTS (do NOT repeat these):\n"
++            # Get sentence boundaries
++            sentences = self._get_sentences(text)
++            sentence_positions = []
++            pos = 0
++            for sent in sentences:
++                start = text.lower().find(sent.lower(), pos)
++                if start != -1:
++                    sentence_positions.append((start, start + len(sent), sent))
++                    pos = start + len(sent)
++
++            # Find which sentences are occupied
++            occupied_sentences = set()
++            for comment in self.comments:
++                phrase_pos = text.lower().find(comment["phrase"].lower())
++                if phrase_pos != -1:
++                    for i, (start, end, sent) in enumerate(sentence_positions):
++                        if start <= phrase_pos < end:
++                            occupied_sentences.add(i)
++                            break
++
++            # Build summary with used personas and occupied sentences
++            used_personas = {c['voice'] for c in self.comments}
++
++            existing_summary = "\n\n⚠️  ALREADY USED PERSONAS (DO NOT USE THESE AGAIN - each persona can only appear ONCE):\n"
++            for persona in sorted(used_personas):
++                existing_summary += f"  - {persona}\n"
++            existing_summary += "👉 You MUST choose a persona that is NOT in the list above!\n"
++
++            existing_summary += "\n\nEXISTING COMMENTS:\n"
+             for c in self.comments:
+-                existing_summary += f"- {c['voice']} on \"{c['phrase']}\": {c['comment']}\n"
++                existing_summary += f"- {c['voice']} commented on phrase \"{c['phrase']}\": {c['comment']}\n"
++
++            if occupied_sentences:
++                # @@@ phrase-vs-sentence - LLM must understand that even though only a phrase is highlighted,
++                # the ENTIRE sentence containing that phrase is off-limits for new comments
++                existing_summary += f"\n⚠️  OCCUPIED SENTENCES (already have comments, CANNOT comment anywhere in these sentences):\n"
++                existing_summary += "NOTE: Even though only a PHRASE is highlighted/commented, the rule is that the ENTIRE SENTENCE containing that phrase is now occupied.\n"
++                existing_summary += "You cannot add any new comment to any part of these full sentences:\n\n"
++                for i in sorted(occupied_sentences):
++                    if i < len(sentence_positions):
++                        full_sentence = sentence_positions[i][2]  # Show FULL sentence, no truncation
++                        # Find which comment triggered this sentence
++                        trigger_phrase = None
++                        for c in self.comments:
++                            phrase_pos = text.lower().find(c["phrase"].lower())
++                            if phrase_pos != -1:
++                                start, end, _ = sentence_positions[i]
++                                if start <= phrase_pos < end:
++                                    trigger_phrase = c["phrase"]
++                                    break
++
++                        existing_summary += f"  Sentence {i+1} (triggered by phrase \"{trigger_phrase}\"):\n"
++                        existing_summary += f"  \"{full_sentence}\"\n\n"
++                existing_summary += "👉 Focus your analysis on NEW/UNCOMMENTED sentences only!\n"
+ 
+         prompt = f"""You are analyzing internal dialogue using the voice system from Disco Elysium.
+ 
+@@ -188,19 +240,30 @@ def analyze(self, agent: PolyAgent, text: str) -> list[dict]:
+ {existing_summary}
+ 
+ For each NEW voice you detect:
+-1. Extract the EXACT phrase that triggered it (word-for-word from the text)
++1. Extract a SHORT phrase that triggered it (word-for-word from the text)
++   - The phrase should be SMALL - typically 2-6 words, the most essential/striking part
++   - This phrase will be HIGHLIGHTED in the UI - keep it concise!
++   - ✅ Good examples: "contemplative walk", "thinking about meaning", "life and death"
++   - ❌ Bad examples: (whole sentences, too long, not focused)
+ 2. Choose the matching voice archetype
+ 3. Write what this voice is saying (as if the voice itself is speaking)
+ 4. Use the voice's designated icon and color
+ 
++CRITICAL DISTINCTION:
++- **Phrase** = SHORT essential words you return (what gets highlighted, 2-6 words ideal)
++- **Sentence** = The occupation boundary (you can't comment anywhere else in that sentence)
++- Even though your phrase is short, it occupies the ENTIRE sentence it appears in
++
+ IMPORTANT:
+ - Maximum {config.MAX_VOICES} NEW voices
+-- Only identify clearly present voices
+-- Phrase must be verbatim from text
++- **It's perfectly fine to return NO comment (null) if nothing is worth commenting on**
++- Only identify clearly present voices - quality over quantity
++- Phrase must be verbatim from text and KEEP IT SHORT (2-6 words typical)
+ - Each voice should be distinct
+ - DO NOT comment on parts that already have comments
+ - Avoid commenting too close to existing comments
+ - DO NOT comment on the last sentence if it appears incomplete (no ending punctuation like .!?。！？)
++- **If all available sentences are already occupied or incomplete, return null**
+ - Write comments in the SAME LANGUAGE as the text being analyzed (if text is Chinese, respond in Chinese; if English, respond in English)
+ """
+ 
+
+*** MODIFIED: frontend/src/api/voiceApi.ts (+10/-0) ***
+@@ -29,6 +29,7 @@ interface StatusResponse {
+  * Trigger voice analysis session
+  */
+ export async function triggerAnalysis(text: string, sessionId: string): Promise<string> {
++  console.log('📤 Sending trigger request...');
+   const response = await fetch(`${API_BASE}/api/trigger`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+@@ -38,11 +39,15 @@ export async function triggerAnalysis(text: string, sessionId: string): Promise<
+     })
+   });
+ 
++  console.log('📥 Got response, status:', response.status);
+   const data: TriggerResponse = await response.json();
++  console.log('📋 Parsed JSON:', data);
++
+   if (!data.success) {
+     throw new Error('Failed to trigger analysis');
+   }
+ 
++  console.log('✅ Exec ID:', data.exec_id);
+   return data.exec_id;
+ }
+ 
+@@ -54,11 +59,16 @@ export async function getAnalysisResult(exec_id: string): Promise<StatusResponse
+   const maxAttempts = 60;
+   let attempts = 0;
+ 
++  console.log('🔄 Starting to poll for exec_id:', exec_id);
++
+   while (attempts < maxAttempts) {
++    console.log(`📊 Polling attempt ${attempts + 1}/${maxAttempts}...`);
+     const response = await fetch(`${API_BASE}/api/status/${exec_id}`);
+     const data: StatusResponse = await response.json();
++    console.log('📊 Status:', data.status);
+ 
+     if (data.status === 'completed') {
++      console.log('✅ Analysis completed!', data.result);
+       return data.result;
+     }
+ 

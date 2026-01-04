@@ -1,0 +1,23 @@
+{
+  "sha": "7a8675a8e78764848a1ceb6eaa99aba33456ec21",
+  "message": "Integrate deck system into all voice-related features\n\nAll AI voice features now use deck system instead of old preferences:\n- Voice analysis (analyze_text): Uses load_voices_from_user_decks()\n- Writing suggestions (get_writing_suggestion): Random from enabled decks\n- Chat with voices (chat_with_voice): Looks up voice in enabled decks\n\nBenefits:\n- Users control which voices are active via Deck enable/disable toggles\n- Consistent voice source across all features\n- Cleaner architecture (deck system is single source of truth)\n\nChanges:\n- backend/server.py: Update all 3 session functions to use deck system\n- backend/database.py: load_voices_from_user_decks() returns enabled voices\n- frontend/src/components/DeckManager.tsx: Toggle UI integration\n- frontend/src/api/voiceApi.ts: API client for deck sync\n\nRelated: Auto-fork system, sync functionality already implemented",
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-17T14:41:40Z"
+  },
+  "committer": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-17T14:41:40Z"
+  },
+  "stats": {
+    "total": 295,
+    "additions": 245,
+    "deletions": 50
+  },
+  "files_count": 4,
+  "parents": [
+    "0b9c8a4a9e4d7a28ebc12af8e9f6ac0ffbe1ba3c"
+  ]
+}

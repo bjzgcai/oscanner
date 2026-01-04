@@ -1,0 +1,14 @@
+{
+  "hash": "48067d18ad6e3ec2fd14d9648fa79ca61404f3cb",
+  "author": "lexicalmathical",
+  "email": "lexicalmathical@gmail.com",
+  "date": "Sat Nov 22 12:34:40 2025 +0800",
+  "subject": "Fix timezone parser for timestamps with spaces",
+  "files": [
+    "frontend/src/utils/timezone.ts"
+  ],
+  "diff": "commits/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb/48067d18ad6e3ec2fd14d9648fa79ca61404f3cb.diff",
+  "related_files": {
+    "frontend/src/utils/timezone.ts": []
+  }
+}

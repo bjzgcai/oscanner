@@ -1,0 +1,33 @@
+*** FILE: backend/config.py ***
+@@ -54,7 +54,7 @@ def _load_image_api_key() -> str:
+ 
+ # Retry configuration for image generation
+ IMAGE_RETRY_MAX_ATTEMPTS = 3
+-IMAGE_RETRY_BASE_TIMEOUT = 60  # First attempt: 60s, then +30s per retry
++IMAGE_RETRY_BASE_TIMEOUT = 90  # First attempt: 90s, then +30s per retry
+ IMAGE_RETRY_TIMEOUT_INCREMENT = 30
+ IMAGE_MAX_TOKENS = 1000
+ IMAGE_DESCRIPTION_MAX_TOKENS = 500
+
+*** FILE: backend/tests/picture_dry_run.py ***
+@@ -21,7 +21,7 @@ def main():
+     parser.add_argument("--token", required=True, help="Bearer token for auth")
+     parser.add_argument("--date", dest="target_date", help="Target date YYYY-MM-DD (default: today)")
+     parser.add_argument("--notes", dest="notes_override", default="smoke test", help="Override notes text for generation")
+-    parser.add_argument("--timeout", type=int, default=60, help="Request timeout seconds")
++    parser.add_argument("--timeout", type=int, default=90, help="Request timeout seconds")
+     args = parser.parse_args()
+ 
+     url = f"{args.base_url.rstrip('/')}/api/pictures/generate"
+
+*** FILE: frontend/src/api/voiceApi.ts ***
+@@ -144,7 +144,7 @@ export async function analyzeText(text: string, sessionId: string, appliedCommen
+         state_prompt: statePrompt || '',
+         overlapped_phrases: overlappedPhrases || []
+       },
+-      timeout: 60
++      timeout: 90
+     })
+   });
+ 
+

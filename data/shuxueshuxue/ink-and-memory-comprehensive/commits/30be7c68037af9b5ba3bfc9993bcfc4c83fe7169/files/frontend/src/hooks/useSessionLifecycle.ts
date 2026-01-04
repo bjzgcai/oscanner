@@ -1,0 +1,507 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { EditorEngine } from '../engine/EditorEngine';
+import type { EditorState, TextCell } from '../engine/EditorEngine';
+import { STORAGE_KEYS } from '../constants/storageKeys';
+import { getLocalDayKey, getTodayKeyInTimezone } from '../utils/timezone';
+import { saveMetaPrompt, getStateConfig as loadStateConfig } from '../utils/voiceStorage';
+import type { VoiceConfig } from '../api/voiceApi';
+
+function createSessionId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+type SetVoiceConfigs = React.Dispatch<React.SetStateAction<Record<string, VoiceConfig>>>;
+type SetStateConfig = React.Dispatch<React.SetStateAction<any>>;
+
+interface UseSessionLifecycleParams {
+  isAuthenticated: boolean;
+  browserTimezone: string;
+  setVoiceConfigs: SetVoiceConfigs;
+  setStateConfig: SetStateConfig;
+}
+
+export function useSessionLifecycle({
+  isAuthenticated,
+  browserTimezone,
+  setVoiceConfigs,
+  setStateConfig
+}: UseSessionLifecycleParams) {
+  const engineRef = useRef<EditorEngine | null>(null);
+  const [state, setState] = useState<EditorState | null>(null);
+  const [localTexts, setLocalTexts] = useState<Map<string, string>>(new Map());
+  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [userTimezone, setUserTimezone] = useState(browserTimezone);
+
+  const ensuredSessionForDayRef = useRef<string | null>(null);
+  const userTimezoneRef = useRef(userTimezone);
+  const timezoneSyncRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    userTimezoneRef.current = userTimezone;
+  }, [userTimezone]);
+
+  const ensureStateForPersistence = useCallback((): EditorState | null => {
+    if (!state) {
+      console.error('Editor state is missing, cannot persist');
+      return null;
+    }
+
+    if (state && !state.id) {
+      throw new Error('Editor state is missing id');
+    }
+
+    return state;
+  }, [state]);
+
+  const getFirstLineFromState = useCallback((editorState: EditorState) => {
+    const firstTextCell = editorState.cells.find(c => c.type === 'text') as TextCell | undefined;
+    return firstTextCell?.content.split('\n')[0].trim() || 'Untitled';
+  }, []);
+
+  const saveSessionToDatabase = useCallback(async (editorState: EditorState, firstLine?: string) => {
+    const line = firstLine ?? getFirstLineFromState(editorState);
+    const { saveSession } = await import('../api/voiceApi');
+    const idToSave = editorState.id || createSessionId();
+    await saveSession(idToSave, editorState, line);
+
+    if (engineRef.current) {
+      const liveId = engineRef.current.getState().id;
+      const snapshotId = editorState.id;
+      const isSafeToUpdate = liveId === idToSave || liveId === snapshotId;
+
+      if (isSafeToUpdate) {
+        engineRef.current.setCurrentEntryId(idToSave);
+      } else {
+        console.warn(`🛡️ Race Condition Caught: Save finished for ${idToSave}, but editor is on ${liveId}. Skipping ID reset.`);
+      }
+    }
+    return idToSave;
+  }, [getFirstLineFromState]);
+
+  const persistSessionImmediately = useCallback(async (editorState: EditorState) => {
+    if (!isAuthenticated) return;
+    try {
+      const firstLine = getFirstLineFromState(editorState);
+      await saveSessionToDatabase(editorState, firstLine);
+    } catch (error) {
+      console.error('Failed to persist session immediately:', error);
+    }
+  }, [getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);
+
+  const buildBlankState = useCallback((options: { preserveSelectedState?: boolean; selectedStateOverride?: string | null } = {}): EditorState => {
+    const {
+      preserveSelectedState = true,
+      selectedStateOverride
+    } = options;
+    const resolvedSelectedState = selectedStateOverride !== undefined
+      ? selectedStateOverride
+      : (preserveSelectedState
+        ? (engineRef.current?.getState().selectedState ?? selectedState ?? null)
+        : null);
+    const newSessionId = createSessionId();
+    return {
+      cells: [{ id: Math.random().toString(36).slice(2), type: 'text' as const, content: '' }],
+      commentors: [],
+      tasks: [],
+      weightPath: [],
+      overlappedPhrases: [],
+      id: newSessionId,
+      selectedState: resolvedSelectedState ?? undefined,
+      createdAt: new Date().toISOString()
+    };
+  }, [selectedState]);
+
+  const startDetachedBlankSession = useCallback((persistImmediately: boolean = false) => {
+    if (!engineRef.current) return;
+    const blankState = buildBlankState();
+
+    engineRef.current.loadState(blankState);
+    setState(blankState);
+    setLocalTexts(new Map());
+
+    if (!isAuthenticated) {
+      localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(blankState));
+    } else if (persistImmediately) {
+      persistSessionImmediately(blankState);
+    }
+  }, [buildBlankState, isAuthenticated, persistSessionImmediately]);
+
+  const handleNewSession = useCallback(async (currentState?: EditorState | null) => {
+    const workingState = currentState ?? state;
+    if (!workingState || !engineRef.current) return;
+
+    if (isAuthenticated) {
+      const hasContent = workingState.cells.some(c => c.type === 'text' && (c as TextCell).content.trim());
+
+      if (hasContent) {
+        try {
+          const firstTextCell = workingState.cells.find(c => c.type === 'text') as TextCell | undefined;
+          const firstLine = firstTextCell?.content.split('\n')[0].trim() || 'Untitled';
+
+          const { saveSession } = await import('../api/voiceApi');
+          const sessionId = workingState.id || createSessionId();
+          await saveSession(sessionId, workingState, firstLine);
+        } catch (error) {
+          console.error('❌ Failed to save current session:', error);
+        }
+      }
+    }
+
+    const emptyState = buildBlankState({ preserveSelectedState: false });
+    engineRef.current.loadState(emptyState);
+    setState(emptyState);
+    setLocalTexts(new Map());
+
+    if (!isAuthenticated) {
+      localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+    }
+  }, [buildBlankState, isAuthenticated, state]);
+
+  const confirmStartFresh = useCallback(async () => {
+    if (!engineRef.current) return;
+
+    const emptyState = buildBlankState({ preserveSelectedState: false });
+    engineRef.current.loadState(emptyState);
+    setState(emptyState);
+    setLocalTexts(new Map());
+
+    if (isAuthenticated) {
+      try {
+        const { saveSession } = await import('../api/voiceApi');
+        await saveSession(emptyState.id, emptyState);
+      } catch (error) {
+        console.error('Failed to save new session:', error);
+      }
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.EDITOR_STATE);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+    }
+  }, [buildBlankState, isAuthenticated]);
+
+  const handleSaveToday = useCallback(async () => {
+    if (!engineRef.current) return;
+    if (!isAuthenticated) {
+      const toast = document.createElement('div');
+      toast.textContent = 'Please sign in to save';
+      toast.style.cssText = `
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        background: #f44336;
+        color: white;
+        padding: 12px 20px;
+        borderRadius: 6px;
+        fontSize: 14px;
+        fontFamily: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+        zIndex: 10000;
+        boxShadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 2000);
+      return;
+    }
+    const currentState = ensureStateForPersistence();
+    if (!currentState) return;
+
+    try {
+      const firstLine = getFirstLineFromState(currentState);
+      const savedSessionId = await saveSessionToDatabase(currentState, firstLine);
+      engineRef.current.setCurrentEntryId(savedSessionId);
+      const toast = document.createElement('div');
+      toast.textContent = 'Saved';
+      toast.style.cssText = `
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 12px 20px;
+        borderRadius: 6px;
+        fontSize: 14px;
+        fontFamily: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+        zIndex: 10000;
+        boxShadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 1200);
+    } catch (error) {
+      console.error('Failed to save session:', error);
+    }
+  }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setUserTimezone(browserTimezone);
+      return;
+    }
+
+    if (timezoneSyncRef.current === browserTimezone) {
+      return;
+    }
+
+    const syncTimezone = async () => {
+      try {
+        const timezone = browserTimezone || 'UTC';
+        const { getPreferences, savePreferences } = await import('../api/voiceApi');
+        const prefs = await getPreferences();
+        if ((prefs?.timezone || 'UTC') !== timezone) {
+          await savePreferences({ timezone });
+          setUserTimezone(timezone);
+        } else {
+          setUserTimezone(prefs?.timezone || timezone);
+        }
+      } catch (error) {
+        console.error('Failed to sync timezone preference:', error);
+      } finally {
+        timezoneSyncRef.current = browserTimezone;
+      }
+    };
+
+    syncTimezone();
+  }, [browserTimezone, isAuthenticated]);
+
+  useEffect(() => {
+    const sessionId = createSessionId();
+    const engine = new EditorEngine(sessionId);
+    engineRef.current = engine;
+
+    const initialState = engine.getState();
+    if (!initialState.createdAt) {
+      initialState.createdAt = new Date().toISOString();
+      setState(initialState);
+    }
+
+    engine.subscribe((newState) => {
+      setState({ ...newState });
+      if (!isAuthenticated) {
+        localStorage.setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(newState));
+      }
+    });
+    const unsubscribeBlankReset = engine.onBlankReset(async () => {
+      if (!isAuthenticated) return;
+      const blankState = engine.getState();
+      await persistSessionImmediately(blankState);
+    });
+
+    return () => {
+      unsubscribeBlankReset();
+    };
+  }, [isAuthenticated, persistSessionImmediately]);
+
+  useEffect(() => {
+    const loadInitialState = async () => {
+      if (isAuthenticated) {
+        try {
+          const { listSessions, getSession, getPreferences } = await import('../api/voiceApi');
+
+          const sessions = await listSessions(userTimezoneRef.current);
+
+          let sessionToLoad = null;
+          let loadedSessionId: string | undefined = undefined;
+          const currentSessionId = 'current-session';
+          const currentSession = sessions.find(s => s.id === currentSessionId);
+
+          if (currentSession) {
+            const fullSession = await getSession(currentSessionId);
+            sessionToLoad = fullSession.editor_state;
+            loadedSessionId = currentSessionId;
+          } else if (sessions.length > 0) {
+            const mostRecent = sessions.sort((a, b) =>
+              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            )[0];
+
+            const timezoneForDay = userTimezoneRef.current || 'UTC';
+            const today = getTodayKeyInTimezone(timezoneForDay);
+            const sessionDate = getLocalDayKey(mostRecent.updated_at, timezoneForDay);
+
+            if (sessionDate === today) {
+              const fullSession = await getSession(mostRecent.id);
+              sessionToLoad = fullSession.editor_state;
+              loadedSessionId = mostRecent.id;
+            } else {
+              console.log(`📅 New day detected. Last session was from ${sessionDate}, today is ${today}. Starting fresh.`);
+              sessionToLoad = null;
+              loadedSessionId = undefined;
+            }
+          }
+
+          if (sessionToLoad && loadedSessionId) {
+            const normalizedState: EditorState = {
+              ...sessionToLoad,
+              id: sessionToLoad.id || (sessionToLoad as any)?.currentEntryId || (sessionToLoad as any)?.sessionId || loadedSessionId
+            };
+            engineRef.current?.loadState(normalizedState);
+            setState(engineRef.current?.getState() || normalizedState);
+
+            const texts = new Map<string, string>();
+            sessionToLoad.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
+              texts.set(c.id, c.content || '');
+            });
+            setLocalTexts(texts);
+          } else {
+            setState(engineRef.current?.getState() || null);
+          }
+
+          try {
+            const prefs = await getPreferences();
+            if (prefs.voice_configs) {
+              setVoiceConfigs(prefs.voice_configs);
+            }
+            if (prefs.meta_prompt) {
+              saveMetaPrompt(prefs.meta_prompt);
+            }
+            if (prefs.state_config) {
+              setStateConfig(prefs.state_config);
+            }
+            if (prefs.timezone) {
+              setUserTimezone(prefs.timezone);
+            }
+
+            if (prefs.selected_state !== undefined && prefs.selected_state !== null) {
+              const timezoneForDay = userTimezoneRef.current || 'UTC';
+              const today = getTodayKeyInTimezone(timezoneForDay);
+              const updatedAtDate = prefs.updated_at
+                ? getLocalDayKey(prefs.updated_at, timezoneForDay)
+                : null;
+
+              if (updatedAtDate === today) {
+                setSelectedState(prefs.selected_state);
+              } else {
+                setSelectedState(null);
+              }
+            }
+          } catch (err) {
+            console.log('No preferences found, using defaults');
+          }
+        } catch (error) {
+          console.error('Failed to load from database:', error);
+          setState(engineRef.current?.getState() || null);
+        }
+      } else {
+        const saved = localStorage.getItem(STORAGE_KEYS.EDITOR_STATE);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            engineRef.current?.loadState(parsed);
+            setState(engineRef.current?.getState() || parsed);
+
+            const texts = new Map<string, string>();
+            parsed.cells?.filter((c: any) => c.type === 'text').forEach((c: any) => {
+              texts.set(c.id, c.content || '');
+            });
+            setLocalTexts(texts);
+          } catch (e) {
+            console.error('Failed to load saved state:', e);
+          }
+        } else {
+          setState(engineRef.current?.getState() || null);
+        }
+
+        const savedState = localStorage.getItem(STORAGE_KEYS.SELECTED_STATE);
+        const savedDate = localStorage.getItem('selected-state-date');
+        const today = getTodayKeyInTimezone(userTimezoneRef.current || browserTimezone);
+
+        if (savedState && savedDate === today) {
+          setSelectedState(savedState);
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.SELECTED_STATE);
+          localStorage.removeItem('selected-state-date');
+          setSelectedState(null);
+        }
+      }
+      if (!isAuthenticated) {
+        setUserTimezone(browserTimezone);
+      }
+    };
+
+    loadInitialState();
+  }, [browserTimezone, isAuthenticated, setStateConfig, setVoiceConfigs]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!engineRef.current) return;
+    if (selectedState !== null) return;
+    const todayKey = getTodayKeyInTimezone(userTimezone);
+    if (!todayKey) return;
+
+    const currentState = engineRef.current.getState();
+    const currentKey = currentState.createdAt
+      ? getLocalDayKey(currentState.createdAt, userTimezone)
+      : null;
+
+    if (currentKey === todayKey) return;
+    if (ensuredSessionForDayRef.current === todayKey) return;
+
+    ensuredSessionForDayRef.current = todayKey;
+    startDetachedBlankSession(true);
+  }, [isAuthenticated, selectedState, startDetachedBlankSession, userTimezone]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const autoSaveTimer = setTimeout(async () => {
+      const stateSnapshot = ensureStateForPersistence();
+      if (!stateSnapshot) return;
+
+      if (engineRef.current) {
+        const liveId = engineRef.current.getState().id;
+        const snapshotId = stateSnapshot.id;
+        if (liveId && snapshotId && liveId !== snapshotId) {
+          console.warn(`✋ Auto-save aborted: timer captured ${snapshotId} but editor is now on ${liveId}`);
+          return;
+        }
+      }
+
+      if (!stateSnapshot.id) {
+        console.error('BUG: session id should always be defined after engine init');
+        return;
+      }
+
+      try {
+        const firstLine = getFirstLineFromState(stateSnapshot);
+        await saveSessionToDatabase(stateSnapshot, firstLine);
+        console.log('Auto-saved to database');
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+      }
+    }, 3000);
+
+    return () => clearTimeout(autoSaveTimer);
+  }, [ensureStateForPersistence, getFirstLineFromState, isAuthenticated, saveSessionToDatabase, state]);
+
+  useEffect(() => {
+    setStateConfig(loadStateConfig());
+  }, [setStateConfig]);
+
+  return {
+    engineRef,
+    state,
+    setState,
+    localTexts,
+    setLocalTexts,
+    selectedState,
+    setSelectedState,
+    userTimezone,
+    setUserTimezone,
+    ensureStateForPersistence,
+    getFirstLineFromState,
+    saveSessionToDatabase,
+    persistSessionImmediately,
+    startDetachedBlankSession,
+    handleNewSession,
+    confirmStartFresh,
+    handleSaveToday
+  };
+}

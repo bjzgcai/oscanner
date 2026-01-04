@@ -1,0 +1,324 @@
+*** FILE: frontend/src/App.css ***
+@@ -263,3 +263,15 @@
+ .comments-panel::-webkit-scrollbar-thumb:hover {
+   background: #999;
+ }
++
++/* @@@ Pulse animation for voice recording button */
++@keyframes pulse {
++  0%, 100% {
++    opacity: 1;
++    transform: scale(1);
++  }
++  50% {
++    opacity: 0.8;
++    transform: scale(1.05);
++  }
++}
+
+*** FILE: frontend/src/App.tsx ***
+@@ -9,7 +9,8 @@ import {
+   FaSync,
+   FaBrain, FaHeart, FaQuestion, FaCloud, FaTheaterMasks, FaEye,
+   FaFistRaised, FaLightbulb, FaShieldAlt, FaWind, FaFire, FaCompass,
+-  FaAlignRight
++  FaAlignRight,
++  FaMicrophone
+ } from 'react-icons/fa';
+ import TopNavBar from './components/TopNavBar';
+ import DeckManager from './components/DeckManager';
+@@ -31,20 +32,25 @@ import { useAuth } from './contexts/AuthContext';
+ import LoginForm from './components/Auth/LoginForm';
+ import RegisterForm from './components/Auth/RegisterForm';
+ import { STORAGE_KEYS } from './constants/storageKeys';
++import { useSpeechRecognition } from './hooks/useSpeechRecognition';
+ 
+ // @@@ Left Toolbar Component - floating toolbelt within left margin
+ function LeftToolbar({
+   onInsertAgent,
+   onToggleAlign,
+   onShowCalendar,
+   onSaveToday,
+-  isAligned
++  isAligned,
++  onVoiceToggle,
++  isListening
+ }: {
+   onInsertAgent: () => void;
+   onToggleAlign: () => void;
+   onShowCalendar: () => void;
+   onSaveToday: () => void;
+   isAligned: boolean;
++  onVoiceToggle: () => void;
++  isListening: boolean;
+ }) {
+   return (
+     <div style={{
+@@ -178,6 +184,33 @@ function LeftToolbar({
+       >
+         <FaAlignRight size={18} color={isAligned ? '#1976d2' : '#333'} />
+       </button>
++
++      {/* Voice Input button - fifth */}
++      <button
++        onClick={onVoiceToggle}
++        title={isListening ? "Stop Recording" : "Start Voice Input"}
++        style={{
++          width: '36px',
++          height: '36px',
++          border: 'none',
++          borderRadius: '4px',
++          backgroundColor: isListening ? '#ffebee' : '#fff',
++          cursor: 'pointer',
++          display: 'flex',
++          alignItems: 'center',
++          justifyContent: 'center',
++          transition: 'all 0.2s ease',
++          animation: isListening ? 'pulse 1.5s ease-in-out infinite' : 'none'
++        }}
++        onMouseEnter={(e) => {
++          e.currentTarget.style.backgroundColor = isListening ? '#ffcdd2' : '#f0f0f0';
++        }}
++        onMouseLeave={(e) => {
++          e.currentTarget.style.backgroundColor = isListening ? '#ffebee' : '#fff';
++        }}
++      >
++        <FaMicrophone size={18} color={isListening ? '#d32f2f' : '#333'} />
++      </button>
+     </div>
+   );
+ }
+@@ -269,6 +302,17 @@ export default function App() {
+   const [dropdownTriggerCellId, setDropdownTriggerCellId] = useState<string | null>(null);
+   const [chatProcessing, setChatProcessing] = useState<Set<string>>(new Set());
+ 
++  // @@@ Voice input with speech recognition
++  const speechLang = currentLanguage === 'zh' ? 'zh-CN' : 'en-US';
++  const {
++    isListening,
++    transcript,
++    startListening,
++    stopListening,
++    resetTranscript,
++    isSupported
++  } = useSpeechRecognition({ lang: speechLang, continuous: true, interimResults: true });
++
+   // @@@ Warning dialog state
+   const [showWarning, setShowWarning] = useState(false);
+ 
+@@ -405,6 +449,44 @@ export default function App() {
+     }
+   }, [voiceConfigs]);
+ 
++  // @@@ Insert transcribed text into the last text cell
++  useEffect(() => {
++    if (transcript) {
++      const cells = engineRef.current?.getState().cells || [];
++      const textCells = cells.filter(c => c.type === 'text') as TextCell[];
++      if (textCells.length === 0) return;
++
++      const lastTextCell = textCells[textCells.length - 1];
++      const textarea = textareaRefs.current.get(lastTextCell.id);
++      if (!textarea) return;
++
++      // Insert transcript at cursor position or end of current text
++      const currentText = textarea.value;
++      const cursorPos = textarea.selectionStart || currentText.length;
++      const newText = currentText.slice(0, cursorPos) + transcript + currentText.slice(cursorPos);
++
++      // Update local text first
++      setLocalTexts(prev => {
++        const next = new Map(prev);
++        next.set(lastTextCell.id, newText);
++        return next;
++      });
++
++      // Update engine
++      engineRef.current?.updateTextCell(lastTextCell.id, newText);
++
++      // Reset transcript after insertion
++      resetTranscript();
++
++      // Update cursor position
++      setTimeout(() => {
++        const newCursorPos = cursorPos + transcript.length;
++        textarea.setSelectionRange(newCursorPos, newCursorPos);
++        textarea.focus();
++      }, 0);
++    }
++  }, [transcript, resetTranscript]);
++
+   // @@@ Reload state config when returning to writing view
+   useEffect(() => {
+     if (currentView === 'writing') {
+@@ -1285,6 +1367,20 @@ export default function App() {
+     setCommentsAligned(prev => !prev);
+   }, []);
+ 
++  // @@@ Handle voice input toggle
++  const handleVoiceToggle = useCallback(() => {
++    if (!isSupported) {
++      alert('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');
++      return;
++    }
++
++    if (isListening) {
++      stopListening();
++    } else {
++      startListening();
++    }
++  }, [isListening, isSupported, startListening, stopListening]);
++
+   // @@@ Handle localStorage migration
+   const handleMigrateData = useCallback(async () => {
+     setIsMigrating(true);
+@@ -1873,6 +1969,8 @@ export default function App() {
+                 onShowCalendar={() => setShowCalendarPopup(true)}
+                 onSaveToday={handleSaveToday}
+                 isAligned={commentsAligned}
++                onVoiceToggle={handleVoiceToggle}
++                isListening={isListening}
+               />
+             </div>
+           )}
+
+*** FILE: frontend/src/hooks/useSpeechRecognition.ts ***
+@@ -0,0 +1,138 @@
++import { useState, useEffect, useRef } from 'react';
++
++interface SpeechRecognitionOptions {
++  lang?: string;
++  continuous?: boolean;
++  interimResults?: boolean;
++}
++
++interface UseSpeechRecognitionReturn {
++  isListening: boolean;
++  transcript: string;
++  interimTranscript: string;
++  startListening: () => void;
++  stopListening: () => void;
++  resetTranscript: () => void;
++  isSupported: boolean;
++  error: string | null;
++}
++
++// @@@ Web Speech API types
++interface SpeechRecognitionEvent extends Event {
++  results: SpeechRecognitionResultList;
++  resultIndex: number;
++}
++
++interface SpeechRecognitionErrorEvent extends Event {
++  error: string;
++  message: string;
++}
++
++export function useSpeechRecognition(
++  options: SpeechRecognitionOptions = {}
++): UseSpeechRecognitionReturn {
++  const {
++    lang = 'en-US',
++    continuous = true,
++    interimResults = true
++  } = options;
++
++  const [isListening, setIsListening] = useState(false);
++  const [transcript, setTranscript] = useState('');
++  const [interimTranscript, setInterimTranscript] = useState('');
++  const [error, setError] = useState<string | null>(null);
++
++  const recognitionRef = useRef<any>(null);
++
++  // Check browser support
++  const isSupported = typeof window !== 'undefined' &&
++    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
++
++  useEffect(() => {
++    if (!isSupported) return;
++
++    // @ts-ignore - SpeechRecognition is not in TS lib yet
++    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
++    const recognition = new SpeechRecognition();
++
++    recognition.continuous = continuous;
++    recognition.interimResults = interimResults;
++    recognition.lang = lang;
++
++    recognition.onresult = (event: SpeechRecognitionEvent) => {
++      let finalTranscript = '';
++      let interim = '';
++
++      for (let i = event.resultIndex; i < event.results.length; i++) {
++        const result = event.results[i];
++        const transcriptPiece = result[0].transcript;
++
++        if (result.isFinal) {
++          finalTranscript += transcriptPiece + ' ';
++        } else {
++          interim += transcriptPiece;
++        }
++      }
++
++      if (finalTranscript) {
++        setTranscript(prev => prev + finalTranscript);
++      }
++      setInterimTranscript(interim);
++    };
++
++    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
++      console.error('Speech recognition error:', event.error);
++      setError(event.error);
++      setIsListening(false);
++    };
++
++    recognition.onend = () => {
++      setIsListening(false);
++      setInterimTranscript('');
++    };
++
++    recognitionRef.current = recognition;
++
++    return () => {
++      if (recognitionRef.current) {
++        recognitionRef.current.abort();
++      }
++    };
++  }, [lang, continuous, interimResults, isSupported]);
++
++  const startListening = () => {
++    if (!isSupported) {
++      setError('Speech recognition not supported in this browser');
++      return;
++    }
++
++    if (recognitionRef.current && !isListening) {
++      setError(null);
++      recognitionRef.current.start();
++      setIsListening(true);
++    }
++  };
++
++  const stopListening = () => {
++    if (recognitionRef.current && isListening) {
++      recognitionRef.current.stop();
++      setIsListening(false);
++    }
++  };
++
++  const resetTranscript = () => {
++    setTranscript('');
++    setInterimTranscript('');
++  };
++
++  return {
++    isListening,
++    transcript,
++    interimTranscript,
++    startListening,
++    stopListening,
++    resetTranscript,
++    isSupported,
++    error
++  };
++}

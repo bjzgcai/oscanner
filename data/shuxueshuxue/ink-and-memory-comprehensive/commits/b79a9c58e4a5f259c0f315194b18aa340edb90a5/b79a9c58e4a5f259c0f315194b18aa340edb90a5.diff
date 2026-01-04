@@ -1,0 +1,45 @@
+commit b79a9c58e4a5f259c0f315194b18aa340edb90a5
+Author: lexicalmathical <lexicalmathical@gmail.com>
+Date:   Fri Nov 21 18:17:49 2025 +0800
+
+    Refresh project structure section
+
+diff --git a/README.md b/README.md
+index a1eba51..c09c323 100644
+--- a/README.md
++++ b/README.md
+@@ -162,20 +162,20 @@ re.split(r'[.!?。！？]+|\n+', text)
+ 
+ ```
+ ink-and-memory/
+-├── assets/
+-│   ├── demo-screenshot.png    # Demo screenshot
+-│   └── book-ui-design.png     # Original UI design
+-├── backend/
+-│   ├── server.py              # PolyCLI Session Registry server
+-│   ├── stateful_analyzer.py   # Core voice detection logic
+-│   ├── config.py              # Voice archetypes & prompts
+-│   └── archive/               # Learning examples
+-└── frontend/
+-    ├── src/
+-    │   ├── components/        # React components
+-    │   ├── extensions/        # TipTap voice highlighting
+-    │   └── api/               # Backend API client
+-    └── public/                # Fonts & assets
++├── assets/                         # README screenshots, fonts, art
++│   └── writing-area.png            # Current product shot
++├── backend/                        # FastAPI + PolyCLI server
++│   ├── server.py                   # Main API entrypoint (UTC enforced)
++│   ├── scheduler.py                # Timeline image cron
++│   ├── database.py                 # SQLite schema + helpers (user_sessions, prefs)
++│   ├── config.py / prompts/        # Voice archetypes + system prompts
++│   └── archive/                    # Research + vibe coding notes
++└── frontend/                       # React + TipTap client
++    ├── src/App.tsx                 # Notebook, auto-save, timezone sync
++    ├── src/components/             # Calendar, timeline, friends, decks, etc.
++    ├── src/utils/sessionGrouping.ts# Shared calendar/timeline grouping helper
++    ├── src/api/voiceApi.ts         # REST client for backend
++    └── public/                     # Fonts, favicon, static assets
+ ```
+ 
+ ## 🤝 Contributing

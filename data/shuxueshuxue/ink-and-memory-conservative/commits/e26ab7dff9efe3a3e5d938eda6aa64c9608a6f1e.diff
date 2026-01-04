@@ -1,0 +1,1132 @@
+*** MODIFIED: frontend/package-lock.json (+87/-1) ***
+@@ -12,8 +12,10 @@
+         "@tiptap/extension-placeholder": "^3.7.2",
+         "@tiptap/react": "^3.6.2",
+         "@tiptap/starter-kit": "^3.6.2",
++        "i18next": "^24.0.0",
+         "react": "^19.1.1",
+         "react-dom": "^19.1.1",
++        "react-i18next": "^15.0.1",
+         "react-icons": "^5.5.0"
+       },
+       "devDependencies": {
+@@ -264,6 +266,15 @@
+         "@babel/core": "^7.0.0-0"
+       }
+     },
++    "node_modules/@babel/runtime": {
++      "version": "7.28.4",
++      "resolved": "https://registry.npmjs.org/@babel/runtime/-/runtime-7.28.4.tgz",
++      "integrity": "sha512-Q/N6JNWvIvPnLDvjlE1OUBLPQHH6l3CltCEsHIujp45zQUSSh8K+gHnaEX45yAT1nyngnINhvWtzN+Nb9D8RAQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=6.9.0"
++      }
++    },
+     "node_modules/@babel/template": {
+       "version": "7.27.2",
+       "resolved": "https://registry.npmjs.org/@babel/template/-/template-7.27.2.tgz",
+@@ -2978,6 +2989,46 @@
+         "node": ">=8"
+       }
+     },
++    "node_modules/html-parse-stringify": {
++      "version": "3.0.1",
++      "resolved": "https://registry.npmjs.org/html-parse-stringify/-/html-parse-stringify-3.0.1.tgz",
++      "integrity": "sha512-KknJ50kTInJ7qIScF3jeaFRpMpE8/lfiTdzf/twXyPBLAGrLRTmkz3AdTnKeh40X8k9L2fdYwEp/42WGXIRGcg==",
++      "license": "MIT",
++      "dependencies": {
++        "void-elements": "3.1.0"
++      }
++    },
++    "node_modules/i18next": {
++      "version": "24.2.3",
++      "resolved": "https://registry.npmjs.org/i18next/-/i18next-24.2.3.tgz",
++      "integrity": "sha512-lfbf80OzkocvX7nmZtu7nSTNbrTYR52sLWxPtlXX1zAhVw8WEnFk4puUkCR4B1dNQwbSpEHHHemcZu//7EcB7A==",
++      "funding": [
++        {
++          "type": "individual",
++          "url": "https://locize.com"
++        },
++        {
++          "type": "individual",
++          "url": "https://locize.com/i18next.html"
++        },
++        {
++          "type": "individual",
++          "url": "https://www.i18next.com/how-to/faq#i18next-is-awesome.-how-can-i-support-the-project"
++        }
++      ],
++      "license": "MIT",
++      "dependencies": {
++        "@babel/runtime": "^7.26.10"
++      },
++      "peerDependencies": {
++        "typescript": "^5"
++      },
++      "peerDependenciesMeta": {
++        "typescript": {
++          "optional": true
++        }
++      }
++    },
+     "node_modules/ignore": {
+       "version": "5.3.2",
+       "resolved": "https://registry.npmjs.org/ignore/-/ignore-5.3.2.tgz",
+@@ -3698,6 +3749,32 @@
+         "react": "^19.1.1"
+       }
+     },
++    "node_modules/react-i18next": {
++      "version": "15.7.4",
++      "resolved": "https://registry.npmjs.org/react-i18next/-/react-i18next-15.7.4.tgz",
++      "integrity": "sha512-nyU8iKNrI5uDJch0z9+Y5XEr34b0wkyYj3Rp+tfbahxtlswxSCjcUL9H0nqXo9IR3/t5Y5PKIA3fx3MfUyR9Xw==",
++      "license": "MIT",
++      "dependencies": {
++        "@babel/runtime": "^7.27.6",
++        "html-parse-stringify": "^3.0.1"
++      },
++      "peerDependencies": {
++        "i18next": ">= 23.4.0",
++        "react": ">= 16.8.0",
++        "typescript": "^5"
++      },
++      "peerDependenciesMeta": {
++        "react-dom": {
++          "optional": true
++        },
++        "react-native": {
++          "optional": true
++        },
++        "typescript": {
++          "optional": true
++        }
++      }
++    },
+     "node_modules/react-icons": {
+       "version": "5.5.0",
+       "resolved": "https://registry.npmjs.org/react-icons/-/react-icons-5.5.0.tgz",
+@@ -3976,7 +4053,7 @@
+       "version": "5.8.3",
+       "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.8.3.tgz",
+       "integrity": "sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==",
+-      "dev": true,
++      "devOptional": true,
+       "license": "Apache-2.0",
+       "bin": {
+         "tsc": "bin/tsc",
+@@ -4172,6 +4249,15 @@
+         "url": "https://github.com/sponsors/jonschlinkert"
+       }
+     },
++    "node_modules/void-elements": {
++      "version": "3.1.0",
++      "resolved": "https://registry.npmjs.org/void-elements/-/void-elements-3.1.0.tgz",
++      "integrity": "sha512-Dhxzh5HZuiHQhbvTW9AMetFfBHDMYpo23Uo9btPXgdYP+3T5S+p+jgNy7spra+veYhBP2dCSgxR/i2Y02h5/6w==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
+     "node_modules/w3c-keyname": {
+       "version": "2.2.8",
+       "resolved": "https://registry.npmjs.org/w3c-keyname/-/w3c-keyname-2.2.8.tgz",
+
+*** MODIFIED: frontend/package.json (+3/-1) ***
+@@ -14,9 +14,11 @@
+     "@tiptap/extension-placeholder": "^3.7.2",
+     "@tiptap/react": "^3.6.2",
+     "@tiptap/starter-kit": "^3.6.2",
++    "i18next": "^24.0.0",
+     "react": "^19.1.1",
+     "react-dom": "^19.1.1",
+-    "react-icons": "^5.5.0"
++    "react-icons": "^5.5.0",
++    "react-i18next": "^15.0.1"
+   },
+   "devDependencies": {
+     "@eslint/js": "^9.36.0",
+
+*** MODIFIED: frontend/src/App.tsx (+57/-36) ***
+@@ -1,4 +1,5 @@
+ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
++import { useTranslation } from 'react-i18next';
+ import { EditorEngine } from './engine/EditorEngine';
+ import type { EditorState, Commentor, TextCell } from './engine/EditorEngine';
+ import { ChatWidget } from './engine/ChatWidget';
+@@ -198,6 +199,8 @@ const iconMap = {
+   compass: FaCompass,
+ };
+ 
++const LANGUAGE_CODES: Array<'en' | 'zh'> = ['en', 'zh'];
++
+ // @@@ Color map with gradient colors for watercolor effect
+ const colorMap: Record<string, { gradient: string; text: string; glow: string }> = {
+   blue: {
+@@ -231,12 +234,19 @@ const colorMap: Record<string, { gradient: string; text: string; glow: string }>
+ export default function App() {
+   const isMobile = useMobile();
+   const { isAuthenticated, isLoading } = useAuth();
++  const { t, i18n } = useTranslation();
+ 
+   // @@@ Auth screen state
+   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
+   const [guestMode, setGuestMode] = useState(false);
+   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+   const [isMigrating, setIsMigrating] = useState(false);
++  const currentLanguage = (i18n.language || 'en').split('-')[0];
++  const handleUILanguageChange = useCallback((code: string) => {
++    if (code !== currentLanguage) {
++      i18n.changeLanguage(code);
++    }
++  }, [currentLanguage, i18n]);
+ 
+   const [currentView, setCurrentView] = useState<'writing' | 'settings' | 'timeline' | 'analysis' | 'decks'>('writing');
+   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
+@@ -2343,7 +2353,6 @@ export default function App() {
+             maxWidth: 800,
+             width: '100%'
+           }}>
+-            {/* Language Toggle (Placeholder) */}
+             <section style={{ marginBottom: 48 }}>
+               <h2 style={{
+                 fontSize: 24,
+@@ -2352,58 +2361,70 @@ export default function App() {
+                 marginBottom: 16,
+                 fontFamily: 'Georgia, "Times New Roman", serif'
+               }}>
+-                Settings
++                {t('nav.settings')}
+               </h2>
+               <div style={{
+                 background: 'rgba(255, 255, 255, 0.5)',
+                 border: '1px solid #d0c4b0',
+                 borderRadius: 8,
+                 padding: 24
+               }}>
+-                <div style={{ marginBottom: 16 }}>
++                <div style={{ marginBottom: 12 }}>
+                   <label style={{
+                     fontSize: 14,
+                     fontWeight: 500,
+                     color: '#2c2c2c',
+-                    marginBottom: 8,
++                    marginBottom: 6,
+                     display: 'block',
+                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                   }}>
+                     Language / 语言
+                   </label>
+-                  <div style={{ display: 'flex', gap: 12 }}>
+-                    <button
+-                      style={{
+-                        padding: '8px 16px',
+-                        background: '#2c2c2c',
+-                        color: '#fff',
+-                        border: 'none',
+-                        borderRadius: 6,
+-                        fontSize: 14,
+-                        fontWeight: 500,
+-                        cursor: 'pointer',
+-                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+-                      }}
+-                    >
+-                      English
+-                    </button>
+-                    <button
+-                      style={{
+-                        padding: '8px 16px',
+-                        background: 'transparent',
+-                        color: '#666',
+-                        border: '1px solid #d0c4b0',
+-                        borderRadius: 6,
+-                        fontSize: 14,
+-                        fontWeight: 500,
+-                        cursor: 'pointer',
+-                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+-                      }}
+-                    >
+-                      中文
+-                    </button>
+-                  </div>
++                  <p style={{
++                    margin: 0,
++                    fontSize: 13,
++                    color: '#666',
++                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
++                  }}>
++                    {t('settings.language.description')}
++                  </p>
+                 </div>
++
++                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
++                  {LANGUAGE_CODES.map(code => {
++                    const isActive = currentLanguage === code;
++                    return (
++                      <button
++                        key={code}
++                        onClick={() => handleUILanguageChange(code)}
++                        style={{
++                          padding: '8px 16px',
++                          background: isActive ? '#2c2c2c' : 'transparent',
++                          color: isActive ? '#fff' : '#666',
++                          border: isActive ? 'none' : '1px solid #d0c4b0',
++                          borderRadius: 6,
++                          fontSize: 14,
++                          fontWeight: 500,
++                          cursor: isActive ? 'default' : 'pointer',
++                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
++                          boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
++                          transition: 'all 0.2s ease'
++                        }}
++                      >
++                        {t(`settings.language.options.${code}`)}
++                      </button>
++                    );
++                  })}
++                </div>
++
++                <p style={{
++                  marginTop: 12,
++                  fontSize: 12,
++                  color: '#8a7a69',
++                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
++                }}>
++                  {t('settings.language.preview')}
++                </p>
+               </div>
+             </section>
+ 
+
+*** MODIFIED: frontend/src/components/AnalysisView.tsx (+17/-14) ***
+@@ -1,9 +1,11 @@
+ import { useState, useEffect } from 'react';
++import { useTranslation } from 'react-i18next';
+ import { getCalendarData } from '../utils/calendarStorage';
+ import { analyzeEchoes, analyzeTraits, analyzePatterns, saveAnalysisReport, getAnalysisReports } from '../api/voiceApi';
+ import type { TextCell } from '../engine/EditorEngine';
+ import { useAuth } from '../contexts/AuthContext';
+ import { STORAGE_KEYS } from '../constants/storageKeys';
++import { getDateLocale } from '../i18n';
+ 
+ // @@@ Constants
+ const MAX_SAVED_REPORTS = 10;
+@@ -68,6 +70,8 @@ interface AnalysisReport {
+ 
+ export default function AnalysisView() {
+   const { isAuthenticated } = useAuth();
++  const { t, i18n } = useTranslation();
++  const dateLocale = getDateLocale(i18n.language);
+   const [allNotes, setAllNotes] = useState('');
+   const [echoes, setEchoes] = useState<Echo[]>([]);
+   const [traits, setTraits] = useState<Trait[]>([]);
+@@ -381,10 +385,10 @@ export default function AnalysisView() {
+             e.currentTarget.style.boxShadow = '0 4px 16px rgba(139,115,85,0.2), inset 0 1px 0 rgba(255,255,255,0.8)';
+             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,250,240,0.9) 100%)';
+           }}
+-          title="Back to Dashboard"
++          title={t('analysis.backTitle')}
+         >
+           <span style={{ fontSize: '16px' }}>←</span>
+-          <span>Back</span>
++          <span>{t('analysis.backButton')}</span>
+         </button>
+ 
+         <DecorativeInkSpots />
+@@ -440,7 +444,7 @@ export default function AnalysisView() {
+             letterSpacing: '-0.5px',
+             textShadow: '2px 2px 0px rgba(139,115,85,0.1)'
+           }}>
+-            Reflections
++            {t('analysis.title')}
+           </h1>
+           <div style={{
+             width: '80px',
+@@ -457,7 +461,7 @@ export default function AnalysisView() {
+             maxWidth: '500px',
+             margin: '0 auto'
+           }}>
+-            Patterns and insights woven through your words
++            {t('analysis.subtitle')}
+           </p>
+         </div>
+ 
+@@ -469,9 +473,9 @@ export default function AnalysisView() {
+           marginBottom: '3rem',
+           flexWrap: 'wrap'
+         }}>
+-          <VintageStatLabel label="Days" value={stats.totalDays} />
+-          <VintageStatLabel label="Entries" value={stats.totalEntries} />
+-          <VintageStatLabel label="Words" value={stats.totalWords.toLocaleString()} />
++          <VintageStatLabel label={t('analysis.stats.days')} value={stats.totalDays} />
++          <VintageStatLabel label={t('analysis.stats.entries')} value={stats.totalEntries} />
++          <VintageStatLabel label={t('analysis.stats.words')} value={stats.totalWords.toLocaleString()} />
+         </div>
+ 
+         {/* Saved Reports History */}
+@@ -486,7 +490,7 @@ export default function AnalysisView() {
+               fontFamily: 'Georgia, serif',
+               fontStyle: 'italic'
+             }}>
+-              Past Reflections
++              {t('analysis.pastReflections')}
+             </h2>
+             <div style={{
+               display: 'grid',
+@@ -533,7 +537,7 @@ export default function AnalysisView() {
+                       color: '#8B7355',
+                       fontWeight: 500
+                     }}>
+-                      {new Date(report.timestamp).toLocaleDateString('en-US', {
++                      {new Date(report.timestamp).toLocaleDateString(dateLocale, {
+                         month: 'short',
+                         day: 'numeric',
+                         year: 'numeric',
+@@ -604,7 +608,7 @@ export default function AnalysisView() {
+                         borderRadius: '12px',
+                         color: '#5d4a3a'
+                       }}>
+-                        {report.patterns.length} patterns
++                        {t('analysis.report.patternCount', { count: report.patterns.length })}
+                       </span>
+                     )}
+                   </div>
+@@ -651,7 +655,7 @@ export default function AnalysisView() {
+               }
+             }}
+           >
+-            {anyLoading ? 'Reflecting...' : 'Generate New Analysis'}
++            {anyLoading ? t('analysis.actions.generating') : t('analysis.actions.generate')}
+           </button>
+         </div>
+ 
+@@ -706,7 +710,7 @@ export default function AnalysisView() {
+               fontStyle: 'italic',
+               fontWeight: 300
+             }}>
+-              Your story awaits analysis
++              {t('analysis.empty.title')}
+             </p>
+             <p style={{
+               fontSize: '14px',
+@@ -715,7 +719,7 @@ export default function AnalysisView() {
+               margin: '0 auto',
+               lineHeight: 1.7
+             }}>
+-              Begin the journey to discover the patterns, themes, and essence woven through your words
++              {t('analysis.empty.description')}
+             </p>
+           </div>
+         )}
+@@ -1347,4 +1351,3 @@ function PatternCard({ pattern }: { pattern: Pattern }) {
+     </div>
+   );
+ }
+-
+
+*** MODIFIED: frontend/src/components/CollectionsView.tsx (+14/-9) ***
+@@ -1,8 +1,10 @@
+ import { useState, useEffect, useLayoutEffect, useRef } from 'react';
++import { useTranslation } from 'react-i18next';
+ import type { Commentor } from '../engine/EditorEngine';
+ import { findNormalizedPhrase } from '../utils/textNormalize';
+ import { useAuth } from '../contexts/AuthContext';
+ import { STORAGE_KEYS } from '../constants/storageKeys';
++import { getDateLocale } from '../i18n';
+ 
+ // @@@ TypeScript interfaces
+ interface TimelineDay {
+@@ -14,6 +16,8 @@ interface TimelineDay {
+ }
+ 
+ export default function CollectionsView({ isVisible, voiceConfigs }: { isVisible: boolean; voiceConfigs: Record<string, any> }) {
++  const { i18n } = useTranslation();
++  const dateLocale = getDateLocale(i18n.language);
+   return (
+     <div style={{
+       width: '100%',
+@@ -23,7 +27,7 @@ export default function CollectionsView({ isVisible, voiceConfigs }: { isVisible
+       background: '#f8f0e6',
+       overflow: 'hidden'
+     }}>
+-      <TimelinePage isVisible={isVisible} voiceConfigs={voiceConfigs} />
++      <TimelinePage isVisible={isVisible} voiceConfigs={voiceConfigs} dateLocale={dateLocale} />
+     </div>
+   );
+ }
+@@ -91,8 +95,8 @@ function getLocalDateString(date?: Date | string): string {
+   return `${year}-${month}-${day}`;
+ }
+ 
+-function formatDate(date: Date | string): string {
+-  return new Date(date).toLocaleDateString('en-US', {
++function formatDate(date: Date | string, locale: string): string {
++  return new Date(date).toLocaleDateString(locale, {
+     year: 'numeric',
+     month: 'short',
+     day: 'numeric'
+@@ -252,7 +256,8 @@ async function getAllNotesFromSessions(isAuthenticated: boolean): Promise<string
+ }
+ 
+ // @@@ Timeline page - combines pictures and comments by date
+-function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceConfigs: Record<string, any> }) {
++function TimelinePage({ isVisible, voiceConfigs, dateLocale }: { isVisible: boolean; voiceConfigs: Record<string, any>; dateLocale: string }) {
++  const { t } = useTranslation();
+   const { isAuthenticated } = useAuth();
+   const [starredComments, setStarredComments] = useState<Commentor[]>([]);
+   const [allCommentsByDate, setAllCommentsByDate] = useState<Map<string, Commentor[]>>(new Map());
+@@ -331,7 +336,7 @@ function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceCo
+             setStarredComments(starred);
+ 
+             // For guest mode, all comments are from today
+-            const today = formatDate(new Date());
++            const today = formatDate(new Date(), dateLocale);
+             const allComments = state.commentors?.filter((c: Commentor) => c.appliedAt) || [];
+             const commentsByDate = new Map<string, Commentor[]>();
+             if (allComments.length > 0) {
+@@ -740,20 +745,20 @@ function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceCo
+                     color: day.isToday ? '#2c2c2c' : '#666',
+                     marginBottom: '0.25rem'
+                   }}>
+-                    {day.isToday ? 'Today' : formatDate(day.date)}
++                    {day.isToday ? t('timeline.today') : formatDate(day.date, dateLocale)}
+                   </div>
+                   <div style={{
+                     fontSize: '13px',
+                     color: '#888',
+                     fontStyle: (day.isToday && !dayData?.picture) || (!textByDate.get(day.date) && !dayData?.comments?.length) ? 'italic' : 'normal'
+                   }}>
+-                    {isGenerating ? 'Generating...' :
++                    {isGenerating ? t('timeline.generating') :
+                      day.isToday && !dayData?.picture ?
+                        getPlaceholderText(day.daysOffset) :
+                      textByDate.get(day.date) ?
+                        getTextPreview(textByDate.get(day.date)!) :
+                      dayData?.comments?.length ?
+-                       `${dayData.comments.length} ${dayData.comments.length === 1 ? 'entry' : 'entries'}` :
++                       t('timeline.entryCount', { count: dayData.comments.length }) :
+                        getPlaceholderText(day.daysOffset)}
+                   </div>
+                 </div>
+@@ -1037,7 +1042,7 @@ function TimelinePage({ isVisible, voiceConfigs }: { isVisible: boolean; voiceCo
+                 fontSize: '13px',
+                 color: '#666'
+               }}>
+-                {new Date(viewingImage.date).toLocaleDateString('en-US', {
++                {new Date(viewingImage.date).toLocaleDateString(dateLocale, {
+                   year: 'numeric',
+                   month: 'long',
+                   day: 'numeric'
+
+*** MODIFIED: frontend/src/components/DeckManager.tsx (+26/-18) ***
+@@ -1,4 +1,5 @@
+ import { useState, useEffect, useRef } from 'react';
++import { useTranslation } from 'react-i18next';
+ import {
+   listDecks,
+   getDeck,
+@@ -67,6 +68,7 @@ interface Props {
+ }
+ 
+ export default function DeckManager({ onUpdate }: Props) {
++  const { t } = useTranslation();
+   const [decks, setDecks] = useState<Deck[]>([]);
+   const [communityDecks, setCommunityDecks] = useState<Deck[]>([]);
+   const [expandedDecks, setExpandedDecks] = useState<Set<string>>(new Set());
+@@ -165,7 +167,7 @@ export default function DeckManager({ onUpdate }: Props) {
+   }
+ 
+   async function handleDeleteDeck(deckId: string) {
+-    if (!confirm('Delete this deck and all its voices?')) return;
++    if (!confirm(t('deck.confirm.delete'))) return;
+ 
+     try {
+       await deleteDeck(deckId);
+@@ -177,7 +179,7 @@ export default function DeckManager({ onUpdate }: Props) {
+   }
+ 
+   async function handleSyncDeck(deckId: string) {
+-    if (!confirm('Sync with original template? This will overwrite any changes you made to this deck.')) return;
++    if (!confirm(t('deck.confirm.sync'))) return;
+ 
+     try {
+       const result = await syncDeck(deckId);
+@@ -340,7 +342,7 @@ export default function DeckManager({ onUpdate }: Props) {
+             cursor: 'pointer'
+           }}
+         >
+-          Retry
++          {t('deck.actions.retry')}
+         </button>
+       </div>
+     );
+@@ -363,15 +365,15 @@ export default function DeckManager({ onUpdate }: Props) {
+           fontFamily: 'Georgia, serif',
+           letterSpacing: '-0.5px'
+         }}>
+-          Voice Decks
++          {t('deck.heading')}
+         </h1>
+         <p style={{
+           margin: '6px 0 0',
+           fontSize: 14,
+           color: '#666',
+           fontStyle: 'italic'
+         }}>
+-          Organize your inner voices into thematic collections
++          {t('deck.subheading')}
+         </p>
+       </div>
+ 
+@@ -403,7 +405,7 @@ export default function DeckManager({ onUpdate }: Props) {
+               if (!creatingDeck) e.currentTarget.style.background = '#4a90e2';
+             }}
+           >
+-            {creatingDeck ? 'Creating...' : '+ Create New Deck'}
++            {creatingDeck ? t('deck.actions.creating') : t('deck.actions.create')}
+           </button>
+ 
+           {/* My Decks Section Header */}
+@@ -413,7 +415,7 @@ export default function DeckManager({ onUpdate }: Props) {
+             fontWeight: '500',
+             color: '#2c2c2c'
+           }}>
+-            My Decks
++            {t('deck.sections.myDecks')}
+           </h3>
+ 
+           {/* User's Decks */}
+@@ -422,6 +424,8 @@ export default function DeckManager({ onUpdate }: Props) {
+             const isSystem = !!deck.is_system; // @@@ Convert to boolean to prevent React from rendering "0"
+             const Icon = iconMap[deck.icon as keyof typeof iconMap] || FaBrain;
+             const colorHex = COLORS[deck.color as keyof typeof COLORS]?.hex || '#4a90e2';
++            const voiceCount = deck.voice_count || deck.voices?.length || 0;
++            const voiceCountLabel = t('deck.labels.voiceCount', { count: voiceCount });
+ 
+             return (
+               <div
+@@ -494,22 +498,22 @@ export default function DeckManager({ onUpdate }: Props) {
+                           padding: '2px 8px',
+                           borderRadius: 4
+                         }}>
+-                          System
++                          {t('deck.labels.system')}
+                         </span>
+                       )}
+                     </div>
+                     <div style={{
+                       fontSize: 14,
+                       color: '#666'
+                     }}>
+-                      {deck.description || 'No description'}
++                      {deck.description || t('deck.labels.noDescription')}
+                     </div>
+                     <div style={{
+                       fontSize: 12,
+                       color: '#999',
+                       marginTop: 4
+                     }}>
+-                      {deck.voice_count || deck.voices?.length || 0} voices
++                      {voiceCountLabel}
+                     </div>
+                   </div>
+ 
+@@ -594,7 +598,7 @@ export default function DeckManager({ onUpdate }: Props) {
+                               e.currentTarget.style.boxShadow = 'none';
+                             }}
+                           >
+-                            Sync with Original
++                            {t('deck.actions.sync')}
+                           </button>
+                         )}
+                         {/* @@@ Publish button for user-owned decks */}
+@@ -621,7 +625,7 @@ export default function DeckManager({ onUpdate }: Props) {
+                             e.currentTarget.style.boxShadow = 'none';
+                           }}
+                         >
+-                          {deck.published ? 'Unpublish' : 'Publish to Community'}
++                          {deck.published ? t('deck.actions.unpublish') : t('deck.actions.publish')}
+                         </button>
+                         <button
+                           onClick={() => handleDeleteDeck(deck.id)}
+@@ -645,7 +649,7 @@ export default function DeckManager({ onUpdate }: Props) {
+                             e.currentTarget.style.boxShadow = 'none';
+                           }}
+                         >
+-                          Delete Deck
++                          {t('deck.actions.delete')}
+                         </button>
+                       </>
+                     )}
+@@ -1006,7 +1010,7 @@ export default function DeckManager({ onUpdate }: Props) {
+                           }
+                         }}
+                       >
+-                        {creatingVoice === deck.id ? 'Adding...' : '+ Add Voice to this Deck'}
++                        {creatingVoice === deck.id ? t('deck.actions.addingVoice') : t('deck.actions.addVoice')}
+                       </button>
+                     )}
+ 
+@@ -1036,7 +1040,7 @@ export default function DeckManager({ onUpdate }: Props) {
+             fontWeight: '500',
+             color: '#2c2c2c'
+           }}>
+-            Community Decks ({communityDecks.length})
++            {t('deck.sections.community', { count: communityDecks.length })}
+           </h3>
+ 
+           {communityDecks.length === 0 ? (
+@@ -1047,7 +1051,7 @@ export default function DeckManager({ onUpdate }: Props) {
+               textAlign: 'center',
+               padding: '32px 0'
+             }}>
+-              No published decks yet. Be the first to share!
++              {t('deck.communityEmpty')}
+             </p>
+           ) : (
+             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+@@ -1105,7 +1109,11 @@ export default function DeckManager({ onUpdate }: Props) {
+                             fontSize: 12,
+                             color: '#999'
+                           }}>
+-                            by {deck.author_name || 'Anonymous'} · {deck.voice_count || 0} voices · {deck.install_count || 0} installs
++                            {t('deck.communityMeta', {
++                              author: deck.author_name || t('deck.labels.anonymous'),
++                              voices: deck.voice_count || 0,
++                              installs: deck.install_count || 0
++                            })}
+                           </div>
+                         </div>
+                       </div>
+@@ -1133,7 +1141,7 @@ export default function DeckManager({ onUpdate }: Props) {
+                           e.currentTarget.style.boxShadow = 'none';
+                         }}
+                       >
+-                        Install
++                        {t('deck.actions.install')}
+                       </button>
+                     </div>
+                   </div>
+
+*** MODIFIED: frontend/src/components/StateChooser.tsx (+5/-1) ***
+@@ -1,6 +1,8 @@
+ import { useState, useEffect, useRef } from 'react';
++import { useTranslation } from 'react-i18next';
+ import { StateCube } from './StateCube';
+ import type { StateConfig } from '../api/voiceApi';
++import { getDateLocale } from '../i18n';
+ 
+ interface Props {
+   stateConfig: StateConfig;
+@@ -10,6 +12,7 @@ interface Props {
+ }
+ 
+ export default function StateChooser({ stateConfig, selectedState, createdAt, onChoose }: Props) {
++  const { i18n } = useTranslation();
+   const [isExpanded, setIsExpanded] = useState(!selectedState);
+   const [shouldAnimate, setShouldAnimate] = useState(false);
+   const [isFadingOut, setIsFadingOut] = useState(false);
+@@ -32,7 +35,8 @@ export default function StateChooser({ stateConfig, selectedState, createdAt, on
+     ? new Date(createdAt + 'T00:00:00')
+     : new Date();
+ 
+-  const dateString = displayDate.toLocaleDateString('zh-CN', {
++  const dateLocale = getDateLocale(i18n.language);
++  const dateString = displayDate.toLocaleDateString(dateLocale, {
+     year: 'numeric',
+     month: 'long',
+     day: 'numeric',
+
+*** MODIFIED: frontend/src/components/TopNavBar.tsx (+11/-9) ***
+@@ -1,4 +1,5 @@
+ import { useState } from 'react';
++import { useTranslation } from 'react-i18next';
+ import { useAuth } from '../contexts/AuthContext';
+ 
+ interface Props {
+@@ -8,6 +9,7 @@ interface Props {
+ 
+ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+   const { user, logout } = useAuth();
++  const { t } = useTranslation();
+   const [showUserMenu, setShowUserMenu] = useState(false);
+   const buttonStyle = (isActive: boolean) => ({
+     height: '100%',
+@@ -82,7 +84,7 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+         <button
+           onClick={() => onViewChange('writing')}
+           style={buttonStyle(currentView === 'writing')}
+-          title="Writing"
++          title={t('nav.writing')}
+           onMouseEnter={e => {
+             if (currentView !== 'writing') {
+               e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
+@@ -94,13 +96,13 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+             }
+           }}
+         >
+-          Writing
++          {t('nav.writing')}
+         </button>
+ 
+         <button
+           onClick={() => onViewChange('timeline')}
+           style={buttonStyle(currentView === 'timeline')}
+-          title="Timeline"
++          title={t('nav.timeline')}
+           onMouseEnter={e => {
+             if (currentView !== 'timeline') {
+               e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
+@@ -112,13 +114,13 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+             }
+           }}
+         >
+-          Timeline
++          {t('nav.timeline')}
+         </button>
+ 
+         <button
+           onClick={() => onViewChange('analysis')}
+           style={buttonStyle(currentView === 'analysis')}
+-          title="Reflections"
++          title={t('nav.analysis')}
+           onMouseEnter={e => {
+             if (currentView !== 'analysis') {
+               e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
+@@ -130,13 +132,13 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+             }
+           }}
+         >
+-          Reflections
++          {t('nav.analysis')}
+         </button>
+ 
+         <button
+           onClick={() => onViewChange('decks')}
+           style={buttonStyle(currentView === 'decks')}
+-          title="Decks"
++          title={t('nav.decks')}
+           onMouseEnter={e => {
+             if (currentView !== 'decks') {
+               e.currentTarget.style.background = 'rgba(44, 44, 44, 0.04)';
+@@ -148,7 +150,7 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+             }
+           }}
+         >
+-          Decks
++          {t('nav.decks')}
+         </button>
+       </div>
+ 
+@@ -180,7 +182,7 @@ export default function LeftSidebar({ currentView, onViewChange }: Props) {
+             e.currentTarget.style.background = 'transparent';
+           }
+         }}
+-        title="Settings"
++        title={t('nav.settings')}
+       >
+         <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+           <path d="M17.502 10c0 .34-.03.66-.07.98l2.11 1.65c.19.15.24.42.12.64l-2 3.46c-.12.22-.39.3-.61.22l-2.49-1c-.52.4-1.08.73-1.69.98l-.38 2.65c-.03.24-.24.42-.49.42h-4c-.25 0-.46-.18-.49-.42l-.38-2.65c-.61-.25-1.17-.59-1.69-.98l-2.49 1c-.23.09-.49 0-.61-.22l-2-3.46c-.13-.22-.07-.49.12-.64l2.11-1.65c-.04-.32-.07-.65-.07-.98 0-.33.03-.66.07-.98L.93 7.37c-.19-.15-.24-.42-.12-.64l2-3.46c.12-.22.39-.3.61-.22l2.49 1c.52-.4 1.08-.73 1.69-.98l.38-2.65C7.01.18 7.22 0 7.47 0h4c.25 0 .46.18.49.42l.38 2.65c.61.25 1.17.59 1.69.98l2.49-1c.23-.09.49 0 .61.22l2 3.46c.12.22.07.49-.12.64l-2.11 1.65c.04.32.07.65.07.98zm-7.5 3c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/>
+
+*** MODIFIED: frontend/src/components/VoiceSettings.tsx (+9/-5) ***
+@@ -1,4 +1,5 @@
+ import { useState, useEffect, useRef } from 'react';
++import { useTranslation } from 'react-i18next';
+ import type { VoiceConfig, StateConfig, UserState } from '../api/voiceApi';
+ import { saveVoices, clearVoices, getMetaPrompt, saveMetaPrompt, getStateConfig, saveStateConfig } from '../utils/voiceStorage';
+ import {
+@@ -60,6 +61,7 @@ interface Props {
+ }
+ 
+ export default function VoiceSettings({ defaultVoices, currentVoices, currentMetaPrompt, currentStateConfig, onSave }: Props) {
++  const { t } = useTranslation();
+   const [voices, setVoices] = useState<Record<string, VoiceConfig>>({});
+   const [metaPrompt, setMetaPrompt] = useState<string>('');
+   const [stateConfig, setStateConfig] = useState<StateConfig>(getStateConfig());
+@@ -93,6 +95,7 @@ export default function VoiceSettings({ defaultVoices, currentVoices, currentMet
+     }
+   }, [currentStateConfig]);
+ 
++
+   const handleSave = async () => {
+     console.log('VoiceSettings: handleSave called');
+     try {
+@@ -203,6 +206,7 @@ export default function VoiceSettings({ defaultVoices, currentVoices, currentMet
+     input.click();
+   };
+ 
++
+   const handleAddState = () => {
+     const newId = `state_${Date.now()}`;
+     setStateConfig({
+@@ -249,15 +253,15 @@ export default function VoiceSettings({ defaultVoices, currentVoices, currentMet
+             fontFamily: 'Georgia, serif',
+             letterSpacing: '-0.5px'
+           }}>
+-            The Voice Council
++            {t('settings.heading')}
+           </h1>
+           <p style={{
+             margin: '6px 0 0',
+             fontSize: 14,
+             color: '#666',
+             fontStyle: 'italic'
+           }}>
+-            Configure your inner voices, the ones that comment on everything you write
++            {t('settings.subheading')}
+           </p>
+         </div>
+ 
+@@ -295,9 +299,9 @@ export default function VoiceSettings({ defaultVoices, currentVoices, currentMet
+                 }
+               }}
+             >
+-              {tab === 'voices' && '🎭 Voices'}
+-              {tab === 'meta' && '📜 Meta Prompt'}
+-              {tab === 'states' && '💭 User States'}
++              {tab === 'voices' && t('settings.tabs.voices')}
++              {tab === 'meta' && t('settings.tabs.meta')}
++              {tab === 'states' && t('settings.tabs.states')}
+             </button>
+           ))}
+ 
+
+*** ADDED: frontend/src/i18n.ts (+227/-0) ***
+@@ -0,0 +1,227 @@
++import i18n from 'i18next';
++import { initReactI18next } from 'react-i18next';
++
++const LANGUAGE_STORAGE_KEY = 'ink-language';
++
++const resources = {
++  en: {
++    translation: {
++      nav: {
++        writing: 'Writing',
++        timeline: 'Timeline',
++        analysis: 'Reflections',
++        decks: 'Decks',
++        settings: 'Settings'
++      },
++      settings: {
++        heading: 'The Voice Council',
++        subheading: 'Configure the inner voices that annotate everything you write.',
++        tabs: {
++          voices: '🎭 Voices',
++          meta: '📜 Meta Prompt',
++          states: '💭 User States'
++        },
++        language: {
++          title: 'Interface Language',
++          description: 'Choose which language the UI uses while your writing stays untouched.',
++          placeholder: 'Select a language',
++          preview: 'Changes apply immediately to menus, buttons, and helper copy.',
++          options: {
++            en: 'English',
++            zh: '中文 (Chinese)'
++          }
++        }
++      },
++      analysis: {
++        title: 'Reflections',
++        subtitle: 'Patterns and insights woven through your words',
++        backButton: 'Back',
++        backTitle: 'Back to Dashboard',
++        stats: {
++          days: 'Days',
++          entries: 'Entries',
++          words: 'Words'
++        },
++        pastReflections: 'Past Reflections',
++        report: {
++          patternCount: '{{count}} patterns'
++        },
++        actions: {
++          generate: 'Generate New Analysis',
++          generating: 'Reflecting...'
++        },
++        empty: {
++          title: 'Your story awaits analysis',
++          description: 'Begin the journey to discover the patterns, themes, and essence woven through your words'
++        }
++      },
++      deck: {
++        heading: 'Voice Decks',
++        subheading: 'Organize your inner voices into thematic collections',
++        actions: {
++          retry: 'Retry',
++          create: '+ Create New Deck',
++          creating: 'Creating...',
++          addVoice: '+ Add Voice to this Deck',
++          addingVoice: 'Adding...',
++          install: 'Install',
++          sync: 'Sync with Original',
++          publish: 'Publish to Community',
++          unpublish: 'Unpublish',
++          delete: 'Delete Deck'
++        },
++        sections: {
++          myDecks: 'My Decks',
++          community: 'Community Decks ({{count}})'
++        },
++        labels: {
++          system: 'System',
++          noDescription: 'No description',
++          voiceCount: '{{count}} voices',
++          anonymous: 'Anonymous'
++        },
++        communityMeta: 'by {{author}} · {{voices}} voices · {{installs}} installs',
++        communityEmpty: 'No published decks yet. Be the first to share!',
++        confirm: {
++          delete: 'Delete this deck and all its voices?',
++          sync: 'Sync with original template? This will overwrite any changes you made to this deck.'
++        }
++      },
++      timeline: {
++        today: 'Today',
++        generating: 'Generating...',
++        entryCount_one: '{{count}} entry',
++        entryCount_other: '{{count}} entries'
++      }
++    }
++  },
++  zh: {
++    translation: {
++      nav: {
++        writing: '写作',
++        timeline: '时间线',
++        analysis: '回顾',
++        decks: '卡组',
++        settings: '设置'
++      },
++      settings: {
++        heading: '心灵议会',
++        subheading: '在这里整理那些会对你文字发表评论的声音。',
++        tabs: {
++          voices: '🎭 声线',
++          meta: '📜 元提示',
++          states: '💭 心情状态'
++        },
++        language: {
++          title: '界面语言',
++          description: '切换界面上的文字语言，日记内容保持原样。',
++          placeholder: '选择语言',
++          preview: '切换后菜单、按钮与说明会立即更新。',
++          options: {
++            en: 'English (英语)',
++            zh: '中文'
++          }
++        }
++      },
++      analysis: {
++        title: '回顾',
++        subtitle: '读出文字里编织的脉络与启示',
++        backButton: '返回',
++        backTitle: '回到总览',
++        stats: {
++          days: '天数',
++          entries: '篇章',
++          words: '字数'
++        },
++        pastReflections: '历史回顾',
++        report: {
++          patternCount: '{{count}} 个模式'
++        },
++        actions: {
++          generate: '生成全新分析',
++          generating: '解析中...'
++        },
++        empty: {
++          title: '等待解析的故事',
++          description: '开始探索文字里反复出现的主题、情绪与线索'
++        }
++      },
++      deck: {
++          heading: '声线卡组',
++          subheading: '以主题整理你的心灵声线',
++          actions: {
++            retry: '重试',
++            create: '+ 新建卡组',
++            creating: '建立中...',
++            addVoice: '+ 向卡组添加声线',
++            addingVoice: '添加中...',
++            install: '安装',
++            sync: '与原版同步',
++            publish: '发布到社区',
++            unpublish: '取消发布',
++            delete: '删除卡组'
++          },
++        sections: {
++          myDecks: '我的卡组',
++          community: '社区卡组（{{count}}）'
++        },
++        labels: {
++          system: '系统',
++          noDescription: '暂无简介',
++          voiceCount: '{{count}} 条声线',
++          anonymous: '匿名'
++        },
++        communityMeta: '由 {{author}} 创作 · {{voices}} 条声线 · {{installs}} 次安装',
++        communityEmpty: '尚无公开卡组，来做第一位分享的人吧！',
++        confirm: {
++          delete: '确定删除这个卡组以及所有声线？',
++          sync: '与原模板同步？这会覆盖你在卡组里的修改。'
++        }
++      },
++      timeline: {
++        today: '今天',
++        generating: '生成中...',
++        entryCount_one: '{{count}} 条记录',
++        entryCount_other: '{{count}} 条记录'
++      }
++    }
++  }
++};
++
++const fallback = 'en';
++
++function getInitialLanguage(): string {
++  if (typeof window === 'undefined') {
++    return fallback;
++  }
++  return localStorage.getItem(LANGUAGE_STORAGE_KEY) || fallback;
++}
++
++i18n
++  .use(initReactI18next)
++  .init({
++    resources,
++    lng: getInitialLanguage(),
++    fallbackLng: fallback,
++    interpolation: {
++      escapeValue: false
++    }
++  });
++
++if (typeof window !== 'undefined') {
++  i18n.on('languageChanged', (lng) => {
++    try {
++      localStorage.setItem(LANGUAGE_STORAGE_KEY, lng);
++    } catch (error) {
++      console.warn('Failed to persist language preference:', error);
++    }
++  });
++}
++
++export { LANGUAGE_STORAGE_KEY };
++export function getDateLocale(language?: string | null): string {
++  if (!language) return 'en-US';
++  return language.startsWith('zh') ? 'zh-CN' : 'en-US';
++}
++
++export default i18n;
+
+*** MODIFIED: frontend/src/main.tsx (+1/-0) ***
+@@ -1,6 +1,7 @@
+ import { StrictMode } from 'react'
+ import { createRoot } from 'react-dom/client'
+ import './index.css'
++import './i18n'
+ import App from './App.tsx'
+ import { AuthProvider } from './contexts/AuthContext'
+ 
