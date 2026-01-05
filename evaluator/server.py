@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv('.env.local')
 
 # Import evaluator
-from evaluator.full_context_cached_evaluator import FullContextCachedEvaluator
+from full_context_cached_evaluator import FullContextCachedEvaluator
 
 app = FastAPI(title="Engineer Skill Evaluator API")
 
@@ -273,6 +273,255 @@ def get_or_create_evaluator(
 
     print(f"✓ Created new evaluator for {owner}/{repo}")
     return evaluator
+
+
+@app.get("/api/local/authors/{owner}/{repo}")
+async def get_local_authors(owner: str, repo: str):
+    """
+    Get list of authors from local commit data
+    Reads from data/{owner}/{repo}/commits/*.json files
+    """
+    try:
+        data_dir = Path("data") / owner / repo
+        commits_dir = data_dir / "commits"
+
+        if not commits_dir.exists():
+            raise HTTPException(status_code=404, detail=f"No local data found for {owner}/{repo}")
+
+        # Collect authors from all commit.json files
+        authors_map = {}
+
+        # Look for commit directories (hash-based structure)
+        for commit_hash_dir in commits_dir.iterdir():
+            if commit_hash_dir.is_dir():
+                commit_file = commit_hash_dir / f"{commit_hash_dir.name}.json"
+                if commit_file.exists():
+                    try:
+                        with open(commit_file, 'r', encoding='utf-8') as f:
+                            commit_data = json.load(f)
+                            author = commit_data.get("author")
+                            email = commit_data.get("email", "")
+
+                            if author:
+                                if author not in authors_map:
+                                    authors_map[author] = {
+                                        "author": author,
+                                        "email": email,
+                                        "commits": 0
+                                    }
+                                authors_map[author]["commits"] += 1
+                    except Exception as e:
+                        print(f"⚠ Error reading {commit_file}: {e}")
+                        continue
+
+        # Also check for direct .json files in commits directory (alternative structure)
+        for commit_file in commits_dir.glob("*.json"):
+            try:
+                with open(commit_file, 'r', encoding='utf-8') as f:
+                    commit_data = json.load(f)
+                    author = commit_data.get("author")
+                    email = commit_data.get("email", "")
+
+                    if author:
+                        if author not in authors_map:
+                            authors_map[author] = {
+                                "author": author,
+                                "email": email,
+                                "commits": 0
+                            }
+                        authors_map[author]["commits"] += 1
+            except Exception as e:
+                print(f"⚠ Error reading {commit_file}: {e}")
+                continue
+
+        if not authors_map:
+            raise HTTPException(status_code=404, detail=f"No commit data found in {commits_dir}")
+
+        # Sort by commit count
+        authors_list = sorted(
+            authors_map.values(),
+            key=lambda x: x["commits"],
+            reverse=True
+        )
+
+        return {
+            "success": True,
+            "data": {
+                "owner": owner,
+                "repo": repo,
+                "authors": authors_list,
+                "total_authors": len(authors_list)
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Failed to get local authors: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to get authors: {str(e)}")
+
+
+@app.post("/api/local/evaluate/{owner}/{repo}/{author}")
+async def evaluate_local_author(
+    owner: str,
+    repo: str,
+    author: str,
+    limit: int = Query(30, ge=1, le=100),
+    use_cache: bool = Query(True)
+):
+    """
+    Evaluate an author using local commit data only
+    No GitHub/Gitee API calls - works entirely with local data
+    """
+    try:
+        data_dir = Path("data") / owner / repo
+
+        if not data_dir.exists():
+            raise HTTPException(status_code=404, detail=f"No local data found for {owner}/{repo}")
+
+        # For local evaluation, directly create evaluator without modifying existing data
+        cache_key = f"local_{owner}_{repo}"
+
+        # Check if evaluator is already cached
+        if use_cache and cache_key in evaluators_cache:
+            print(f"✓ Reusing cached evaluator for {owner}/{repo}")
+            evaluator = evaluators_cache[cache_key]
+        else:
+            # Create evaluator directly from existing data directory
+            api_key = os.getenv("OPEN_ROUTER_KEY")
+            if not api_key:
+                raise HTTPException(status_code=500, detail="OPEN_ROUTER_KEY not configured")
+
+            evaluator = FullContextCachedEvaluator(data_dir=str(data_dir), api_key=api_key)
+            evaluators_cache[cache_key] = evaluator
+            print(f"✓ Created new evaluator for {owner}/{repo}")
+
+        # Evaluate author (uses cache if available)
+        evaluation = evaluator.evaluate_contributor(
+            contributor_name=author,
+            use_cache=use_cache,
+            force_refresh=not use_cache
+        )
+
+        if not evaluation or "evaluation" not in evaluation:
+            raise HTTPException(status_code=404, detail=f"Author '{author}' not found in local data")
+
+        eval_data = evaluation.get("evaluation", {})
+
+        # Get commit count and stats from local data
+        commits_dir = data_dir / "commits"
+        author_commits = []
+        total_additions = 0
+        total_deletions = 0
+        files_changed = set()
+        languages = set()
+
+        def parse_diff_stats(diff_path: Path) -> tuple:
+            """Parse diff file to count additions and deletions"""
+            additions = 0
+            deletions = 0
+            try:
+                if diff_path.exists():
+                    with open(diff_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        for line in f:
+                            if line.startswith('+') and not line.startswith('+++'):
+                                additions += 1
+                            elif line.startswith('-') and not line.startswith('---'):
+                                deletions += 1
+            except Exception:
+                pass
+            return additions, deletions
+
+        # Scan commits for this author
+        for commit_hash_dir in commits_dir.iterdir():
+            if commit_hash_dir.is_dir():
+                commit_file = commit_hash_dir / f"{commit_hash_dir.name}.json"
+                if commit_file.exists():
+                    try:
+                        with open(commit_file, 'r', encoding='utf-8') as f:
+                            commit_data = json.load(f)
+                            if commit_data.get("author") == author:
+                                author_commits.append(commit_data)
+                                # Extract stats from diff file
+                                if "diff" in commit_data:
+                                    diff_path = data_dir / commit_data["diff"]
+                                    adds, dels = parse_diff_stats(diff_path)
+                                    total_additions += adds
+                                    total_deletions += dels
+                                # Try to get files
+                                if "files" in commit_data:
+                                    for file in commit_data.get("files", []):
+                                        files_changed.add(file)
+                                        # Extract language from file extension
+                                        if "." in file:
+                                            ext = file.split(".")[-1]
+                                            languages.add(ext)
+                    except Exception as e:
+                        continue
+
+        # Also check direct .json files
+        for commit_file in commits_dir.glob("*.json"):
+            try:
+                with open(commit_file, 'r', encoding='utf-8') as f:
+                    commit_data = json.load(f)
+                    if commit_data.get("author") == author:
+                        author_commits.append(commit_data)
+                        # Extract stats from diff file
+                        if "diff" in commit_data:
+                            diff_path = data_dir / commit_data["diff"]
+                            adds, dels = parse_diff_stats(diff_path)
+                            total_additions += adds
+                            total_deletions += dels
+                        if "files" in commit_data:
+                            for file in commit_data.get("files", []):
+                                files_changed.add(file)
+                                if "." in file:
+                                    ext = file.split(".")[-1]
+                                    languages.add(ext)
+            except Exception as e:
+                continue
+
+        # Format response for dashboard
+        result = {
+            "success": True,
+            "evaluation": {
+                "username": author,
+                "mode": "local_data",
+                "total_commits_analyzed": len(author_commits),
+                "scores": {
+                    "ai_fullstack": eval_data.get("scores", {}).get("ai_fullstack", 0),
+                    "ai_architecture": eval_data.get("scores", {}).get("ai_architecture", 0),
+                    "cloud_native": eval_data.get("scores", {}).get("cloud_native", 0),
+                    "open_source": eval_data.get("scores", {}).get("open_source", 0),
+                    "intelligent_dev": eval_data.get("scores", {}).get("intelligent_dev", 0),
+                    "leadership": eval_data.get("scores", {}).get("leadership", 0),
+                    "reasoning": eval_data.get("reasoning", "")
+                },
+                "commits_summary": {
+                    "total_additions": total_additions,
+                    "total_deletions": total_deletions,
+                    "files_changed": len(files_changed),
+                    "languages": list(languages)[:10]
+                }
+            },
+            "metadata": {
+                "cached": evaluation.get("cached_at") is not None,
+                "timestamp": datetime.now().isoformat(),
+                "source": "local_data"
+            }
+        }
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Local evaluation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Local evaluation failed: {str(e)}")
 
 
 @app.post("/api/evaluate/{owner}/{repo}/{contributor}")
