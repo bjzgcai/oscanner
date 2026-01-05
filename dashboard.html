@@ -517,13 +517,13 @@
                 <div class="autocomplete-container">
                     <input
                         type="text"
-                        id="repoUrl"
-                        placeholder="Enter GitHub or Gitee repository URL (e.g., https://github.com/owner/repo, https://gitee.com/owner/repo, or https://z.gitee.cn/namespace/repos/owner/repo)"
+                        id="repoPath"
+                        placeholder="Enter repository path (e.g., shuxueshuxue/ink-and-memory-comprehensive)"
                         value=""
                         autocomplete="on">
                     <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
                 </div>
-                <button id="analyzeBtn" onclick="analyzeRepository()">Analyze Repository</button>
+                <button id="analyzeBtn" onclick="analyzeRepository()">Load Authors</button>
             </div>
             <div class="cache-control">
                 <label onclick="toggleCache()">
@@ -532,10 +532,10 @@
                     </div>
                     <span id="cacheLabel">Use Cache</span>
                 </label>
-                <div class="description">When enabled, uses cached data for faster results. Disable to pull fresh commits from the repository.</div>
+                <div class="description">When enabled, uses cached evaluation results. Disable to force fresh AI analysis.</div>
             </div>
             <div class="note">
-                Enter a GitHub or Gitee repository URL to analyze contributors' engineering capabilities using AI-powered commit analysis. Supports both public Gitee (gitee.com) and enterprise Gitee (z.gitee.cn).
+                Enter owner/repo path to analyze authors from local commit data. Authors are identified by their git commit author name.
             </div>
         </div>
 
@@ -569,7 +569,7 @@
     <script>
         let API_SERVER_URL = 'http://localhost:8000';
         let repoData = null;
-        let contributorsData = [];
+        let authorsData = [];
         let currentEvaluation = null;
         let chart = null;
 
@@ -580,7 +580,7 @@
         // Cache control state
         let useCache = true;
 
-        const STORAGE_KEY = 'github_repo_history';
+        const STORAGE_KEY = 'local_repo_history';
         const MAX_HISTORY = 20;
 
         const dimensions = [
@@ -667,7 +667,7 @@
 
         function showAutocomplete(suggestions) {
             const dropdown = document.getElementById('autocompleteDropdown');
-            const input = document.getElementById('repoUrl');
+            const input = document.getElementById('repoPath');
             autocompleteSelectedIndex = -1;
             autocompleteItems = suggestions;
 
@@ -677,9 +677,9 @@
                 return;
             }
 
-            dropdown.innerHTML = suggestions.map((url, index) => `
+            dropdown.innerHTML = suggestions.map((path, index) => `
                 <div class="autocomplete-item" data-index="${index}" onclick="selectAutocomplete(${index})">
-                    ${url}
+                    ${path}
                 </div>
             `).join('');
 
@@ -689,13 +689,13 @@
 
         function hideAutocomplete() {
             document.getElementById('autocompleteDropdown').classList.remove('active');
-            document.getElementById('repoUrl').classList.remove('dropdown-active');
+            document.getElementById('repoPath').classList.remove('dropdown-active');
             autocompleteSelectedIndex = -1;
         }
 
         function selectAutocomplete(index) {
             if (index >= 0 && index < autocompleteItems.length) {
-                document.getElementById('repoUrl').value = autocompleteItems[index];
+                document.getElementById('repoPath').value = autocompleteItems[index];
                 hideAutocomplete();
             }
         }
@@ -716,7 +716,7 @@
         }
 
         // Input event listener
-        document.getElementById('repoUrl').addEventListener('input', function(e) {
+        document.getElementById('repoPath').addEventListener('input', function(e) {
             const value = e.target.value.trim();
 
             if (value.length === 0) {
@@ -725,15 +725,15 @@
             }
 
             const history = getRepoHistory();
-            const filtered = history.filter(url =>
-                url.toLowerCase().includes(value.toLowerCase())
+            const filtered = history.filter(path =>
+                path.toLowerCase().includes(value.toLowerCase())
             );
 
             showAutocomplete(filtered);
         });
 
         // Focus event listener - show all history when focused with empty input
-        document.getElementById('repoUrl').addEventListener('focus', function(e) {
+        document.getElementById('repoPath').addEventListener('focus', function(e) {
             const value = e.target.value.trim();
 
             if (value.length === 0) {
@@ -745,7 +745,7 @@
         });
 
         // Keyboard navigation
-        document.getElementById('repoUrl').addEventListener('keydown', function(e) {
+        document.getElementById('repoPath').addEventListener('keydown', function(e) {
             const dropdown = document.getElementById('autocompleteDropdown');
 
             if (!dropdown.classList.contains('active')) {
@@ -813,129 +813,90 @@
             }
         }
 
-        function detectPlatform(repoUrl) {
-            // Detect if URL is GitHub or Gitee
-            if (repoUrl.includes('github.com')) {
-                return 'github';
-            } else if (repoUrl.includes('gitee.com') || repoUrl.includes('z.gitee.cn')) {
-                return 'gitee';
+        function parseRepoPath(repoPath) {
+            // Parse owner/repo format
+            const parts = repoPath.trim().split('/');
+            if (parts.length >= 2) {
+                return {
+                    owner: parts[0],
+                    repo: parts.slice(1).join('/')
+                };
             }
             return null;
         }
 
-        function parseRepoUrl(repoUrl) {
-            // Parse GitHub URL
-            let match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-            if (match) {
-                return {
-                    platform: 'github',
-                    owner: match[1],
-                    repo: match[2].replace(/\.git$/, ''),
-                    isEnterprise: false
-                };
+        function getInitials(name) {
+            // Generate initials from author name
+            const parts = name.trim().split(/\s+/);
+            if (parts.length >= 2) {
+                return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
             }
+            return name.substring(0, 2).toUpperCase();
+        }
 
-            // Parse z.gitee.cn premium format: /namespace/repos/owner/repo/sources
-            match = repoUrl.match(/z\.gitee\.cn\/([^\/]+)\/repos\/([^\/]+)\/([^\/]+)/);
-            if (match) {
-                return {
-                    platform: 'gitee',
-                    owner: match[2],
-                    repo: match[3],
-                    isEnterprise: true
-                };
-            }
-
-            // Parse standard Gitee URL: gitee.com/owner/repo
-            match = repoUrl.match(/gitee\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/|$)/);
-            if (match) {
-                return {
-                    platform: 'gitee',
-                    owner: match[1],
-                    repo: match[2],
-                    isEnterprise: false
-                };
-            }
-
-            return null;
+        function generateAvatarUrl(author) {
+            // Generate a placeholder avatar using UI Avatars
+            const initials = getInitials(author);
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=667eea&color=fff&size=128&bold=true`;
         }
 
         async function analyzeRepository() {
-            const repoUrl = document.getElementById('repoUrl').value.trim();
+            const repoPath = document.getElementById('repoPath').value.trim();
 
-            if (!repoUrl) {
-                showError('Please enter a repository URL');
+            if (!repoPath) {
+                showError('Please enter a repository path');
                 return;
             }
 
-            const parsed = parseRepoUrl(repoUrl);
+            const parsed = parseRepoPath(repoPath);
             if (!parsed) {
-                showError('Invalid repository URL format. Please use:\n• GitHub: https://github.com/owner/repo\n• Gitee: https://gitee.com/owner/repo or https://z.gitee.cn/namespace/repos/owner/repo');
+                showError('Invalid repository path format. Please use: owner/repo (e.g., shuxueshuxue/ink-and-memory-comprehensive)');
                 return;
             }
 
-            const { platform, owner, repo, isEnterprise } = parsed;
-            const apiPrefix = platform === 'gitee' ? '/api/gitee' : '/api';
-            const enterpriseParam = isEnterprise ? '&is_enterprise=true' : '';
+            const { owner, repo } = parsed;
 
-            showLoading(true, 'Fetching repository data...');
+            showLoading(true, 'Loading authors from local data...');
             hideError();
             hideResults();
 
             try {
-                // Fetch commits list
-                setLoadingText('Fetching commits...');
-                const commitsResponse = await fetch(
-                    `${API_SERVER_URL}${apiPrefix}/commits/${owner}/${repo}?limit=100${enterpriseParam}&use_cache=${useCache}`
+                // Fetch authors from local data
+                const authorsResponse = await fetch(
+                    `${API_SERVER_URL}/api/local/authors/${owner}/${repo}`
                 );
 
-                if (!commitsResponse.ok) {
-                    throw new Error('Failed to fetch commits');
+                if (!authorsResponse.ok) {
+                    const errorData = await authorsResponse.json();
+                    throw new Error(errorData.detail || 'Failed to load authors');
                 }
 
-                const commitsResult = await commitsResponse.json();
-                const commits = commitsResult.data;
+                const authorsResult = await authorsResponse.json();
+                const authors = authorsResult.data.authors;
 
-                // Extract unique contributors
-                const contributorsMap = new Map();
-                for (const commit of commits) {
-                    const author = commit.author;
-                    const commitAuthor = commit.commit?.author;
-
-                    if (author && author.login) {
-                        if (!contributorsMap.has(author.login)) {
-                            contributorsMap.set(author.login, {
-                                login: author.login,
-                                avatar_url: author.avatar_url,
-                                name: commitAuthor?.name || author.login,
-                                commits: 0
-                            });
-                        }
-                        contributorsMap.get(author.login).commits++;
-                    }
-                }
-
-                contributorsData = Array.from(contributorsMap.values())
-                    .sort((a, b) => b.commits - a.commits)
-                    .slice(0, 20);
+                // Transform authors data to include generated avatars
+                authorsData = authors.map(author => ({
+                    author: author.author,
+                    email: author.email,
+                    commits: author.commits,
+                    avatar_url: generateAvatarUrl(author.author)
+                })).slice(0, 20);
 
                 repoData = {
-                    platform,
                     owner,
                     repo,
-                    isEnterprise,
                     full_name: `${owner}/${repo}`,
-                    url: repoUrl
+                    path: repoPath
                 };
 
                 // Save to history
-                saveRepoToHistory(repoUrl);
+                saveRepoToHistory(repoPath);
 
                 displayRepoInfo();
                 showResults();
 
-                if (contributorsData.length > 0) {
-                    await evaluateContributor(0);
+                if (authorsData.length > 0) {
+                    await evaluateAuthor(0);
                 }
 
             } catch (error) {
@@ -948,41 +909,37 @@
         function displayRepoInfo() {
             document.getElementById('repoName').textContent = repoData.full_name;
             document.getElementById('repoDescription').textContent =
-                `Analyzing ${contributorsData.length} contributors`;
+                `Analyzing ${authorsData.length} authors from local commits`;
 
             const grid = document.getElementById('contributorsGrid');
-            grid.innerHTML = contributorsData.map((contributor, index) => `
-                <div class="contributor-card" onclick="evaluateContributor(${index})">
-                    <img src="${contributor.avatar_url}" alt="${contributor.login}" class="avatar">
-                    <div class="name">${contributor.login}</div>
-                    <div class="commits">${contributor.commits} commits</div>
+            grid.innerHTML = authorsData.map((author, index) => `
+                <div class="contributor-card" onclick="evaluateAuthor(${index})">
+                    <img src="${author.avatar_url}" alt="${author.author}" class="avatar">
+                    <div class="name">${author.author}</div>
+                    <div class="commits">${author.commits} commits</div>
                 </div>
             `).join('');
         }
 
-        async function evaluateContributor(index) {
-            const contributor = contributorsData[index];
+        async function evaluateAuthor(index) {
+            const author = authorsData[index];
 
             // Update active state
             document.querySelectorAll('.contributor-card').forEach((card, i) => {
                 card.classList.toggle('active', i === index);
             });
 
-            showLoading(true, `Analyzing ${contributor.login}'s commits with AI...`);
+            showLoading(true, `Analyzing ${author.author}'s commits with AI...`);
 
             try {
-                // Determine API endpoint based on platform
-                const apiPrefix = repoData.platform === 'gitee' ? '/api/gitee' : '/api';
-                const enterpriseParam = repoData.isEnterprise ? '&is_enterprise=true' : '';
-
-                // Call evaluation API
+                // Call local evaluation API using author name
                 const response = await fetch(
-                    `${API_SERVER_URL}${apiPrefix}/evaluate/${repoData.owner}/${repoData.repo}/${contributor.login}?use_cache=${useCache}${enterpriseParam}`,
+                    `${API_SERVER_URL}/api/local/evaluate/${repoData.owner}/${repoData.repo}/${encodeURIComponent(author.author)}?use_cache=${useCache}`,
                     { method: 'POST' }
                 );
 
                 if (!response.ok) {
-                    throw new Error('Failed to evaluate contributor');
+                    throw new Error('Failed to evaluate author');
                 }
 
                 const result = await response.json();
@@ -992,7 +949,7 @@
                 }
 
                 currentEvaluation = result.evaluation;
-                displayEvaluation(contributor, currentEvaluation, result.metadata);
+                displayEvaluation(author, currentEvaluation, result.metadata);
 
             } catch (error) {
                 showError(error.message);
@@ -1001,7 +958,7 @@
             }
         }
 
-        function displayEvaluation(contributor, evaluation, metadata = {}) {
+        function displayEvaluation(author, evaluation, metadata = {}) {
             const section = document.getElementById('evaluationSection');
             section.style.display = 'block';
 
@@ -1012,10 +969,11 @@
 
             // Header
             const header = document.getElementById('evalHeader');
+            const authorName = author.author || author.login || 'Unknown Author';
             header.innerHTML = `
-                <img src="${contributor.avatar_url}" alt="${contributor.login}">
+                <img src="${author.avatar_url}" alt="${authorName}">
                 <div class="eval-header-info">
-                    <h2>${contributor.login}</h2>
+                    <h2>${authorName}</h2>
                     <div class="stats">
                         ${evaluation.total_commits_analyzed} commits analyzed •
                         ${evaluation.commits_summary.total_additions} additions •
