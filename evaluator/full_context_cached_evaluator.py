@@ -341,12 +341,10 @@ class FullContextCachedEvaluator:
         # Build context for this contributor
         context = self.build_contributor_context(repo_data, contributor_name)
 
-        # Evaluate with LLM
-        prompt = f"""You are an expert engineering evaluator. Analyze the contributor "{contributor_name}" based on the full repository context below.
+        # Evaluate with LLM using prompt caching
+        system_instruction = """You are an expert engineering evaluator. Analyze contributors based on the full repository context provided.
 
-{context}
-
-TASK: Evaluate this contributor across six dimensions (0-100 each):
+TASK: Evaluate the contributor across six dimensions (0-100 each):
 
 **Dimensions**:
 1. **ai_fullstack**: AI/ML development, model training, deployment
@@ -356,24 +354,36 @@ TASK: Evaluate this contributor across six dimensions (0-100 each):
 5. **intelligent_dev**: Testing, automation, tooling
 6. **leadership**: Technical decisions, optimization, best practices
 
-Return ONLY valid JSON:
-{{
-  "contributor": "{contributor_name}",
-  "scores": {{
+Return ONLY valid JSON in this format:
+{
+  "contributor": "<name>",
+  "scores": {
     "ai_fullstack": <0-100>,
     "ai_architecture": <0-100>,
     "cloud_native": <0-100>,
     "open_source": <0-100>,
     "intelligent_dev": <0-100>,
     "leadership": <0-100>
-  }},
+  },
   "strengths": ["strength 1", "strength 2", "strength 3"],
   "areas_to_develop": ["area 1", "area 2"],
   "reasoning": "Brief explanation (2-4 sentences)"
-}}"""
+}"""
 
         try:
             print("\nSending to LLM...")
+
+            # Combine system instruction and context into user message for OpenRouter compatibility
+            full_prompt = f"""{system_instruction}
+
+# Repository Context
+
+{context}
+
+---
+
+Now evaluate contributor: {contributor_name}"""
+
             response = requests.post(
                 self.api_url,
                 headers={
@@ -382,7 +392,12 @@ Return ONLY valid JSON:
                 },
                 json={
                     "model": "anthropic/claude-sonnet-4.5",
-                    "messages": [{"role": "user", "content": prompt}],
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": full_prompt
+                        }
+                    ],
                     "temperature": 0.3,
                     "max_tokens": 4000
                 },
@@ -402,19 +417,46 @@ Return ONLY valid JSON:
             else:
                 evaluation = {}
 
-            # Log token usage
+            # Log token usage with cache statistics
             usage = result.get("usage", {})
             print(f"\n✓ Evaluation complete!")
-            print(f"  Input tokens: {usage.get('prompt_tokens', 0):,}")
-            print(f"  Output tokens: {usage.get('completion_tokens', 0):,}")
-            print(f"  Total tokens: {usage.get('total_tokens', 0):,}")
 
-            input_cost = usage.get('prompt_tokens', 0) * 0.000003
-            output_cost = usage.get('completion_tokens', 0) * 0.000015
-            print(f"  Cost: ${input_cost + output_cost:.4f}")
+            # Cache-aware token reporting
+            prompt_tokens = usage.get('prompt_tokens', 0)
+            cache_creation = usage.get('cache_creation_input_tokens', 0)
+            cache_read = usage.get('cache_read_input_tokens', 0)
+            completion_tokens = usage.get('completion_tokens', 0)
 
-            # Save to cache
-            self.save_to_cache(contributor_name, evaluation)
+            if cache_creation > 0:
+                print(f"  📝 Cache created: {cache_creation:,} tokens")
+                print(f"  🔹 Uncached input: {prompt_tokens - cache_creation:,} tokens")
+            elif cache_read > 0:
+                print(f"  ⚡ Cache hit: {cache_read:,} tokens (cached)")
+                print(f"  🔹 Uncached input: {prompt_tokens:,} tokens")
+            else:
+                print(f"  🔹 Input tokens: {prompt_tokens:,}")
+
+            print(f"  🔸 Output tokens: {completion_tokens:,}")
+            print(f"  📊 Total tokens: {usage.get('total_tokens', 0):,}")
+
+            # Calculate cost (cache reads are 90% cheaper: $0.30 vs $3.00 per million)
+            cache_read_cost = cache_read * 0.0000003  # $0.30 per 1M
+            cache_write_cost = cache_creation * 0.00000375  # $3.75 per 1M (25% markup)
+            regular_input_cost = (prompt_tokens - cache_creation) * 0.000003  # $3.00 per 1M
+            output_cost = completion_tokens * 0.000015  # $15.00 per 1M
+
+            total_cost = cache_read_cost + cache_write_cost + regular_input_cost + output_cost
+            print(f"  💰 Cost: ${total_cost:.4f}")
+
+            if cache_read > 0:
+                saved = (cache_read * 0.000003) - cache_read_cost
+                print(f"  💚 Cache savings: ${saved:.4f}")
+
+            # Only save to cache if evaluation is valid
+            if evaluation and evaluation.get("scores"):
+                self.save_to_cache(contributor_name, evaluation)
+            else:
+                print(f"⚠ Evaluation returned empty or invalid result - not caching")
 
             # Return consistent structure (same as cached format)
             return {
@@ -426,6 +468,8 @@ Return ONLY valid JSON:
 
         except Exception as e:
             print(f"✗ Evaluation failed: {e}")
+            import traceback
+            traceback.print_exc()
             return {}
 
     def evaluate_all_contributors(self, use_cache: bool = True) -> Dict[str, Any]:
