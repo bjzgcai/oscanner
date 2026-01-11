@@ -1,0 +1,301 @@
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.dashboard-header {
+  text-align: center;
+  color: white;
+  margin-bottom: 40px;
+}
+
+.dashboard-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.dashboard-header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 10px;
+}
+
+.dashboard-header .badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.input-section {
+  margin-bottom: 30px;
+}
+
+.input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.autocomplete-container {
+  position: relative;
+  flex: 1;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete-item {
+  padding: 12px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover {
+  background-color: #f8f9fa;
+}
+
+.analyze-btn {
+  min-width: 150px;
+}
+
+.cache-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.cache-description {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.note {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 10px;
+}
+
+.loading-card {
+  text-align: center;
+  padding: 40px;
+  margin-bottom: 30px;
+}
+
+.repo-info {
+  margin-bottom: 30px;
+}
+
+.repo-info h2 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+}
+
+.contributors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.contributor-card {
+  text-align: center;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.contributor-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.contributor-card.active {
+  border-color: #667eea !important;
+  background: #e8eaf6;
+}
+
+.contributor-name {
+  font-weight: 600;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.contributor-commits {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.evaluation-section {
+  margin-bottom: 30px;
+}
+
+.eval-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.eval-header-info {
+  flex: 1;
+}
+
+.eval-header-info h2 {
+  color: #333;
+  margin-bottom: 5px;
+  font-size: 1.5rem;
+}
+
+.eval-header-info .stats {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.eval-badge {
+  margin-left: auto;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chart-container {
+  position: relative;
+  height: 400px;
+  margin: 30px 0;
+}
+
+.dimensions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.dimension-card {
+  border-left: 4px solid #667eea !important;
+}
+
+.dimension-card h4 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+.dimension-card .score {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #667eea;
+  margin: 15px 0;
+}
+
+.dimension-card .description {
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-top: 15px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: #e0e0e0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 15px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 5px;
+  transition: width 0.8s ease;
+}
+
+.reasoning-section {
+  background: #e8eaf6 !important;
+  margin-top: 30px;
+}
+
+.reasoning-section h3 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.reasoning-section p {
+  color: #555;
+  line-height: 1.6;
+}
+
+.commit-summary {
+  margin-top: 30px;
+}
+
+.commit-summary h3 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.summary-stat {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.summary-stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #667eea;
+  margin-bottom: 5px;
+}
+
+.summary-stat-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.languages-list {
+  margin-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
