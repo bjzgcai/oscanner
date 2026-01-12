@@ -400,17 +400,18 @@ async def get_authors(owner: str, repo: str, use_cache: bool = Query(True)):
     Get list of authors from commit data with smart caching
 
     Flow:
-    1. Check if evaluations exist in cache - if yes, return cached data
+    1. Validate evaluation cache if it exists (clear if corrupted)
     2. Check if local data exists in data/{owner}/{repo}
     3. If no local data, extract it from GitHub
-    4. Load all authors from commits
-    5. Evaluate first author automatically
-    6. Cache and return results
+    4. Load ALL authors from commits (always scans all commits)
+    5. Evaluate first author automatically (skip if already cached)
+    6. Return complete authors list
     """
     try:
         data_dir = DATA_DIR / owner / repo
 
-        # Step 1: Check evaluation cache first and validate
+        # Step 1: Validate evaluation cache if it exists
+        cached_evaluations = None
         if use_cache:
             cached_evaluations = load_evaluation_cache(owner, repo)
             if cached_evaluations:
@@ -445,34 +446,10 @@ async def get_authors(owner: str, repo: str, use_cache: bool = Query(True)):
                                 cache_path = get_evaluation_cache_path(owner, repo)
                                 if cache_path.exists():
                                     cache_path.unlink()
+                                cached_evaluations = None
                                 break
                         if not cache_valid:
                             break
-
-                if cache_valid:
-                    # Extract authors list from cache
-                    authors_list = []
-                    for author, eval_data in cached_evaluations.items():
-                        evaluation = eval_data.get("evaluation", {})
-                        authors_list.append({
-                            "author": author,
-                            "email": evaluation.get("email", ""),
-                            "commits": evaluation.get("total_commits_analyzed", 0)
-                        })
-
-                    # Sort by commits
-                    authors_list.sort(key=lambda x: x["commits"], reverse=True)
-
-                    return {
-                        "success": True,
-                        "data": {
-                            "owner": owner,
-                            "repo": repo,
-                            "authors": authors_list,
-                            "total_authors": len(authors_list),
-                            "cached": True
-                        }
-                    }
 
         # Step 2 & 3: Check if local data exists, if not extract it
         if not data_dir.exists() or not (data_dir / "commits").exists():
@@ -532,45 +509,51 @@ async def get_authors(owner: str, repo: str, use_cache: bool = Query(True)):
             reverse=True
         )
 
-        # Step 5: Evaluate first author automatically
+        # Step 5: Evaluate first author automatically (if not already cached)
         first_author = authors_list[0]["author"]
-        print(f"\nAuto-evaluating first author: {first_author}")
+        has_cached_data = bool(cached_evaluations and len(cached_evaluations) > 0)
+        first_author_cached = (first_author in cached_evaluations) if cached_evaluations else False
 
-        try:
-            # Create evaluator
-            api_key = os.getenv("OPEN_ROUTER_KEY")
-            if not api_key:
-                raise HTTPException(status_code=500, detail="OPEN_ROUTER_KEY not configured")
+        if not first_author_cached:
+            print(f"\nAuto-evaluating first author: {first_author}")
 
-            evaluator = CommitEvaluatorModerate(
-                data_dir=str(data_dir),
-                api_key=api_key,
-                mode="moderate"
-            )
+            try:
+                # Create evaluator
+                api_key = os.getenv("OPEN_ROUTER_KEY")
+                if not api_key:
+                    raise HTTPException(status_code=500, detail="OPEN_ROUTER_KEY not configured")
 
-            # Load ALL commits
-            commits = load_commits_from_local(data_dir, limit=None)
-            if commits:
-                # Evaluate first author with all their commits
-                evaluation = evaluator.evaluate_engineer(
-                    commits=commits,
-                    username=first_author,
-                    max_commits=None,  # Evaluate all commits
-                    load_files=True,
-                    use_chunking=True  # Enable chunked evaluation
+                evaluator = CommitEvaluatorModerate(
+                    data_dir=str(data_dir),
+                    api_key=api_key,
+                    mode="moderate"
                 )
 
-                if evaluation and "scores" in evaluation:
-                    # Add email to evaluation
-                    evaluation["email"] = authors_list[0]["email"]
+                # Load ALL commits
+                commits = load_commits_from_local(data_dir, limit=None)
+                if commits:
+                    # Evaluate first author with all their commits
+                    evaluation = evaluator.evaluate_engineer(
+                        commits=commits,
+                        username=first_author,
+                        max_commits=None,  # Evaluate all commits
+                        load_files=True,
+                        use_chunking=True  # Enable chunked evaluation
+                    )
 
-                    # Cache the evaluation
-                    add_evaluation_to_cache(owner, repo, first_author, evaluation)
-                    print(f"✓ Cached evaluation for {first_author}")
+                    if evaluation and "scores" in evaluation:
+                        # Add email to evaluation
+                        evaluation["email"] = authors_list[0]["email"]
 
-        except Exception as e:
-            print(f"⚠ Failed to auto-evaluate first author: {e}")
-            # Continue even if evaluation fails
+                        # Cache the evaluation
+                        add_evaluation_to_cache(owner, repo, first_author, evaluation)
+                        print(f"✓ Cached evaluation for {first_author}")
+
+            except Exception as e:
+                print(f"⚠ Failed to auto-evaluate first author: {e}")
+                # Continue even if evaluation fails
+        else:
+            print(f"✓ First author {first_author} already cached, skipping evaluation")
 
         return {
             "success": True,
@@ -579,7 +562,7 @@ async def get_authors(owner: str, repo: str, use_cache: bool = Query(True)):
                 "repo": repo,
                 "authors": authors_list,
                 "total_authors": len(authors_list),
-                "cached": False
+                "cached": has_cached_data
             }
         }
 
