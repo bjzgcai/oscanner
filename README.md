@@ -56,19 +56,42 @@ See [FULL_REPO_ANALYSIS_EXPLAINED.md](FULL_REPO_ANALYSIS_EXPLAINED.md) for detai
 
 For API-based evaluation with caching:
 
-#### 1. Start the Server
+#### 1. Configure Ports (Optional)
 
+Edit `.env.local` files to configure ports (defaults: evaluator=8000, webapp=3000):
+
+```bash
+# evaluator/.env.local
+PORT=8000
+
+# webapp/.env.local
+PORT=3000
+```
+
+#### 2. Start the Services
+
+**Development Mode** (with auto-reload):
+```bash
+./start_dev.sh
+```
+
+**Production Mode** (optimized):
+```bash
+./start_production.sh
+```
+
+**Evaluator Only**:
 ```bash
 ./start_server.sh
 ```
 
-make sure the server port is 8000.
+#### 3. Access the Application
 
-#### 2. Open the Dashboard
+- **Webapp Dashboard**: http://localhost:3000 (or your configured PORT)
+- **API Server**: http://localhost:8000 (or your configured PORT)
+- **API Documentation**: http://localhost:8000/docs
 
-Open `dashboard.html` in your browser
-
-#### 3. Analyze Engineers
+#### 4. Analyze Engineers
 
 **Via Dashboard:**
 1. Enter a GitHub/Gitee repository URL
