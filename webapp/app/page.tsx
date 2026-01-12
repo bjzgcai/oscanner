@@ -114,7 +114,7 @@ export default function Dashboard() {
   };
 
   const generateAvatarUrl = (author: string) => {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=667eea&color=fff&size=128&bold=true`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=128&bold=true`;
   };
 
   const parseGitHubUrl = (input: string): { owner: string; repo: string } | null => {
@@ -249,14 +249,15 @@ export default function Dashboard() {
         label: 'Engineering Skills',
         data: dimensions.map(d => evaluation.scores[d.key] || 0),
         fill: true,
-        backgroundColor: 'rgba(102, 126, 234, 0.2)',
-        borderColor: 'rgb(102, 126, 234)',
-        pointBackgroundColor: 'rgb(102, 126, 234)',
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: 'rgb(102, 126, 234)',
-        pointRadius: 6,
-        pointHoverRadius: 8
+        backgroundColor: 'rgba(255, 235, 0, 0.15)',
+        borderColor: '#FFEB00',
+        pointBackgroundColor: '#00F0FF',
+        pointBorderColor: '#0A0A0A',
+        pointHoverBackgroundColor: '#FF006B',
+        pointHoverBorderColor: '#FFEB00',
+        pointRadius: 8,
+        pointHoverRadius: 12,
+        borderWidth: 3
       }]
     };
   };
@@ -268,23 +269,31 @@ export default function Dashboard() {
       r: {
         angleLines: {
           display: true,
-          color: '#ddd'
+          color: '#333',
+          lineWidth: 2
         },
         grid: {
-          color: '#ddd'
+          color: '#333',
+          lineWidth: 2
         },
         suggestedMin: 0,
         suggestedMax: 100,
         ticks: {
           stepSize: 20,
+          backdropColor: 'transparent',
+          color: '#B0B0B0',
           font: {
-            size: 12
+            size: 12,
+            family: "'Azeret Mono', monospace",
+            weight: 'bold' as const
           }
         },
         pointLabels: {
+          color: '#FFFFFF',
           font: {
             size: 13,
-            weight: 600
+            weight: 'bold' as const,
+            family: "'Syne', sans-serif"
           }
         }
       }
