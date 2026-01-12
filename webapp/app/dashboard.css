@@ -208,15 +208,32 @@
 
 .dimension-card h4 {
   color: #333;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
   font-size: 1.1rem;
 }
 
-.dimension-card .score {
-  font-size: 3rem;
+.dimension-card .score-display {
+  margin: 15px 0;
+}
+
+.dimension-card .score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dimension-card .score-row .score-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.dimension-card .score-row .score {
+  font-size: 2rem;
   font-weight: bold;
   color: #667eea;
-  margin: 15px 0;
+  margin: 0;
 }
 
 .dimension-card .description {
@@ -232,7 +249,7 @@
   background: #e0e0e0;
   border-radius: 5px;
   overflow: hidden;
-  margin: 15px 0;
+  margin: 8px 0;
 }
 
 .progress-fill {
