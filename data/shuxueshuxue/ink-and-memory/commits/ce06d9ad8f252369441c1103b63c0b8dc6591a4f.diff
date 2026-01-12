@@ -1,9 +1,0 @@
-*** FILE: .github/workflows/deploy-frontend.yml ***
-@@ -43,6 +43,7 @@ jobs:
-           key: ${{ secrets.SERVER_SSH_KEY }}
-           source: "frontend/dist/**"
-           target: "/var/www/lexicalmathical.com/ink-and-memory/"
-+          strip_components: 2
-           overwrite: true
- 
-       - name: Fix ownership

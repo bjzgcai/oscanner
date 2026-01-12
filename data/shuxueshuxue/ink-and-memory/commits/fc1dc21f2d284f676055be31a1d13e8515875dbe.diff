@@ -1,9 +1,0 @@
-*** FILE: .github/workflows/deploy-backend.yml ***
-@@ -60,6 +60,7 @@ jobs:
-             IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}"
-             cd /root/ink-and-memory/backend
-             mkdir -p /root/ink-and-memory/backend/data
-+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u shuxueshuxue --password-stdin
-             docker pull "${IMAGE_TAG}"
-             docker rm -f ink-backend || true
-             tmux kill-session -t ink-and-memory-docker || true
