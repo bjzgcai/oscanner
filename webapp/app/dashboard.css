@@ -158,6 +158,20 @@
   margin-bottom: 30px;
 }
 
+.evaluation-section .ant-spin-container {
+  min-height: 300px;
+}
+
+.evaluation-section .ant-spin-blur {
+  opacity: 0.3;
+  pointer-events: none;
+  user-select: none;
+}
+
+.evaluation-section .ant-spin-blur::after {
+  opacity: 0.6;
+}
+
 .eval-header {
   display: flex;
   align-items: center;

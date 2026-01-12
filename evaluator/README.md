@@ -123,6 +123,177 @@ PUBLIC_GITEE_TOKEN=your_public_gitee_token
 GITEE_TOKEN=your_enterprise_gitee_token
 ```
 
+## Complete Workflow
+
+### System Architecture
+
+The evaluation system follows this intelligent workflow to minimize API calls and maximize caching:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  User enters GitHub URL (e.g., github.com/owner/repo)          │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Frontend: GET /api/local/authors/{owner}/{repo}                │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Backend: Check evaluation cache at                             │
+│  evaluations/cache/{owner}/{repo}/evaluations.json              │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+         ┌───────────┴───────────┐
+         │                       │
+    Cache Hit               Cache Miss
+         │                       │
+         ▼                       ▼
+    Return cached     ┌──────────────────────────┐
+    author list       │ Check local data at      │
+    instantly ⚡      │ data/{owner}/{repo}/     │
+                      └──────────┬───────────────┘
+                                 │
+                     ┌───────────┴───────────┐
+                     │                       │
+                Data Exists            Data Missing
+                     │                       │
+                     │                       ▼
+                     │          ┌─────────────────────────────┐
+                     │          │ Extract from GitHub using   │
+                     │          │ extract_repo_data_moderate  │
+                     │          │ (1-2 minutes, once per repo)│
+                     │          └──────────┬──────────────────┘
+                     │                     │
+                     └──────────┬──────────┘
+                                │
+                                ▼
+                   ┌────────────────────────────┐
+                   │ Load all authors from      │
+                   │ commit data                │
+                   └────────────┬───────────────┘
+                                │
+                                ▼
+                   ┌────────────────────────────┐
+                   │ Auto-evaluate first author │
+                   │ with AI (Claude 4.5 haiku) │
+                   └────────────┬───────────────┘
+                                │
+                                ▼
+                   ┌────────────────────────────┐
+                   │ Cache evaluation result    │
+                   │ in evaluations.json        │
+                   └────────────┬───────────────┘
+                                │
+                                ▼
+                   ┌────────────────────────────┐
+                   │ Return all authors list    │
+                   └────────────────────────────┘
+```
+
+### Evaluation Flow (Per Author)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  User clicks on author                                          │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Frontend: POST /api/evaluate/{owner}/{repo}/{author}           │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Backend: Check if author exists in evaluation cache            │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+         ┌───────────┴───────────┐
+         │                       │
+    Cache Hit               Cache Miss
+         │                       │
+         ▼                       ▼
+    Return cached     ┌──────────────────────────┐
+    evaluation        │ Load commits from local  │
+    instantly ⚡      │ data (up to 30 commits)  │
+                      └──────────┬───────────────┘
+                                 │
+                                 ▼
+                      ┌──────────────────────────┐
+                      │ Create evaluator with    │
+                      │ repository context       │
+                      └──────────┬───────────────┘
+                                 │
+                                 ▼
+                      ┌──────────────────────────┐
+                      │ Evaluate author with AI  │
+                      │ - Analyze commit diffs   │
+                      │ - Read relevant files    │
+                      │ - Score 6 dimensions     │
+                      └──────────┬───────────────┘
+                                 │
+                                 ▼
+                      ┌──────────────────────────┐
+                      │ Cache evaluation result  │
+                      └──────────┬───────────────┘
+                                 │
+                                 ▼
+                      ┌──────────────────────────┐
+                      │ Return evaluation        │
+                      └──────────────────────────┘
+```
+
+### Directory Structure After Processing
+
+```
+evaluator/
+├── data/                                    # Repository data (extracted once)
+│   └── {owner}/
+│       └── {repo}/
+│           ├── repo_info.json              # Repository metadata
+│           ├── repo_tree.json              # File tree structure
+│           ├── commits_index.json          # Index of all commits
+│           ├── commits_list.json           # API commit list
+│           ├── commits/
+│           │   ├── {sha}.json              # Commit metadata + diff
+│           │   └── {sha}.diff              # Commit diff (separate)
+│           └── files/
+│               └── {filepath}              # Current file contents
+│
+└── evaluations/                             # Cached evaluations
+    └── cache/
+        └── {owner}/
+            └── {repo}/
+                └── evaluations.json        # All author evaluations
+                                            # {
+                                            #   "author1": {
+                                            #     "evaluation": {...},
+                                            #     "timestamp": "...",
+                                            #     "cached": true
+                                            #   },
+                                            #   "author2": {...}
+                                            # }
+```
+
+### Performance Benefits
+
+**First Repository Access (New):**
+- 1-2 minutes to extract data from GitHub
+- AI evaluation for first author (~10-20 seconds)
+- Total: ~2 minutes
+
+**Second+ Repository Access (Cached):**
+- Authors list: **Instant** (from cache)
+- First author evaluation: **Instant** (from cache)
+- Other authors: First click ~10-20 seconds, then instant
+- Total: **< 1 second**
+
+**Token Usage:**
+- Without caching: ~50-100k tokens per evaluation × N authors = expensive
+- With caching: ~50-100k tokens × N unique evaluations = efficient
+- Cache hit rate: Typically 80-90% after initial use
+
 ## Usage
 
 ### 1. Programmatic Usage
@@ -174,19 +345,9 @@ The server will start on `http://localhost:8000` with the following endpoints:
 GET /health
 ```
 
-**Get GitHub Commits:**
-```
-GET /api/commits/{owner}/{repo}?limit=100&use_cache=true
-```
-
 **Get Gitee Commits:**
 ```
 GET /api/gitee/commits/{owner}/{repo}?limit=100&use_cache=true&is_enterprise=false
-```
-
-**Evaluate GitHub Contributor:**
-```
-POST /api/evaluate/{owner}/{repo}/{contributor}?limit=30&use_cache=true
 ```
 
 **Evaluate Gitee Contributor:**
@@ -194,24 +355,35 @@ POST /api/evaluate/{owner}/{repo}/{contributor}?limit=30&use_cache=true
 POST /api/gitee/evaluate/{owner}/{repo}/{contributor}?limit=30&use_cache=true
 ```
 
-**Get Local Authors (from cached data):**
+**Get Authors List (Smart Cache):**
 ```
 GET /api/local/authors/{owner}/{repo}
 ```
+Returns all authors with intelligent caching:
+- Checks evaluation cache first
+- If missing, checks local data
+- If missing, extracts from GitHub automatically
+- Auto-evaluates first author
 
-**Evaluate Using Local Data:**
+**Evaluate Author (Primary Endpoint):**
 ```
-POST /api/local/evaluate/{owner}/{repo}/{author}?limit=30&use_cache=true
+POST /api/evaluate/{owner}/{repo}/{author}?limit=30&use_cache=true
 ```
+Evaluates a specific author with caching:
+- Returns cached result if available
+- Otherwise performs AI evaluation and caches it
 
 #### Example API Call
 
 ```bash
-# Evaluate a contributor
+# Get authors (will auto-fetch and cache if needed)
+curl "http://localhost:8000/api/local/authors/anthropics/anthropic-sdk-python"
+
+# Evaluate a specific author
 curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?limit=30"
 
-# Get local authors
-curl "http://localhost:8000/api/local/authors/anthropics/anthropic-sdk-python"
+# Force fresh evaluation (ignore cache)
+curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?limit=30&use_cache=false"
 ```
 
 ### 3. LLM-Based Commit Evaluation
