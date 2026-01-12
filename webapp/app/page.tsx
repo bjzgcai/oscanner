@@ -71,8 +71,7 @@ interface Author {
 
 interface Evaluation {
   scores: {
-    [key: string]: number;
-    reasoning: string;
+    [key: string]: number | string;
   };
   total_commits_analyzed: number;
   commits_summary: {
@@ -118,20 +117,43 @@ export default function Dashboard() {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=667eea&color=fff&size=128&bold=true`;
   };
 
+  const parseGitHubUrl = (input: string): { owner: string; repo: string } | null => {
+    const trimmed = input.trim();
+
+    // Try to parse as GitHub URL
+    const urlPatterns = [
+      /^https?:\/\/(?:www\.)?github\.com\/([^\/]+)\/([^\/\s]+)/i,
+      /^github\.com\/([^\/]+)\/([^\/\s]+)/i,
+      /^git@github\.com:([^\/]+)\/([^\/\s]+)\.git$/i,
+      /^git@github\.com:([^\/]+)\/([^\/\s]+)$/i,
+    ];
+
+    for (const pattern of urlPatterns) {
+      const match = trimmed.match(pattern);
+      if (match) {
+        let repo = match[2];
+        // Remove .git suffix if present
+        repo = repo.replace(/\.git$/, '');
+        return { owner: match[1], repo };
+      }
+    }
+
+    return null;
+  };
+
   const analyzeRepository = async () => {
     if (!repoPath) {
-      setError('Please enter a repository path');
+      setError('Please enter a GitHub repository URL');
       return;
     }
 
-    const parts = repoPath.trim().split('/');
-    if (parts.length < 2) {
-      setError('Invalid repository path format. Please use: owner/repo');
+    const parsed = parseGitHubUrl(repoPath);
+    if (!parsed) {
+      setError('Invalid GitHub URL. Please use a valid format like: https://github.com/owner/repo');
       return;
     }
 
-    const owner = parts[0];
-    const repo = parts.slice(1).join('/');
+    const { owner, repo } = parsed;
 
     setLoading(true);
     setLoadingText('Loading authors from local data...');
@@ -251,7 +273,7 @@ export default function Dashboard() {
         pointLabels: {
           font: {
             size: 13,
-            weight: '600' as const
+            weight: 600
           }
         }
       }
@@ -280,7 +302,7 @@ export default function Dashboard() {
           <div className="autocomplete-container">
             <Input
               size="large"
-              placeholder="Enter repository path (e.g., shuxueshuxue/ink-and-memory-comprehensive)"
+              placeholder="Enter GitHub repository URL (e.g., https://github.com/owner/repo)"
               value={repoPath}
               onChange={(e) => setRepoPath(e.target.value)}
               onFocus={() => setShowHistory(true)}
@@ -328,7 +350,7 @@ export default function Dashboard() {
         </div>
 
         <div className="note">
-          Enter owner/repo path to analyze authors from local commit data. Authors are identified by their git commit author name.
+          Paste a GitHub repository URL to analyze authors from local commit data. Supports HTTPS, SSH, and short URL formats. Authors are identified by their git commit author name.
         </div>
       </Card>
 
@@ -404,19 +426,28 @@ export default function Dashboard() {
           </div>
 
           <div className="dimensions-grid">
-            {dimensions.map(dim => (
-              <Card key={dim.key} className="dimension-card">
-                <h4>{dim.name}</h4>
-                <div className="score">{evaluation.scores[dim.key] || 0}</div>
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${evaluation.scores[dim.key] || 0}%` }}
-                  />
-                </div>
-                <div className="description">{dim.description}</div>
-              </Card>
-            ))}
+            {dimensions.map(dim => {
+              const score = evaluation.scores[dim.key] || 0;
+
+              return (
+                <Card key={dim.key} className="dimension-card">
+                  <h4>{dim.name}</h4>
+                  <div className="score-display">
+                    <div className="score-row">
+                      <span className="score-label">Score:</span>
+                      <span className="score">{score}</span>
+                    </div>
+                  </div>
+                  <div className="progress-bar">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
+                  <div className="description">{dim.description}</div>
+                </Card>
+              );
+            })}
           </div>
 
           {evaluation.scores.reasoning && (

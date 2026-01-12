@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 FastAPI Backend for Engineer Skill Evaluator
-Integrates FullContextCachedEvaluator with dashboard.html
+Integrates CommitEvaluatorModerate with dashboard.html
 """
 
 import os
 import json
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 import requests
 from fastapi import FastAPI, HTTPException, Query
@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv('.env.local')
 
 # Import evaluator
-from full_context_cached_evaluator import FullContextCachedEvaluator
+from commit_evaluator_moderate import CommitEvaluatorModerate
 
 app = FastAPI(title="Engineer Skill Evaluator API")
 
@@ -36,8 +36,8 @@ CACHE_DIR = Path("cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
 # Repository evaluators cache (in-memory)
-# Key: "{platform}_{owner}_{repo}", Value: FullContextCachedEvaluator instance
-evaluators_cache: Dict[str, FullContextCachedEvaluator] = {}
+# Key: "{platform}_{owner}_{repo}", Value: CommitEvaluatorModerate instance
+evaluators_cache: Dict[str, CommitEvaluatorModerate] = {}
 
 # GitHub/Gitee API tokens
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -78,24 +78,51 @@ def load_commits_cache(platform: str, owner: str, repo: str) -> Optional[list]:
         return None
 
 
-def save_commits_cache(platform: str, owner: str, repo: str, commits: list):
-    """Save commits to cache"""
-    cache_path = get_commits_cache_path(platform, owner, repo)
+def load_commits_from_local(data_dir: Path, limit: int = 100) -> List[Dict[str, Any]]:
+    """
+    Load commits from local extracted data
 
-    cache_data = {
-        "platform": platform,
-        "owner": owner,
-        "repo": repo,
-        "cached_at": datetime.now().isoformat(),
-        "commits": commits
-    }
+    Args:
+        data_dir: Path to data directory (e.g., data/owner/repo)
+        limit: Maximum commits to load
 
-    try:
-        with open(cache_path, 'w', encoding='utf-8') as f:
-            json.dump(cache_data, f, indent=2, ensure_ascii=False)
-        print(f"✓ Saved commits to cache")
-    except Exception as e:
-        print(f"⚠ Failed to save commits cache: {e}")
+    Returns:
+        List of commit data
+    """
+    commits_index_path = data_dir / "commits_index.json"
+
+    if not commits_index_path.exists():
+        print(f"[Warning] Commits index not found: {commits_index_path}")
+        return []
+
+    # Load commits index
+    with open(commits_index_path, 'r', encoding='utf-8') as f:
+        commits_index = json.load(f)
+
+    print(f"[Info] Found {len(commits_index)} commits in index")
+
+    # Load detailed commit data
+    commits = []
+    commits_dir = data_dir / "commits"
+
+    for commit_info in commits_index[:limit]:
+        commit_sha = commit_info.get("hash") or commit_info.get("sha")
+
+        if not commit_sha:
+            continue
+
+        # Try to load commit JSON
+        commit_json_path = commits_dir / f"{commit_sha}.json"
+
+        if commit_json_path.exists():
+            try:
+                with open(commit_json_path, 'r', encoding='utf-8') as f:
+                    commit_data = json.load(f)
+                    commits.append(commit_data)
+            except Exception as e:
+                print(f"[Warning] Failed to load {commit_sha}: {e}")
+
+    return commits
 
 
 def fetch_github_commits(owner: str, repo: str, limit: int = 100) -> list:
@@ -203,6 +230,25 @@ async def get_gitee_commits(
     }
 
 
+def get_author_from_commit(commit_data: Dict[str, Any]) -> Optional[str]:
+    """
+    Extract author name from commit data, supporting both formats:
+    1. GitHub API format: commit_data["commit"]["author"]["name"]
+    2. Custom extraction format: commit_data["author"]
+    """
+    # Try custom extraction format first (more common in local data)
+    if "author" in commit_data and isinstance(commit_data["author"], str):
+        return commit_data["author"]
+
+    # Try GitHub API format
+    if "commit" in commit_data:
+        author = commit_data.get("commit", {}).get("author", {}).get("name")
+        if author:
+            return author
+
+    return None
+
+
 def get_data_dir(platform: str, owner: str, repo: str) -> Path:
     """Get or create data directory for repository"""
     data_dir = Path("data") / owner / repo
@@ -216,7 +262,7 @@ def get_or_create_evaluator(
     repo: str,
     commits: list,
     use_cache: bool = True
-) -> FullContextCachedEvaluator:
+) -> CommitEvaluatorModerate:
     """
     Get or create evaluator for repository
     Caches evaluator instance to reuse repository context
@@ -261,12 +307,16 @@ def get_or_create_evaluator(
     with open(data_dir / "repo_info.json", 'w') as f:
         json.dump(repo_info, f, indent=2)
 
-    # Create evaluator
+    # Create evaluator with moderate mode
     api_key = os.getenv("OPEN_ROUTER_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="OPEN_ROUTER_KEY not configured")
 
-    evaluator = FullContextCachedEvaluator(data_dir=str(data_dir), api_key=api_key)
+    evaluator = CommitEvaluatorModerate(
+        data_dir=str(data_dir),
+        api_key=api_key,
+        mode="moderate"
+    )
 
     # Cache the evaluator
     evaluators_cache[cache_key] = evaluator
@@ -299,7 +349,7 @@ async def get_local_authors(owner: str, repo: str):
                     try:
                         with open(commit_file, 'r', encoding='utf-8') as f:
                             commit_data = json.load(f)
-                            author = commit_data.get("author")
+                            author = get_author_from_commit(commit_data)
                             email = commit_data.get("email", "")
 
                             if author:
@@ -319,7 +369,7 @@ async def get_local_authors(owner: str, repo: str):
             try:
                 with open(commit_file, 'r', encoding='utf-8') as f:
                     commit_data = json.load(f)
-                    author = commit_data.get("author")
+                    author = get_author_from_commit(commit_data)
                     email = commit_data.get("email", "")
 
                     if author:
@@ -384,130 +434,47 @@ async def evaluate_local_author(
         # For local evaluation, directly create evaluator without modifying existing data
         cache_key = f"local_{owner}_{repo}"
 
-        # Check if evaluator is already cached
-        if use_cache and cache_key in evaluators_cache:
-            print(f"✓ Reusing cached evaluator for {owner}/{repo}")
-            evaluator = evaluators_cache[cache_key]
-        else:
-            # Create evaluator directly from existing data directory
-            api_key = os.getenv("OPEN_ROUTER_KEY")
-            if not api_key:
-                raise HTTPException(status_code=500, detail="OPEN_ROUTER_KEY not configured")
+        # Create evaluator
+        api_key = os.getenv("OPEN_ROUTER_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OPEN_ROUTER_KEY not configured")
 
-            evaluator = FullContextCachedEvaluator(data_dir=str(data_dir), api_key=api_key)
-            evaluators_cache[cache_key] = evaluator
-            print(f"✓ Created new evaluator for {owner}/{repo}")
-
-        # Evaluate author (uses cache if available)
-        evaluation = evaluator.evaluate_contributor(
-            contributor_name=author,
-            use_cache=use_cache,
-            force_refresh=not use_cache
+        evaluator = CommitEvaluatorModerate(
+            data_dir=str(data_dir),
+            api_key=api_key,
+            mode="moderate"
         )
 
-        if not evaluation or "evaluation" not in evaluation:
-            raise HTTPException(status_code=404, detail=f"Author '{author}' not found in local data")
+        # Load commits from local data
+        commits = load_commits_from_local(data_dir, limit=limit)
+        if not commits:
+            raise HTTPException(status_code=404, detail=f"No commits found in local data for {owner}/{repo}")
 
-        eval_data = evaluation.get("evaluation", {})
+        # Evaluate author using moderate evaluator
+        evaluation = evaluator.evaluate_engineer(
+            commits=commits,
+            username=author,
+            max_commits=limit,
+            load_files=True
+        )
 
-        # Get commit count and stats from local data
-        commits_dir = data_dir / "commits"
-        author_commits = []
-        total_additions = 0
-        total_deletions = 0
-        files_changed = set()
-        languages = set()
-
-        def parse_diff_stats(diff_path: Path) -> tuple:
-            """Parse diff file to count additions and deletions"""
-            additions = 0
-            deletions = 0
-            try:
-                if diff_path.exists():
-                    with open(diff_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        for line in f:
-                            if line.startswith('+') and not line.startswith('+++'):
-                                additions += 1
-                            elif line.startswith('-') and not line.startswith('---'):
-                                deletions += 1
-            except Exception:
-                pass
-            return additions, deletions
-
-        # Scan commits for this author
-        for commit_hash_dir in commits_dir.iterdir():
-            if commit_hash_dir.is_dir():
-                commit_file = commit_hash_dir / f"{commit_hash_dir.name}.json"
-                if commit_file.exists():
-                    try:
-                        with open(commit_file, 'r', encoding='utf-8') as f:
-                            commit_data = json.load(f)
-                            if commit_data.get("author") == author:
-                                author_commits.append(commit_data)
-                                # Extract stats from diff file
-                                if "diff" in commit_data:
-                                    diff_path = data_dir / commit_data["diff"]
-                                    adds, dels = parse_diff_stats(diff_path)
-                                    total_additions += adds
-                                    total_deletions += dels
-                                # Try to get files
-                                if "files" in commit_data:
-                                    for file in commit_data.get("files", []):
-                                        files_changed.add(file)
-                                        # Extract language from file extension
-                                        if "." in file:
-                                            ext = file.split(".")[-1]
-                                            languages.add(ext)
-                    except Exception as e:
-                        continue
-
-        # Also check direct .json files
-        for commit_file in commits_dir.glob("*.json"):
-            try:
-                with open(commit_file, 'r', encoding='utf-8') as f:
-                    commit_data = json.load(f)
-                    if commit_data.get("author") == author:
-                        author_commits.append(commit_data)
-                        # Extract stats from diff file
-                        if "diff" in commit_data:
-                            diff_path = data_dir / commit_data["diff"]
-                            adds, dels = parse_diff_stats(diff_path)
-                            total_additions += adds
-                            total_deletions += dels
-                        if "files" in commit_data:
-                            for file in commit_data.get("files", []):
-                                files_changed.add(file)
-                                if "." in file:
-                                    ext = file.split(".")[-1]
-                                    languages.add(ext)
-            except Exception as e:
-                continue
+        if not evaluation or "scores" not in evaluation:
+            raise HTTPException(status_code=404, detail=f"Author '{author}' not found in commits")
 
         # Format response for dashboard
+        # The moderate evaluator already provides all the information we need
         result = {
             "success": True,
             "evaluation": {
-                "username": author,
-                "mode": "local_data",
-                "total_commits_analyzed": len(author_commits),
-                "scores": {
-                    "ai_fullstack": eval_data.get("scores", {}).get("ai_fullstack", 0),
-                    "ai_architecture": eval_data.get("scores", {}).get("ai_architecture", 0),
-                    "cloud_native": eval_data.get("scores", {}).get("cloud_native", 0),
-                    "open_source": eval_data.get("scores", {}).get("open_source", 0),
-                    "intelligent_dev": eval_data.get("scores", {}).get("intelligent_dev", 0),
-                    "leadership": eval_data.get("scores", {}).get("leadership", 0),
-                    "reasoning": eval_data.get("reasoning", "")
-                },
-                "commits_summary": {
-                    "total_additions": total_additions,
-                    "total_deletions": total_deletions,
-                    "files_changed": len(files_changed),
-                    "languages": list(languages)[:10]
-                }
+                "username": evaluation.get("username", author),
+                "mode": evaluation.get("mode", "moderate"),
+                "total_commits_analyzed": evaluation.get("total_commits_analyzed", 0),
+                "files_loaded": evaluation.get("files_loaded", 0),
+                "scores": evaluation.get("scores", {}),
+                "commits_summary": evaluation.get("commits_summary", {})
             },
             "metadata": {
-                "cached": evaluation.get("cached_at") is not None,
+                "cached": False,
                 "timestamp": datetime.now().isoformat(),
                 "source": "local_data"
             }
@@ -557,56 +524,31 @@ async def evaluate_contributor(
         # 2. Get or create evaluator (reuses repo context if cached)
         evaluator = get_or_create_evaluator(platform, owner, repo, commits, use_cache)
 
-        # 3. Evaluate contributor (uses cache if available)
-        evaluation = evaluator.evaluate_contributor(
-            contributor_name=contributor,
-            use_cache=use_cache,
-            force_refresh=not use_cache
+        # 3. Evaluate contributor using moderate evaluator
+        evaluation = evaluator.evaluate_engineer(
+            commits=commits,
+            username=contributor,
+            max_commits=limit,
+            load_files=True
         )
 
-        if not evaluation or "evaluation" not in evaluation:
+        if not evaluation or "scores" not in evaluation:
             raise HTTPException(status_code=404, detail=f"Contributor '{contributor}' not found")
 
-        eval_data = evaluation.get("evaluation", {})
-
-        # Filter contributor commits first
-        contributor_commits = [c for c in commits if c.get("commit", {}).get("author", {}).get("name") == contributor][:limit]
-
         # Format response for dashboard
+        # The moderate evaluator already returns the correct structure
         result = {
             "success": True,
             "evaluation": {
-                "username": contributor,
-                "mode": "full_context",
-                "total_commits_analyzed": len(contributor_commits),
-                "scores": {
-                    "ai_fullstack": eval_data.get("scores", {}).get("ai_fullstack", 0),
-                    "ai_architecture": eval_data.get("scores", {}).get("ai_architecture", 0),
-                    "cloud_native": eval_data.get("scores", {}).get("cloud_native", 0),
-                    "open_source": eval_data.get("scores", {}).get("open_source", 0),
-                    "intelligent_dev": eval_data.get("scores", {}).get("intelligent_dev", 0),
-                    "leadership": eval_data.get("scores", {}).get("leadership", 0),
-                    "reasoning": eval_data.get("reasoning", "")
-                },
-                "commits_summary": {
-                    "total_additions": sum(c.get("stats", {}).get("additions", 0) for c in contributor_commits),
-                    "total_deletions": sum(c.get("stats", {}).get("deletions", 0) for c in contributor_commits),
-                    "files_changed": len(set(
-                        f.get("filename")
-                        for c in contributor_commits
-                        for f in c.get("files", [])
-                        if f.get("filename")
-                    )),
-                    "languages": list(set(
-                        f.get("filename", "").split(".")[-1]
-                        for c in contributor_commits
-                        for f in c.get("files", [])
-                        if "." in f.get("filename", "")
-                    ))[:10]
-                }
+                "username": evaluation.get("username", contributor),
+                "mode": evaluation.get("mode", "moderate"),
+                "total_commits_analyzed": evaluation.get("total_commits_analyzed", 0),
+                "files_loaded": evaluation.get("files_loaded", 0),
+                "scores": evaluation.get("scores", {}),
+                "commits_summary": evaluation.get("commits_summary", {})
             },
             "metadata": {
-                "cached": evaluation.get("cached_at") is not None,
+                "cached": False,
                 "timestamp": datetime.now().isoformat()
             }
         }
@@ -648,56 +590,31 @@ async def evaluate_gitee_contributor(
         # 2. Get or create evaluator (reuses repo context if cached)
         evaluator = get_or_create_evaluator(platform, owner, repo, commits, use_cache)
 
-        # 3. Evaluate contributor (uses cache if available)
-        evaluation = evaluator.evaluate_contributor(
-            contributor_name=contributor,
-            use_cache=use_cache,
-            force_refresh=not use_cache
+        # 3. Evaluate contributor using moderate evaluator
+        evaluation = evaluator.evaluate_engineer(
+            commits=commits,
+            username=contributor,
+            max_commits=limit,
+            load_files=True
         )
 
-        if not evaluation or "evaluation" not in evaluation:
+        if not evaluation or "scores" not in evaluation:
             raise HTTPException(status_code=404, detail=f"Contributor '{contributor}' not found")
 
-        eval_data = evaluation.get("evaluation", {})
-
-        # Filter contributor commits first
-        contributor_commits = [c for c in commits if c.get("commit", {}).get("author", {}).get("name") == contributor][:limit]
-
         # Format response for dashboard
+        # The moderate evaluator already returns the correct structure
         result = {
             "success": True,
             "evaluation": {
-                "username": contributor,
-                "mode": "full_context",
-                "total_commits_analyzed": len(contributor_commits),
-                "scores": {
-                    "ai_fullstack": eval_data.get("scores", {}).get("ai_fullstack", 0),
-                    "ai_architecture": eval_data.get("scores", {}).get("ai_architecture", 0),
-                    "cloud_native": eval_data.get("scores", {}).get("cloud_native", 0),
-                    "open_source": eval_data.get("scores", {}).get("open_source", 0),
-                    "intelligent_dev": eval_data.get("scores", {}).get("intelligent_dev", 0),
-                    "leadership": eval_data.get("scores", {}).get("leadership", 0),
-                    "reasoning": eval_data.get("reasoning", "")
-                },
-                "commits_summary": {
-                    "total_additions": sum(c.get("stats", {}).get("additions", 0) for c in contributor_commits),
-                    "total_deletions": sum(c.get("stats", {}).get("deletions", 0) for c in contributor_commits),
-                    "files_changed": len(set(
-                        f.get("filename")
-                        for c in contributor_commits
-                        for f in c.get("files", [])
-                        if f.get("filename")
-                    )),
-                    "languages": list(set(
-                        f.get("filename", "").split(".")[-1]
-                        for c in contributor_commits
-                        for f in c.get("files", [])
-                        if "." in f.get("filename", "")
-                    ))[:10]
-                }
+                "username": evaluation.get("username", contributor),
+                "mode": evaluation.get("mode", "moderate"),
+                "total_commits_analyzed": evaluation.get("total_commits_analyzed", 0),
+                "files_loaded": evaluation.get("files_loaded", 0),
+                "scores": evaluation.get("scores", {}),
+                "commits_summary": evaluation.get("commits_summary", {})
             },
             "metadata": {
-                "cached": evaluation.get("cached_at") is not None,
+                "cached": False,
                 "timestamp": datetime.now().isoformat()
             }
         }
@@ -713,10 +630,15 @@ async def evaluate_gitee_contributor(
         raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
 
 
+# NOTE: Score normalization endpoints disabled (ScoreNormalizer module removed)
+# @app.get("/api/local/normalized/{owner}/{repo}")
+# @app.get("/api/local/compare/{owner}/{repo}")
+
+
 if __name__ == "__main__":
     import uvicorn
 
-    port = 8000
+    port = int(os.getenv("PORT", 8000))
     print(f"\n{'='*80}")
     print(f"🚀 Engineer Skill Evaluator API Server")
     print(f"{'='*80}")
@@ -731,4 +653,4 @@ if __name__ == "__main__":
     print(f"   • New contributor: Only evaluates new contributor (reuses repo)")
     print(f"{'='*80}\n")
 
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=True)

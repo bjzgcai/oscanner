@@ -1,9 +1,0 @@
-*** MODIFIED: README.md (+1/-1) ***
-@@ -1,6 +1,6 @@
- # Ink & Memory
- 
--Ink & Memory is a Disco Elysium–inspired journaling studio where inner voices respond to every sentence. It has grown into a complete daily writing workspace with auto-save, calendar and timeline review, friend timelines, and per-user timezone awareness. The entire experience works in both English and Chinese from the first keystroke.
-+Ink & Memory is a Disco Elysium–inspired journaling studio where inner voices respond to every sentence. It has grown into a complete daily writing workspace with auto-save, calendar and timeline review, friend timelines, and per-user timezone awareness. The entire experience works in both English and Chinese.
- 
- ![Writing area](assets/writing-area.png)
- 

@@ -53,6 +53,9 @@ cache/
 *.tmp
 .local-storage/
 
+# Data directory
+data/
+
 # Testing
 coverage/
 .nyc_output/

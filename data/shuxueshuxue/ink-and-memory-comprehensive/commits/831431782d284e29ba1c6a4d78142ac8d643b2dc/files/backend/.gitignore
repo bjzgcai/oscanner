@@ -1,9 +1,0 @@
-test_data/
-
-.venv
-.venv39
-.uv
-__pycache__/
-*.pyc
-*.pyo
-.DS_Store
