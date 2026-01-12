@@ -76,7 +76,10 @@ ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH}/evaluator && \
     pip install -q -r requirements.txt"
 
 echo "  - Node.js packages and building webapp..."
-ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH}/webapp && \
+ssh ${REMOTE_USER}@${REMOTE_HOST} "
+    export NVM_DIR=\"\$HOME/.nvm\"
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"
+    cd ${REMOTE_PATH}/webapp && \
     npm install --silent && \
     npm run build"
 echo -e "${GREEN}✓${NC} Dependencies installed"
@@ -98,7 +101,9 @@ ssh ${REMOTE_USER}@${REMOTE_HOST} "
 
     # Start webapp in screen
     cd ${REMOTE_PATH}/webapp
-    screen -dmS webapp bash -c 'PORT=${WEBAPP_PORT} npm start > ../webapp.log 2>&1'
+    export NVM_DIR=\"\$HOME/.nvm\"
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"
+    screen -dmS webapp bash -c 'export NVM_DIR=\"\$HOME/.nvm\"; [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"; PORT=${WEBAPP_PORT} npm start > ../webapp.log 2>&1'
     sleep 2
 
     # Show screen sessions
