@@ -60,8 +60,9 @@ class CommitEvaluatorModerate:
         self,
         commits: List[Dict[str, Any]],
         username: str,
-        max_commits: int = 20,
-        load_files: bool = True
+        max_commits: int = None,
+        load_files: bool = True,
+        use_chunking: bool = True
     ) -> Dict[str, Any]:
         """
         Evaluate an engineer based on their commits
@@ -69,8 +70,9 @@ class CommitEvaluatorModerate:
         Args:
             commits: List of commit data (can be from API or local JSON files)
             username: GitHub username of the engineer
-            max_commits: Maximum number of commits to analyze
+            max_commits: Maximum number of commits to analyze (None = all commits)
             load_files: Whether to load file contents (moderate mode)
+            use_chunking: Whether to use chunked evaluation for large commit sets
 
         Returns:
             Dictionary containing scores for each dimension and analysis
@@ -78,20 +80,65 @@ class CommitEvaluatorModerate:
         if not commits:
             return self._get_empty_evaluation(username)
 
-        # Sample commits if there are too many
-        analyzed_commits = commits[:max_commits]
+        # Use all commits if max_commits is None
+        if max_commits is None:
+            analyzed_commits = commits
+        else:
+            analyzed_commits = commits[:max_commits]
 
+        # Filter commits by author
+        author_commits = [c for c in analyzed_commits if self._is_commit_by_author(c, username)]
+
+        if not author_commits:
+            return self._get_empty_evaluation(username)
+
+        # Decide whether to use chunked evaluation
+        if use_chunking and len(author_commits) > 20:
+            return self._evaluate_engineer_chunked(
+                author_commits,
+                username,
+                load_files
+            )
+
+        # Standard evaluation for smaller commit sets
+        return self._evaluate_engineer_standard(
+            author_commits,
+            username,
+            load_files
+        )
+
+    def _is_commit_by_author(self, commit: Dict[str, Any], username: str) -> bool:
+        """Check if commit is by the specified author"""
+        # Try custom extraction format first
+        if "author" in commit and isinstance(commit["author"], str):
+            return commit["author"].lower() == username.lower()
+
+        # Try GitHub API format
+        if "commit" in commit:
+            author = commit.get("commit", {}).get("author", {}).get("name", "")
+            if author:
+                return author.lower() == username.lower()
+
+        return False
+
+    def _evaluate_engineer_standard(
+        self,
+        commits: List[Dict[str, Any]],
+        username: str,
+        load_files: bool
+    ) -> Dict[str, Any]:
+        """Standard evaluation for smaller commit sets"""
         # Load additional context if in moderate mode
         file_contents = {}
         repo_structure = None
 
         if self.mode == "moderate" and load_files and self.data_dir:
-            file_contents = self._load_relevant_files(analyzed_commits)
+            file_contents = self._load_relevant_files(commits)
             repo_structure = self._load_repo_structure()
 
         # Build analysis context from commits + files
         context = self._build_commit_context(
-            analyzed_commits,
+            commits,
             username,
             file_contents=file_contents,
             repo_structure=repo_structure
@@ -102,13 +149,215 @@ class CommitEvaluatorModerate:
 
         return {
             "username": username,
-            "total_commits_analyzed": len(analyzed_commits),
-            "total_commits": len(commits),
+            "total_commits_analyzed": len(commits),
             "files_loaded": len(file_contents),
             "mode": self.mode,
             "scores": scores,
-            "commits_summary": self._summarize_commits(analyzed_commits)
+            "commits_summary": self._summarize_commits(commits)
         }
+
+    def _evaluate_engineer_chunked(
+        self,
+        commits: List[Dict[str, Any]],
+        username: str,
+        load_files: bool
+    ) -> Dict[str, Any]:
+        """
+        Evaluate engineer using chunked approach with accumulative context
+
+        This method:
+        1. Divides commits into chunks based on token limits
+        2. Evaluates each chunk with context from previous chunks
+        3. Returns final accumulated evaluation
+        """
+        print(f"\n[Chunked Evaluation] Processing {len(commits)} commits in chunks...")
+
+        # Determine chunk size based on token limits
+        # Reserve space for file contents and previous evaluations
+        commits_per_chunk = 15 if self.mode == "moderate" else 20
+
+        # Split commits into chunks
+        chunks = [
+            commits[i:i + commits_per_chunk]
+            for i in range(0, len(commits), commits_per_chunk)
+        ]
+
+        print(f"[Chunked Evaluation] Split into {len(chunks)} chunks")
+
+        # Load repository structure once
+        repo_structure = None
+        if self.mode == "moderate" and load_files and self.data_dir:
+            repo_structure = self._load_repo_structure()
+
+        # Process chunks with accumulative context
+        accumulated_evaluation = None
+        all_file_contents = {}
+
+        for chunk_idx, chunk in enumerate(chunks, 1):
+            print(f"\n[Chunk {chunk_idx}/{len(chunks)}] Evaluating {len(chunk)} commits...")
+
+            # Load file contents for this chunk
+            file_contents = {}
+            if self.mode == "moderate" and load_files and self.data_dir:
+                file_contents = self._load_relevant_files(chunk)
+                all_file_contents.update(file_contents)
+
+            # Build context with previous evaluation
+            context = self._build_chunked_context(
+                chunk,
+                username,
+                chunk_idx,
+                len(chunks),
+                file_contents=file_contents,
+                repo_structure=repo_structure if chunk_idx == 1 else None,
+                previous_evaluation=accumulated_evaluation
+            )
+
+            # Evaluate this chunk
+            chunk_scores = self._evaluate_with_llm(context, username, chunk_idx)
+
+            # Update accumulated evaluation
+            if accumulated_evaluation is None:
+                accumulated_evaluation = chunk_scores
+            else:
+                # Merge scores (weighted average based on commits processed)
+                accumulated_evaluation = self._merge_evaluations(
+                    accumulated_evaluation,
+                    chunk_scores,
+                    chunk_idx
+                )
+
+            print(f"[Chunk {chunk_idx}/{len(chunks)}] Completed")
+
+        # Return final evaluation
+        return {
+            "username": username,
+            "total_commits_analyzed": len(commits),
+            "files_loaded": len(all_file_contents),
+            "mode": self.mode,
+            "chunked": True,
+            "chunks_processed": len(chunks),
+            "scores": accumulated_evaluation,
+            "commits_summary": self._summarize_commits(commits)
+        }
+
+    def _build_chunked_context(
+        self,
+        commits: List[Dict[str, Any]],
+        username: str,
+        chunk_idx: int,
+        total_chunks: int,
+        file_contents: Optional[Dict[str, str]] = None,
+        repo_structure: Optional[Dict[str, Any]] = None,
+        previous_evaluation: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Build context for chunked evaluation"""
+        context_parts = []
+
+        # Add chunk information
+        context_parts.append(f"## Evaluation Progress: Chunk {chunk_idx}/{total_chunks}\n")
+
+        # Add previous evaluation context if available
+        if previous_evaluation:
+            context_parts.append("## Previous Evaluation Summary\n")
+            context_parts.append("Based on previous commits, here are the current scores:\n")
+            for dim, score in previous_evaluation.items():
+                if dim != "reasoning" and isinstance(score, (int, float)):
+                    context_parts.append(f"- {dim}: {score}/100\n")
+            if "reasoning" in previous_evaluation:
+                context_parts.append(f"\nPrevious reasoning: {previous_evaluation['reasoning']}\n")
+            context_parts.append("\nNow analyze the following additional commits and UPDATE the scores accordingly.\n\n")
+
+        # Add repository structure only in first chunk
+        if repo_structure:
+            context_parts.append("## Repository Structure\n")
+            structure_summary = self._summarize_repo_structure(repo_structure)
+            context_parts.append(structure_summary)
+            context_parts.append("\n")
+
+        # Add current chunk commits
+        context_parts.append(f"## Commits in Current Chunk ({len(commits)} commits)\n")
+
+        for i, commit in enumerate(commits[:15], 1):
+            commit_info = commit.get("commit", {})
+            message = commit_info.get("message", "")
+            author = commit_info.get("author", {})
+            stats = commit.get("stats", {})
+            files = commit.get("files", [])
+
+            commit_summary = f"""
+### Commit #{i}
+**Message**: {message[:300]}
+**Author**: {author.get('name', 'Unknown')}
+**Date**: {author.get('date', 'Unknown')}
+**Changes**: +{stats.get('additions', 0)} -{stats.get('deletions', 0)} lines
+**Files**: {len(files)} files changed
+"""
+
+            if files:
+                commit_summary += "\n**Modified files**:\n"
+                for file_info in files[:8]:
+                    filename = file_info.get("filename", "")
+                    status = file_info.get("status", "")
+                    additions = file_info.get("additions", 0)
+                    deletions = file_info.get("deletions", 0)
+                    commit_summary += f"  - `{filename}` ({status}) +{additions} -{deletions}\n"
+
+                    patch = file_info.get("patch", "")
+                    if patch:
+                        max_patch_len = 2000 if self.mode == "moderate" else 800
+                        if len(patch) < max_patch_len:
+                            commit_summary += f"\n```diff\n{patch[:max_patch_len]}\n```\n"
+
+            context_parts.append(commit_summary)
+
+        # Add file contents if available
+        if file_contents:
+            context_parts.append("\n## Relevant File Contents\n")
+            for filepath, content in list(file_contents.items())[:8]:
+                context_parts.append(f"\n### File: `{filepath}`\n")
+                ext = filepath.split('.')[-1] if '.' in filepath else ''
+                context_parts.append(f"```{ext}\n{content[:10000]}\n```\n")
+
+        return "\n".join(context_parts)
+
+    def _merge_evaluations(
+        self,
+        eval1: Dict[str, Any],
+        eval2: Dict[str, Any],
+        chunk_idx: int
+    ) -> Dict[str, Any]:
+        """Merge two evaluations with weighted average"""
+        merged = {}
+
+        # Weight: previous chunks have accumulated weight, new chunk gets weight 1
+        weight1 = chunk_idx - 1
+        weight2 = 1
+        total_weight = weight1 + weight2
+
+        for key in self.dimensions.keys():
+            if key in eval1 and key in eval2:
+                score1 = eval1.get(key, 0)
+                score2 = eval2.get(key, 0)
+
+                if isinstance(score1, (int, float)) and isinstance(score2, (int, float)):
+                    # Weighted average
+                    merged[key] = int((score1 * weight1 + score2 * weight2) / total_weight)
+                else:
+                    merged[key] = eval2.get(key, eval1.get(key, 0))
+            else:
+                merged[key] = eval2.get(key, eval1.get(key, 0))
+
+        # Merge reasoning
+        reasoning_parts = []
+        if "reasoning" in eval1 and eval1["reasoning"]:
+            reasoning_parts.append(f"Previous: {eval1['reasoning']}")
+        if "reasoning" in eval2 and eval2["reasoning"]:
+            reasoning_parts.append(f"Update: {eval2['reasoning']}")
+
+        merged["reasoning"] = " | ".join(reasoning_parts) if reasoning_parts else ""
+
+        return merged
 
     def _load_relevant_files(
         self,
@@ -321,7 +570,8 @@ class CommitEvaluatorModerate:
     def _evaluate_with_llm(
         self,
         context: str,
-        username: str
+        username: str,
+        chunk_idx: int = None
     ) -> Dict[str, int]:
         """
         Use LLM to evaluate commits and return scores
@@ -329,6 +579,7 @@ class CommitEvaluatorModerate:
         Args:
             context: Commit context for analysis
             username: GitHub username
+            chunk_idx: Optional chunk index for chunked evaluation
 
         Returns:
             Dictionary of scores (0-100) for each dimension
@@ -338,7 +589,7 @@ class CommitEvaluatorModerate:
             return self._fallback_evaluation(context)
 
         # Build evaluation prompt
-        prompt = self._build_evaluation_prompt(context, username)
+        prompt = self._build_evaluation_prompt(context, username, chunk_idx)
 
         try:
             # Call OpenRouter API
@@ -371,7 +622,8 @@ class CommitEvaluatorModerate:
 
             # Log token usage
             usage = result.get("usage", {})
-            print(f"[Token Usage] Input: {usage.get('prompt_tokens', 0)}, "
+            chunk_info = f" [Chunk {chunk_idx}]" if chunk_idx else ""
+            print(f"[Token Usage{chunk_info}] Input: {usage.get('prompt_tokens', 0)}, "
                   f"Output: {usage.get('completion_tokens', 0)}, "
                   f"Total: {usage.get('total_tokens', 0)}")
 
@@ -403,7 +655,7 @@ class CommitEvaluatorModerate:
 
         return truncated
 
-    def _build_evaluation_prompt(self, context: str, username: str) -> str:
+    def _build_evaluation_prompt(self, context: str, username: str, chunk_idx: int = None) -> str:
         """Build the evaluation prompt for the LLM"""
         # Reserve tokens for the prompt template
         prompt_template_tokens = 800
@@ -416,8 +668,24 @@ class CommitEvaluatorModerate:
         if self.mode == "moderate":
             mode_note = "\nNOTE: You have access to both commit diffs AND relevant file contents. Use the file contents to better understand the code quality, architecture, and engineering practices."
 
+        chunked_instruction = ""
+        if chunk_idx:
+            chunked_instruction = """
+
+CHUNKED EVALUATION INSTRUCTIONS:
+This is a chunked evaluation. You will see:
+1. Previous evaluation scores (if this is not the first chunk)
+2. New commits to analyze in the current chunk
+
+Your task is to:
+- Analyze the new commits carefully
+- UPDATE the scores based on the new evidence
+- If you see improvement or new capabilities, INCREASE the relevant scores
+- If you see issues or concerns, DECREASE the relevant scores
+- Provide reasoning that explains how the new commits affected your evaluation"""
+
         return f"""You are an expert engineering evaluator. Analyze the following data from user "{username}" and evaluate their engineering capabilities across six dimensions. Each score should be 0-100.
-{mode_note}
+{mode_note}{chunked_instruction}
 
 DATA TO ANALYZE:
 {context}

@@ -156,20 +156,30 @@ export default function Dashboard() {
     const { owner, repo } = parsed;
 
     setLoading(true);
-    setLoadingText('Loading authors from local data...');
+    setLoadingText('Checking for cached data...');
     setError('');
     setRepoData(null);
     setAuthorsData([]);
     setEvaluation(null);
 
     try {
-      const response = await fetch(`${API_SERVER_URL}/api/local/authors/${owner}/${repo}`);
+      // Note: This endpoint may take a while if it needs to fetch GitHub data
+      setLoadingText('Loading repository data (this may take a minute for new repos)...');
+
+      const response = await fetch(`${API_SERVER_URL}/api/authors/${owner}/${repo}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to load authors');
       }
 
       const result = await response.json();
+
+      if (result.data.cached) {
+        setLoadingText('Loaded from cache!');
+      } else {
+        setLoadingText('Processing commit data...');
+      }
+
       const authors = result.data.authors.map((author: any) => ({
         ...author,
         avatar_url: generateAvatarUrl(author.author)
@@ -186,6 +196,7 @@ export default function Dashboard() {
       saveToHistory(repoPath);
 
       if (authors.length > 0) {
+        setLoadingText('Loading first author evaluation...');
         await evaluateAuthor(0, authors, owner, repo);
       }
     } catch (err: any) {
@@ -207,7 +218,7 @@ export default function Dashboard() {
 
     try {
       const response = await fetch(
-        `${API_SERVER_URL}/api/local/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?use_cache=${useCache}`,
+        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?use_cache=${useCache}`,
         { method: 'POST' }
       );
 
@@ -365,7 +376,7 @@ export default function Dashboard() {
         />
       )}
 
-      {loading && (
+      {loading && !evaluation && (
         <Card className="loading-card">
           <Spin size="large" />
           <p style={{ marginTop: 20 }}>{loadingText}</p>
@@ -396,6 +407,7 @@ export default function Dashboard() {
 
       {evaluation && (
         <Card className="evaluation-section">
+          <Spin spinning={loading} size="large" tip={loadingText}>
           <div className="eval-header">
             <Avatar
               size={80}
@@ -483,6 +495,7 @@ export default function Dashboard() {
               ))}
             </div>
           </Card>
+          </Spin>
         </Card>
       )}
     </div>

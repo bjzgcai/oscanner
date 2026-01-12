@@ -79,9 +79,6 @@ Open `dashboard.html` in your browser
 **Via API:**
 
 ```bash
-# Fetch commits
-curl http://localhost:8000/api/commits/octocat/Hello-World
-
 # Evaluate a contributor (full analysis of all commits)
 curl -X POST "http://localhost:8000/api/evaluate/octocat/Hello-World/octocat"
 ```
@@ -286,9 +283,6 @@ The LLM evaluates based on actual code evidence:
 |----------|--------|-------------|
 | `/` | GET | API information |
 | `/health` | GET | Health check |
-| `/api/commits/{owner}/{repo}` | GET | Get commits list |
-| `/api/commits/{owner}/{repo}/{sha}` | GET | Get commit details |
-| `/api/commits/{owner}/{repo}/fetch-all` | POST | Fetch all commits with details |
 | `/api/evaluate/{owner}/{repo}/{username}` | POST | Evaluate engineer capabilities |
 | `/api/cache/stats` | GET | View cache statistics |
 | `/api/cache/clear` | DELETE | Clear all cached data |
