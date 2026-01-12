@@ -1,0 +1,118 @@
+#!/bin/bash
+# Production startup script for Engineer Skill Evaluator
+# Starts both the evaluator backend and webapp frontend with configurable ports
+
+set -e  # Exit on error
+
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+
+# Color output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}======================================${NC}"
+echo -e "${BLUE}  Engineer Skill Evaluator - Production${NC}"
+echo -e "${BLUE}======================================${NC}\n"
+
+# Load evaluator environment variables
+EVALUATOR_ENV="${PROJECT_ROOT}/evaluator/.env.local"
+if [ -f "$EVALUATOR_ENV" ]; then
+    echo -e "${GREEN}✓${NC} Loading evaluator configuration from .env.local"
+    export $(cat "$EVALUATOR_ENV" | grep -v '^#' | grep -v '^$' | xargs)
+else
+    echo -e "${YELLOW}⚠${NC} Warning: evaluator/.env.local not found, using defaults"
+fi
+
+# Set evaluator port (default: 8000)
+EVALUATOR_PORT=${PORT:-8000}
+export EVALUATOR_PORT
+
+# Load webapp environment variables
+WEBAPP_ENV="${PROJECT_ROOT}/webapp/.env.local"
+if [ -f "$WEBAPP_ENV" ]; then
+    echo -e "${GREEN}✓${NC} Loading webapp configuration from .env.local"
+    # Parse webapp PORT separately to avoid conflict
+    WEBAPP_PORT=$(grep "^PORT=" "$WEBAPP_ENV" | cut -d '=' -f2)
+    WEBAPP_PORT=${WEBAPP_PORT:-3000}
+else
+    echo -e "${YELLOW}⚠${NC} Warning: webapp/.env.local not found, using defaults"
+    WEBAPP_PORT=3000
+fi
+export PORT=$WEBAPP_PORT
+
+echo ""
+echo -e "${BLUE}Configuration:${NC}"
+echo -e "  Evaluator Port: ${GREEN}${EVALUATOR_PORT}${NC}"
+echo -e "  Webapp Port:    ${GREEN}${WEBAPP_PORT}${NC}"
+echo ""
+
+# Function to cleanup on exit
+cleanup() {
+    echo -e "\n${YELLOW}Shutting down services...${NC}"
+    kill $(jobs -p) 2>/dev/null || true
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+# Start evaluator backend
+echo -e "${BLUE}Starting evaluator backend...${NC}"
+cd "${PROJECT_ROOT}/evaluator"
+
+if [ ! -d "venv" ]; then
+    echo -e "${RED}✗${NC} Error: Virtual environment not found in evaluator/"
+    echo "  Please run: cd evaluator && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+    exit 1
+fi
+
+source venv/bin/activate
+PORT=$EVALUATOR_PORT python server.py > ../evaluator.log 2>&1 &
+EVALUATOR_PID=$!
+echo -e "${GREEN}✓${NC} Evaluator started (PID: ${EVALUATOR_PID})"
+echo -e "  Logs: ${PROJECT_ROOT}/evaluator.log"
+echo -e "  URL:  http://localhost:${EVALUATOR_PORT}"
+
+# Wait a bit for evaluator to start
+sleep 2
+
+# Check if evaluator is running
+if ! kill -0 $EVALUATOR_PID 2>/dev/null; then
+    echo -e "${RED}✗${NC} Error: Evaluator failed to start. Check evaluator.log for details."
+    exit 1
+fi
+
+# Start webapp frontend
+echo ""
+echo -e "${BLUE}Starting webapp frontend...${NC}"
+cd "${PROJECT_ROOT}/webapp"
+
+if [ ! -d "node_modules" ]; then
+    echo -e "${RED}✗${NC} Error: node_modules not found in webapp/"
+    echo "  Please run: cd webapp && npm install"
+    exit 1
+fi
+
+# Build webapp if not already built
+if [ ! -d ".next" ]; then
+    echo -e "${YELLOW}Building webapp...${NC}"
+    npm run build
+fi
+
+# Start in production mode
+PORT=$WEBAPP_PORT npm start > ../webapp.log 2>&1 &
+WEBAPP_PID=$!
+echo -e "${GREEN}✓${NC} Webapp started (PID: ${WEBAPP_PID})"
+echo -e "  Logs: ${PROJECT_ROOT}/webapp.log"
+echo -e "  URL:  http://localhost:${WEBAPP_PORT}"
+
+echo ""
+echo -e "${BLUE}======================================${NC}"
+echo -e "${GREEN}✓ All services running${NC}"
+echo -e "${BLUE}======================================${NC}"
+echo -e "\nPress Ctrl+C to stop all services\n"
+
+# Wait for processes
+wait $EVALUATOR_PID $WEBAPP_PID
