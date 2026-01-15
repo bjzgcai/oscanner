@@ -373,6 +373,36 @@ Evaluates a specific author with caching:
 - Returns cached result if available
 - Otherwise performs AI evaluation and caches it
 
+**Batch Extract Repositories:**
+```
+POST /api/batch/extract
+```
+Extract data from multiple GitHub repositories in one request (2-5 repos):
+```json
+{
+  "urls": [
+    "https://github.com/owner1/repo1",
+    "https://github.com/owner2/repo2"
+  ]
+}
+```
+Returns extraction status for each repository.
+
+**Find Common Contributors:**
+```
+POST /api/batch/common-contributors
+```
+Find developers who contributed to multiple repositories:
+```json
+{
+  "repos": [
+    {"owner": "owner1", "repo": "repo1"},
+    {"owner": "owner2", "repo": "repo2"}
+  ]
+}
+```
+Returns list of common contributors with intelligent matching.
+
 #### Example API Call
 
 ```bash
@@ -384,6 +414,16 @@ curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python
 
 # Force fresh evaluation (ignore cache)
 curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?limit=30&use_cache=false"
+
+# Batch extract multiple repositories
+curl -X POST "http://localhost:8000/api/batch/extract" \
+  -H "Content-Type: application/json" \
+  -d '{"urls": ["https://github.com/owner/repo1", "https://github.com/owner/repo2"]}'
+
+# Find common contributors across repositories
+curl -X POST "http://localhost:8000/api/batch/common-contributors" \
+  -H "Content-Type: application/json" \
+  -d '{"repos": [{"owner": "owner1", "repo": "repo1"}, {"owner": "owner2", "repo": "repo2"}]}'
 ```
 
 ### 3. LLM-Based Commit Evaluation
