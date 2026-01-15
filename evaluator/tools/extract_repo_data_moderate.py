@@ -97,7 +97,7 @@ def main():
     parser.add_argument('--repo-url', required=True, help='GitHub repository URL')
     parser.add_argument('--out', required=True, help='Output directory')
     parser.add_argument('--token', help='GitHub token (or set GITHUB_TOKEN env var)')
-    parser.add_argument('--max-commits', type=int, default=0, help='Max commits (0=all)')
+    parser.add_argument('--max-commits', type=int, default=500, help='Max commits (0=all, recommended: 300-500)')
     args = parser.parse_args()
 
     # Get token from args or environment

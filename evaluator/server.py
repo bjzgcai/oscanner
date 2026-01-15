@@ -116,7 +116,7 @@ def extract_github_data(owner: str, repo: str) -> bool:
             "tools/extract_repo_data_moderate.py",
             "--repo-url", repo_url,
             "--out", str(output_dir),
-            "--max-commits", "0"  # 0 = fetch all commits
+            "--max-commits", "500"  # Fetch enough to cover all contributors
         ]
 
         if GITHUB_TOKEN:
@@ -269,7 +269,7 @@ def fetch_gitee_commits(owner: str, repo: str, limit: int = 100, is_enterprise: 
 async def get_gitee_commits(
     owner: str,
     repo: str,
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(500, ge=1, le=1000),
     use_cache: bool = Query(True),
     is_enterprise: bool = Query(False)
 ):
@@ -529,14 +529,14 @@ async def get_authors(owner: str, repo: str, use_cache: bool = Query(True)):
                     mode="moderate"
                 )
 
-                # Load ALL commits
+                # Load commits from local data
                 commits = load_commits_from_local(data_dir, limit=None)
                 if commits:
-                    # Evaluate first author with all their commits
+                    # Evaluate first author with limit of 150 commits
                     evaluation = evaluator.evaluate_engineer(
                         commits=commits,
                         username=first_author,
-                        max_commits=None,  # Evaluate all commits
+                        max_commits=150,  # Limit to 150 commits per contributor
                         load_files=True,
                         use_chunking=True  # Enable chunked evaluation
                     )
@@ -586,13 +586,13 @@ async def evaluate_author(
     """
     Evaluate an author using local commit data with caching
 
-    This endpoint evaluates ALL commits from the author. If there are many commits,
-    it automatically uses chunked evaluation with accumulative context.
+    This endpoint evaluates up to 150 commits per contributor for optimal balance.
+    It automatically uses chunked evaluation with accumulative context for large commit sets.
 
     Flow:
     1. Check if evaluation exists in cache
     2. If cached and use_cache=True, return cached result
-    3. Otherwise, load ALL commits and perform evaluation
+    3. Otherwise, load commits and perform evaluation (max 150 per contributor)
     4. Use chunked evaluation if needed (automatic for >20 commits)
     5. Cache the result
     6. Return evaluation
@@ -671,8 +671,8 @@ async def evaluate_author(
             mode="moderate"
         )
 
-        # Load ALL commits from local data (no limit)
-        print(f"\n[Evaluation] Loading all commits for {author}...")
+        # Load commits from local data
+        print(f"\n[Evaluation] Loading commits for {author}...")
         commits = load_commits_from_local(data_dir, limit=None)
         if not commits:
             raise HTTPException(
@@ -684,10 +684,11 @@ async def evaluate_author(
 
         # Evaluate author using moderate evaluator with chunking enabled
         # The evaluator will automatically chunk if there are >20 commits
+        # Limit to 150 commits per contributor for optimal balance
         evaluation = evaluator.evaluate_engineer(
             commits=commits,
             username=author,
-            max_commits=None,  # Evaluate ALL commits
+            max_commits=150,  # Limit to 150 commits per contributor
             load_files=True,
             use_chunking=use_chunking
         )
@@ -737,11 +738,11 @@ async def evaluate_gitee_contributor(
     owner: str,
     repo: str,
     contributor: str,
-    limit: int = Query(30, ge=1, le=100),
+    limit: int = Query(150, ge=1, le=200),
     use_cache: bool = Query(True),
     is_enterprise: bool = Query(False)
 ):
-    """Evaluate a Gitee contributor using full repository context"""
+    """Evaluate a Gitee contributor (max 150 commits per contributor)"""
     platform = "gitee"
 
     try:
@@ -749,10 +750,10 @@ async def evaluate_gitee_contributor(
         if use_cache:
             commits = load_commits_cache(platform, owner, repo)
             if not commits:
-                commits = fetch_gitee_commits(owner, repo, 100, is_enterprise)
+                commits = fetch_gitee_commits(owner, repo, 500, is_enterprise)
                 save_commits_cache(platform, owner, repo, commits)
         else:
-            commits = fetch_gitee_commits(owner, repo, 100, is_enterprise)
+            commits = fetch_gitee_commits(owner, repo, 500, is_enterprise)
             save_commits_cache(platform, owner, repo, commits)
 
         # 2. Get or create evaluator (reuses repo context if cached)
@@ -801,6 +802,415 @@ async def evaluate_gitee_contributor(
 # NOTE: Score normalization endpoints disabled (ScoreNormalizer module removed)
 # @app.get("/api/local/normalized/{owner}/{repo}")
 # @app.get("/api/local/compare/{owner}/{repo}")
+
+
+def parse_github_url(url: str) -> Optional[Dict[str, str]]:
+    """
+    Parse GitHub URL to extract owner and repo
+    Supports formats:
+    - https://github.com/owner/repo
+    - http://github.com/owner/repo
+    - github.com/owner/repo
+    - git@github.com:owner/repo.git
+    """
+    import re
+
+    url = url.strip()
+
+    # Try different patterns
+    patterns = [
+        r'^https?://(?:www\.)?github\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$',
+        r'^github\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$',
+        r'^git@github\.com:([^/]+)/([^/\s]+?)(?:\.git)?$',
+    ]
+
+    for pattern in patterns:
+        match = re.match(pattern, url)
+        if match:
+            owner, repo = match.groups()
+            # Remove .git suffix if present
+            repo = repo.replace('.git', '')
+            return {"owner": owner, "repo": repo}
+
+    return None
+
+
+@app.post("/api/batch/extract")
+async def batch_extract_repos(request: dict):
+    """
+    Batch extract multiple GitHub repositories
+
+    Request body:
+    {
+        "urls": ["https://github.com/owner/repo1", "https://github.com/owner/repo2"]
+    }
+
+    Response:
+    {
+        "success": true,
+        "results": [
+            {
+                "url": "https://github.com/owner/repo1",
+                "owner": "owner",
+                "repo": "repo1",
+                "status": "extracted" | "skipped" | "failed",
+                "message": "...",
+                "data_exists": true/false
+            }
+        ]
+    }
+    """
+    urls = request.get("urls", [])
+
+    if not urls:
+        raise HTTPException(status_code=400, detail="No URLs provided")
+
+    if len(urls) < 2:
+        raise HTTPException(status_code=400, detail="Please provide at least 2 repository URLs")
+
+    if len(urls) > 5:
+        raise HTTPException(status_code=400, detail="Please provide at most 5 repository URLs")
+
+    results = []
+
+    for url in urls:
+        result = {
+            "url": url,
+            "status": "failed",
+            "message": "",
+            "data_exists": False
+        }
+
+        # Parse URL
+        parsed = parse_github_url(url)
+        if not parsed:
+            result["message"] = "Invalid GitHub URL format"
+            results.append(result)
+            continue
+
+        owner = parsed["owner"]
+        repo = parsed["repo"]
+        result["owner"] = owner
+        result["repo"] = repo
+
+        # Check if data already exists
+        data_dir = DATA_DIR / owner / repo
+        commits_dir = data_dir / "commits"
+
+        if data_dir.exists() and commits_dir.exists() and list(commits_dir.glob("*.json")):
+            result["status"] = "skipped"
+            result["message"] = "Repository data already exists"
+            result["data_exists"] = True
+            results.append(result)
+            continue
+
+        # Extract data
+        try:
+            success = extract_github_data(owner, repo)
+            if success:
+                result["status"] = "extracted"
+                result["message"] = "Successfully extracted repository data"
+                result["data_exists"] = True
+            else:
+                result["status"] = "failed"
+                result["message"] = "Failed to extract repository data"
+        except Exception as e:
+            result["status"] = "failed"
+            result["message"] = f"Error: {str(e)}"
+
+        results.append(result)
+
+    # Count statuses
+    extracted_count = sum(1 for r in results if r["status"] == "extracted")
+    skipped_count = sum(1 for r in results if r["status"] == "skipped")
+    failed_count = sum(1 for r in results if r["status"] == "failed")
+
+    return {
+        "success": True,
+        "results": results,
+        "summary": {
+            "total": len(results),
+            "extracted": extracted_count,
+            "skipped": skipped_count,
+            "failed": failed_count
+        }
+    }
+
+
+@app.post("/api/batch/common-contributors")
+async def find_common_contributors(request: dict):
+    """
+    Find common contributors across multiple repositories
+
+    Request body:
+    {
+        "repos": [
+            {"owner": "facebook", "repo": "react"},
+            {"owner": "vercel", "repo": "next.js"}
+        ]
+    }
+
+    Response:
+    {
+        "success": true,
+        "common_contributors": [
+            {
+                "author": "John Doe",
+                "email": "john@example.com",
+                "repos": [
+                    {
+                        "owner": "facebook",
+                        "repo": "react",
+                        "commits": 150
+                    },
+                    {
+                        "owner": "vercel",
+                        "repo": "next.js",
+                        "commits": 75
+                    }
+                ],
+                "total_commits": 225,
+                "repo_count": 2
+            }
+        ],
+        "summary": {
+            "total_repos": 2,
+            "total_common_contributors": 5
+        }
+    }
+    """
+    repos = request.get("repos", [])
+
+    if not repos:
+        raise HTTPException(status_code=400, detail="No repositories provided")
+
+    if len(repos) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 repositories required to find common contributors")
+
+    # Load authors from each repository
+    repo_authors = {}  # {repo_key: {author: {commits, email}}}
+
+    for repo_info in repos:
+        owner = repo_info.get("owner")
+        repo = repo_info.get("repo")
+
+        if not owner or not repo:
+            continue
+
+        repo_key = f"{owner}/{repo}"
+        data_dir = DATA_DIR / owner / repo
+        commits_dir = data_dir / "commits"
+
+        if not commits_dir.exists():
+            print(f"⚠ No commit data found for {repo_key}")
+            continue
+
+        authors_map = {}
+
+        # Load all commit files
+        for commit_file in commits_dir.glob("*.json"):
+            try:
+                with open(commit_file, 'r', encoding='utf-8') as f:
+                    commit_data = json.load(f)
+                    author = get_author_from_commit(commit_data)
+
+                    # Get email and GitHub user ID
+                    email = ""
+                    github_id = None
+                    github_login = None
+
+                    if "commit" in commit_data:
+                        email = commit_data.get("commit", {}).get("author", {}).get("email", "")
+
+                    # Get GitHub user info if available
+                    if "author" in commit_data and isinstance(commit_data["author"], dict):
+                        github_id = commit_data["author"].get("id")
+                        github_login = commit_data["author"].get("login")
+
+                    if author:
+                        if author not in authors_map:
+                            authors_map[author] = {
+                                "commits": 0,
+                                "email": email,
+                                "github_id": github_id,
+                                "github_login": github_login
+                            }
+                        authors_map[author]["commits"] += 1
+            except Exception as e:
+                print(f"⚠ Error reading {commit_file}: {e}")
+                continue
+
+        if authors_map:
+            repo_authors[repo_key] = authors_map
+            print(f"✓ Loaded {len(authors_map)} authors from {repo_key}")
+
+    if len(repo_authors) < 2:
+        return {
+            "success": True,
+            "common_contributors": [],
+            "summary": {
+                "total_repos": len(repo_authors),
+                "total_common_contributors": 0
+            },
+            "message": "Not enough repositories with data to find common contributors"
+        }
+
+    # Find common contributors using intelligent matching
+    # Strategy: Two-pass matching
+    # Pass 1: Group by GitHub ID/login (strong identity signals)
+    # Pass 2: Match orphaned authors to existing groups by fuzzy name
+
+    def normalize_name(name):
+        """Normalize name for fuzzy matching"""
+        normalized = name.lower().strip()
+        parts = normalized.split()
+        return parts[0] if parts else normalized
+
+    def names_match_fuzzy(name1, name2):
+        """Check if two names likely refer to the same person"""
+        norm1 = normalize_name(name1)
+        norm2 = normalize_name(name2)
+
+        # Exact match on first name
+        if norm1 == norm2:
+            return True
+
+        # One name contains the other as a word
+        words1 = name1.lower().split()
+        words2 = name2.lower().split()
+
+        if norm1 in words2 or norm2 in words1:
+            return True
+
+        return False
+
+    # Pass 1: Group by GitHub ID/login
+    identity_groups = {}  # {canonical_key: [{"repo_key": str, "author": str, "data": dict}]}
+    orphaned_authors = []  # Authors without GitHub ID/login
+
+    for repo_key, authors_map in repo_authors.items():
+        for author, author_data in authors_map.items():
+            github_id = author_data.get("github_id")
+            github_login = author_data.get("github_login")
+
+            # Use GitHub ID/login as canonical identity
+            if github_id:
+                canonical_key = f"github_id:{github_id}"
+            elif github_login:
+                canonical_key = f"github_login:{github_login}"
+            else:
+                # No strong identity, mark as orphaned for second pass
+                orphaned_authors.append({
+                    "repo_key": repo_key,
+                    "author": author,
+                    "data": author_data
+                })
+                continue
+
+            if canonical_key not in identity_groups:
+                identity_groups[canonical_key] = []
+
+            identity_groups[canonical_key].append({
+                "repo_key": repo_key,
+                "author": author,
+                "data": author_data
+            })
+
+    # Pass 2: Try to match orphaned authors to existing groups by fuzzy name
+    unmatched_orphans = []
+
+    for orphan in orphaned_authors:
+        matched = False
+
+        # Try to match with existing groups by comparing names
+        for canonical_key, identities in identity_groups.items():
+            # Check if orphan name matches any name in this group
+            for identity in identities:
+                if names_match_fuzzy(orphan["author"], identity["author"]):
+                    # Found a match! Add to this group
+                    identity_groups[canonical_key].append(orphan)
+                    matched = True
+                    break
+
+            if matched:
+                break
+
+        if not matched:
+            unmatched_orphans.append(orphan)
+
+    # Pass 3: Group remaining unmatched orphans by exact name
+    for orphan in unmatched_orphans:
+        canonical_key = f"name:{orphan['author'].lower().strip()}"
+
+        if canonical_key not in identity_groups:
+            identity_groups[canonical_key] = []
+
+        identity_groups[canonical_key].append(orphan)
+
+    # Build common contributors from identity groups
+    common_contributors = []
+
+    for canonical_key, identities in identity_groups.items():
+        # Get unique repos for this identity
+        repos_map = {}  # {repo_key: identity}
+
+        for identity in identities:
+            repo_key = identity["repo_key"]
+            if repo_key not in repos_map:
+                repos_map[repo_key] = identity
+
+        # Consider common if appears in at least 2 repos
+        if len(repos_map) >= 2:
+            repos_with_author = []
+
+            for repo_key, identity in repos_map.items():
+                owner, repo = repo_key.split("/", 1)
+                author_data = identity["data"]
+
+                repos_with_author.append({
+                    "owner": owner,
+                    "repo": repo,
+                    "commits": author_data["commits"],
+                    "email": author_data.get("email", ""),
+                    "github_login": author_data.get("github_login", ""),
+                })
+
+            total_commits = sum(r["commits"] for r in repos_with_author)
+
+            # Use the most complete name and email
+            primary_identity = identities[0]
+            display_name = primary_identity["author"]
+            email = primary_identity["data"].get("email", "")
+            github_login = primary_identity["data"].get("github_login", "")
+
+            # Try to find the most complete name
+            for identity in identities:
+                if identity["data"].get("github_login"):
+                    github_login = identity["data"]["github_login"]
+                    display_name = identity["author"]
+                    break
+
+            common_contributors.append({
+                "author": display_name,
+                "email": email,
+                "github_login": github_login,
+                "repos": repos_with_author,
+                "total_commits": total_commits,
+                "repo_count": len(repos_with_author),
+                "matched_by": canonical_key.split(":")[0]  # "github_id", "github_login", or "name"
+            })
+
+    # Sort by repo_count (descending), then by total_commits (descending)
+    common_contributors.sort(key=lambda x: (-x["repo_count"], -x["total_commits"]))
+
+    return {
+        "success": True,
+        "common_contributors": common_contributors,
+        "summary": {
+            "total_repos": len(repo_authors),
+            "total_common_contributors": len(common_contributors)
+        }
+    }
 
 
 if __name__ == "__main__":
