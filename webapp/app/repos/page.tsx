@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Input, Button, Card, Alert, Table, Tag, Space, message, Avatar, Collapse } from 'antd';
+import { useState, useEffect } from 'react';
+import { Input, Button, Card, Alert, Table, Tag, Space, message, Avatar, Collapse, Select } from 'antd';
 import { GithubOutlined, CheckCircleOutlined, CloseCircleOutlined, MinusCircleOutlined, LoadingOutlined, UserOutlined, TeamOutlined } from '@ant-design/icons';
+import ContributorComparison from '../../components/ContributorComparison';
 
 const { TextArea } = Input;
-const { Panel } = Collapse;
 
 const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || 'http://localhost:8000';
 
@@ -52,6 +52,23 @@ interface CommonContributorsResult {
   message?: string;
 }
 
+interface ContributorComparisonData {
+  success: boolean;
+  contributor: string;
+  comparisons: Array<{
+    repo: string;
+    owner: string;
+    repo_name: string;
+    scores: any;
+    total_commits: number;
+    cached: boolean;
+  }>;
+  dimension_keys: string[];
+  dimension_names: string[];
+  aggregate: any;
+  failed_repos?: Array<{ repo: string; reason: string }>;
+}
+
 export default function ReposPage() {
   const [repoUrls, setRepoUrls] = useState('');
   const [error, setError] = useState('');
@@ -59,15 +76,73 @@ export default function ReposPage() {
   const [results, setResults] = useState<BatchResult | null>(null);
   const [commonContributors, setCommonContributors] = useState<CommonContributorsResult | null>(null);
   const [loadingCommon, setLoadingCommon] = useState(false);
+  const [selectedContributor, setSelectedContributor] = useState<string>('');
+  const [comparisonData, setComparisonData] = useState<ContributorComparisonData | null>(null);
+  const [loadingComparison, setLoadingComparison] = useState(false);
 
   const generateAvatarUrl = (author: string) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=128&bold=true`;
   };
 
+  // Function to compare a specific contributor
+  const compareContributor = async (contributorName: string, reposToCompare: Array<{owner: string, repo: string}>) => {
+    setLoadingComparison(true);
+    setComparisonData(null);
+
+    try {
+      const response = await fetch(`${API_SERVER_URL}/api/batch/compare-contributor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contributor: contributorName.trim(),
+          repos: reposToCompare
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to compare contributor');
+      }
+
+      const data: ContributorComparisonData = await response.json();
+
+      if (!data.success) {
+        throw new Error('No evaluation data found');
+      }
+
+      setComparisonData(data);
+      message.success(`Compared ${contributorName} across ${data.comparisons.length} repositories!`);
+
+    } catch (err: any) {
+      console.error('Failed to compare contributor:', err.message);
+      message.error(`Failed to compare ${contributorName}: ${err.message}`);
+    } finally {
+      setLoadingComparison(false);
+    }
+  };
+
+  // Effect to auto-compare when selected contributor changes
+  useEffect(() => {
+    if (selectedContributor && results) {
+      const reposWithData = results.results.filter(r => r.data_exists && r.owner && r.repo);
+      if (reposWithData.length >= 2) {
+        const reposToCompare = reposWithData.map(r => ({
+          owner: r.owner!,
+          repo: r.repo!
+        }));
+        compareContributor(selectedContributor, reposToCompare);
+      }
+    }
+  }, [selectedContributor]);
+
   const handleSubmit = async () => {
     setError('');
     setResults(null);
     setCommonContributors(null);
+    setSelectedContributor('');
+    setComparisonData(null);
 
     // Split by newline and filter out empty lines
     const urls = repoUrls
@@ -143,6 +218,10 @@ export default function ReposPage() {
 
           if (commonData.common_contributors.length > 0) {
             message.info(`Found ${commonData.common_contributors.length} common contributors!`);
+
+            // Automatically select and compare the first contributor
+            const firstContributor = commonData.common_contributors[0].author;
+            setSelectedContributor(firstContributor);
           }
         } else {
           console.error('Failed to fetch common contributors');
@@ -477,44 +556,94 @@ export default function ReposPage() {
         )}
 
         {commonContributors && commonContributors.common_contributors.length > 0 && (
-          <Card
-            title={
-              <div style={{ color: '#00F0FF', fontSize: '20px', fontWeight: 'bold' }}>
-                <TeamOutlined style={{ marginRight: '8px' }} />
-                Common Contributors
-                <Tag
-                  color="purple"
-                  style={{ marginLeft: '12px', fontSize: '14px', padding: '4px 12px' }}
-                >
-                  {commonContributors.summary.total_common_contributors} Found
-                </Tag>
-              </div>
-            }
-            style={{
-              background: '#1A1A1A',
-              border: '3px solid #00F0FF',
-              borderRadius: '0'
-            }}
-            headStyle={{
-              background: '#0A0A0A',
-              border: 'none',
-              borderBottom: '2px solid #00F0FF'
-            }}
-          >
-            <div style={{ marginBottom: '20px', color: '#B0B0B0' }}>
-              Contributors who have committed to <strong style={{ color: '#FFFFFF' }}>2 or more</strong> of the analyzed repositories
-            </div>
-
-            <Table
-              columns={contributorColumns}
-              dataSource={commonContributors.common_contributors}
-              rowKey="author"
-              pagination={{ pageSize: 10 }}
+          <>
+            <Card
+              title={
+                <div style={{ color: '#00F0FF', fontSize: '20px', fontWeight: 'bold' }}>
+                  <TeamOutlined style={{ marginRight: '8px' }} />
+                  Common Contributors
+                  <Tag
+                    color="purple"
+                    style={{ marginLeft: '12px', fontSize: '14px', padding: '4px 12px' }}
+                  >
+                    {commonContributors.summary.total_common_contributors} Found
+                  </Tag>
+                </div>
+              }
               style={{
-                background: '#0A0A0A'
+                background: '#1A1A1A',
+                border: '3px solid #00F0FF',
+                borderRadius: '0',
+                marginBottom: '30px'
               }}
-            />
-          </Card>
+              headStyle={{
+                background: '#0A0A0A',
+                border: 'none',
+                borderBottom: '2px solid #00F0FF'
+              }}
+            >
+              <div style={{ marginBottom: '20px', color: '#B0B0B0' }}>
+                Contributors who have committed to <strong style={{ color: '#FFFFFF' }}>2 or more</strong> of the analyzed repositories
+              </div>
+
+              <Table
+                columns={contributorColumns}
+                dataSource={commonContributors.common_contributors}
+                rowKey="author"
+                pagination={{ pageSize: 10 }}
+                style={{
+                  background: '#0A0A0A'
+                }}
+              />
+            </Card>
+
+            {/* Contributor Selector */}
+            <Card
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <span style={{ color: '#FFEB00', fontSize: '18px', fontWeight: 'bold' }}>
+                    Select Contributor to Compare:
+                  </span>
+                  <Select
+                    value={selectedContributor}
+                    onChange={setSelectedContributor}
+                    style={{ width: 300 }}
+                    size="large"
+                  >
+                    {commonContributors.common_contributors.map(contributor => (
+                      <Select.Option key={contributor.author} value={contributor.author}>
+                        {contributor.author} ({contributor.total_commits} commits)
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </div>
+              }
+              style={{
+                background: '#1A1A1A',
+                border: '3px solid #333',
+                borderRadius: '0',
+                marginBottom: '30px'
+              }}
+              headStyle={{
+                background: '#0A0A0A',
+                border: 'none',
+                borderBottom: '2px solid #333'
+              }}
+            >
+              <div style={{ color: '#B0B0B0', fontSize: '14px' }}>
+                Compare the selected contributor's six-dimensional capability scores across all repositories
+              </div>
+            </Card>
+
+            {/* Comparison Visualization */}
+            {selectedContributor && (
+              <ContributorComparison
+                data={comparisonData}
+                loading={loadingComparison}
+                error={comparisonData === null && !loadingComparison ? 'Failed to load comparison data' : undefined}
+              />
+            )}
+          </>
         )}
 
         {commonContributors && commonContributors.common_contributors.length === 0 && (

@@ -574,7 +574,12 @@ class CommitEvaluatorModerate:
         chunk_idx: int = None
     ) -> Dict[str, int]:
         """
-        Use LLM to evaluate commits and return scores
+        Use LLM to evaluate commits and return scores with automatic fallback
+
+        Tries models in order:
+        1. anthropic/claude-sonnet-4.5 (primary)
+        2. z-ai/glm-4.7 (fallback if Claude fails)
+        3. Keyword-based evaluation (fallback if both LLMs fail)
 
         Args:
             context: Commit context for analysis
@@ -591,47 +596,70 @@ class CommitEvaluatorModerate:
         # Build evaluation prompt
         prompt = self._build_evaluation_prompt(context, username, chunk_idx)
 
-        try:
-            # Call OpenRouter API
-            response = requests.post(
-                self.api_url,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "anthropic/claude-sonnet-4.5",  # Using better model for moderate mode
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 4000
-                },
-                timeout=120
-            )
+        # List of models to try in order
+        models = [
+            ("anthropic/claude-sonnet-4.5", "Claude Sonnet 4.5"),
+            ("z-ai/glm-4.7", "Z.AI GLM 4.7")
+        ]
 
-            response.raise_for_status()
-            result = response.json()
+        last_error = None
 
-            # Parse LLM response
-            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-            scores = self._parse_llm_response(content)
+        for model_id, model_name in models:
+            try:
+                chunk_info = f" [Chunk {chunk_idx}]" if chunk_idx else ""
+                print(f"[LLM{chunk_info}] Trying {model_name}...")
 
-            # Log token usage
-            usage = result.get("usage", {})
-            chunk_info = f" [Chunk {chunk_idx}]" if chunk_idx else ""
-            print(f"[Token Usage{chunk_info}] Input: {usage.get('prompt_tokens', 0)}, "
-                  f"Output: {usage.get('completion_tokens', 0)}, "
-                  f"Total: {usage.get('total_tokens', 0)}")
+                # Call OpenRouter API
+                response = requests.post(
+                    self.api_url,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": model_id,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        "temperature": 0.3,
+                        "max_tokens": 4000
+                    },
+                    timeout=120
+                )
 
-            return scores
+                response.raise_for_status()
+                result = response.json()
 
-        except Exception as e:
-            print(f"[Error] LLM evaluation failed: {e}")
-            return self._fallback_evaluation(context)
+                # Parse LLM response
+                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                scores = self._parse_llm_response(content)
+
+                # Log success and token usage
+                usage = result.get("usage", {})
+                print(f"[Success{chunk_info}] Used {model_name}")
+                print(f"[Token Usage{chunk_info}] Input: {usage.get('prompt_tokens', 0)}, "
+                      f"Output: {usage.get('completion_tokens', 0)}, "
+                      f"Total: {usage.get('total_tokens', 0)}")
+
+                return scores
+
+            except Exception as e:
+                last_error = e
+                print(f"[Warning{chunk_info}] {model_name} failed: {str(e)[:100]}")
+
+                # If this isn't the last model, try the next one
+                if model_id != models[-1][0]:
+                    print(f"[Fallback{chunk_info}] Trying next model...")
+                    continue
+                else:
+                    # This was the last model, fall through to keyword-based evaluation
+                    print(f"[Fallback{chunk_info}] All LLM models failed, using keyword-based evaluation")
+
+        # All models failed, use keyword-based fallback
+        return self._fallback_evaluation(context)
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count for text (rough approximation)"""

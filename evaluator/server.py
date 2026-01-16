@@ -1213,6 +1213,161 @@ async def find_common_contributors(request: dict):
     }
 
 
+@app.post("/api/batch/compare-contributor")
+async def compare_contributor_across_repos(request: dict):
+    """
+    Compare a contributor's six-dimensional scores across multiple repositories
+
+    Request body:
+    {
+        "contributor": "John Doe",
+        "repos": [
+            {"owner": "facebook", "repo": "react"},
+            {"owner": "vercel", "repo": "next.js"}
+        ]
+    }
+
+    Response:
+    {
+        "success": true,
+        "contributor": "John Doe",
+        "comparisons": [
+            {
+                "repo": "facebook/react",
+                "owner": "facebook",
+                "repo_name": "react",
+                "scores": {
+                    "ai_model_fullstack": 85,
+                    "ai_native_architecture": 70,
+                    ...
+                },
+                "total_commits": 150
+            }
+        ],
+        "dimension_names": [...],
+        "dimension_display_names": [...]
+    }
+    """
+    contributor = request.get("contributor")
+    repos = request.get("repos", [])
+
+    if not contributor:
+        raise HTTPException(status_code=400, detail="Contributor name is required")
+
+    if not repos:
+        raise HTTPException(status_code=400, detail="At least one repository is required")
+
+    if len(repos) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 repositories allowed")
+
+    results = []
+    failed_repos = []
+
+    for repo_info in repos:
+        owner = repo_info.get("owner")
+        repo = repo_info.get("repo")
+
+        if not owner or not repo:
+            continue
+
+        try:
+            # Check if data exists for this repo
+            data_dir = DATA_DIR / owner / repo
+            if not data_dir.exists() or not (data_dir / "commits").exists():
+                failed_repos.append({
+                    "repo": f"{owner}/{repo}",
+                    "reason": "Repository data not extracted yet"
+                })
+                continue
+
+            # Evaluate contributor in this repo
+            eval_result = await evaluate_author(owner, repo, contributor, use_cache=True)
+
+            if eval_result.get("success"):
+                evaluation = eval_result["evaluation"]
+                scores = evaluation.get("scores", {})
+
+                results.append({
+                    "repo": f"{owner}/{repo}",
+                    "owner": owner,
+                    "repo_name": repo,
+                    "scores": {
+                        "ai_model_fullstack": scores.get("ai_fullstack", 0),
+                        "ai_native_architecture": scores.get("ai_architecture", 0),
+                        "cloud_native": scores.get("cloud_native", 0),
+                        "open_source_collaboration": scores.get("open_source", 0),
+                        "intelligent_development": scores.get("intelligent_dev", 0),
+                        "engineering_leadership": scores.get("leadership", 0)
+                    },
+                    "total_commits": evaluation.get("total_commits_analyzed", 0),
+                    "commits_summary": evaluation.get("commits_summary", {}),
+                    "cached": eval_result.get("metadata", {}).get("cached", False)
+                })
+            else:
+                failed_repos.append({
+                    "repo": f"{owner}/{repo}",
+                    "reason": "Evaluation failed"
+                })
+
+        except HTTPException as e:
+            failed_repos.append({
+                "repo": f"{owner}/{repo}",
+                "reason": str(e.detail)
+            })
+        except Exception as e:
+            print(f"✗ Failed to evaluate {contributor} in {owner}/{repo}: {e}")
+            failed_repos.append({
+                "repo": f"{owner}/{repo}",
+                "reason": f"Error: {str(e)}"
+            })
+
+    if not results:
+        return {
+            "success": False,
+            "message": "No evaluations found for this contributor across the specified repositories",
+            "contributor": contributor,
+            "failed_repos": failed_repos
+        }
+
+    # Calculate aggregate statistics
+    avg_scores = {}
+    dimension_keys = [
+        "ai_model_fullstack",
+        "ai_native_architecture",
+        "cloud_native",
+        "open_source_collaboration",
+        "intelligent_development",
+        "engineering_leadership"
+    ]
+
+    for dim in dimension_keys:
+        scores_list = [r["scores"][dim] for r in results]
+        avg_scores[dim] = sum(scores_list) / len(scores_list) if scores_list else 0
+
+    total_commits_all_repos = sum(r["total_commits"] for r in results)
+
+    return {
+        "success": True,
+        "contributor": contributor,
+        "comparisons": results,
+        "dimension_keys": dimension_keys,
+        "dimension_names": [
+            "AI Model Full-Stack & Trade-off Capability",
+            "AI Native Architecture & Communication Design",
+            "Cloud Native & Constraint Engineering",
+            "Open Source Collaboration & Requirements Translation",
+            "Intelligent Development & Human-Machine Collaboration",
+            "Engineering Leadership & System Trade-offs"
+        ],
+        "aggregate": {
+            "total_repos_evaluated": len(results),
+            "total_commits": total_commits_all_repos,
+            "average_scores": avg_scores
+        },
+        "failed_repos": failed_repos if failed_repos else None
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 

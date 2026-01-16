@@ -314,7 +314,6 @@ export default function Dashboard() {
       <div className="dashboard-header">
         <h1>Git Engineer Skill Evaluator</h1>
         <p>LLM-Powered Six-Dimensional Engineering Capability Analysis</p>
-        <div className="badge">Powered by Claude 4.5 haiku</div>
       </div>
 
       <Card className="input-section">
