@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Input, Button, Switch, Card, Avatar, Spin, Alert, Tag, message } from 'antd';
+import { Input, Button, Switch, Card, Avatar, Spin, Alert, Tag, message, Radio } from 'antd';
 import { UserOutlined, ThunderboltOutlined, RobotOutlined, DownloadOutlined } from '@ant-design/icons';
 import { Radar } from 'react-chartjs-2';
 import { exportHomePagePDF } from '../utils/pdfExport';
@@ -86,6 +86,7 @@ interface Evaluation {
 export default function Dashboard() {
   const [repoPath, setRepoPath] = useState('');
   const [useCache, setUseCache] = useState(true);
+  const [selectedModel, setSelectedModel] = useState('anthropic/claude-sonnet-4.5');
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const [error, setError] = useState('');
@@ -219,7 +220,7 @@ export default function Dashboard() {
 
     try {
       const response = await fetch(
-        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?use_cache=${useCache}`,
+        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?use_cache=${useCache}&model=${encodeURIComponent(selectedModel)}`,
         { method: 'POST' }
       );
 
@@ -390,6 +391,18 @@ export default function Dashboard() {
           <span className="cache-description">
             When enabled, uses cached evaluation results. Disable to force fresh AI analysis.
           </span>
+        </div>
+
+        <div className="input-group">
+          <Radio.Group
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            buttonStyle="solid"
+            size="large"
+          >
+            <Radio.Button value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5</Radio.Button>
+            <Radio.Button value="z-ai/glm-4.7">Z.AI GLM 4.7</Radio.Button>
+          </Radio.Group>
         </div>
 
         <div className="note">
