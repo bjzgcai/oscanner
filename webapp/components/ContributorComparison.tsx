@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, Radio, Spin, Empty, Alert, Space } from 'antd';
 import { RadarChartOutlined, BarChartOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
@@ -51,6 +51,23 @@ export default function ContributorComparison({
   error
 }: ContributorComparisonProps) {
   const [chartType, setChartType] = useState<ChartType>('radar');
+  const chartRef = useRef<any>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (chartRef.current) {
+        const echartsInstance = chartRef.current.getEchartsInstance();
+        if (echartsInstance) {
+          try {
+            echartsInstance.dispose();
+          } catch (e) {
+            // Silently handle disposal errors
+          }
+        }
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -322,9 +339,13 @@ export default function ContributorComparison({
       {/* Chart */}
       <div style={{ marginBottom: '30px' }}>
         <ReactECharts
+          ref={chartRef}
           option={getChartOptions()}
           style={{ height: '500px', width: '100%' }}
           theme="dark"
+          notMerge={true}
+          lazyUpdate={true}
+          opts={{ renderer: 'canvas' }}
         />
       </div>
 

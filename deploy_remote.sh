@@ -79,6 +79,10 @@ echo -e "${GREEN}✓${NC} Python environment ready"
 # Install Node.js dependencies and build webapp
 echo -e "\n${BLUE}[6/7] Building webapp...${NC}"
 ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH}/webapp && \
+    export NVM_DIR=\"\$HOME/.nvm\" && \
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\" && \
+    nvm install 20 && \
+    nvm use 20 && \
     npm install && \
     npm run build"
 echo -e "${GREEN}✓${NC} Webapp built"
@@ -117,7 +121,7 @@ Type=simple
 User=${REMOTE_USER}
 WorkingDirectory=${REMOTE_PATH}/webapp
 EnvironmentFile=${REMOTE_PATH}/webapp/.env.production.local
-ExecStart=/usr/bin/npm start
+ExecStart=/bin/bash -c 'export NVM_DIR=\"\$HOME/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\" && nvm use 20 && npm start'
 Restart=always
 RestartSec=10
 
