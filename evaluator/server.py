@@ -526,7 +526,8 @@ async def get_authors(owner: str, repo: str, use_cache: bool = Query(True)):
                 evaluator = CommitEvaluatorModerate(
                     data_dir=str(data_dir),
                     api_key=api_key,
-                    mode="moderate"
+                    mode="moderate",
+                    model="anthropic/claude-sonnet-4.5"  # Use default model for auto-evaluation
                 )
 
                 # Load commits from local data
@@ -581,7 +582,8 @@ async def evaluate_author(
     repo: str,
     author: str,
     use_cache: bool = Query(True),
-    use_chunking: bool = Query(True)
+    use_chunking: bool = Query(True),
+    model: str = Query("anthropic/claude-sonnet-4.5")
 ):
     """
     Evaluate an author using local commit data with caching
@@ -668,7 +670,8 @@ async def evaluate_author(
         evaluator = CommitEvaluatorModerate(
             data_dir=str(data_dir),
             api_key=api_key,
-            mode="moderate"
+            mode="moderate",
+            model=model
         )
 
         # Load commits from local data
