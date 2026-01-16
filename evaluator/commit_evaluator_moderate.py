@@ -265,8 +265,8 @@ class CommitEvaluatorModerate:
                 if dim != "reasoning" and isinstance(score, (int, float)):
                     context_parts.append(f"- {dim}: {score}/100\n")
             if "reasoning" in previous_evaluation:
-                context_parts.append(f"\nPrevious reasoning: {previous_evaluation['reasoning']}\n")
-            context_parts.append("\nNow analyze the following additional commits and UPDATE the scores accordingly.\n\n")
+                context_parts.append(f"\n### Previous Analysis:\n{previous_evaluation['reasoning']}\n")
+            context_parts.append("\n**Important:** Now analyze the additional commits below and UPDATE the scores. Your reasoning should reflect the COMPLETE evaluation considering ALL commits analyzed so far, not just this chunk.\n\n")
 
         # Add repository structure only in first chunk
         if repo_structure:
@@ -348,14 +348,15 @@ class CommitEvaluatorModerate:
             else:
                 merged[key] = eval2.get(key, eval1.get(key, 0))
 
-        # Merge reasoning
-        reasoning_parts = []
-        if "reasoning" in eval1 and eval1["reasoning"]:
-            reasoning_parts.append(f"Previous: {eval1['reasoning']}")
+        # Merge reasoning with better structure preservation
         if "reasoning" in eval2 and eval2["reasoning"]:
-            reasoning_parts.append(f"Update: {eval2['reasoning']}")
-
-        merged["reasoning"] = " | ".join(reasoning_parts) if reasoning_parts else ""
+            # For chunked evaluations, the latest chunk has the most comprehensive reasoning
+            # that already considers previous chunks, so we use it directly
+            merged["reasoning"] = eval2["reasoning"]
+        elif "reasoning" in eval1 and eval1["reasoning"]:
+            merged["reasoning"] = eval1["reasoning"]
+        else:
+            merged["reasoning"] = ""
 
         return merged
 
@@ -702,15 +703,15 @@ class CommitEvaluatorModerate:
 
 CHUNKED EVALUATION INSTRUCTIONS:
 This is a chunked evaluation. You will see:
-1. Previous evaluation scores (if this is not the first chunk)
+1. Previous evaluation scores and analysis (if this is not the first chunk)
 2. New commits to analyze in the current chunk
 
 Your task is to:
-- Analyze the new commits carefully
-- UPDATE the scores based on the new evidence
-- If you see improvement or new capabilities, INCREASE the relevant scores
-- If you see issues or concerns, DECREASE the relevant scores
-- Provide reasoning that explains how the new commits affected your evaluation"""
+- Carefully review the previous analysis and scores
+- Analyze the new commits in this chunk
+- UPDATE the scores based on ALL evidence (previous + new)
+- Provide a COMPLETE reasoning that reflects the ENTIRE evaluation, not just this chunk
+- Your reasoning should integrate insights from previous chunks with new findings"""
 
         return f"""You are an expert engineering evaluator. Analyze the following data from user "{username}" and evaluate their engineering capabilities across six dimensions. Each score should be 0-100.
 {mode_note}{chunked_instruction}
@@ -742,7 +743,7 @@ Format:
   "open_source": <0-100>,
   "intelligent_dev": <0-100>,
   "leadership": <0-100>,
-  "reasoning": "Brief explanation focusing on key strengths and areas for improvement (2-4 sentences)"
+  "reasoning": "Provide a well-structured analysis with the following sections (use \\n\\n for paragraph breaks):\\n\\n**Key Strengths:** List 2-3 specific strengths with examples from commits.\\n\\n**Areas for Growth:** Identify 2-3 areas for improvement with actionable suggestions.\\n\\n**Overall Assessment:** Brief summary of the contributor's technical profile and potential."
 }}"""
 
     def _parse_llm_response(self, content: str) -> Dict[str, int]:
@@ -761,9 +762,9 @@ Format:
                 for key in self.dimensions.keys():
                     scores[key] = min(100, max(0, int(data.get(key, 0))))
 
-                # Add reasoning if available
+                # Add reasoning if available and format it properly
                 if "reasoning" in data:
-                    scores["reasoning"] = data["reasoning"]
+                    scores["reasoning"] = self._format_reasoning(data["reasoning"])
 
                 return scores
 
@@ -772,6 +773,21 @@ Format:
 
         # Fallback to default scores
         return {key: 50 for key in self.dimensions.keys()}
+
+    def _format_reasoning(self, reasoning: str) -> str:
+        """Format reasoning text for better readability"""
+        if not reasoning:
+            return reasoning
+
+        # Replace escaped newlines with actual newlines
+        reasoning = reasoning.replace("\\n\\n", "\n\n").replace("\\n", "\n")
+
+        # Ensure proper spacing after section headers
+        reasoning = reasoning.replace("**Key Strengths:**", "\n**Key Strengths:**")
+        reasoning = reasoning.replace("**Areas for Growth:**", "\n\n**Areas for Growth:**")
+        reasoning = reasoning.replace("**Overall Assessment:**", "\n\n**Overall Assessment:**")
+
+        return reasoning.strip()
 
     def _fallback_evaluation(self, context: str) -> Dict[str, int]:
         """Fallback evaluation using keyword analysis when LLM is unavailable"""
@@ -803,7 +819,17 @@ Format:
         lead_keywords = ['optimize', 'performance', 'security', 'best practice', 'pattern']
         scores['leadership'] = self._count_keywords(context_lower, lead_keywords)
 
-        scores['reasoning'] = "Evaluation based on keyword analysis (LLM unavailable)"
+        # Build structured reasoning for fallback
+        reasoning_parts = [
+            "**Note:** This evaluation uses keyword-based analysis as LLM service is unavailable.",
+            "",
+            "**Key Strengths:** The analysis detected relevant technical keywords across multiple dimensions. Scores are based on keyword frequency in commits.",
+            "",
+            "**Areas for Growth:** For a more accurate assessment, please configure the LLM API key to enable deep code analysis and contextual evaluation.",
+            "",
+            "**Overall Assessment:** This is a basic heuristic evaluation. Scores should be considered approximate indicators only."
+        ]
+        scores['reasoning'] = "\n".join(reasoning_parts)
 
         return scores
 
