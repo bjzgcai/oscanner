@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Input, Button, Switch, Card, Avatar, Spin, Alert, Tag } from 'antd';
-import { UserOutlined, ThunderboltOutlined, RobotOutlined } from '@ant-design/icons';
+import { Input, Button, Switch, Card, Avatar, Spin, Alert, Tag, message } from 'antd';
+import { UserOutlined, ThunderboltOutlined, RobotOutlined, DownloadOutlined } from '@ant-design/icons';
 import { Radar } from 'react-chartjs-2';
+import { exportHomePagePDF } from '../utils/pdfExport';
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -262,6 +263,29 @@ export default function Dashboard() {
     };
   };
 
+  const handleDownloadPDF = async () => {
+    if (!repoData || !evaluation || selectedAuthorIndex < 0) {
+      message.error('No evaluation data available to export');
+      return;
+    }
+
+    try {
+      message.loading('Generating PDF report...', 0);
+      await exportHomePagePDF(
+        repoData,
+        authorsData[selectedAuthorIndex],
+        evaluation,
+        isCached
+      );
+      message.destroy();
+      message.success('PDF report downloaded successfully!');
+    } catch (error) {
+      message.destroy();
+      message.error('Failed to generate PDF report');
+      console.error('PDF generation error:', error);
+    }
+  };
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -430,18 +454,33 @@ export default function Dashboard() {
                 {evaluation.commits_summary.total_deletions} deletions
               </div>
             </div>
-            {isCached ? (
-              <Tag icon={<ThunderboltOutlined />} color="success" className="eval-badge">
-                Cached Result
-              </Tag>
-            ) : (
-              <Tag icon={<RobotOutlined />} color="purple" className="eval-badge">
-                AI-Powered Analysis
-              </Tag>
-            )}
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              {isCached ? (
+                <Tag icon={<ThunderboltOutlined />} color="success" className="eval-badge">
+                  Cached Result
+                </Tag>
+              ) : (
+                <Tag icon={<RobotOutlined />} color="purple" className="eval-badge">
+                  AI-Powered Analysis
+                </Tag>
+              )}
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                onClick={handleDownloadPDF}
+                style={{
+                  background: '#FFEB00',
+                  borderColor: '#FFEB00',
+                  color: '#0A0A0A',
+                  fontWeight: 'bold'
+                }}
+              >
+                Download PDF
+              </Button>
+            </div>
           </div>
 
-          <div className="chart-container">
+          <div className="chart-container" id="radar-chart-export">
             {getChartData() && <Radar data={getChartData()!} options={chartOptions} />}
           </div>
 
