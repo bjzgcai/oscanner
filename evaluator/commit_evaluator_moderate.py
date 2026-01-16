@@ -25,7 +25,8 @@ class CommitEvaluatorModerate:
         api_key: Optional[str] = None,
         max_input_tokens: int = 190000,
         data_dir: Optional[str] = None,
-        mode: str = "moderate"
+        mode: str = "moderate",
+        model: str = "anthropic/claude-sonnet-4.5"
     ):
         """
         Initialize the commit evaluator
@@ -35,12 +36,14 @@ class CommitEvaluatorModerate:
             max_input_tokens: Maximum tokens to send to LLM (default: 190k)
             data_dir: Directory containing extracted data (e.g., 'data/owner/repo')
             mode: 'conservative' (diffs only) or 'moderate' (diffs + files)
+            model: LLM model to use (default: 'anthropic/claude-sonnet-4.5')
         """
         self.api_key = api_key or os.getenv("OPEN_ROUTER_KEY")
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
         self.max_input_tokens = max_input_tokens
         self.data_dir = Path(data_dir) if data_dir else None
         self.mode = mode
+        self.model = model
 
         # Six dimensions of engineering capability
         self.dimensions = {
@@ -577,11 +580,6 @@ class CommitEvaluatorModerate:
         """
         Use LLM to evaluate commits and return scores with automatic fallback
 
-        Tries models in order:
-        1. anthropic/claude-sonnet-4.5 (primary)
-        2. z-ai/glm-4.7 (fallback if Claude fails)
-        3. Keyword-based evaluation (fallback if both LLMs fail)
-
         Args:
             context: Commit context for analysis
             username: GitHub username
@@ -597,18 +595,29 @@ class CommitEvaluatorModerate:
         # Build evaluation prompt
         prompt = self._build_evaluation_prompt(context, username, chunk_idx)
 
-        # List of models to try in order
+        # List of models to try in order (primary model + fallbacks)
         models = [
+            (self.model, self._get_model_display_name(self.model)),
             ("anthropic/claude-sonnet-4.5", "Claude Sonnet 4.5"),
             ("z-ai/glm-4.7", "Z.AI GLM 4.7")
         ]
 
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_models = []
+        for model_id, model_name in models:
+            if model_id not in seen:
+                seen.add(model_id)
+                unique_models.append((model_id, model_name))
+
         last_error = None
 
-        for model_id, model_name in models:
+        for model_id, model_name in unique_models:
             try:
                 chunk_info = f" [Chunk {chunk_idx}]" if chunk_idx else ""
-                print(f"[LLM{chunk_info}] Trying {model_name}...")
+                is_primary = (model_id == self.model)
+                model_label = f"{model_name} (Primary)" if is_primary else f"{model_name} (Fallback)"
+                print(f"[LLM{chunk_info}] Trying {model_label}...")
 
                 # Call OpenRouter API
                 response = requests.post(
@@ -640,7 +649,7 @@ class CommitEvaluatorModerate:
 
                 # Log success and token usage
                 usage = result.get("usage", {})
-                print(f"[Success{chunk_info}] Used {model_name}")
+                print(f"[Success{chunk_info}] Used {model_label}")
                 print(f"[Token Usage{chunk_info}] Input: {usage.get('prompt_tokens', 0)}, "
                       f"Output: {usage.get('completion_tokens', 0)}, "
                       f"Total: {usage.get('total_tokens', 0)}")
@@ -649,10 +658,10 @@ class CommitEvaluatorModerate:
 
             except Exception as e:
                 last_error = e
-                print(f"[Warning{chunk_info}] {model_name} failed: {str(e)[:100]}")
+                print(f"[Warning{chunk_info}] {model_label} failed: {str(e)[:100]}")
 
                 # If this isn't the last model, try the next one
-                if model_id != models[-1][0]:
+                if model_id != unique_models[-1][0]:
                     print(f"[Fallback{chunk_info}] Trying next model...")
                     continue
                 else:
@@ -661,6 +670,14 @@ class CommitEvaluatorModerate:
 
         # All models failed, use keyword-based fallback
         return self._fallback_evaluation(context)
+
+    def _get_model_display_name(self, model_id: str) -> str:
+        """Get display name for model ID"""
+        model_names = {
+            "anthropic/claude-sonnet-4.5": "Claude Sonnet 4.5",
+            "z-ai/glm-4.7": "Z.AI GLM 4.7"
+        }
+        return model_names.get(model_id, model_id)
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count for text (rough approximation)"""
