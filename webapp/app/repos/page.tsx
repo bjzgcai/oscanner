@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Input, Button, Card, Alert, Table, Tag, Space, message, Avatar, Collapse, Select } from 'antd';
-import { GithubOutlined, CheckCircleOutlined, CloseCircleOutlined, MinusCircleOutlined, LoadingOutlined, UserOutlined, TeamOutlined } from '@ant-design/icons';
+import { GithubOutlined, CheckCircleOutlined, CloseCircleOutlined, MinusCircleOutlined, LoadingOutlined, UserOutlined, TeamOutlined, DownloadOutlined } from '@ant-design/icons';
 import ContributorComparison from '../../components/ContributorComparison';
+import { exportMultiRepoPDF } from '../../utils/pdfExport';
 
 const { TextArea } = Input;
 
@@ -82,6 +83,24 @@ export default function ReposPage() {
 
   const generateAvatarUrl = (author: string) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=128&bold=true`;
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!comparisonData || !selectedContributor) {
+      message.error('No comparison data available to export');
+      return;
+    }
+
+    try {
+      message.loading('Generating PDF report...', 0);
+      await exportMultiRepoPDF(comparisonData, selectedContributor);
+      message.destroy();
+      message.success('PDF report downloaded successfully!');
+    } catch (error) {
+      message.destroy();
+      message.error('Failed to generate PDF report');
+      console.error('PDF generation error:', error);
+    }
   };
 
   // Function to compare a specific contributor
@@ -600,22 +619,39 @@ export default function ReposPage() {
             {/* Contributor Selector */}
             <Card
               title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <span style={{ color: '#FFEB00', fontSize: '18px', fontWeight: 'bold' }}>
-                    Select Contributor to Compare:
-                  </span>
-                  <Select
-                    value={selectedContributor}
-                    onChange={setSelectedContributor}
-                    style={{ width: 300 }}
-                    size="large"
-                  >
-                    {commonContributors.common_contributors.map(contributor => (
-                      <Select.Option key={contributor.author} value={contributor.author}>
-                        {contributor.author} ({contributor.total_commits} commits)
-                      </Select.Option>
-                    ))}
-                  </Select>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <span style={{ color: '#FFEB00', fontSize: '18px', fontWeight: 'bold' }}>
+                      Select Contributor to Compare:
+                    </span>
+                    <Select
+                      value={selectedContributor}
+                      onChange={setSelectedContributor}
+                      style={{ width: 300 }}
+                      size="large"
+                    >
+                      {commonContributors.common_contributors.map(contributor => (
+                        <Select.Option key={contributor.author} value={contributor.author}>
+                          {contributor.author} ({contributor.total_commits} commits)
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </div>
+                  {comparisonData && selectedContributor && (
+                    <Button
+                      type="primary"
+                      icon={<DownloadOutlined />}
+                      onClick={handleDownloadPDF}
+                      style={{
+                        background: '#00F0FF',
+                        borderColor: '#00F0FF',
+                        color: '#0A0A0A',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      Download PDF
+                    </Button>
+                  )}
                 </div>
               }
               style={{

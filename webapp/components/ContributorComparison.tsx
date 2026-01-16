@@ -337,7 +337,7 @@ export default function ContributorComparison({
       }}
     >
       {/* Chart */}
-      <div style={{ marginBottom: '30px' }}>
+      <div style={{ marginBottom: '30px' }} id="comparison-chart-export">
         <ReactECharts
           ref={chartRef}
           option={getChartOptions()}
