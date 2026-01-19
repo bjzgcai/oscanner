@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Card, Radio, Spin, Empty, Alert, Space } from 'antd';
+import { Card, Radio, Spin, Empty, Alert, Space, Descriptions } from 'antd';
 import { RadarChartOutlined, BarChartOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 
@@ -402,31 +402,45 @@ export default function ContributorComparison({
                 padding: '15px'
               }}
             >
-              <div style={{ marginBottom: '10px' }}>
+              <div style={{ marginBottom: '15px' }}>
                 <span style={{ color: colors[idx % colors.length], fontSize: '16px', fontWeight: 'bold' }}>
                   {comp.repo}
                 </span>
                 <span style={{ color: '#B0B0B0', marginLeft: '15px' }}>
-                  {comp.total_commits} commits analyzed
+                  Commits: {comp.total_commits} | {comp.cached ? 'Cached' : 'Fresh Analysis'}
                 </span>
-                {comp.cached && (
-                  <span style={{ color: '#52c41a', marginLeft: '10px', fontSize: '12px' }}>
-                    ⚡ Cached
-                  </span>
-                )}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
+              <Descriptions
+                bordered
+                column={{ xs: 1, sm: 1, md: 2, lg: 2, xl: 3, xxl: 3 }}
+                size="small"
+                style={{
+                  background: 'transparent'
+                }}
+                labelStyle={{
+                  color: '#B0B0B0',
+                  background: '#0F0F0F',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  padding: '8px 12px'
+                }}
+                contentStyle={{
+                  color: '#FFEB00',
+                  background: '#0A0A0A',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  padding: '8px 12px'
+                }}
+              >
                 {Object.entries(comp.scores).map(([key, value], dimIdx) => (
-                  <div key={key} style={{ fontSize: '12px' }}>
-                    <span style={{ color: '#B0B0B0' }}>
-                      {data.dimension_names[dimIdx]?.split('&')[0]?.trim()}:{' '}
-                    </span>
-                    <span style={{ color: '#FFFFFF', fontWeight: 'bold' }}>
-                      {value.toFixed(1)}
-                    </span>
-                  </div>
+                  <Descriptions.Item
+                    key={key}
+                    label={data.dimension_names[dimIdx]}
+                  >
+                    {value.toFixed(0)}
+                  </Descriptions.Item>
                 ))}
-              </div>
+              </Descriptions>
             </div>
           ))}
         </Space>
