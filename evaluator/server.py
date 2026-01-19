@@ -7,19 +7,27 @@ Integrates CommitEvaluatorModerate with dashboard.html
 import os
 import json
 import subprocess
+import sys
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 import requests
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, Response
 from dotenv import load_dotenv
 
+from evaluator.paths import ensure_dirs, get_cache_dir, get_data_dir, get_eval_cache_dir
+
 # Load environment variables
-load_dotenv('.env.local')
+if Path(".env.local").exists():
+    load_dotenv(".env.local")
+else:
+    # fallback to default dotenv behavior (.env if present)
+    load_dotenv()
 
 # Import evaluator
-from commit_evaluator_moderate import CommitEvaluatorModerate
+from evaluator.commit_evaluator_moderate import CommitEvaluatorModerate
 
 app = FastAPI(title="Engineer Skill Evaluator API")
 
@@ -32,17 +40,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cache directory for commits
-CACHE_DIR = Path("cache")
-CACHE_DIR.mkdir(exist_ok=True)
+ensure_dirs()
 
-# Evaluation cache directory
-EVAL_CACHE_DIR = Path("evaluations/cache")
-EVAL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+# Cache directory for commits (default: user cache dir)
+CACHE_DIR = get_cache_dir()
 
-# Data directory
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
+# Evaluation cache directory (default: user data dir)
+EVAL_CACHE_DIR = get_eval_cache_dir()
+
+# Data directory (default: user data dir)
+DATA_DIR = get_data_dir()
 
 # Repository evaluators cache (in-memory)
 # Key: "{platform}_{owner}_{repo}", Value: CommitEvaluatorModerate instance
@@ -52,11 +59,87 @@ evaluators_cache: Dict[str, CommitEvaluatorModerate] = {}
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITEE_TOKEN = os.getenv("GITEE_TOKEN")
 
+# Default model for evaluation (can be overridden per-request by query param `model=...`)
+DEFAULT_LLM_MODEL = os.getenv("OSCANNER_LLM_MODEL", "anthropic/claude-sonnet-4.5")
+
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "Engineer Skill Evaluator"}
+
+
+@app.get("/")
+async def root(request: Request):
+    """
+    Root endpoint.
+
+    - For browsers, return a small HTML landing page (so "/" isn't a 404).
+    - For scripts/clients, return JSON.
+    """
+    payload = {
+        "service": "Engineer Skill Evaluator API",
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+        "endpoints": {
+            "authors": "/api/authors/{owner}/{repo}",
+            "evaluate": "/api/evaluate/{owner}/{repo}/{author}",
+            "batch_extract": "/api/batch/extract",
+            "batch_common_contributors": "/api/batch/common-contributors",
+            "batch_compare_contributor": "/api/batch/compare-contributor",
+        },
+    }
+
+    accept = (request.headers.get("accept") or "").lower()
+    if "text/html" in accept:
+        html = f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{payload["service"]}</title>
+    <style>
+      body {{ font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px; line-height: 1.5; }}
+      code {{ background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }}
+      a {{ color: #2563eb; text-decoration: none; }}
+      a:hover {{ text-decoration: underline; }}
+      .card {{ max-width: 780px; padding: 20px 22px; border: 1px solid #e5e7eb; border-radius: 12px; }}
+      ul {{ padding-left: 18px; }}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2 style="margin: 0 0 10px 0;">{payload["service"]}</h2>
+      <p style="margin: 0 0 14px 0;">Status: <code>{payload["status"]}</code></p>
+      <ul>
+        <li><a href="{payload["docs"]}">API Docs (Swagger)</a></li>
+        <li><a href="{payload["health"]}">Health Check</a></li>
+      </ul>
+      <p style="margin: 14px 0 6px 0;"><strong>Common endpoints</strong>:</p>
+      <ul>
+        <li><code>{payload["endpoints"]["authors"]}</code></li>
+        <li><code>{payload["endpoints"]["evaluate"]}</code></li>
+        <li><code>{payload["endpoints"]["batch_extract"]}</code></li>
+        <li><code>{payload["endpoints"]["batch_common_contributors"]}</code></li>
+        <li><code>{payload["endpoints"]["batch_compare_contributor"]}</code></li>
+      </ul>
+      <p style="margin: 14px 0 0 0; color: #6b7280;">
+        Dashboard UI lives in <code>webapp/</code> and runs separately on <code>http://localhost:3000</code>.
+      </p>
+    </div>
+  </body>
+</html>
+"""
+        return HTMLResponse(content=html, status_code=200)
+
+    return payload
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    # Browsers request this automatically; avoid noisy 404 logs.
+    return Response(status_code=204)
 
 
 def get_evaluation_cache_path(owner: str, repo: str) -> Path:
@@ -110,25 +193,24 @@ def extract_github_data(owner: str, repo: str) -> bool:
         print(f"Extracting GitHub data for {owner}/{repo}...")
         print(f"{'='*60}")
 
-        # Construct command
+        # Construct command (module execution; does not rely on CWD)
         cmd = [
-            "python3",
-            "tools/extract_repo_data_moderate.py",
-            "--repo-url", repo_url,
-            "--out", str(output_dir),
-            "--max-commits", "500"  # Fetch enough to cover all contributors
+            sys.executable,
+            "-m",
+            "evaluator.tools.extract_repo_data_moderate",
+            "--repo-url",
+            repo_url,
+            "--out",
+            str(output_dir),
+            "--max-commits",
+            "500",  # Fetch enough to cover all contributors
         ]
 
         if GITHUB_TOKEN:
             cmd.extend(["--token", GITHUB_TOKEN])
 
         # Run extraction tool
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=300  # 5 minute timeout
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 minute timeout
 
         if result.returncode != 0:
             print(f"✗ Extraction failed: {result.stderr}")
@@ -309,18 +391,158 @@ def get_author_from_commit(commit_data: Dict[str, Any]) -> Optional[str]:
     if "author" in commit_data and isinstance(commit_data["author"], str):
         return commit_data["author"]
 
-    # Try GitHub API format
+    # Try GitHub/Gitee API format
     if "commit" in commit_data:
         author = commit_data.get("commit", {}).get("author", {}).get("name")
         if author:
             return author
 
+        # Some APIs may populate committer name but not author name
+        committer = commit_data.get("commit", {}).get("committer", {}).get("name")
+        if committer:
+            return committer
+
+    # Some providers use nested dicts for author/committer
+    if "author" in commit_data and isinstance(commit_data["author"], dict):
+        name = commit_data["author"].get("name")
+        if name:
+            return name
+
+    if "committer" in commit_data and isinstance(commit_data["committer"], dict):
+        name = commit_data["committer"].get("name")
+        if name:
+            return name
+
     return None
+
+
+def parse_repo_url(url: str) -> Optional[Tuple[str, str, str]]:
+    """
+    Parse repository URL and return (platform, owner, repo).
+
+    Supports:
+    - GitHub: https://github.com/owner/repo, github.com/owner/repo, git@github.com:owner/repo(.git)
+    - Gitee:  https://gitee.com/owner/repo(.git)
+    """
+    url = (url or "").strip()
+    if not url:
+        return None
+
+    parsed = parse_github_url(url)
+    if parsed:
+        return ("github", parsed["owner"], parsed["repo"])
+
+    import re
+
+    patterns = [
+        r'^https?://(?:www\.)?gitee\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$',
+        r'^gitee\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$',
+    ]
+    for pattern in patterns:
+        match = re.match(pattern, url)
+        if match:
+            owner, repo = match.groups()
+            repo = repo.replace('.git', '')
+            return ("gitee", owner, repo)
+
+    return None
+
+
+def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
+    """
+    Extract Gitee repository data into DATA_DIR/{owner}/{repo} similar to GitHub extractor.
+
+    This is a minimal extractor used by the multi-repo compare workflow.
+    It fetches commit list then fetches per-commit details (which may include files/diffs depending on API support).
+    """
+    try:
+        data_dir = DATA_DIR / owner / repo
+        data_dir.mkdir(parents=True, exist_ok=True)
+        commits_dir = data_dir / "commits"
+        commits_dir.mkdir(parents=True, exist_ok=True)
+
+        # 1) Fetch commits list (paginated)
+        commits: List[Dict[str, Any]] = []
+        page = 1
+        per_page = 100
+        while len(commits) < max_commits:
+            api_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits"
+            params: Dict[str, Any] = {"per_page": per_page, "page": page}
+            if GITEE_TOKEN:
+                params["access_token"] = GITEE_TOKEN
+            resp = requests.get(api_url, params=params, timeout=30)
+            if resp.status_code != 200:
+                print(f"✗ Gitee commits list failed: {resp.status_code} {resp.text[:200]}")
+                return False
+            batch = resp.json()
+            if not isinstance(batch, list) or not batch:
+                break
+            commits.extend(batch)
+            if len(batch) < per_page:
+                break
+            page += 1
+        commits = commits[:max_commits]
+
+        with open(data_dir / "commits_list.json", "w", encoding="utf-8") as f:
+            json.dump(commits, f, indent=2, ensure_ascii=False)
+
+        # 2) Fetch per-commit details
+        commits_index = []
+        for c in commits:
+            sha = c.get("sha")
+            if not sha:
+                continue
+            detail_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits/{sha}"
+            params = {}
+            if GITEE_TOKEN:
+                params["access_token"] = GITEE_TOKEN
+            dresp = requests.get(detail_url, params=params, timeout=30)
+            if dresp.status_code != 200:
+                # Fallback to list item
+                detail = c
+            else:
+                detail = dresp.json()
+
+            with open(commits_dir / f"{sha}.json", "w", encoding="utf-8") as f:
+                json.dump(detail, f, indent=2, ensure_ascii=False)
+
+            commit_msg = detail.get("commit", {}).get("message", "") if isinstance(detail, dict) else ""
+            author_name = get_author_from_commit(detail) if isinstance(detail, dict) else ""
+            commit_date = ""
+            if isinstance(detail, dict):
+                commit_date = detail.get("commit", {}).get("author", {}).get("date", "") or detail.get("commit", {}).get("committer", {}).get("date", "")
+            file_list = []
+            if isinstance(detail, dict):
+                file_list = [fi.get("filename") for fi in (detail.get("files") or []) if isinstance(fi, dict) and fi.get("filename")]
+
+            commits_index.append(
+                {
+                    "sha": sha,
+                    "message": (commit_msg.split("\n")[0] if commit_msg else "")[:100],
+                    "author": author_name or "",
+                    "date": commit_date or "",
+                    "files_changed": len(file_list),
+                    "files": file_list,
+                }
+            )
+
+        with open(data_dir / "commits_index.json", "w", encoding="utf-8") as f:
+            json.dump(commits_index, f, indent=2, ensure_ascii=False)
+
+        # 3) repo_info.json
+        repo_info = {"name": f"{owner}/{repo}", "full_name": f"{owner}/{repo}", "owner": owner, "platform": "gitee"}
+        with open(data_dir / "repo_info.json", "w", encoding="utf-8") as f:
+            json.dump(repo_info, f, indent=2, ensure_ascii=False)
+
+        return True
+    except Exception as e:
+        print(f"✗ Gitee extraction failed: {e}")
+        return False
 
 
 def get_data_dir(platform: str, owner: str, repo: str) -> Path:
     """Get or create data directory for repository"""
-    data_dir = Path("data") / owner / repo
+    data_dir = DATA_DIR / owner / repo
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
 
@@ -527,7 +749,7 @@ async def get_authors(owner: str, repo: str, use_cache: bool = Query(True)):
                     data_dir=str(data_dir),
                     api_key=api_key,
                     mode="moderate",
-                    model="anthropic/claude-sonnet-4.5"  # Use default model for auto-evaluation
+                    model=DEFAULT_LLM_MODEL  # Use default model for auto-evaluation
                 )
 
                 # Load commits from local data
@@ -583,7 +805,7 @@ async def evaluate_author(
     author: str,
     use_cache: bool = Query(True),
     use_chunking: bool = Query(True),
-    model: str = Query("anthropic/claude-sonnet-4.5")
+    model: str = Query(DEFAULT_LLM_MODEL)
 ):
     """
     Evaluate an author using local commit data with caching
@@ -607,6 +829,12 @@ async def evaluate_author(
         use_chunking: Whether to enable chunked evaluation for large commit sets
     """
     try:
+        # When this function is called directly (not via FastAPI request handling),
+        # parameters using `Query(...)` defaults may arrive as Query objects.
+        # Normalize them here to avoid leaking non-JSON-serializable objects into the LLM call.
+        if not isinstance(model, str):
+            model = DEFAULT_LLM_MODEL
+
         # Step 1 & 2: Check cache first and validate
         if use_cache:
             cached_evaluations = load_evaluation_cache(owner, repo)
@@ -841,11 +1069,11 @@ def parse_github_url(url: str) -> Optional[Dict[str, str]]:
 @app.post("/api/batch/extract")
 async def batch_extract_repos(request: dict):
     """
-    Batch extract multiple GitHub repositories
+    Batch extract multiple repositories (GitHub + Gitee)
 
     Request body:
     {
-        "urls": ["https://github.com/owner/repo1", "https://github.com/owner/repo2"]
+        "urls": ["https://github.com/owner/repo1", "https://gitee.com/owner/repo2"]
     }
 
     Response:
@@ -884,17 +1112,16 @@ async def batch_extract_repos(request: dict):
             "data_exists": False
         }
 
-        # Parse URL
-        parsed = parse_github_url(url)
+        parsed = parse_repo_url(url)
         if not parsed:
-            result["message"] = "Invalid GitHub URL format"
+            result["message"] = "Invalid repository URL format"
             results.append(result)
             continue
 
-        owner = parsed["owner"]
-        repo = parsed["repo"]
+        platform, owner, repo = parsed
         result["owner"] = owner
         result["repo"] = repo
+        result["platform"] = platform
 
         # Check if data already exists
         data_dir = DATA_DIR / owner / repo
@@ -909,7 +1136,10 @@ async def batch_extract_repos(request: dict):
 
         # Extract data
         try:
-            success = extract_github_data(owner, repo)
+            if platform == "github":
+                success = extract_github_data(owner, repo)
+            else:
+                success = extract_gitee_data(owner, repo)
             if success:
                 result["status"] = "extracted"
                 result["message"] = "Successfully extracted repository data"
@@ -1284,7 +1514,7 @@ async def compare_contributor_across_repos(request: dict):
                 continue
 
             # Evaluate contributor in this repo
-            eval_result = await evaluate_author(owner, repo, contributor, use_cache=True)
+            eval_result = await evaluate_author(owner, repo, contributor, use_cache=True, model=DEFAULT_LLM_MODEL)
 
             if eval_result.get("success"):
                 evaluation = eval_result["evaluation"]

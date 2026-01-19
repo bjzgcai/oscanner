@@ -26,24 +26,48 @@ class CommitEvaluatorModerate:
         max_input_tokens: int = 190000,
         data_dir: Optional[str] = None,
         mode: str = "moderate",
-        model: str = "anthropic/claude-sonnet-4.5"
+        model: Optional[str] = None,
+        api_base_url: Optional[str] = None,
+        chat_completions_url: Optional[str] = None,
+        fallback_models: Optional[List[str]] = None,
     ):
         """
         Initialize the commit evaluator
 
         Args:
-            api_key: OpenRouter API key for LLM calls
+            api_key: API key for LLM calls (OpenAI-compatible: Authorization: Bearer <key>)
             max_input_tokens: Maximum tokens to send to LLM (default: 190k)
             data_dir: Directory containing extracted data (e.g., 'data/owner/repo')
             mode: 'conservative' (diffs only) or 'moderate' (diffs + files)
-            model: LLM model to use (default: 'anthropic/claude-sonnet-4.5')
+            model: LLM model to use (opaque string; provider-specific)
+            api_base_url: Base URL for OpenAI-compatible API (e.g. https://openrouter.ai/api/v1 or https://api.siliconflow.cn/v1)
+            chat_completions_url: Full chat completions URL override (e.g. https://api.siliconflow.cn/v1/chat/completions)
+            fallback_models: Optional list of model IDs to try if the primary fails
         """
-        self.api_key = api_key or os.getenv("OPEN_ROUTER_KEY")
-        self.api_url = "https://openrouter.ai/api/v1/chat/completions"
+        self.api_key = (
+            api_key
+            or os.getenv("OSCANNER_LLM_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+            or os.getenv("OPEN_ROUTER_KEY")
+        )
+
+        self.api_base_url = (
+            api_base_url
+            or os.getenv("OSCANNER_LLM_BASE_URL")
+            or os.getenv("OPENAI_BASE_URL")
+            or "https://openrouter.ai/api/v1"
+        )
+
+        self.api_url = (
+            chat_completions_url
+            or os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL")
+            or f"{self.api_base_url.rstrip('/')}/chat/completions"
+        )
         self.max_input_tokens = max_input_tokens
         self.data_dir = Path(data_dir) if data_dir else None
         self.mode = mode
-        self.model = model
+        self.model = model or os.getenv("OSCANNER_LLM_MODEL") or "anthropic/claude-sonnet-4.5"
+        self.fallback_models = fallback_models
 
         # Six dimensions of engineering capability
         self.dimensions = {
@@ -596,30 +620,39 @@ class CommitEvaluatorModerate:
         prompt = self._build_evaluation_prompt(context, username, chunk_idx)
 
         # List of models to try in order (primary model + fallbacks)
-        models = [
-            (self.model, self._get_model_display_name(self.model)),
-            ("anthropic/claude-sonnet-4.5", "Claude Sonnet 4.5"),
-            ("z-ai/glm-4.7", "Z.AI GLM 4.7")
-        ]
+        models: List[str] = [self.model]
+
+        # Optional: user-provided fallbacks (comma-separated) or constructor-provided fallbacks
+        if self.fallback_models:
+            models.extend([m for m in self.fallback_models if m])
+        else:
+            env_fallbacks = os.getenv("OSCANNER_LLM_FALLBACK_MODELS", "").strip()
+            if env_fallbacks:
+                models.extend([m.strip() for m in env_fallbacks.split(",") if m.strip()])
+            else:
+                # Keep OpenRouter legacy fallback only when using OpenRouter.
+                if "openrouter.ai" in (self.api_base_url or ""):
+                    models.extend(["anthropic/claude-sonnet-4.5", "z-ai/glm-4.7"])
 
         # Remove duplicates while preserving order
         seen = set()
-        unique_models = []
-        for model_id, model_name in models:
-            if model_id not in seen:
+        unique_models: List[str] = []
+        for model_id in models:
+            if model_id and model_id not in seen:
                 seen.add(model_id)
-                unique_models.append((model_id, model_name))
+                unique_models.append(model_id)
 
         last_error = None
 
-        for model_id, model_name in unique_models:
+        for model_id in unique_models:
             try:
                 chunk_info = f" [Chunk {chunk_idx}]" if chunk_idx else ""
                 is_primary = (model_id == self.model)
+                model_name = self._get_model_display_name(model_id)
                 model_label = f"{model_name} (Primary)" if is_primary else f"{model_name} (Fallback)"
                 print(f"[LLM{chunk_info}] Trying {model_label}...")
 
-                # Call OpenRouter API
+                # Call OpenAI-compatible Chat Completions API
                 response = requests.post(
                     self.api_url,
                     headers={
@@ -661,7 +694,7 @@ class CommitEvaluatorModerate:
                 print(f"[Warning{chunk_info}] {model_label} failed: {str(e)[:100]}")
 
                 # If this isn't the last model, try the next one
-                if model_id != unique_models[-1][0]:
+                if model_id != unique_models[-1]:
                     print(f"[Fallback{chunk_info}] Trying next model...")
                     continue
                 else:

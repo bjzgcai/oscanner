@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Input, Button, Card, Alert, Table, Tag, Space, message, Avatar, Collapse, Select, AutoComplete } from 'antd';
+import { Input, Button, Card, Alert, Table, Tag, Space, message, Avatar, Collapse, Select } from 'antd';
 import { GithubOutlined, CheckCircleOutlined, CloseCircleOutlined, MinusCircleOutlined, LoadingOutlined, UserOutlined, TeamOutlined, DownloadOutlined } from '@ant-design/icons';
 import ContributorComparison from '../../components/ContributorComparison';
 import { exportMultiRepoPDF } from '../../utils/pdfExport';
@@ -9,7 +9,6 @@ import { exportMultiRepoPDF } from '../../utils/pdfExport';
 const { TextArea } = Input;
 
 const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || 'http://localhost:8000';
-const REPO_URLS_STORAGE_KEY = 'github_repo_urls_history';
 
 interface RepoResult {
   url: string;
@@ -81,46 +80,9 @@ export default function ReposPage() {
   const [selectedContributor, setSelectedContributor] = useState<string>('');
   const [comparisonData, setComparisonData] = useState<ContributorComparisonData | null>(null);
   const [loadingComparison, setLoadingComparison] = useState(false);
-  const [autocompleteOptions, setAutocompleteOptions] = useState<string[]>([]);
-
-  // Load saved URLs from localStorage on mount
-  useEffect(() => {
-    const savedUrls = localStorage.getItem(REPO_URLS_STORAGE_KEY);
-    if (savedUrls) {
-      try {
-        const urls = JSON.parse(savedUrls);
-        setAutocompleteOptions(urls);
-      } catch (e) {
-        console.error('Failed to load saved URLs:', e);
-      }
-    }
-  }, []);
-
-  // Save URLs to localStorage
-  const saveUrlsToHistory = (urls: string[]) => {
-    try {
-      // Get existing history
-      const savedUrls = localStorage.getItem(REPO_URLS_STORAGE_KEY);
-      let existingUrls: string[] = [];
-      if (savedUrls) {
-        existingUrls = JSON.parse(savedUrls);
-      }
-
-      // Add new URLs and remove duplicates
-      const updatedUrls = Array.from(new Set([...urls, ...existingUrls]));
-
-      // Keep only the last 20 URLs
-      const limitedUrls = updatedUrls.slice(0, 20);
-
-      localStorage.setItem(REPO_URLS_STORAGE_KEY, JSON.stringify(limitedUrls));
-      setAutocompleteOptions(limitedUrls);
-    } catch (e) {
-      console.error('Failed to save URLs to history:', e);
-    }
-  };
 
   const generateAvatarUrl = (author: string) => {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=1E40AF&color=FFFFFF&size=128&bold=true`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=128&bold=true`;
   };
 
   const handleDownloadPDF = async () => {
@@ -218,9 +180,6 @@ export default function ReposPage() {
       return;
     }
 
-    // Save URLs to history
-    saveUrlsToHistory(urls);
-
     setLoading(true);
 
     try {
@@ -298,6 +257,16 @@ export default function ReposPage() {
     }
   };
 
+  const useTestRepo = () => {
+    setRepoUrls('https://gitee.com/zgcai/eval_test_1\nhttps://gitee.com/zgcai/eval_test_2');
+    setError('');
+    setResults(null);
+    setCommonContributors(null);
+    setSelectedContributor('');
+    setComparisonData(null);
+    message.info('Filled test repositories. Click Analyze to run the baseline comparison.');
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'extracted':
@@ -342,10 +311,10 @@ export default function ReposPage() {
       key: 'repository',
       render: (record: RepoResult) => (
         <div>
-          <div style={{ fontWeight: '600', color: '#1E40AF' }}>
+          <div style={{ fontWeight: 'bold', color: '#FFEB00' }}>
             {record.owner && record.repo ? `${record.owner}/${record.repo}` : 'Invalid URL'}
           </div>
-          <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
             {record.url}
           </div>
         </div>
@@ -356,7 +325,7 @@ export default function ReposPage() {
       dataIndex: 'message',
       key: 'message',
       render: (message: string) => (
-        <span style={{ color: '#6B7280' }}>{message}</span>
+        <span style={{ color: '#B0B0B0' }}>{message}</span>
       ),
     },
   ];
@@ -370,8 +339,8 @@ export default function ReposPage() {
         <Space>
           <Avatar size={40} src={generateAvatarUrl(record.author)} icon={<UserOutlined />} />
           <div>
-            <div style={{ fontWeight: '600', color: '#111827' }}>{record.author}</div>
-            <div style={{ fontSize: '12px', color: '#9CA3AF' }}>{record.email}</div>
+            <div style={{ fontWeight: 'bold', color: '#FFFFFF' }}>{record.author}</div>
+            <div style={{ fontSize: '12px', color: '#888' }}>{record.email}</div>
           </div>
         </Space>
       ),
@@ -393,7 +362,7 @@ export default function ReposPage() {
       key: 'total_commits',
       width: 120,
       render: (commits: number) => (
-        <span style={{ color: '#1E40AF', fontWeight: '700', fontSize: '16px' }}>
+        <span style={{ color: '#FFEB00', fontWeight: 'bold', fontSize: '16px' }}>
           {commits}
         </span>
       ),
@@ -405,10 +374,10 @@ export default function ReposPage() {
         <div>
           {record.repos.map((repo, idx) => (
             <div key={idx} style={{ marginBottom: '4px' }}>
-              <span style={{ color: '#0891B2', fontWeight: '600' }}>
+              <span style={{ color: '#00F0FF', fontWeight: 'bold' }}>
                 {repo.owner}/{repo.repo}
               </span>
-              <span style={{ color: '#6B7280', marginLeft: '8px' }}>
+              <span style={{ color: '#B0B0B0', marginLeft: '8px' }}>
                 {repo.commits} commits
               </span>
             </div>
@@ -421,95 +390,98 @@ export default function ReposPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#FFFFFF',
-      padding: '32px 24px',
-      color: '#111827'
+      background: '#0A0A0A',
+      padding: '40px 20px',
+      color: '#FFFFFF'
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ marginBottom: '40px', textAlign: 'center' }}>
           <h1 style={{
             fontSize: '32px',
-            fontWeight: '700',
-            color: '#111827',
-            marginBottom: '10px',
-            letterSpacing: '-0.02em'
+            fontWeight: 'bold',
+            color: '#FFEB00',
+            marginBottom: '10px'
           }}>
             Multi-Repository Analysis
           </h1>
-          <p style={{ color: '#6B7280', fontSize: '16px', lineHeight: '1.6' }}>
-            Extract commit data and find common contributors across 2-5 GitHub repositories
+          <p style={{ color: '#B0B0B0', fontSize: '16px' }}>
+            Extract commit data and find common contributors across 2-5 GitHub/Gitee repositories
           </p>
         </div>
 
         <Card
           style={{
-            background: '#FFFFFF',
-            border: '1px solid #E5E7EB',
-            borderRadius: '12px',
-            marginBottom: '24px',
-            boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)'
+            background: '#1A1A1A',
+            border: '3px solid #333',
+            borderRadius: '0',
+            marginBottom: '30px'
           }}
         >
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
               marginBottom: '10px',
-              color: '#111827',
+              color: '#FFFFFF',
               fontSize: '14px',
-              fontWeight: '600'
+              fontWeight: 'bold'
             }}>
               <GithubOutlined style={{ marginRight: '8px' }} />
               Repository URLs (2-5 URLs, one per line)
             </label>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <AutoComplete
+              <TextArea
                 value={repoUrls}
-                onChange={setRepoUrls}
-                options={autocompleteOptions.map(url => ({ value: url }))}
-                style={{ flex: 1 }}
+                onChange={(e) => setRepoUrls(e.target.value)}
+                placeholder="https://github.com/owner/repo1&#10;https://gitee.com/owner/repo2&#10;https://github.com/owner/repo3"
+                rows={6}
                 disabled={loading}
-                filterOption={(inputValue, option) => {
-                  if (!option?.value) return false;
-                  // Get the current line being typed
-                  const lines = inputValue.split('\n');
-                  const currentLine = lines[lines.length - 1];
-                  // Filter based on the current line
-                  return option.value.toLowerCase().includes(currentLine.toLowerCase());
-                }}
-              >
-                <TextArea
-                  placeholder="https://github.com/owner/repo1&#10;https://github.com/owner/repo2&#10;https://github.com/owner/repo3"
-                  rows={6}
-                  style={{
-                    background: '#F9FAFB',
-                    border: '1px solid #E5E7EB',
-                    color: '#111827',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontFamily: "'JetBrains Mono', monospace"
-                  }}
-                />
-              </AutoComplete>
-              <Button
-                type="primary"
-                size="large"
-                onClick={handleSubmit}
-                loading={loading}
-                disabled={loading}
-                icon={loading ? <LoadingOutlined /> : <GithubOutlined />}
                 style={{
-                  height: 'auto',
-                  background: loading ? '#9CA3AF' : '#1E40AF',
-                  border: 'none',
+                  flex: 1,
+                  background: '#0A0A0A',
+                  border: '2px solid #333',
                   color: '#FFFFFF',
-                  fontWeight: '600',
-                  borderRadius: '8px',
-                  padding: '12px 24px'
+                  borderRadius: '0',
+                  fontSize: '14px',
+                  fontFamily: "'Azeret Mono', monospace"
                 }}
-              >
-                {loading ? 'Processing...' : 'Analyze'}
-              </Button>
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <Button
+                  onClick={useTestRepo}
+                  disabled={loading}
+                  style={{
+                    background: '#0A0A0A',
+                    border: '2px solid #333',
+                    color: '#FFFFFF',
+                    fontWeight: 'bold',
+                    borderRadius: '0',
+                    padding: '10px 14px'
+                  }}
+                >
+                  use_test_repo
+                </Button>
+
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={handleSubmit}
+                  loading={loading}
+                  disabled={loading}
+                  icon={loading ? <LoadingOutlined /> : <GithubOutlined />}
+                  style={{
+                    height: 'auto',
+                    background: loading ? '#666' : '#FFEB00',
+                    border: 'none',
+                    color: '#0A0A0A',
+                    fontWeight: 'bold',
+                    borderRadius: '0',
+                    padding: '12px 24px'
+                  }}
+                >
+                  {loading ? 'Processing...' : 'Analyze'}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -520,10 +492,10 @@ export default function ReposPage() {
               closable
               onClose={() => setError('')}
               style={{
-                background: '#FEF2F2',
-                border: '1px solid #FCA5A5',
-                borderRadius: '8px',
-                color: '#DC2626',
+                background: '#2A0A0A',
+                border: '2px solid #FF006B',
+                borderRadius: '0',
+                color: '#FF006B',
                 marginTop: '15px'
               }}
             />
@@ -531,18 +503,17 @@ export default function ReposPage() {
 
           <div style={{
             marginTop: '20px',
-            padding: '16px',
-            background: '#F9FAFB',
-            border: '1px solid #E5E7EB',
-            borderRadius: '8px',
-            color: '#6B7280',
+            padding: '15px',
+            background: '#0A0A0A',
+            border: '2px solid #333',
+            color: '#B0B0B0',
             fontSize: '13px'
           }}>
-            <strong style={{ color: '#111827' }}>Instructions:</strong>
+            <strong style={{ color: '#FFEB00' }}>Instructions:</strong>
             <ul style={{ marginTop: '8px', marginBottom: '0', paddingLeft: '20px' }}>
-              <li>Enter between 2 and 5 GitHub repository URLs</li>
+              <li>Enter between 2 and 5 GitHub/Gitee repository URLs</li>
               <li>Each URL should be on a separate line</li>
-              <li>Supports HTTPS format: https://github.com/owner/repo</li>
+              <li>Supports HTTPS format: https://github.com/owner/repo or https://gitee.com/owner/repo</li>
               <li>Click Analyze to extract commit data and find common contributors</li>
               <li>Existing repositories will be skipped automatically</li>
             </ul>
@@ -551,18 +522,17 @@ export default function ReposPage() {
 
         {loading && (
           <Card style={{
-            background: '#FFFFFF',
-            border: '1px solid #E5E7EB',
-            borderRadius: '12px',
-            marginBottom: '24px',
-            textAlign: 'center',
-            boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)'
+            background: '#1A1A1A',
+            border: '3px solid #333',
+            borderRadius: '0',
+            marginBottom: '30px',
+            textAlign: 'center'
           }}>
-            <LoadingOutlined style={{ fontSize: '48px', color: '#1E40AF', marginBottom: '20px' }} />
-            <h3 style={{ color: '#111827', marginBottom: '10px', fontWeight: '600' }}>
+            <LoadingOutlined style={{ fontSize: '48px', color: '#FFEB00', marginBottom: '20px' }} />
+            <h3 style={{ color: '#FFFFFF', marginBottom: '10px' }}>
               {loadingCommon ? 'Finding Common Contributors...' : 'Extracting Repository Data...'}
             </h3>
-            <p style={{ color: '#6B7280', lineHeight: '1.6' }}>
+            <p style={{ color: '#B0B0B0' }}>
               {loadingCommon
                 ? 'Analyzing contributors across repositories...'
                 : 'This may take a few minutes. Please wait while we fetch commits and files from GitHub.'}
@@ -573,47 +543,46 @@ export default function ReposPage() {
         {results && (
           <Card
             title={
-              <div style={{ color: '#111827', fontSize: '18px', fontWeight: '600' }}>
+              <div style={{ color: '#FFEB00', fontSize: '18px', fontWeight: 'bold' }}>
                 <GithubOutlined style={{ marginRight: '8px' }} />
                 Extraction Results
               </div>
             }
             style={{
-              background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
-              borderRadius: '12px',
-              marginBottom: '24px',
-              boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)'
+              background: '#1A1A1A',
+              border: '3px solid #333',
+              borderRadius: '0',
+              marginBottom: '30px'
             }}
             headStyle={{
-              background: '#F9FAFB',
+              background: '#0A0A0A',
               border: 'none',
-              borderBottom: '1px solid #E5E7EB'
+              borderBottom: '2px solid #333'
             }}
           >
             <div style={{ marginBottom: '20px' }}>
               <Space size="large">
                 <div>
-                  <span style={{ color: '#6B7280' }}>Total: </span>
-                  <span style={{ color: '#111827', fontWeight: '700', fontSize: '18px' }}>
+                  <span style={{ color: '#B0B0B0' }}>Total: </span>
+                  <span style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: '18px' }}>
                     {results.summary.total}
                   </span>
                 </div>
                 <div>
-                  <span style={{ color: '#6B7280' }}>Extracted: </span>
-                  <span style={{ color: '#059669', fontWeight: '700', fontSize: '18px' }}>
+                  <span style={{ color: '#B0B0B0' }}>Extracted: </span>
+                  <span style={{ color: '#52c41a', fontWeight: 'bold', fontSize: '18px' }}>
                     {results.summary.extracted}
                   </span>
                 </div>
                 <div>
-                  <span style={{ color: '#6B7280' }}>Skipped: </span>
-                  <span style={{ color: '#D97706', fontWeight: '700', fontSize: '18px' }}>
+                  <span style={{ color: '#B0B0B0' }}>Skipped: </span>
+                  <span style={{ color: '#faad14', fontWeight: 'bold', fontSize: '18px' }}>
                     {results.summary.skipped}
                   </span>
                 </div>
                 <div>
-                  <span style={{ color: '#6B7280' }}>Failed: </span>
-                  <span style={{ color: '#DC2626', fontWeight: '700', fontSize: '18px' }}>
+                  <span style={{ color: '#B0B0B0' }}>Failed: </span>
+                  <span style={{ color: '#ff4d4f', fontWeight: 'bold', fontSize: '18px' }}>
                     {results.summary.failed}
                   </span>
                 </div>
@@ -626,7 +595,7 @@ export default function ReposPage() {
               rowKey="url"
               pagination={false}
               style={{
-                background: '#FFFFFF'
+                background: '#0A0A0A'
               }}
             />
           </Card>
@@ -636,7 +605,7 @@ export default function ReposPage() {
           <>
             <Card
               title={
-                <div style={{ color: '#111827', fontSize: '20px', fontWeight: '600' }}>
+                <div style={{ color: '#00F0FF', fontSize: '20px', fontWeight: 'bold' }}>
                   <TeamOutlined style={{ marginRight: '8px' }} />
                   Common Contributors
                   <Tag
@@ -648,20 +617,19 @@ export default function ReposPage() {
                 </div>
               }
               style={{
-                background: '#FFFFFF',
-                border: '1px solid #0891B2',
-                borderRadius: '12px',
-                marginBottom: '24px',
-                boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)'
+                background: '#1A1A1A',
+                border: '3px solid #00F0FF',
+                borderRadius: '0',
+                marginBottom: '30px'
               }}
               headStyle={{
-                background: 'rgba(8, 145, 178, 0.05)',
+                background: '#0A0A0A',
                 border: 'none',
-                borderBottom: '1px solid #0891B2'
+                borderBottom: '2px solid #00F0FF'
               }}
             >
-              <div style={{ marginBottom: '20px', color: '#6B7280', lineHeight: '1.6' }}>
-                Contributors who have committed to <strong style={{ color: '#111827' }}>2 or more</strong> of the analyzed repositories
+              <div style={{ marginBottom: '20px', color: '#B0B0B0' }}>
+                Contributors who have committed to <strong style={{ color: '#FFFFFF' }}>2 or more</strong> of the analyzed repositories
               </div>
 
               <Table
@@ -670,7 +638,7 @@ export default function ReposPage() {
                 rowKey="author"
                 pagination={{ pageSize: 10 }}
                 style={{
-                  background: '#FFFFFF'
+                  background: '#0A0A0A'
                 }}
               />
             </Card>
@@ -680,7 +648,7 @@ export default function ReposPage() {
               title={
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <span style={{ color: '#111827', fontSize: '18px', fontWeight: '600' }}>
+                    <span style={{ color: '#FFEB00', fontSize: '18px', fontWeight: 'bold' }}>
                       Select Contributor to Compare:
                     </span>
                     <Select
@@ -702,10 +670,10 @@ export default function ReposPage() {
                       icon={<DownloadOutlined />}
                       onClick={handleDownloadPDF}
                       style={{
-                        background: '#0891B2',
-                        borderColor: '#0891B2',
-                        color: '#FFFFFF',
-                        fontWeight: '600'
+                        background: '#00F0FF',
+                        borderColor: '#00F0FF',
+                        color: '#0A0A0A',
+                        fontWeight: 'bold'
                       }}
                     >
                       Download PDF
@@ -714,19 +682,18 @@ export default function ReposPage() {
                 </div>
               }
               style={{
-                background: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                borderRadius: '12px',
-                marginBottom: '24px',
-                boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)'
+                background: '#1A1A1A',
+                border: '3px solid #333',
+                borderRadius: '0',
+                marginBottom: '30px'
               }}
               headStyle={{
-                background: '#F9FAFB',
+                background: '#0A0A0A',
                 border: 'none',
-                borderBottom: '1px solid #E5E7EB'
+                borderBottom: '2px solid #333'
               }}
             >
-              <div style={{ color: '#6B7280', fontSize: '14px', lineHeight: '1.6' }}>
+              <div style={{ color: '#B0B0B0', fontSize: '14px' }}>
                 Compare the selected contributor's six-dimensional capability scores across all repositories
               </div>
             </Card>
@@ -744,15 +711,14 @@ export default function ReposPage() {
 
         {commonContributors && commonContributors.common_contributors.length === 0 && (
           <Card style={{
-            background: '#FFFFFF',
-            border: '1px solid #E5E7EB',
-            borderRadius: '12px',
-            textAlign: 'center',
-            boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)'
+            background: '#1A1A1A',
+            border: '3px solid #333',
+            borderRadius: '0',
+            textAlign: 'center'
           }}>
-            <TeamOutlined style={{ fontSize: '48px', color: '#9CA3AF', marginBottom: '20px' }} />
-            <h3 style={{ color: '#111827', marginBottom: '10px', fontWeight: '600' }}>No Common Contributors Found</h3>
-            <p style={{ color: '#6B7280', lineHeight: '1.6' }}>
+            <TeamOutlined style={{ fontSize: '48px', color: '#666', marginBottom: '20px' }} />
+            <h3 style={{ color: '#FFFFFF', marginBottom: '10px' }}>No Common Contributors Found</h3>
+            <p style={{ color: '#B0B0B0' }}>
               {commonContributors.message || 'The analyzed repositories do not have any contributors in common.'}
             </p>
           </Card>

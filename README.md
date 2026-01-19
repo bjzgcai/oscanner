@@ -1,357 +1,140 @@
-# Engineer Capability Assessment System
+# 工程师能力评估系统（Engineer Capability Assessment System）
 
-AI-powered system for evaluating engineering capabilities by analyzing GitHub and Gitee commits, code changes, and collaboration patterns using a six-dimensional evaluation framework.
+[English README](README_en.md) | [中文 README](README.md)
 
-## Overview
+基于 GitHub / Gitee 的 commit、diff、仓库结构与协作信号，对工程师贡献者进行**六维能力评估（0-100）**的工具链，包含 FastAPI 后端与可选的前端 Dashboard。
 
-This system uses LLM-powered analysis (Claude 4.5 Haiku) to evaluate software engineers based on actual code commits, diffs, and collaboration patterns from GitHub and Gitee repositories. Features a modern React + Antd dashboard and FastAPI backend with intelligent caching.
+## 概览
 
-## Usage
+- **后端**：`evaluator/`（FastAPI + 数据抽取 + LLM 评估 + 缓存）
+- **前端（可选）**：`webapp/`（Next.js Dashboard）
+- **CLI**：`oscanner`（统一命令行入口）
+- **依赖管理**：推荐使用 `uv`（`pyproject.toml` + `uv.lock`）
 
-### Quick Start: Full Context + Cached Evaluation (Best Approach! ⭐)
+## 快速开始
 
-Evaluate contributors one at a time using **full repository context** with **caching**:
+### 1) 安装依赖（推荐 uv）
 
-```bash
-# Evaluate all contributors with caching
-python full_context_cached_evaluator.py
-
-# Or evaluate specific contributor
-python full_context_cached_evaluator.py "contributor_name"
-
-# Force re-evaluation (ignore cache)
-python full_context_cached_evaluator.py "contributor_name" --force
-```
-
-**Why This is Best:**
-- ✅ **Full repo context** (~650k tokens) for accuracy
-- ✅ **Evaluate ONE contributor at a time** for flexibility
-- ✅ **Caches each result** to avoid re-evaluation
-- ✅ **Add new contributors later** without re-evaluating everyone
-- 📊 ~100-200k tokens per contributor (first time)
-- 💰 ~$0.005-0.01 per contributor (first time)
-- 🆓 **FREE** when using cache!
-
-See [BEST_APPROACH.md](BEST_APPROACH.md) for full details.
-
----
-
-### Alternative: Full Repo Analysis (All at Once)
-
-Evaluate ALL contributors in ONE API call:
+本仓库使用 `pyproject.toml`：
 
 ```bash
-python full_repo_evaluator.py
+# 首次使用（仓库没有提交 uv.lock 时）需要先生成 lock
+uv lock
+
+# 然后再同步依赖（创建/更新 .venv）
+uv sync
+
+# 如果你只是想快速跑起来、且不想生成/使用 lock：
+# uv sync --no-lock
 ```
 
-- Uses ~650k tokens, costs ~$0.03
-- Evaluates all contributors at once
-- No caching (re-evaluates everything each time)
+### 2) 配置环境变量
 
-See [FULL_REPO_ANALYSIS_EXPLAINED.md](FULL_REPO_ANALYSIS_EXPLAINED.md) for details.
-
----
-
-### Alternative: Server + Dashboard
-
-For API-based evaluation with caching:
-
-#### 1. Configure Ports (Optional)
-
-Edit `.env.local` files to configure ports (defaults: evaluator=8000, webapp=3000):
+推荐直接用 CLI 交互式初始化（会生成/更新 `.env.local`；如已存在会提示你选择复用/合并/覆盖）：
 
 ```bash
-# evaluator/.env.local
-PORT=8000
-
-# webapp/.env.local
-PORT=3000
+uv run oscanner init
 ```
 
-#### 2. Start the Services
-
-**Development Mode** (with auto-reload):
-```bash
-./start_dev.sh
-```
-
-**Production Mode** (optimized):
-```bash
-./start_production.sh
-```
-
-**Evaluator Only**:
-```bash
-./start_server.sh
-```
-
-#### 3. Access the Application
-
-- **Webapp Dashboard**: http://localhost:3000 (or your configured PORT)
-- **API Server**: http://localhost:8000 (or your configured PORT)
-- **API Documentation**: http://localhost:8000/docs
-
-#### 4. Analyze Engineers
-
-**Via Dashboard:**
-1. Enter a GitHub/Gitee repository URL
-2. Click "Analyze Repository"
-3. Select a contributor to evaluate
-4. View AI-powered evaluation results with scores and charts
-
-**Via API:**
+如果你需要无交互/CI 场景，可以用 `--non-interactive` 配合参数写入（示例）：
 
 ```bash
-# Evaluate a contributor (full analysis of all commits)
-curl -X POST "http://localhost:8000/api/evaluate/octocat/Hello-World/octocat"
+uv run oscanner init \
+  --provider openai \
+  --base-url https://api.siliconflow.cn/v1 \
+  --api-key sk-your-key-here \
+  --model Pro/zai-org/GLM-4.7 \
+  --action overwrite \
+  --non-interactive
 ```
 
-**Moderate Mode (Diffs + Files):**
+> 说明：OpenAI-compatible 会默认请求 `.../chat/completions`；如服务商路径不标准，可在 `oscanner init` 里设置 `--chat-completions-url`（或对应环境变量）。
+
+### 3) 启动后端 API
+
+开发模式（自动 reload）：
 
 ```bash
-# Per-contributor evaluation with file context
-python example_moderate_evaluation.py
+uv run oscanner serve --reload
 ```
 
----
+默认地址：
+- **API**：`http://localhost:8000`
+- **API Docs**：`http://localhost:8000/docs`
 
-## Evaluation Approaches Comparison
+### 4) 启动 Dashboard（可选）
 
-| Approach | Tokens | API Calls | Cost | Caching | Best For |
-|----------|--------|-----------|------|---------|----------|
-| **Full Context + Cached** ⭐ | ~100-200k each | 1 per contributor | $0.005-0.01 each | ✅ Yes | **Complete + Flexible** |
-| **Full Repo Analysis** | ~650k | 1 | $0.03 | ❌ No | One-time team evaluation |
-| **Moderate per-contributor** | ~45k each | N | $0.005×N | ❌ No | Individual assessments |
-| **Conservative (diffs only)** | ~3k each | N | $0.0002×N | ❌ No | Quick screening |
-
-**Recommended**: Use **Full Context + Cached** for best accuracy and flexibility!
-
-See [BEST_APPROACH.md](BEST_APPROACH.md) and [TOKEN_USAGE_VISUAL_COMPARISON.md](TOKEN_USAGE_VISUAL_COMPARISON.md) for detailed comparison.
-
-
-## Six-Dimensional Evaluation Framework
-
-### 1. AI Model Full-Stack & Trade-off Capability (AI模型全栈与权衡能力)
-**Focus Areas:** Research-production mutual promotion innovation, system optimization
-- Deep learning framework usage and optimization
-- Model selection and trade-off decisions
-- End-to-end AI system implementation
-
-### 2. AI Native Architecture & Communication Design (AI原生架构与沟通设计)
-**Focus Areas:** Production-level platform, research-production mutual promotion innovation
-- AI-first architecture design
-- API and interface design for AI systems
-- Documentation and communication patterns
-
-### 3. Cloud Native & Constraint Engineering (云原生与约束工程化)
-**Focus Areas:** Production-level platform, system optimization
-- Containerization and orchestration
-- Infrastructure as code
-- CI/CD pipeline implementation
-- Resource optimization and constraints
-
-### 4. Open Source Collaboration & Requirements Translation (开源协作与需求转化)
-**Focus Areas:** Open source co-construction, research-production mutual promotion innovation
-- Open source contribution quality and frequency
-- Issue management and PR reviews
-- Requirements analysis and implementation
-
-### 5. Intelligent Development & Human-Machine Collaboration (智能开发与人机协同)
-**Focus Areas:** All specialties
-- AI-assisted development practices
-- Code generation and review
-- Automation and tooling
-
-### 6. Engineering Leadership & System Trade-offs (工程领导与系统权衡)
-**Focus Areas:** System optimization, production-level platform, research-production mutual promotion innovation
-- Technical decision making
-- System architecture trade-offs
-- Team collaboration and mentorship
-
-## Features
-
-- **AI-Powered Analysis**: Uses Claude 4.5 Haiku to analyze actual code changes and commit patterns
-- **Dual Platform Support**: Analyzes both GitHub and Gitee repositories
-- **Smart Caching**: Local storage system to minimize API calls and LLM token usage
-- **Modern UI**: React + Antd + Antd-x dashboard with radar charts and detailed breakdowns
-- **Real Commit Analysis**: Evaluates actual diffs, file changes, and code quality (not just keywords)
-
-## Input & Output
-
-**Input:**
-- Repository URLs (GitHub/Gitee)
-- Contributor username
-
-**Output:**
-- Six-dimensional scores (0-100 scale)
-- AI-generated reasoning and analysis
-- Commit statistics and code metrics
-- Visual radar chart and detailed breakdowns
-
-## Installation
-
-### 1. Install Dependencies
+Dashboard 是独立的前端工程，不作为 pip 安装强依赖：
 
 ```bash
-pip install -r requirements.txt
+# 仅启动前端（会在需要时自动提示/安装依赖）
+uv run oscanner dashboard --install
+
+# 一键启动：后端 + 前端（开发模式）
+uv run oscanner dev --reload --install
 ```
 
-### 2. Configure Environment Variables
+默认地址：
+- **Dashboard**：`http://localhost:3000`
 
-Create a `.env.local` file with your API keys:
+如果你是通过 PyPI 安装运行（本地没有 `webapp/` 目录），可以用：
 
 ```bash
-# OpenRouter API key for LLM evaluation
-OPEN_ROUTER_KEY=sk-or-v1-your-key-here
-
-# Optional: GitHub token for higher rate limits
-GITHUB_TOKEN=ghp_your-token-here
-
-# Optional: Gitee token
-GITEE_TOKEN=your-gitee-token-here
+oscanner dashboard --print
 ```
 
-See `.env.example` for reference.
+查看启动指引（需要 clone 仓库才能运行前端）。
 
-## Project Structure
+## CLI 使用
+
+### 启动服务
+
+```bash
+uv run oscanner serve --reload
+```
+
+### 启动前端 Dashboard
+
+```bash
+uv run oscanner dashboard --install
+```
+
+### 一键启动后端 + 前端
+
+```bash
+uv run oscanner dev --reload --install
+```
+
+### 抽取仓库数据（moderate：diff + file context）
+
+```bash
+uv run oscanner extract https://github.com/<owner>/<repo> --out /path/to/output --max-commits 500
+```
+
+> 说明：后端在需要时也会自动触发抽取（见 API 的 `/api/authors/{owner}/{repo}`）。
+
+## 数据/缓存落盘位置（默认策略）
+
+为了保证 **pip 安装后在任意目录运行都不会把数据写到当前工作目录**，本仓库已改为默认写入用户目录，并支持环境变量覆盖：
+
+- **OSCANNER_HOME**：统一根目录（最高优先级）
+- **OSCANNER_DATA_DIR**：抽取数据目录
+- **OSCANNER_CACHE_DIR**：请求/中间缓存目录
+- **OSCANNER_EVAL_CACHE_DIR**：评估缓存目录
+
+默认值（未设置 env 时）：
+- data：`~/.local/share/oscanner/data`（或 `XDG_DATA_HOME/oscanner/data`）
+- cache：`~/.cache/oscanner/cache`（或 `XDG_CACHE_HOME/oscanner/cache`）
+- evaluations：`~/.local/share/oscanner/evaluations/cache`
+
+## 项目结构（简版）
 
 ```
 .
-├── README.md                   # This file
-├── README_EVALUATION.md        # Detailed technical documentation
-├── requirements.txt            # Python dependencies
-├── .env.example               # Environment variables template
-├── server.py                  # FastAPI backend server
-├── dashboard.html             # Frontend UI (React + Antd)
-├── evaluator/
-│   ├── __init__.py
-│   ├── core.py                # Main evaluation engine
-│   ├── dimensions.py          # Six dimension evaluators
-│   ├── commit_evaluator.py    # LLM-powered commit analysis
-│   ├── collectors/
-│   │   ├── __init__.py
-│   │   ├── github.py          # GitHub API integration
-│   │   └── gitee.py           # Gitee API integration
-│   ├── analyzers/             # (Reserved for future use)
-│   └── reporters/             # (Reserved for future use)
-└── data/                      # Cached commit data
-    └── {owner}/{repo}/
-        ├── commits/           # Individual commit files
-        └── commits_list.json
+├── pyproject.toml              # uv/packaging 元信息
+├── evaluator/                  # 后端实现
+├── oscanner/                   # CLI（oscanner）
+└── webapp/                     # 可选 Dashboard（Next.js）
 ```
 
-## How It Works
 
-### 1. Commit Collection
-- Fetches commits from GitHub/Gitee API
-- Retrieves detailed commit data including files changed and diffs
-- Caches data locally in `./data/{owner}/{repo}/commits/` to reduce API calls
-
-### 2. LLM-Powered Analysis
-The system sends commit data to Claude 4.5 Haiku with:
-- Commit messages and descriptions
-- File changes (additions/deletions by language)
-- Code diffs (patches)
-- Commit statistics and patterns
-
-### 3. Evaluation Criteria
-
-The LLM evaluates based on actual code evidence:
-
-**AI Full-Stack**
-- ML framework usage (TensorFlow, PyTorch, etc.)
-- Model architecture implementations
-- Training and optimization code
-- Model deployment patterns
-
-**AI Architecture**
-- API design quality
-- Service architecture patterns
-- Documentation quality
-- Integration and interface design
-
-**Cloud Native**
-- Docker/Kubernetes configurations
-- CI/CD pipeline definitions
-- Infrastructure as Code
-- Cloud platform integration
-
-**Open Source Collaboration**
-- Commit message clarity
-- Issue/PR references and linking
-- Code review participation
-- Refactoring and improvement quality
-
-**Intelligent Development**
-- Test coverage and automation
-- Development tooling and scripts
-- Build configurations
-- AI-assisted development practices
-
-**Engineering Leadership**
-- Performance optimizations
-- Security considerations
-- Best practice adoption
-- Architectural decision making
-
-### 4. Scoring
-- Each dimension scored 0-100
-- Scores based on actual code analysis (not keywords)
-- LLM provides detailed reasoning for each evaluation
-- Caching ensures efficient token usage
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | API information |
-| `/health` | GET | Health check |
-| `/api/evaluate/{owner}/{repo}/{username}` | POST | Evaluate engineer capabilities |
-| `/api/cache/stats` | GET | View cache statistics |
-| `/api/cache/clear` | DELETE | Clear all cached data |
-
-## Architecture
-
-```
-Frontend (dashboard.html - React + Antd)
-    ↓
-FastAPI Server (server.py)
-    ↓
-┌─────────────────┴─────────────────┐
-│                                    │
-GitHubCollector/GiteeCollector   CommitEvaluator
-(collectors/*.py)                (commit_evaluator.py)
-    ↓                                 ↓
-GitHub/Gitee API              OpenRouter API
-    ↓                                 ↓
-Local Cache (data/)           Claude 4.5 Haiku
-```
-
-## Limitations & Considerations
-
-- **API Rate Limits**: GitHub API has rate limits (60/hour without token, 5000/hour with token)
-- **LLM Costs**: Each evaluation costs ~$0.02-0.05 depending on commit volume
-- **Analysis Depth**: Analyzes up to 30 commits per evaluation by default (configurable)
-- **Caching**: Smart local caching minimizes API calls and LLM token usage
-
-## Roadmap
-
-- [ ] Complete Gitee integration
-- [ ] Batch evaluation of all contributors
-- [ ] Historical trend analysis
-- [ ] Team-level aggregation
-- [ ] Export reports (PDF, JSON)
-- [ ] Comparison between contributors
-- [ ] Time-series skill evolution
-- [ ] Integration with CI/CD pipelines
-- [ ] Enhanced UI with more visualizations
-- [ ] 我们对于学院每一个学生和他的每一个项目和 PR 记录，都会下载并做后处理。 这个需要多少钱， 我们都要支持。  （gitee，github）。 我们的产品不能只扫描一个用户的 10 个commit 就可以做出判断。 😄  我们可以估算一下， 600 个不同程度的学生在各种开源项目中留下的 commit，合并起来估计多少？ 如果只是源文件和文字， 估计是 100G - 1T？ 
-- [ ] 且可以排除一些 非必要的提交文件, 比如/node_modules 等依赖文件 (可以加入gitignore但是没有加入的, 等不规范行为)
-
-## License
-
-MIT License
-
-## Documentation
-
-For detailed technical documentation, see [README_EVALUATION.md](README_EVALUATION.md)
