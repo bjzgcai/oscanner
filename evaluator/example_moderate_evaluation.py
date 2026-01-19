@@ -12,6 +12,8 @@ from pathlib import Path
 from evaluator.commit_evaluator_moderate import CommitEvaluatorModerate
 from dotenv import load_dotenv
 
+from evaluator.paths import get_home_dir
+
 # Load environment variables
 load_dotenv('.env.local')
 
@@ -146,9 +148,9 @@ def evaluate_from_local_data(
     print(f"  Languages: {', '.join(summary['languages'])}")
     print("=" * 80)
 
-    # Save result
-    output_dir = Path("evaluations")
-    output_dir.mkdir(exist_ok=True)
+    # Save result (default to user oscanner home)
+    output_dir = get_home_dir() / "evaluations" / "examples"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     output_file = output_dir / f"{username}_{mode}_evaluation.json"
     with open(output_file, 'w', encoding='utf-8') as f:

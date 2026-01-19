@@ -6,6 +6,31 @@ A comprehensive evaluation system that analyzes engineer capabilities based on G
 
 The Engineer Capability Assessment System collects data from GitHub/Gitee repositories and commits, then uses AI-powered analysis to evaluate engineering skills across multiple dimensions. It provides both a programmatic API and a FastAPI web service for evaluation.
 
+## Quick Start (uv + CLI)
+
+From repository root:
+
+```bash
+# Install dependencies
+# First-time setup (if `uv.lock` is not present in the repo)
+uv lock
+
+# Then sync dependencies (creates/updates .venv)
+uv sync
+
+# Quick start without lock (not reproducible):
+# uv sync --no-lock
+
+# Start backend API
+uv run oscanner serve --reload
+```
+
+Dashboard (optional):
+
+```bash
+cd webapp && npm install && npm run dev
+```
+
 ## Key Features
 
 - **Six-Dimensional Evaluation Framework**: Comprehensive assessment across AI/ML, architecture, cloud native, collaboration, intelligent development, and leadership
@@ -24,10 +49,7 @@ evaluator/
 ├── core.py                              # Core evaluation engine
 ├── dimensions.py                        # Six-dimensional evaluation framework
 ├── server.py                            # FastAPI web service
-├── commit_evaluator.py                  # LLM-based commit analyzer
 ├── commit_evaluator_moderate.py         # Moderate commit analyzer variant
-├── full_repo_evaluator.py               # Full repository evaluation
-├── full_context_cached_evaluator.py     # Cached full-context evaluator
 ├── contributtor.py                      # Contributor analysis
 ├── collectors/                          # Data collection modules
 │   ├── __init__.py
@@ -38,9 +60,10 @@ evaluator/
 │   ├── code_analyzer.py                 # Code quality analyzer
 │   ├── commit_analyzer.py               # Commit pattern analyzer
 │   └── collaboration_analyzer.py        # Collaboration analyzer
-├── requirements.txt                     # Python dependencies
-├── .env.example                         # Environment variables template
-└── start_server.sh                      # Server startup script
+├── tools/                               # Data extraction tools
+│   ├── __init__.py
+│   └── extract_repo_data_moderate.py
+└── requirements.txt                     # (legacy) Python dependencies; prefer pyproject.toml + uv
 ```
 
 ## Six Evaluation Dimensions

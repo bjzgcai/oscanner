@@ -12,11 +12,13 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 
+from evaluator.paths import get_data_dir
+
 
 class GiteeCollector:
     """Collect data from Gitee"""
 
-    def __init__(self, token: Optional[str] = None, public_token: Optional[str] = None, cache_dir: str = "data"):
+    def __init__(self, token: Optional[str] = None, public_token: Optional[str] = None, cache_dir: Optional[str] = None):
         """
         Initialize Gitee collector
 
@@ -29,7 +31,7 @@ class GiteeCollector:
         self.public_token = public_token  # For gitee.com (public)
         self.base_url = "https://gitee.com/api/v5"
         self.enterprise_base_url = "https://z.gitee.cn/api/v5"
-        self.cache_dir = Path(cache_dir)
+        self.cache_dir = Path(cache_dir).expanduser() if cache_dir else get_data_dir()
 
         # Create cache directory if it doesn't exist
         self.cache_dir.mkdir(parents=True, exist_ok=True)

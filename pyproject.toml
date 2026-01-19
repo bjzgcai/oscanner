@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# NOTE: 分发名（pip install 用）可以与 import 包名不同。
+# 发布前请在 PyPI 再确认该名称未被占用；如冲突只需改这里的 name。
+name = "oscanner-skill-evaluator"
+version = "0.1.0"
+description = "AI-powered engineer capability evaluator (FastAPI backend + optional dashboard)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "oscanner contributors" }]
+dependencies = [
+  "fastapi>=0.109.0",
+  "uvicorn[standard]>=0.27.0",
+  "pydantic>=2.5.3",
+  "requests>=2.31.0",
+  "httpx>=0.26.0",
+  "python-dotenv>=1.0.0",
+  "python-multipart>=0.0.6",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.5.0",
+]
+
+[project.scripts]
+oscanner = "oscanner.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["oscanner*", "evaluator*"]
+
+
