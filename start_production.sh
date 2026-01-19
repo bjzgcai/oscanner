@@ -60,16 +60,15 @@ trap cleanup SIGINT SIGTERM
 
 # Start evaluator backend
 echo -e "${BLUE}Starting evaluator backend...${NC}"
-cd "${PROJECT_ROOT}/evaluator"
+cd "${PROJECT_ROOT}"
 
-if [ ! -d "venv" ]; then
-    echo -e "${RED}✗${NC} Error: Virtual environment not found in evaluator/"
-    echo "  Please run: cd evaluator && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+if ! command -v uv >/dev/null 2>&1; then
+    echo -e "${RED}✗${NC} Error: uv is not installed."
+    echo "  Install uv first: https://docs.astral.sh/uv/"
     exit 1
 fi
 
-source venv/bin/activate
-PORT=$EVALUATOR_PORT python server.py > ../evaluator.log 2>&1 &
+PORT=$EVALUATOR_PORT uv run oscanner serve > "${PROJECT_ROOT}/evaluator.log" 2>&1 &
 EVALUATOR_PID=$!
 echo -e "${GREEN}✓${NC} Evaluator started (PID: ${EVALUATOR_PID})"
 echo -e "  Logs: ${PROJECT_ROOT}/evaluator.log"

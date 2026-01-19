@@ -12,11 +12,13 @@ import hashlib
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from evaluator.paths import get_data_dir
+
 
 class GitHubCollector:
     """Collect data from GitHub"""
 
-    def __init__(self, token: Optional[str] = None, cache_dir: str = "data"):
+    def __init__(self, token: Optional[str] = None, cache_dir: Optional[str] = None):
         """
         Initialize GitHub collector
 
@@ -26,7 +28,7 @@ class GitHubCollector:
         """
         self.token = token
         self.base_url = "https://api.github.com"
-        self.cache_dir = Path(cache_dir)
+        self.cache_dir = Path(cache_dir).expanduser() if cache_dir else get_data_dir()
 
         # Create cache directory if it doesn't exist
         self.cache_dir.mkdir(parents=True, exist_ok=True)

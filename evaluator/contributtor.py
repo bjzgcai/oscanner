@@ -6,10 +6,11 @@ Clusters contributors based on their names and emails from commits_list.json fil
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from difflib import SequenceMatcher
 
+from evaluator.paths import get_data_dir
 
 class ContributorCluster:
     """Represents a cluster of contributor identities that likely belong to the same person."""
@@ -228,8 +229,10 @@ def cluster_contributors(commits: List[Dict]) -> List[Dict]:
     return clusterer.get_clusters()
 
 
-def process_repository(owner: str, repo: str, data_dir: Path = Path("data")) -> Dict:
+def process_repository(owner: str, repo: str, data_dir: Optional[Path] = None) -> Dict:
     """Process a single repository and cluster its contributors."""
+    if data_dir is None:
+        data_dir = get_data_dir()
     repo_path = data_dir / owner / repo
 
     if not repo_path.exists():
@@ -246,8 +249,10 @@ def process_repository(owner: str, repo: str, data_dir: Path = Path("data")) -> 
     }
 
 
-def process_all_repositories(data_dir: Path = Path("data")) -> List[Dict]:
+def process_all_repositories(data_dir: Optional[Path] = None) -> List[Dict]:
     """Process all repositories in the data directory."""
+    if data_dir is None:
+        data_dir = get_data_dir()
     results = []
 
     if not data_dir.exists():
@@ -282,7 +287,7 @@ def main():
     import sys
 
     # Get data directory from command line or use default
-    input_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("data")
+    input_path = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else get_data_dir()
 
     print(f"Processing repositories in {input_path.absolute()}")
     print("-" * 60)
