@@ -5,11 +5,14 @@ import { Input, Button, Card, Alert, Table, Tag, Space, message, Avatar, Select 
 import { GithubOutlined, CheckCircleOutlined, CloseCircleOutlined, MinusCircleOutlined, LoadingOutlined, UserOutlined, TeamOutlined, DownloadOutlined } from '@ant-design/icons';
 import ContributorComparison from '../../components/ContributorComparison';
 import { exportMultiRepoPDF } from '../../utils/pdfExport';
+import type { ContributorComparisonData } from '../../types';
 import './repos.css';
 
 const { TextArea } = Input;
 
-const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || 'http://localhost:8000';
+// Default to same-origin so the bundled dashboard works when served by the backend.
+// For separate frontend dev server, set NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000
+const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || '';
 
 interface RepoResult {
   url: string;
@@ -52,27 +55,6 @@ interface CommonContributorsResult {
     total_common_contributors: number;
   };
   message?: string;
-}
-
-interface ContributorComparisonData {
-  success: boolean;
-  contributor: string;
-  comparisons: Array<{
-    repo: string;
-    owner: string;
-    repo_name: string;
-    scores: Record<string, number>;
-    total_commits: number;
-    cached: boolean;
-  }>;
-  dimension_keys: string[];
-  dimension_names: string[];
-  aggregate: {
-    total_repos_evaluated: number;
-    total_commits: number;
-    average_scores: Record<string, number>;
-  };
-  failed_repos?: Array<{ repo: string; reason: string }>;
 }
 
 export default function ReposPage() {

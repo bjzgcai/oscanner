@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Space } from 'antd';
-import { HomeOutlined, TeamOutlined } from '@ant-design/icons';
+import { Space, Button } from 'antd';
+import { HomeOutlined, TeamOutlined, ApiOutlined } from '@ant-design/icons';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -12,6 +12,10 @@ export default function Navigation() {
     { path: '/', label: 'Home', icon: <HomeOutlined /> },
     { path: '/repos', label: 'Multi-Repo Analysis', icon: <TeamOutlined /> },
   ];
+
+  // Prefer explicit backend URL in dev/standalone mode; otherwise default to same-origin.
+  const apiBase = (process.env.NEXT_PUBLIC_API_SERVER_URL || '').replace(/\/$/, '');
+  const apiHref = apiBase ? `${apiBase}/` : '/';
 
   return (
     <nav style={{
@@ -56,6 +60,12 @@ export default function Navigation() {
               <span>{item.label}</span>
             </Link>
           ))}
+
+          <a href={apiHref} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+            <Button icon={<ApiOutlined />} size="middle">
+              API
+            </Button>
+          </a>
         </Space>
       </div>
     </nav>
