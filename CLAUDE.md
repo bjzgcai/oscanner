@@ -5,7 +5,6 @@
  ## Structure
     - evaluator  # evaluator core code, use fastapi
     - webapp     # webapp code, use next + react + antd + antd-x + echarts
-    - audit      # audit codeS
 
 ## attention
   remove the temporary files like .md after task done.
