@@ -13,6 +13,8 @@
 
 ## 快速开始
 
+TODO: 增加 uv 和 npm 的安装说明
+
 ### 1) 安装依赖（推荐 uv）
 
 本仓库使用 `pyproject.toml`：
