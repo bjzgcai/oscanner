@@ -6,11 +6,12 @@ build-backend = "setuptools.build_meta"
 # NOTE: 分发名（pip install 用）可以与 import 包名不同。
 # 发布前请在 PyPI 再确认该名称未被占用；如冲突只需改这里的 name。
 name = "oscanner-skill-evaluator"
-version = "0.1.0"
+version = "0.1.4"
 description = "AI-powered engineer capability evaluator (FastAPI backend + optional dashboard)"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "oscanner contributors" }]
 dependencies = [
   "fastapi>=0.109.0",
@@ -33,6 +34,10 @@ oscanner = "oscanner.cli:main"
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools.package-data]
+# Bundled static dashboard (built from webapp/ and copied into oscanner/dashboard_dist/)
+oscanner = ["dashboard_dist/**"]
 
 [tool.setuptools.packages.find]
 where = ["."]

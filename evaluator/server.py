@@ -15,6 +15,7 @@ import requests
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from evaluator.paths import ensure_dirs, get_cache_dir, get_data_dir, get_eval_cache_dir
@@ -41,6 +42,21 @@ app.add_middleware(
 )
 
 ensure_dirs()
+
+# Optional: serve bundled dashboard static files (exported Next.js build) if present.
+def _try_mount_bundled_dashboard() -> bool:
+    try:
+        import oscanner  # the CLI package; may include dashboard_dist/
+
+        dash_dir = Path(oscanner.__file__).resolve().parent / "dashboard_dist"
+        if dash_dir.is_dir() and (dash_dir / "index.html").exists():
+            # Mount AFTER API routes are registered (Starlette route order matters).
+            # We mount at /dashboard to avoid conflicts with the API root.
+            app.mount("/dashboard", StaticFiles(directory=str(dash_dir), html=True), name="dashboard")
+            return True
+    except Exception:
+        return False
+    return False
 
 # Cache directory for commits (default: user cache dir)
 CACHE_DIR = get_cache_dir()
@@ -82,6 +98,7 @@ async def root(request: Request):
         "status": "ok",
         "docs": "/docs",
         "health": "/health",
+        "dashboard": "/dashboard",
         "endpoints": {
             "authors": "/api/authors/{owner}/{repo}",
             "evaluate": "/api/evaluate/{owner}/{repo}/{author}",
@@ -115,6 +132,7 @@ async def root(request: Request):
       <ul>
         <li><a href="{payload["docs"]}">API Docs (Swagger)</a></li>
         <li><a href="{payload["health"]}">Health Check</a></li>
+        <li><a href="{payload["dashboard"]}">Dashboard</a> (if bundled)</li>
       </ul>
       <p style="margin: 14px 0 6px 0;"><strong>Common endpoints</strong>:</p>
       <ul>
@@ -125,7 +143,7 @@ async def root(request: Request):
         <li><code>{payload["endpoints"]["batch_compare_contributor"]}</code></li>
       </ul>
       <p style="margin: 14px 0 0 0; color: #6b7280;">
-        Dashboard UI lives in <code>webapp/</code> and runs separately on <code>http://localhost:3000</code>.
+        Dashboard UI can be bundled into the Python package and served at <code>/dashboard</code>.
       </p>
     </div>
   </body>
@@ -140,6 +158,10 @@ async def root(request: Request):
 async def favicon():
     # Browsers request this automatically; avoid noisy 404 logs.
     return Response(status_code=204)
+
+
+# Mount dashboard static files as late as possible (after route declarations above).
+_DASHBOARD_MOUNTED = _try_mount_bundled_dashboard()
 
 
 def get_evaluation_cache_path(owner: str, repo: str) -> Path:

@@ -4,38 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, Radio, Spin, Empty, Alert, Space, Descriptions } from 'antd';
 import { RadarChartOutlined, BarChartOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
-
-interface Score {
-  ai_model_fullstack: number;
-  ai_native_architecture: number;
-  cloud_native: number;
-  open_source_collaboration: number;
-  intelligent_development: number;
-  engineering_leadership: number;
-}
-
-interface Comparison {
-  repo: string;
-  owner: string;
-  repo_name: string;
-  scores: Score;
-  total_commits: number;
-  cached: boolean;
-}
-
-interface ContributorComparisonData {
-  success: boolean;
-  contributor: string;
-  comparisons: Comparison[];
-  dimension_keys: string[];
-  dimension_names: string[];
-  aggregate: {
-    total_repos_evaluated: number;
-    total_commits: number;
-    average_scores: Score;
-  };
-  failed_repos?: Array<{ repo: string; reason: string }>;
-}
+import type EChartsReact from 'echarts-for-react';
+import type { ContributorComparisonData } from '../types';
 
 interface ContributorComparisonProps {
   data: ContributorComparisonData | null;
@@ -45,29 +15,23 @@ interface ContributorComparisonProps {
 
 type ChartType = 'radar' | 'bar';
 
-type EChartsInstance = { dispose: () => void };
-type EChartsRef = { getEchartsInstance: () => EChartsInstance };
-
 export default function ContributorComparison({
   data,
   loading = false,
   error
 }: ContributorComparisonProps) {
   const [chartType, setChartType] = useState<ChartType>('radar');
-  const chartRef = useRef<EChartsRef | null>(null);
+  const chartRef = useRef<EChartsReact | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
     const current = chartRef.current;
     return () => {
       if (current) {
-        const echartsInstance = current.getEchartsInstance();
-        if (echartsInstance) {
-          try {
-            echartsInstance.dispose();
-          } catch {
-            // Silently handle disposal errors
-          }
+        try {
+          current.getEchartsInstance()?.dispose();
+        } catch {
+          // Silently handle disposal errors
         }
       }
     };
