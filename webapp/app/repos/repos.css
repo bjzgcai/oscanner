@@ -1,0 +1,301 @@
+.repos-page {
+  min-height: calc(100vh - 64px);
+  background: var(--background, #ffffff);
+  color: var(--foreground, #111827);
+  padding: 28px 20px 48px;
+}
+
+.repos-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.repos-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.repos-header h1 {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.repos-header p {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.repos-card {
+  margin-bottom: 18px;
+}
+
+.repos-form {
+  margin-bottom: 8px;
+}
+
+.repos-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.repos-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.repos-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.repos-instructions {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.repos-loading-card {
+  text-align: center;
+  padding: 28px 16px;
+  margin-bottom: 18px;
+}
+
+.repos-loading-icon {
+  font-size: 44px;
+  margin-bottom: 10px;
+  color: #1e40af;
+}
+
+.repos-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.repos-summary-row {
+  margin-bottom: 12px;
+}
+
+.repos-summary-label {
+  color: rgba(0, 0, 0, 0.65);
+  margin-right: 6px;
+}
+
+.repos-summary-value {
+  font-weight: 800;
+}
+
+.repos-good {
+  color: #059669;
+}
+
+.repos-warn {
+  color: #d97706;
+}
+
+.repos-bad {
+  color: #dc2626;
+}
+
+.repos-compare-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.repos-compare-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.repos-compare-label {
+  font-weight: 700;
+}
+
+.repos-empty-card {
+  text-align: center;
+  padding: 28px 16px;
+  margin-bottom: 18px;
+}
+
+.repos-empty-icon {
+  font-size: 44px;
+  color: rgba(0, 0, 0, 0.35);
+  margin-bottom: 10px;
+}
+
+.repos-empty-card p {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+@media (max-width: 768px) {
+  .repos-input-row {
+    flex-direction: column;
+  }
+
+  .repos-actions {
+    width: 100%;
+    flex-direction: row;
+  }
+}
+
+.repos-page {
+  min-height: calc(100vh - 64px);
+  background: var(--background);
+  color: var(--foreground);
+  padding: 28px 20px 48px;
+}
+
+.repos-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.repos-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.repos-header h1 {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.repos-header p {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.repos-card {
+  margin-bottom: 18px;
+}
+
+.repos-form {
+  margin-bottom: 8px;
+}
+
+.repos-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.repos-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.repos-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.repos-instructions {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.repos-loading-card {
+  text-align: center;
+  padding: 28px 16px;
+  margin-bottom: 18px;
+}
+
+.repos-loading-icon {
+  font-size: 44px;
+  margin-bottom: 10px;
+  color: #1677ff;
+}
+
+.repos-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.repos-summary-row {
+  margin-bottom: 12px;
+}
+
+.repos-summary-label {
+  color: rgba(0, 0, 0, 0.65);
+  margin-right: 6px;
+}
+
+.repos-summary-value {
+  font-weight: 800;
+}
+
+.repos-good {
+  color: #389e0d;
+}
+
+.repos-warn {
+  color: #d48806;
+}
+
+.repos-bad {
+  color: #cf1322;
+}
+
+.repos-compare-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.repos-compare-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.repos-compare-label {
+  font-weight: 700;
+}
+
+.repos-empty-card {
+  text-align: center;
+  padding: 28px 16px;
+  margin-bottom: 18px;
+}
+
+.repos-empty-icon {
+  font-size: 44px;
+  color: rgba(0, 0, 0, 0.35);
+  margin-bottom: 10px;
+}
+
+.repos-empty-card p {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+@media (max-width: 768px) {
+  .repos-input-row {
+    flex-direction: column;
+  }
+
+  .repos-actions {
+    width: 100%;
+    flex-direction: row;
+  }
+}
+
+

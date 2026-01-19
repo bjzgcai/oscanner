@@ -45,23 +45,27 @@ interface ContributorComparisonProps {
 
 type ChartType = 'radar' | 'bar';
 
+type EChartsInstance = { dispose: () => void };
+type EChartsRef = { getEchartsInstance: () => EChartsInstance };
+
 export default function ContributorComparison({
   data,
   loading = false,
   error
 }: ContributorComparisonProps) {
   const [chartType, setChartType] = useState<ChartType>('radar');
-  const chartRef = useRef<any>(null);
+  const chartRef = useRef<EChartsRef | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
+    const current = chartRef.current;
     return () => {
-      if (chartRef.current) {
-        const echartsInstance = chartRef.current.getEchartsInstance();
+      if (current) {
+        const echartsInstance = current.getEchartsInstance();
         if (echartsInstance) {
           try {
             echartsInstance.dispose();
-          } catch (e) {
+          } catch {
             // Silently handle disposal errors
           }
         }
@@ -72,16 +76,10 @@ export default function ContributorComparison({
   if (loading) {
     return (
       <Card
-        style={{
-          background: '#1A1A1A',
-          border: '3px solid #333',
-          borderRadius: '0',
-          textAlign: 'center',
-          padding: '60px 20px'
-        }}
+        style={{ textAlign: 'center', padding: '60px 20px' }}
       >
         <Spin size="large" />
-        <div style={{ color: '#B0B0B0', marginTop: '20px' }}>
+        <div style={{ color: 'rgba(0, 0, 0, 0.65)', marginTop: '20px' }}>
           Evaluating contributor across repositories...
         </div>
       </Card>
@@ -95,12 +93,7 @@ export default function ContributorComparison({
         description={error}
         type="error"
         showIcon
-        style={{
-          background: '#2A0A0A',
-          border: '2px solid #FF006B',
-          borderRadius: '0',
-          color: '#FF006B'
-        }}
+        style={{ borderRadius: 8 }}
       />
     );
   }
@@ -108,17 +101,11 @@ export default function ContributorComparison({
   if (!data || !data.success || !data.comparisons || data.comparisons.length === 0) {
     return (
       <Card
-        style={{
-          background: '#1A1A1A',
-          border: '3px solid #333',
-          borderRadius: '0',
-          textAlign: 'center',
-          padding: '60px 20px'
-        }}
+        style={{ textAlign: 'center', padding: '60px 20px' }}
       >
         <Empty
           description={
-            <span style={{ color: '#B0B0B0' }}>
+            <span style={{ color: 'rgba(0, 0, 0, 0.65)' }}>
               No comparison data available
             </span>
           }
@@ -128,11 +115,6 @@ export default function ContributorComparison({
   }
 
   // Prepare data for charts
-  const dimensionNames = data.dimension_names.map(name => {
-    // Shorten dimension names for better display
-    return name.replace(' & ', '\n').replace('Capability', '').trim();
-  });
-
   const shortDimensionNames = [
     'AI Model\nFull-Stack',
     'AI Native\nArchitecture',
@@ -142,7 +124,8 @@ export default function ContributorComparison({
     'Engineering\nLeadership'
   ];
 
-  const colors = ['#FFEB00', '#00F0FF', '#FF006B', '#00FF87', '#FF8C00', '#9D4EDD'];
+  // Light-theme friendly palette (Ant Design-ish)
+  const colors = ['#1E40AF', '#0891B2', '#059669', '#D97706', '#DC2626', '#6D28D9'];
 
   // Get radar chart options
   const getRadarOptions = () => {
@@ -158,45 +141,45 @@ export default function ContributorComparison({
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'item',
-        backgroundColor: '#1A1A1A',
-        borderColor: '#333',
-        borderWidth: 2,
+        backgroundColor: '#ffffff',
+        borderColor: '#d9d9d9',
+        borderWidth: 1,
         textStyle: {
-          color: '#FFFFFF'
+          color: 'rgba(0, 0, 0, 0.85)'
         }
       },
       legend: {
         data: data.comparisons.map(c => c.repo),
         bottom: 10,
         textStyle: {
-          color: '#FFFFFF',
+          color: 'rgba(0, 0, 0, 0.85)',
           fontSize: 12
         }
       },
       radar: {
-        indicator: shortDimensionNames.map((name, idx) => ({
+        indicator: shortDimensionNames.map((name) => ({
           name: name,
           max: 100,
-          color: '#FFFFFF'
+          color: 'rgba(0, 0, 0, 0.85)'
         })),
         splitArea: {
           areaStyle: {
-            color: ['rgba(255, 235, 0, 0.05)', 'rgba(255, 235, 0, 0.1)']
+            color: ['rgba(0, 0, 0, 0.02)', 'rgba(0, 0, 0, 0.04)']
           }
         },
         splitLine: {
           lineStyle: {
-            color: '#333'
+            color: '#d9d9d9'
           }
         },
         axisLine: {
           lineStyle: {
-            color: '#333'
+            color: '#d9d9d9'
           }
         },
         name: {
           textStyle: {
-            color: '#FFFFFF',
+            color: 'rgba(0, 0, 0, 0.85)',
             fontSize: 11,
             fontWeight: 'bold'
           }
@@ -226,18 +209,18 @@ export default function ContributorComparison({
         axisPointer: {
           type: 'shadow'
         },
-        backgroundColor: '#1A1A1A',
-        borderColor: '#333',
-        borderWidth: 2,
+        backgroundColor: '#ffffff',
+        borderColor: '#d9d9d9',
+        borderWidth: 1,
         textStyle: {
-          color: '#FFFFFF'
+          color: 'rgba(0, 0, 0, 0.85)'
         }
       },
       legend: {
         data: data.comparisons.map(c => c.repo),
         bottom: 10,
         textStyle: {
-          color: '#FFFFFF',
+          color: 'rgba(0, 0, 0, 0.85)',
           fontSize: 12
         }
       },
@@ -252,14 +235,14 @@ export default function ContributorComparison({
         type: 'category',
         data: shortDimensionNames,
         axisLabel: {
-          color: '#FFFFFF',
+          color: 'rgba(0, 0, 0, 0.85)',
           fontSize: 10,
           interval: 0,
           rotate: 0
         },
         axisLine: {
           lineStyle: {
-            color: '#333'
+            color: '#d9d9d9'
           }
         }
       },
@@ -267,11 +250,11 @@ export default function ContributorComparison({
         type: 'value',
         max: 100,
         axisLabel: {
-          color: '#FFFFFF'
+          color: 'rgba(0, 0, 0, 0.85)'
         },
         splitLine: {
           lineStyle: {
-            color: '#333'
+            color: '#f0f0f0'
           }
         }
       },
@@ -308,7 +291,7 @@ export default function ContributorComparison({
     <Card
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ color: '#FFEB00', fontSize: '20px', fontWeight: 'bold' }}>
+          <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
             {data.contributor} - Six-Dimensional Capability Comparison
           </span>
           <Radio.Group
@@ -325,16 +308,6 @@ export default function ContributorComparison({
           </Radio.Group>
         </div>
       }
-      style={{
-        background: '#1A1A1A',
-        border: '3px solid #FFEB00',
-        borderRadius: '0'
-      }}
-      headStyle={{
-        background: '#0A0A0A',
-        border: 'none',
-        borderBottom: '2px solid #FFEB00'
-      }}
     >
       {/* Chart */}
       <div style={{ marginBottom: '30px' }} id="comparison-chart-export">
@@ -342,7 +315,7 @@ export default function ContributorComparison({
           ref={chartRef}
           option={getChartOptions()}
           style={{ height: '500px', width: '100%' }}
-          theme="dark"
+          theme="light"
           notMerge={true}
           lazyUpdate={true}
           opts={{ renderer: 'canvas' }}
@@ -352,34 +325,34 @@ export default function ContributorComparison({
       {/* Aggregate Statistics */}
       <div
         style={{
-          background: '#0A0A0A',
-          border: '2px solid #333',
+          background: '#fafafa',
+          border: '1px solid #f0f0f0',
           padding: '20px',
           marginTop: '20px'
         }}
       >
-        <h3 style={{ color: '#00F0FF', marginBottom: '15px', fontSize: '16px' }}>
+        <h3 style={{ marginBottom: '15px', fontSize: '16px' }}>
           Aggregate Statistics
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           <div>
-            <div style={{ color: '#B0B0B0', fontSize: '12px' }}>Total Repositories</div>
-            <div style={{ color: '#FFFFFF', fontSize: '24px', fontWeight: 'bold' }}>
+            <div style={{ color: 'rgba(0, 0, 0, 0.65)', fontSize: '12px' }}>Total Repositories</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
               {data.aggregate.total_repos_evaluated}
             </div>
           </div>
           <div>
-            <div style={{ color: '#B0B0B0', fontSize: '12px' }}>Total Commits</div>
-            <div style={{ color: '#FFFFFF', fontSize: '24px', fontWeight: 'bold' }}>
+            <div style={{ color: 'rgba(0, 0, 0, 0.65)', fontSize: '12px' }}>Total Commits</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
               {data.aggregate.total_commits}
             </div>
           </div>
           {Object.entries(data.aggregate.average_scores).map(([key, value], idx) => (
             <div key={key}>
-              <div style={{ color: '#B0B0B0', fontSize: '12px' }}>
+              <div style={{ color: 'rgba(0, 0, 0, 0.65)', fontSize: '12px' }}>
                 Avg {data.dimension_names[idx]?.split('&')[0]?.trim()}
               </div>
-              <div style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 'bold' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
                 {value.toFixed(1)}
               </div>
             </div>
@@ -389,7 +362,7 @@ export default function ContributorComparison({
 
       {/* Repository Details */}
       <div style={{ marginTop: '30px' }}>
-        <h3 style={{ color: '#00F0FF', marginBottom: '15px', fontSize: '16px' }}>
+        <h3 style={{ marginBottom: '15px', fontSize: '16px' }}>
           Repository Details
         </h3>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -397,8 +370,8 @@ export default function ContributorComparison({
             <div
               key={comp.repo}
               style={{
-                background: '#0A0A0A',
-                border: `2px solid ${colors[idx % colors.length]}`,
+                background: '#ffffff',
+                border: `1px solid ${colors[idx % colors.length]}`,
                 padding: '15px'
               }}
             >
@@ -406,7 +379,7 @@ export default function ContributorComparison({
                 <span style={{ color: colors[idx % colors.length], fontSize: '16px', fontWeight: 'bold' }}>
                   {comp.repo}
                 </span>
-                <span style={{ color: '#B0B0B0', marginLeft: '15px' }}>
+                <span style={{ color: 'rgba(0, 0, 0, 0.65)', marginLeft: '15px' }}>
                   Commits: {comp.total_commits} | {comp.cached ? 'Cached' : 'Fresh Analysis'}
                 </span>
               </div>
@@ -418,15 +391,15 @@ export default function ContributorComparison({
                   background: 'transparent'
                 }}
                 labelStyle={{
-                  color: '#B0B0B0',
-                  background: '#0F0F0F',
+                  color: 'rgba(0, 0, 0, 0.65)',
+                  background: '#fafafa',
                   fontSize: '12px',
                   fontWeight: '500',
                   padding: '8px 12px'
                 }}
                 contentStyle={{
-                  color: '#FFEB00',
-                  background: '#0A0A0A',
+                  color: 'rgba(0, 0, 0, 0.85)',
+                  background: '#ffffff',
                   fontSize: '14px',
                   fontWeight: 'bold',
                   padding: '8px 12px'
@@ -453,7 +426,7 @@ export default function ContributorComparison({
           description={
             <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px' }}>
               {data.failed_repos.map((failed, idx) => (
-                <li key={idx} style={{ color: '#B0B0B0' }}>
+                <li key={idx} style={{ color: 'rgba(0, 0, 0, 0.65)' }}>
                   {failed.repo}: {failed.reason}
                 </li>
               ))}
@@ -463,9 +436,7 @@ export default function ContributorComparison({
           showIcon
           style={{
             marginTop: '20px',
-            background: '#2A1A0A',
-            border: '2px solid #faad14',
-            borderRadius: '0'
+            borderRadius: 8
           }}
         />
       )}
