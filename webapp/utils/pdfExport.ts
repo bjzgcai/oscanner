@@ -358,20 +358,28 @@ export async function exportMultiRepoPDF(
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(255, 235, 0);
   pdf.text('Repository Breakdown', margin, yPos);
-  yPos += 10;
+  yPos += 12;
 
   comparisonData.comparisons.forEach((comp: any, index: number) => {
-    if (yPos > pageHeight - 60) {
+    // Check if we need a new page for this repository section
+    if (yPos > pageHeight - 80) {
       pdf.addPage();
       yPos = margin;
     }
 
+    // Draw repository container box
+    const boxHeight = 65;
+    pdf.setDrawColor(0, 240, 255);
+    pdf.setLineWidth(0.5);
+    pdf.rect(margin, yPos - 5, pageWidth - 2 * margin, boxHeight);
+    yPos += 3;
+
     // Repository name
-    pdf.setFontSize(12);
+    pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 240, 255);
-    pdf.text(`${comp.owner}/${comp.repo_name}`, margin, yPos);
-    yPos += 6;
+    pdf.text(`${comp.owner}/${comp.repo_name}`, margin + 5, yPos);
+    yPos += 7;
 
     // Commits and cached status
     pdf.setFontSize(9);
@@ -379,35 +387,50 @@ export async function exportMultiRepoPDF(
     pdf.setTextColor(176, 176, 176);
     pdf.text(
       `Commits: ${comp.total_commits} | ${comp.cached ? 'Cached' : 'Fresh Analysis'}`,
-      margin,
+      margin + 5,
       yPos
     );
-    yPos += 8;
+    yPos += 10;
 
-    // Dimension scores
+    // Dimension scores header
     pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(255, 255, 255);
+    pdf.text('Skill Dimensions:', margin + 5, yPos);
+    yPos += 6;
+
+    // Dimension scores in a grid layout (2 columns)
     const dimensionKeys = comparisonData.dimension_keys;
     const dimensionNames = comparisonData.dimension_names;
+    const col1X = margin + 10;
+    const col2X = margin + 95;
+    const colWidth = 80;
 
     dimensionKeys.forEach((key: string, dimIndex: number) => {
-      if (yPos > pageHeight - margin) {
-        pdf.addPage();
-        yPos = margin;
-      }
-
       const score = comp.scores[key] || 0;
       const name = dimensionNames[dimIndex];
 
-      pdf.setTextColor(255, 255, 255);
-      pdf.text(`${name}:`, margin + 5, yPos);
+      // Determine column position (alternate between columns)
+      const isLeftColumn = dimIndex % 2 === 0;
+      const xPos = isLeftColumn ? col1X : col2X;
 
+      // Move to next row after every 2 items
+      if (dimIndex % 2 === 0 && dimIndex > 0) {
+        yPos += 5;
+      }
+
+      // Dimension name
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(200, 200, 200);
+      pdf.text(`${name}:`, xPos, yPos);
+
+      // Score value
+      pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(255, 235, 0);
-      pdf.text(`${score}`, margin + 80, yPos);
-
-      yPos += 5;
+      pdf.text(`${score}`, xPos + colWidth - 10, yPos);
     });
 
-    yPos += 8;
+    yPos += 10;
   });
 
   // Failed repositories

@@ -5,6 +5,7 @@ import { Input, Button, Switch, Card, Avatar, Spin, Alert, Tag, message, Radio }
 import { UserOutlined, ThunderboltOutlined, RobotOutlined, DownloadOutlined } from '@ant-design/icons';
 import { Radar } from 'react-chartjs-2';
 import { exportHomePagePDF } from '../utils/pdfExport';
+import ReactMarkdown from 'react-markdown';
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -525,7 +526,9 @@ export default function Dashboard() {
           {evaluation.scores.reasoning && (
             <Card className="reasoning-section">
               <h3>AI Analysis Summary</h3>
-              <p>{evaluation.scores.reasoning}</p>
+              <div className="markdown-content">
+                <ReactMarkdown>{evaluation.scores.reasoning as string}</ReactMarkdown>
+              </div>
             </Card>
           )}
 

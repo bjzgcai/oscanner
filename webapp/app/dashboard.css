@@ -566,7 +566,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: #FFEB00;
   margin-bottom: 16px;
   letter-spacing: -0.01em;
 }
@@ -576,6 +576,53 @@
   line-height: 1.7;
   font-size: 0.95rem;
   background: transparent !important;
+}
+
+/* Markdown Content Styling */
+.markdown-content {
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+  font-size: 0.95rem;
+}
+
+.markdown-content p {
+  margin-bottom: 16px;
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+}
+
+.markdown-content strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.markdown-content ol {
+  margin: 16px 0;
+  padding-left: 24px;
+  counter-reset: item;
+}
+
+.markdown-content ol li {
+  margin-bottom: 16px;
+  line-height: 1.8;
+  position: relative;
+}
+
+.markdown-content ol li strong:first-child {
+  color: var(--color-text);
+  font-weight: 600;
+  display: inline;
+}
+
+.markdown-content ul {
+  margin: 12px 0;
+  padding-left: 24px;
+  list-style-type: disc;
+}
+
+.markdown-content ul li {
+  margin-bottom: 8px;
+  line-height: 1.8;
 }
 
 .commit-summary {
