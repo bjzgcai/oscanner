@@ -1,6 +1,7 @@
 import argparse
 import os
 import shutil
+import shlex
 import subprocess
 import sys
 import time
@@ -10,12 +11,74 @@ import signal
 from pathlib import Path
 from typing import Optional, List
 
+from importlib import metadata as importlib_metadata
+
+from . import __version__ as _PACKAGE_FALLBACK_VERSION
+
+
+class _HelpOnErrorParser(argparse.ArgumentParser):
+    """
+    An argparse parser that prints help text on any parsing error.
+    """
+
+    def error(self, message: str) -> None:
+        sys.stderr.write(f"error: {message}\n\n")
+        self.print_help(sys.stderr)
+        self.exit(2)
+
+
+def _upgrade_self() -> int:
+    """
+    Upgrade the installed `oscanner-skill-evaluator` package in the current Python environment.
+
+    Uses `python -m pip` when available; falls back to `uv pip` if pip is missing.
+    """
+    pkg = "oscanner-skill-evaluator"
+
+    # Prefer pip in the current interpreter.
+    pip_cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "--no-cache-dir", pkg]
+    try:
+        sys.stdout.write(f"[upgrade] $ {shlex.join(pip_cmd)}\n")
+        return int(subprocess.call(pip_cmd))
+    except Exception:
+        # If pip isn't installed for this interpreter, try uv pip.
+        uv = _require_uv()
+        if not uv:
+            sys.stderr.write(
+                "ERROR: pip is not available in this Python environment, and `uv` is not installed.\n"
+                "Install pip (`python -m ensurepip --upgrade` where applicable) or install uv, then retry.\n"
+            )
+            return 1
+
+        uv_cmd = [uv, "pip", "install", "--python", sys.executable, "--upgrade", "--no-cache-dir", pkg]
+        sys.stdout.write(f"[upgrade] $ {shlex.join(uv_cmd)}\n")
+        return int(subprocess.call(uv_cmd))
+
+
+def _is_repo_checkout() -> bool:
+    """
+    Best-effort detection of running from the repository checkout (dev/editable install).
+
+    In a PyPI wheel install, the package lives under site-packages and won't have
+    the repository root files like `pyproject.toml` or `webapp/`.
+    """
+    try:
+        repo_root = Path(__file__).resolve().parents[1]
+        return (repo_root / "pyproject.toml").exists() and (repo_root / "webapp").is_dir()
+    except Exception:
+        return False
+
 
 def _add_common_env_help(parser: argparse.ArgumentParser) -> None:
+    publish_env = ""
+    if _is_repo_checkout():
+        publish_env = "  UV_PUBLISH_TOKEN          PyPI token for `oscanner publish` (dev only)\n"
+
     parser.epilog = (
         "Environment variables:\n"
         "  OPEN_ROUTER_KEY           OpenRouter API key (required for LLM evaluation)\n"
         "  GITHUB_TOKEN              GitHub token (optional, higher rate limits)\n"
+        f"{publish_env}"
         "  OSCANNER_HOME             Base directory for oscanner data/cache\n"
         "  OSCANNER_DATA_DIR         Override data directory\n"
         "  OSCANNER_CACHE_DIR        Override cache directory\n"
@@ -24,18 +87,17 @@ def _add_common_env_help(parser: argparse.ArgumentParser) -> None:
 
 def _print_dashboard_instructions() -> None:
     msg = (
-        "Dashboard (webapp/) is an optional component.\n\n"
-        "To run it in dev mode:\n"
-        "  1) Start backend:\n"
-        "     oscanner serve --reload\n"
-        "  2) Start frontend:\n"
-        "     oscanner dashboard --install\n\n"
-        "Default URLs:\n"
-        "  - API:  http://localhost:8000\n"
-        "  - Web:  http://localhost:3000\n\n"
-        "Notes:\n"
-        "  - The frontend source lives in ./webapp and is not included in PyPI installs.\n"
-        "  - If you're running from a PyPI installation, clone the repo to use the dashboard.\n"
+        "Dashboard options:\n\n"
+        "  A) Bundled dashboard (recommended for PyPI installs)\n"
+        "     - Run backend:  oscanner serve\n"
+        "     - Open:         http://localhost:8000/dashboard\n"
+        "     - Runtime deps: NO npm required (static files served by backend)\n\n"
+        "  B) Frontend dev server (repo only)\n"
+        "     1) Start backend:\n"
+        "        oscanner serve --reload\n"
+        "     2) Start frontend (requires Node + npm):\n"
+        "        oscanner dashboard --install\n"
+        "     - Web:          http://localhost:3000\n"
     )
     sys.stdout.write(msg)
 
@@ -67,6 +129,91 @@ def _resolve_webapp_dir(webapp_dir_arg: Optional[str]) -> Optional[Path]:
 
 def _require_npm() -> Optional[str]:
     return shutil.which("npm")
+
+
+def _require_uv() -> Optional[str]:
+    return shutil.which("uv")
+
+
+def _open_url(url: str) -> None:
+    """
+    Best-effort open a URL in the default browser.
+    Never raises; failures are logged as a short warning.
+    """
+    try:
+        u = (url or "").strip()
+        if not u:
+            return
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", u], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        if os.name == "nt":
+            # `start` is a built-in of cmd.exe
+            subprocess.Popen(["cmd", "/c", "start", "", u], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        opener = shutil.which("xdg-open") or shutil.which("gio")
+        if opener:
+            if os.path.basename(opener) == "gio":
+                subprocess.Popen([opener, "open", u], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                subprocess.Popen([opener, u], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        sys.stdout.write(f"[dev] Dashboard URL: {u}\n")
+    except Exception:
+        try:
+            sys.stdout.write(f"[dev] Dashboard URL: {url}\n")
+        except Exception:
+            pass
+
+
+def _parse_node_version(raw: str) -> Optional[tuple]:
+    """
+    Parse Node.js version strings like "v20.19.6" into a tuple (major, minor, patch).
+    Returns None if parsing fails.
+    """
+    s = (raw or "").strip()
+    if s.startswith("v"):
+        s = s[1:]
+    parts = s.split(".")
+    try:
+        major = int(parts[0])
+        minor = int(parts[1]) if len(parts) > 1 else 0
+        patch = int(parts[2]) if len(parts) > 2 else 0
+        return (major, minor, patch)
+    except Exception:
+        return None
+
+
+def _node_at_least(v: Optional[tuple], major: int, minor: int) -> bool:
+    if not v:
+        return False
+    if v[0] != major:
+        return v[0] > major
+    return v[1] >= minor
+
+
+def _resolve_project_dir(project_dir_arg: Optional[str]) -> Optional[Path]:
+    """
+    Resolve a directory that contains `pyproject.toml`.
+
+    Order:
+    - explicit --project-dir
+    - current working directory
+    - <repo_root> (when running from the repository / editable install)
+    """
+    candidates: List[Path] = []
+    if project_dir_arg:
+        candidates.append(Path(project_dir_arg).expanduser())
+    candidates.append(Path.cwd())
+    candidates.append(Path(__file__).resolve().parents[1])
+
+    for p in candidates:
+        try:
+            if p.is_dir() and (p / "pyproject.toml").exists():
+                return p.resolve()
+        except Exception:
+            continue
+    return None
 
 
 def _parse_env_file(path: Path) -> dict:
@@ -458,15 +605,16 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
         _print_dashboard_instructions()
         return 0
 
+    webapp_dir = _resolve_webapp_dir(args.webapp_dir)
+    if not webapp_dir:
+        # In PyPI installs, prefer bundled dashboard served by backend.
+        _print_dashboard_instructions()
+        return 0
+
     npm = _require_npm()
     if not npm:
         sys.stderr.write("ERROR: npm is not installed. Please install Node.js + npm first.\n")
         return 1
-
-    webapp_dir = _resolve_webapp_dir(args.webapp_dir)
-    if not webapp_dir:
-        _print_dashboard_instructions()
-        return 2
 
     env = os.environ.copy()
     env["PORT"] = str(args.port)
@@ -482,19 +630,181 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     return int(subprocess.call([npm, "run", "dev"], cwd=str(webapp_dir), env=env))
 
 
+def cmd_publish(args: argparse.Namespace) -> int:
+    """
+    Build distributions with `uv build` and upload them with `uv publish`.
+
+    This command is intended to be run from the repository root (where `pyproject.toml` exists).
+    """
+    uv = _require_uv()
+    if not uv:
+        sys.stderr.write("ERROR: `uv` is not installed or not on PATH.\n")
+        return 1
+
+    project_dir = _resolve_project_dir(args.project_dir)
+    if not project_dir:
+        sys.stderr.write(
+            "ERROR: Could not find `pyproject.toml`.\n"
+            "Run this command from the repository root, or pass --project-dir /path/to/repo.\n"
+        )
+        return 2
+
+    out_dir = Path(args.out_dir).expanduser() if args.out_dir else (project_dir / "dist")
+    out_dir = out_dir.resolve()
+
+    env = os.environ.copy()
+
+    # Optional: build and bundle dashboard static files into the Python package.
+    # This is a build-time concern (requires Node/npm). Runtime does not require npm.
+    if not getattr(args, "skip_dashboard", False):
+        webapp_dir = project_dir / "webapp"
+        if webapp_dir.is_dir() and (webapp_dir / "package.json").exists():
+            npm = _require_npm()
+            if not npm:
+                sys.stderr.write(
+                    "ERROR: npm is not installed; cannot build bundled dashboard.\n"
+                    "Install Node.js + npm, or re-run with --skip-dashboard.\n"
+                )
+                return 5
+
+            # Next.js 16 requires Node >= 20.9.0. We don't hard-fail on parsing, but do a best-effort check.
+            try:
+                node_ver_raw = subprocess.check_output(["node", "-v"], cwd=str(webapp_dir), env=env, text=True).strip()
+                sys.stdout.write(f"[publish] Detected node: {node_ver_raw}\n")
+                node_v = _parse_node_version(node_ver_raw)
+                if node_v and not _node_at_least(node_v, 20, 9):
+                    # Common on macOS: user has a newer Homebrew node, but current shell is pinned to an older nvm node.
+                    hb_node = "/opt/homebrew/bin/node"
+                    hb_npm = "/opt/homebrew/bin/npm"
+                    if os.path.exists(hb_node) and os.path.exists(hb_npm):
+                        hb_ver_raw = subprocess.check_output([hb_node, "-v"], cwd=str(webapp_dir), env=env, text=True).strip()
+                        hb_v = _parse_node_version(hb_ver_raw)
+                        if hb_v and _node_at_least(hb_v, 20, 9):
+                            sys.stdout.write(f"[publish] Switching to Homebrew node: {hb_ver_raw}\n")
+                            env["PATH"] = "/opt/homebrew/bin:" + env.get("PATH", "")
+                            npm = hb_npm
+            except Exception:
+                sys.stdout.write("[publish] WARNING: could not detect Node version (node -v failed).\n")
+
+            sys.stdout.write("[publish] Building dashboard (webapp/) for bundling...\n")
+            # Use npm install to support both local and CI; package-lock.json exists in repo.
+            rc = subprocess.call([npm, "install"], cwd=str(webapp_dir), env=env)
+            if rc != 0:
+                return int(rc)
+            rc = subprocess.call([npm, "run", "build"], cwd=str(webapp_dir), env=env)
+            if rc != 0:
+                return int(rc)
+
+            exported = webapp_dir / "out"
+            if not exported.is_dir() or not (exported / "index.html").exists():
+                sys.stderr.write(
+                    "ERROR: webapp build did not produce static export at webapp/out.\n"
+                    "Ensure Next is configured with output='export'.\n"
+                )
+                return 6
+
+            dest = project_dir / "oscanner" / "dashboard_dist"
+            if dest.exists():
+                shutil.rmtree(dest)
+            dest.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(exported, dest, dirs_exist_ok=True)
+            sys.stdout.write(f"[publish] Bundled dashboard into {dest}\n")
+        else:
+            sys.stdout.write("[publish] Skipping dashboard bundling (no webapp/ directory).\n")
+
+    # Build
+    if not args.no_build:
+        build_cmd: List[str] = [uv, "build", str(project_dir), "--out-dir", str(out_dir), "--clear"]
+        if args.sdist:
+            build_cmd.append("--sdist")
+        if args.wheel:
+            build_cmd.append("--wheel")
+        if args.no_build_logs:
+            build_cmd.append("--no-build-logs")
+
+        sys.stdout.write(f"[publish] Building distributions into {out_dir} ...\n")
+        sys.stdout.write(f"[publish] $ {shlex.join(build_cmd)}\n")
+        rc = subprocess.call(build_cmd, cwd=str(project_dir), env=env)
+        if rc != 0:
+            return int(rc)
+
+    # Publish
+    if args.dry_run:
+        sys.stdout.write("[publish] Dry-run mode: will not upload files.\n")
+
+    # Token handling: prefer explicit --token, then env UV_PUBLISH_TOKEN, else prompt (TTY only).
+    token = args.token or env.get("UV_PUBLISH_TOKEN", "")
+    if not token and not args.dry_run:
+        if sys.stdin.isatty() and not args.non_interactive:
+            token = getpass.getpass("PyPI token (will be set as UV_PUBLISH_TOKEN for this run): ").strip()
+        else:
+            sys.stderr.write(
+                "ERROR: No PyPI token provided.\n"
+                "Set UV_PUBLISH_TOKEN or pass --token, or run interactively without --non-interactive.\n"
+            )
+            return 3
+    if token:
+        env["UV_PUBLISH_TOKEN"] = token
+
+    # Confirmation guard (only for real uploads).
+    if not args.dry_run and not args.yes:
+        if not sys.stdin.isatty() or args.non_interactive:
+            sys.stderr.write("ERROR: Refusing to publish without confirmation. Re-run with --yes.\n")
+            return 4
+        target = args.index or "pypi(default)"
+        sys.stdout.write(
+            f"About to upload distributions from {out_dir} to {target}.\n"
+            "This will publish artifacts to an index and is hard to undo.\n"
+        )
+        ans = input("Continue? (y/N): ").strip().lower()
+        if ans not in ("y", "yes"):
+            sys.stdout.write("Cancelled.\n")
+            return 0
+
+    publish_cmd: List[str] = [uv, "publish"]
+    if args.index:
+        publish_cmd.extend(["--index", args.index])
+    if args.publish_url:
+        publish_cmd.extend(["--publish-url", args.publish_url])
+    if args.check_url:
+        publish_cmd.extend(["--check-url", args.check_url])
+    if args.trusted_publishing:
+        publish_cmd.extend(["--trusted-publishing", args.trusted_publishing])
+    if args.no_attestations:
+        publish_cmd.append("--no-attestations")
+    if args.dry_run:
+        publish_cmd.append("--dry-run")
+    if args.files and len(args.files) > 0:
+        publish_cmd.extend(list(args.files))
+
+    sys.stdout.write("[publish] Uploading distributions...\n")
+    sys.stdout.write(f"[publish] $ {shlex.join(publish_cmd)}\n")
+    return int(subprocess.call(publish_cmd, cwd=str(project_dir), env=env))
+
+
 def cmd_dev(args: argparse.Namespace) -> int:
     """
     One-command dev mode: start backend + frontend together.
     """
+    # In PyPI installs, the `webapp/` source is not bundled. The dashboard can be bundled as
+    # pre-built static files and served by the backend at /dashboard.
+    webapp_dir = _resolve_webapp_dir(args.webapp_dir)
+    if args.backend_only or not webapp_dir:
+        if not webapp_dir and not args.backend_only:
+            sys.stdout.write("[dev] Frontend source (webapp/) not found; starting backend only.\n")
+            sys.stdout.write("[dev] If dashboard is bundled, open: http://localhost:8000/dashboard\n")
+        if not args.no_open:
+            _open_url(f"http://localhost:{int(args.backend_port)}/dashboard")
+        serve_args = argparse.Namespace(host=args.host, port=int(args.backend_port), reload=bool(args.reload))
+        return cmd_serve(serve_args)
+
     npm = _require_npm()
     if not npm:
-        sys.stderr.write("ERROR: npm is not installed. Please install Node.js + npm first.\n")
+        sys.stderr.write(
+            "ERROR: npm is not installed. Please install Node.js + npm first.\n"
+            "Tip: re-run with `oscanner dev --backend-only` to start backend only.\n"
+        )
         return 1
-
-    webapp_dir = _resolve_webapp_dir(args.webapp_dir)
-    if not webapp_dir:
-        _print_dashboard_instructions()
-        return 2
 
     # Backend process (uvicorn)
     backend_cmd = [
@@ -542,6 +852,9 @@ def cmd_dev(args: argparse.Namespace) -> int:
 
         sys.stdout.write(f"[dev] Starting frontend on http://localhost:{args.frontend_port} ...\n")
         frontend = subprocess.Popen([npm, "run", "dev"], cwd=str(webapp_dir), env=env_frontend)
+        if not args.no_open:
+            # Next has basePath=/dashboard in this repo.
+            _open_url(f"http://localhost:{int(args.frontend_port)}/dashboard")
 
         # Wait until one exits; Ctrl+C stops both.
         while True:
@@ -582,8 +895,16 @@ def cmd_dev(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="oscanner", description="oscanner toolchain CLI")
-    sub = parser.add_subparsers(dest="command", required=True)
+    parser = _HelpOnErrorParser(prog="oscanner", description="oscanner toolchain CLI")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {_get_distribution_version()}")
+    parser.add_argument(
+        "-U",
+        "--upgrade",
+        dest="upgrade_self",
+        action="store_true",
+        help="Upgrade oscanner-skill-evaluator in the current Python environment and exit.",
+    )
+    sub = parser.add_subparsers(dest="command", parser_class=_HelpOnErrorParser)
 
     p_init = sub.add_parser("init", help="Interactive setup: generate/update .env.local")
     p_init.add_argument("--path", help="Target env file path (default: ./.env.local)")
@@ -638,6 +959,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_dev.add_argument("--frontend-port", type=int, default=int(os.getenv("WEBAPP_PORT", "3000")))
     p_dev.add_argument("--reload", action="store_true", help="Enable backend auto-reload (dev)")
     p_dev.add_argument(
+        "--backend-only",
+        action="store_true",
+        help="Start backend only (useful for PyPI installs without the webapp/ source).",
+    )
+    p_dev.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Do not auto-open the dashboard URL in a browser.",
+    )
+    p_dev.add_argument(
         "--webapp-dir",
         help="Path to the webapp/ directory (if not running from the repo root).",
     )
@@ -648,6 +979,62 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_dev.set_defaults(func=cmd_dev)
 
+    # Dev-only command: publishing is an authoring workflow and should not be exposed to end users.
+    if _is_repo_checkout():
+        p_publish = sub.add_parser("publish", help="(dev) Build and publish distributions to PyPI via uv")
+        p_publish.add_argument(
+            "--project-dir",
+            help="Path to the repo root (directory containing pyproject.toml). Defaults to CWD.",
+        )
+        p_publish.add_argument(
+            "--out-dir",
+            help="Output directory for built artifacts (default: <project>/dist).",
+        )
+        p_publish.add_argument("--sdist", action="store_true", help="Build sdist only (can combine with --wheel).")
+        p_publish.add_argument("--wheel", action="store_true", help="Build wheel only (can combine with --sdist).")
+        p_publish.add_argument("--no-build", dest="no_build", action="store_true", help="Skip the build step.")
+        p_publish.add_argument("--no-build-logs", action="store_true", help="Hide build backend logs.")
+        p_publish.add_argument(
+            "--index",
+            help="Named index to publish to (uv config). If omitted, uses uv default (PyPI).",
+        )
+        p_publish.add_argument(
+            "--publish-url",
+            help="Override the upload endpoint URL (advanced).",
+        )
+        p_publish.add_argument(
+            "--check-url",
+            help="Check an index URL for existing files to skip duplicate uploads (advanced).",
+        )
+        p_publish.add_argument(
+            "--token",
+            help="PyPI token (alternative to setting UV_PUBLISH_TOKEN).",
+        )
+        p_publish.add_argument(
+            "--trusted-publishing",
+            choices=["automatic", "always", "never"],
+            help="Trusted publishing mode for uv publish.",
+        )
+        p_publish.add_argument("--no-attestations", action="store_true", help="Do not upload attestations.")
+        p_publish.add_argument("--dry-run", action="store_true", help="Dry-run publish without uploading.")
+        p_publish.add_argument("--yes", action="store_true", help="Do not prompt for confirmation.")
+        p_publish.add_argument(
+            "--non-interactive",
+            action="store_true",
+            help="Do not prompt; requires --token/UV_PUBLISH_TOKEN and --yes.",
+        )
+        p_publish.add_argument(
+            "--skip-dashboard",
+            action="store_true",
+            help="Do not build/bundle the dashboard into the Python package (advanced).",
+        )
+        p_publish.add_argument(
+            "files",
+            nargs="*",
+            help="Optional file globs to upload (default: dist/*).",
+        )
+        p_publish.set_defaults(func=cmd_publish)
+
     _add_common_env_help(parser)
     return parser
 
@@ -655,7 +1042,30 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if getattr(args, "upgrade_self", False):
+        rc = _upgrade_self()
+        if rc == 0:
+            sys.stdout.write("Upgrade finished. Re-run `oscanner --version` to confirm.\n")
+        return int(rc)
+    if not getattr(args, "command", None):
+        parser.print_help()
+        return 2
     return int(args.func(args))
+
+
+def _get_distribution_version() -> str:
+    """
+    Return the installed distribution version of `oscanner-skill-evaluator`.
+
+    Falls back to package __version__ for editable/dev scenarios where distribution
+    metadata isn't available.
+    """
+    try:
+        return str(importlib_metadata.version("oscanner-skill-evaluator"))
+    except importlib_metadata.PackageNotFoundError:
+        return str(_PACKAGE_FALLBACK_VERSION)
+    except Exception:
+        return str(_PACKAGE_FALLBACK_VERSION)
 
 
 

@@ -27,7 +27,9 @@ ChartJS.register(
   Legend
 );
 
-const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || 'http://localhost:8000';
+// Default to same-origin so the bundled dashboard works when served by the backend.
+// For separate frontend dev server, set NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000
+const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || '';
 const STORAGE_KEY = 'local_repo_history';
 const MAX_HISTORY = 20;
 
