@@ -1,8 +1,6 @@
 # CLAUDE Project
-## Stage
- i am prototype a product and i want to save time and llm tokens by cacheing and local storage the remote data and analysis
 
- ## Structure
+## Structure
     - evaluator  # evaluator core code, use fastapi
     - webapp     # webapp code, use next + react + antd + antd-x + echarts
 

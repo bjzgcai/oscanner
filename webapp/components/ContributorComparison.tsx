@@ -370,7 +370,7 @@ export default function ContributorComparison({
           </div>
           <div>
             <div style={{ color: '#B0B0B0', fontSize: '12px' }}>Total Commits</div>
-            <div style={{ color: '#FFEB00', fontSize: '24px', fontWeight: 'bold' }}>
+            <div style={{ color: '#FFFFFF', fontSize: '24px', fontWeight: 'bold' }}>
               {data.aggregate.total_commits}
             </div>
           </div>
@@ -379,7 +379,7 @@ export default function ContributorComparison({
               <div style={{ color: '#B0B0B0', fontSize: '12px' }}>
                 Avg {data.dimension_names[idx]?.split('&')[0]?.trim()}
               </div>
-              <div style={{ color: colors[idx % colors.length], fontSize: '20px', fontWeight: 'bold' }}>
+              <div style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 'bold' }}>
                 {value.toFixed(1)}
               </div>
             </div>

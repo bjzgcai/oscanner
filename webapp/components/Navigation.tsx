@@ -15,19 +15,21 @@ export default function Navigation() {
 
   return (
     <nav style={{
-      background: '#0A0A0A',
-      borderBottom: '2px solid #333',
-      padding: '15px 20px',
+      background: '#FFFFFF',
+      borderBottom: '1px solid #E5E7EB',
+      padding: '16px 24px',
       position: 'sticky',
       top: 0,
-      zIndex: 1000
+      zIndex: 1000,
+      boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)'
     }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '30px' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '32px' }}>
         <div style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-          color: '#FFEB00',
-          marginRight: 'auto'
+          fontSize: '18px',
+          fontWeight: '700',
+          color: '#111827',
+          marginRight: 'auto',
+          letterSpacing: '-0.01em'
         }}>
           Engineer Skill Evaluator
         </div>
@@ -38,16 +40,16 @@ export default function Navigation() {
               key={item.path}
               href={item.path}
               style={{
-                color: pathname === item.path ? '#FFEB00' : '#B0B0B0',
+                color: pathname === item.path ? '#1E40AF' : '#6B7280',
                 textDecoration: 'none',
                 fontSize: '14px',
-                fontWeight: pathname === item.path ? 'bold' : 'normal',
+                fontWeight: pathname === item.path ? '600' : '500',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                transition: 'color 0.3s',
-                borderBottom: pathname === item.path ? '2px solid #FFEB00' : '2px solid transparent',
-                paddingBottom: '3px'
+                transition: 'color 0.2s',
+                borderBottom: pathname === item.path ? '2px solid #1E40AF' : '2px solid transparent',
+                paddingBottom: '4px'
               }}
             >
               {item.icon}
