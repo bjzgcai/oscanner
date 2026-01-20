@@ -8,6 +8,8 @@ import time
 import getpass
 import socket
 import signal
+import urllib.request
+import urllib.error
 from pathlib import Path
 from typing import Optional, List
 
@@ -320,6 +322,184 @@ def _is_tcp_port_open(host: str, port: int, timeout_s: float = 0.25) -> bool:
         return False
 
 
+def _is_http_healthy(url: str, timeout_s: float = 0.6) -> bool:
+    """
+    Best-effort check if an HTTP endpoint responds quickly (used to detect a hung backend).
+    """
+    try:
+        req = urllib.request.Request(url, headers={"accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            return 200 <= int(getattr(resp, "status", 0) or 0) < 300
+    except Exception:
+        return False
+
+
+def _wait_http_ok(url: str, timeout_s: float = 12.0, poll_s: float = 0.2) -> bool:
+    """
+    Wait until an HTTP endpoint responds with a 2xx code, or until timeout.
+    """
+    deadline = time.time() + float(timeout_s)
+    while time.time() < deadline:
+        if _is_http_healthy(url, timeout_s=0.6):
+            return True
+        time.sleep(float(poll_s))
+    return False
+
+
+def _http_get_best_effort(url: str, timeout_s: float = 30.0) -> None:
+    """
+    Fire a GET request to warm up servers (e.g. trigger Next dev compilation).
+    Never raises.
+    """
+    try:
+        req = urllib.request.Request(url, headers={"accept": "text/html"})
+        with urllib.request.urlopen(req, timeout=float(timeout_s)):
+            return
+    except Exception:
+        return
+
+
+def _run_uvicorn_statreload(app: str, host: str, port: int, reload_dirs: List[str]) -> int:
+    """
+    Run uvicorn using StatReload (mtime polling).
+
+    Rationale: on macOS, uvicorn's watchfiles reloader (FSEvents) can hang and never bind the socket.
+    StatReload is slower but extremely reliable for dev.
+    """
+    from uvicorn.config import Config
+    from uvicorn.server import Server
+    from uvicorn.supervisors.statreload import StatReload
+
+    config = Config(
+        app,
+        host=host,
+        port=int(port),
+        reload=True,
+        reload_dirs=reload_dirs or None,
+    )
+    server = Server(config=config)
+    sock = config.bind_socket()
+    StatReload(config, target=server.run, sockets=[sock]).run()
+    return 0
+
+
+def _pids_listening_on_tcp_port(port: int) -> List[int]:
+    """
+    Best-effort: return PIDs that are LISTENing on a local TCP port.
+    Uses `lsof` when available. Returns [] if unavailable/unsupported.
+    """
+    port = int(port)
+    lsof = shutil.which("lsof")
+    if not lsof:
+        return []
+    try:
+        out = subprocess.check_output(
+            [lsof, "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        if not out:
+            return []
+        pids: List[int] = []
+        for line in out.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                pids.append(int(line))
+            except Exception:
+                continue
+        # de-dup preserving order
+        seen = set()
+        uniq: List[int] = []
+        for pid in pids:
+            if pid not in seen:
+                uniq.append(pid)
+                seen.add(pid)
+        return uniq
+    except Exception:
+        return []
+
+
+def _pid_command(pid: int) -> str:
+    try:
+        return subprocess.check_output(["ps", "-o", "command=", "-p", str(int(pid))], text=True).strip()
+    except Exception:
+        return ""
+
+
+def _try_terminate_pid(pid: int, graceful_sig: int = signal.SIGINT, grace_s: float = 1.5) -> bool:
+    """
+    Try to stop a PID gracefully then force-kill.
+    Returns True if the PID is gone at the end.
+    """
+    pid = int(pid)
+    try:
+        os.kill(pid, graceful_sig)
+    except Exception:
+        pass
+    # wait a bit
+    end = time.time() + float(grace_s)
+    while time.time() < end:
+        try:
+            os.kill(pid, 0)
+            time.sleep(0.05)
+        except Exception:
+            return True
+    # force kill
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except Exception:
+        pass
+    # final check
+    try:
+        os.kill(pid, 0)
+        return False
+    except Exception:
+        return True
+
+
+def _cleanup_dev_ports_if_safe(
+    backend_port: int,
+    frontend_port: int,
+    *,
+    allow_kill: bool,
+    webapp_dir: Optional[Path],
+) -> None:
+    """
+    Best-effort cleanup for dev convenience.
+
+    Only kills processes we can confidently identify as:
+    - uvicorn evaluator.server:app (backend)
+    - next dev (frontend)
+    """
+    if not allow_kill:
+        return
+
+    # Backend: only kill if it looks like our evaluator server AND it's unhealthy.
+    health_url = f"http://127.0.0.1:{int(backend_port)}/health"
+    if _is_tcp_port_open("127.0.0.1", int(backend_port)) and not _is_http_healthy(health_url, timeout_s=0.6):
+        for pid in _pids_listening_on_tcp_port(int(backend_port)):
+            cmdline = _pid_command(pid)
+            if "uvicorn" in cmdline and "evaluator.server:app" in cmdline:
+                sys.stdout.write(f"[dev] Found hung backend on :{backend_port} (pid {pid}). Stopping it...\n")
+                _try_terminate_pid(pid, graceful_sig=signal.SIGINT)
+
+    # Frontend: kill only if it looks like Next dev. (No health endpoint.)
+    if _is_tcp_port_open("127.0.0.1", int(frontend_port)):
+        for pid in _pids_listening_on_tcp_port(int(frontend_port)):
+            cmdline = _pid_command(pid)
+            looks_like_next = ("next" in cmdline and "dev" in cmdline) or ("next-server" in cmdline)
+            if not looks_like_next:
+                continue
+            # If we know the webapp dir, be stricter: only kill if command mentions it.
+            if webapp_dir and str(webapp_dir) not in cmdline:
+                # Still allow if it's clearly `next dev` and owned by current user; ps output doesn't include user here.
+                pass
+            sys.stdout.write(f"[dev] Found existing frontend on :{frontend_port} (pid {pid}). Stopping it...\n")
+            _try_terminate_pid(pid, graceful_sig=signal.SIGINT)
+
+
 def _prompt_reuse_or_overwrite(key: str, existing_value: str, is_secret: bool = False) -> str:
     """
     If key exists, ask whether to reuse it (default) or overwrite it.
@@ -564,14 +744,56 @@ def cmd_init(args: argparse.Namespace) -> int:
 def cmd_serve(args: argparse.Namespace) -> int:
     # Import lazily to keep `oscanner --help` fast and avoid import errors
     import uvicorn
+    # If the port is already bound, decide whether to reuse, clean up, or fail.
+    # This avoids the confusing "page keeps loading" symptom when a previous reload watcher hung.
+    if _is_tcp_port_open("127.0.0.1", int(args.port)):
+        health_url = f"http://127.0.0.1:{int(args.port)}/health"
+        if _is_http_healthy(health_url, timeout_s=0.6):
+            sys.stdout.write(f"[serve] Backend already running on http://localhost:{args.port}\n")
+            return 0
+        if bool(getattr(args, "kill_old", True)):
+            for pid in _pids_listening_on_tcp_port(int(args.port)):
+                cmdline = _pid_command(pid)
+                if "uvicorn" in cmdline and "evaluator.server:app" in cmdline:
+                    sys.stdout.write(f"[serve] Found hung backend on :{args.port} (pid {pid}). Stopping it...\n")
+                    _try_terminate_pid(pid, graceful_sig=signal.SIGINT)
+        # If it's still occupied after cleanup attempt, bail with a clear error.
+        if _is_tcp_port_open("127.0.0.1", int(args.port)):
+            sys.stderr.write(
+                f"ERROR: Port {args.port} is in use, and backend did not respond to {health_url}\n"
+                "Stop the process on that port, or re-run with `oscanner serve --port <free_port>`.\n"
+            )
+            return 1
 
     # `evaluator.server` loads dotenv; this keeps backward-compat with existing setup.
     # We call it via module path so it works both in repo and after installation.
+    #
+    # IMPORTANT: When running with --reload in this monorepo, watching the entire CWD can
+    # include `webapp/node_modules` and other large trees, which can destabilize the reload
+    # watcher on macOS. Restrict reload watching to Python source dirs.
+    reload_kwargs = {}
+    if args.reload:
+        try:
+            repo_root = Path(__file__).resolve().parents[1]
+            reload_kwargs = {
+                "reload_dirs": [str(repo_root / "evaluator"), str(repo_root / "oscanner")],
+            }
+        except Exception:
+            reload_kwargs = {}
+
+    # On macOS, prefer StatReload to avoid watchfiles/FSEvents hangs.
+    if bool(args.reload) and sys.platform == "darwin":
+        reload_dirs = reload_kwargs.get("reload_dirs", []) if isinstance(reload_kwargs, dict) else []
+        if not reload_dirs:
+            reload_dirs = [str(Path.cwd())]
+        return _run_uvicorn_statreload("evaluator.server:app", args.host, int(args.port), list(reload_dirs))
+
     uvicorn.run(
         "evaluator.server:app",
         host=args.host,
-        port=args.port,
-        reload=args.reload,
+        port=int(args.port),
+        reload=bool(args.reload),
+        **reload_kwargs,
     )
     return 0
 
@@ -618,6 +840,15 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
 
     env = os.environ.copy()
     env["PORT"] = str(args.port)
+
+    # If the dev port is already occupied (often a previous Next dev), try to stop it first.
+    if bool(getattr(args, "kill_old", True)):
+        _cleanup_dev_ports_if_safe(
+            backend_port=int(os.getenv("PORT", "8000")),
+            frontend_port=int(args.port),
+            allow_kill=True,
+            webapp_dir=webapp_dir,
+        )
 
     node_modules = webapp_dir / "node_modules"
     if args.install or not node_modules.exists():
@@ -806,8 +1037,16 @@ def cmd_dev(args: argparse.Namespace) -> int:
         )
         return 1
 
+    # Dev convenience: if old processes are occupying ports, try to clean them up safely.
+    _cleanup_dev_ports_if_safe(
+        int(args.backend_port),
+        int(args.frontend_port),
+        allow_kill=bool(getattr(args, "kill_old", True)),
+        webapp_dir=webapp_dir,
+    )
+
     # Backend process (uvicorn)
-    backend_cmd = [
+    backend_cmd: List[str] = [
         sys.executable,
         "-m",
         "uvicorn",
@@ -818,28 +1057,84 @@ def cmd_dev(args: argparse.Namespace) -> int:
         str(args.backend_port),
     ]
     if args.reload:
-        backend_cmd.append("--reload")
+        # On macOS, avoid uvicorn watchfiles reloader; use StatReload via a small python runner.
+        if sys.platform == "darwin":
+            try:
+                repo_root = Path(__file__).resolve().parents[1]
+                reload_dirs = [str(repo_root / "evaluator"), str(repo_root / "oscanner")]
+            except Exception:
+                reload_dirs = [str(Path.cwd())]
+            backend_cmd = [
+                sys.executable,
+                "-c",
+                (
+                    "from oscanner.cli import _run_uvicorn_statreload; "
+                    "_run_uvicorn_statreload('evaluator.server:app', %r, %r, %r)"
+                    % (args.host, int(args.backend_port), reload_dirs)
+                ),
+            ]
+        else:
+            backend_cmd.append("--reload")
+            # Restrict reload watching in this monorepo (avoid webapp/node_modules causing watcher instability).
+            try:
+                repo_root = Path(__file__).resolve().parents[1]
+                backend_cmd.extend(["--reload-dir", str(repo_root / "evaluator")])
+                backend_cmd.extend(["--reload-dir", str(repo_root / "oscanner")])
+                backend_cmd.extend(["--reload-exclude", "**/webapp/**"])
+                backend_cmd.extend(["--reload-exclude", "**/node_modules/**"])
+                backend_cmd.extend(["--reload-exclude", "**/.next/**"])
+                backend_cmd.extend(["--reload-exclude", "**/dist/**"])
+            except Exception:
+                pass
 
     env_backend = os.environ.copy()
     env_backend["PORT"] = str(args.backend_port)
+    if args.reload:
+        # Same rationale as in cmd_serve(): avoid macOS FSEvents watcher hangs in watchfiles.
+        if sys.platform == "darwin" and not env_backend.get("WATCHFILES_FORCE_POLLING"):
+            env_backend["WATCHFILES_FORCE_POLLING"] = "1"
 
     backend: Optional[subprocess.Popen] = None
     backend_started = False
     frontend: Optional[subprocess.Popen] = None
 
-    # If something is already listening on the port, assume backend is already running and reuse it.
+    # If something is already listening on the port, assume backend is already running and reuse it,
+    # but guard against a "hung" process that accepts TCP but doesn't respond to HTTP.
     if _is_tcp_port_open("127.0.0.1", int(args.backend_port)):
-        sys.stdout.write(
-            f"[dev] Backend already running on http://localhost:{args.backend_port} (port in use). Reusing it.\n"
-        )
+        health_url = f"http://127.0.0.1:{int(args.backend_port)}/health"
+        if _is_http_healthy(health_url, timeout_s=0.6):
+            sys.stdout.write(
+                f"[dev] Backend already running on http://localhost:{args.backend_port} (port in use). Reusing it.\n"
+            )
+        else:
+            sys.stderr.write(
+                f"ERROR: Port {args.backend_port} is in use, but backend health check did not respond: {health_url}\n"
+                "This usually means a previous uvicorn process is hung (common when heavy sync work runs inside async handlers).\n"
+                "Stop the process on that port, or re-run with `--backend-port <free_port>`.\n"
+            )
+            return 1
     else:
         sys.stdout.write(f"[dev] Starting backend on http://localhost:{args.backend_port} ...\n")
         backend = subprocess.Popen(backend_cmd, env=env_backend)
         backend_started = True
 
+        # Fail-fast if the backend never binds (common symptom: reload process stuck).
+        health_url = f"http://127.0.0.1:{int(args.backend_port)}/health"
+        if not _wait_http_ok(health_url, timeout_s=3.0, poll_s=0.2):
+            sys.stderr.write(f"ERROR: Backend did not become ready: {health_url}\n")
+            try:
+                backend.terminate()
+            except Exception:
+                pass
+            return 1
+
     try:
         env_frontend = os.environ.copy()
         env_frontend["PORT"] = str(args.frontend_port)
+        # When running the frontend dev server (port 3000), default API calls should go to the backend.
+        # The webapp defaults to same-origin when NEXT_PUBLIC_API_SERVER_URL is unset, which would hit 3000 and 404.
+        if not env_frontend.get("NEXT_PUBLIC_API_SERVER_URL"):
+            env_frontend["NEXT_PUBLIC_API_SERVER_URL"] = f"http://localhost:{int(args.backend_port)}"
 
         node_modules = webapp_dir / "node_modules"
         if args.install or not node_modules.exists():
@@ -854,7 +1149,12 @@ def cmd_dev(args: argparse.Namespace) -> int:
         frontend = subprocess.Popen([npm, "run", "dev"], cwd=str(webapp_dir), env=env_frontend)
         if not args.no_open:
             # Next has basePath=/dashboard in this repo.
-            _open_url(f"http://localhost:{int(args.frontend_port)}/dashboard")
+            # Next dev compiles lazily on first request; warm it up before opening the browser
+            # so users don't just see a "spinning" page while compilation happens.
+            dash_url = f"http://localhost:{int(args.frontend_port)}/dashboard"
+            if _wait_http_ok(dash_url, timeout_s=12.0):
+                _http_get_best_effort(dash_url, timeout_s=60.0)
+            _open_url(dash_url)
 
         # Wait until one exits; Ctrl+C stops both.
         while True:
@@ -925,6 +1225,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--host", default="0.0.0.0")
     p_serve.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")))
     p_serve.add_argument("--reload", action="store_true", help="Enable auto-reload (dev)")
+    p_serve.add_argument(
+        "--kill-old",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Auto-stop a stale/hung previous oscanner uvicorn process occupying the port (safe heuristics).",
+    )
     p_serve.set_defaults(func=cmd_serve)
 
     p_extract = sub.add_parser("extract", help="Extract repo data (moderate mode)")
@@ -936,6 +1242,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_dash = sub.add_parser("dashboard", help="Start the optional dashboard frontend (Next.js)")
     p_dash.add_argument("--port", type=int, default=int(os.getenv("WEBAPP_PORT", "3000")))
+    p_dash.add_argument(
+        "--kill-old",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Auto-stop a stale Next dev process occupying the port (safe heuristics).",
+    )
     p_dash.add_argument(
         "--webapp-dir",
         help="Path to the webapp/ directory (if not running from the repo root).",
@@ -958,6 +1270,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_dev.add_argument("--backend-port", type=int, default=int(os.getenv("PORT", "8000")))
     p_dev.add_argument("--frontend-port", type=int, default=int(os.getenv("WEBAPP_PORT", "3000")))
     p_dev.add_argument("--reload", action="store_true", help="Enable backend auto-reload (dev)")
+    p_dev.add_argument(
+        "--kill-old",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Auto-stop stale dev processes occupying backend/frontend ports (safe heuristics).",
+    )
     p_dev.add_argument(
         "--backend-only",
         action="store_true",
