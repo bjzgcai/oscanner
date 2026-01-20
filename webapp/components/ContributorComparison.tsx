@@ -28,10 +28,10 @@ export default function ContributorComparison({
     const current = chartRef.current;
     return () => {
       if (current) {
-        try {
+          try {
           current.getEchartsInstance()?.dispose();
-        } catch {
-          // Silently handle disposal errors
+          } catch {
+            // Silently handle disposal errors
         }
       }
     };

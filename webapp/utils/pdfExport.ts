@@ -27,6 +27,24 @@ interface RepoData {
   full_name: string;
 }
 
+interface MultiRepoComparison {
+  owner: string;
+  repo_name: string;
+  scores: Record<string, number>;
+  total_commits: number;
+  cached: boolean;
+}
+
+interface MultiRepoComparisonData {
+  success: boolean;
+  contributor: string;
+  comparisons: MultiRepoComparison[];
+  dimension_keys: string[];
+  dimension_names: string[];
+  aggregate?: unknown;
+  failed_repos?: Array<{ repo: string; reason: string }>;
+}
+
 const dimensions = [
   { name: "AI Model Full-Stack", key: "ai_fullstack" },
   { name: "AI Native Architecture", key: "ai_architecture" },
@@ -154,7 +172,7 @@ export async function exportHomePagePDF(
   yPos += 10;
 
   pdf.setFontSize(10);
-  dimensions.forEach((dim, index) => {
+  dimensions.forEach((dim) => {
     if (yPos > pageHeight - 20) {
       pdf.addPage();
       yPos = margin;
@@ -277,7 +295,7 @@ export async function exportHomePagePDF(
  * Export multi-repo comparison report as PDF
  */
 export async function exportMultiRepoPDF(
-  comparisonData: any,
+  comparisonData: MultiRepoComparisonData,
   contributorName: string
 ) {
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -327,7 +345,7 @@ export async function exportMultiRepoPDF(
 
     const totalRepos = comparisonData.comparisons.length;
     const totalCommits = comparisonData.comparisons.reduce(
-      (sum: number, comp: any) => sum + comp.total_commits,
+      (sum: number, comp: MultiRepoComparison) => sum + comp.total_commits,
       0
     );
 
@@ -360,7 +378,7 @@ export async function exportMultiRepoPDF(
   pdf.text('Repository Breakdown', margin, yPos);
   yPos += 12;
 
-  comparisonData.comparisons.forEach((comp: any, index: number) => {
+  comparisonData.comparisons.forEach((comp: MultiRepoComparison) => {
     // Check if we need a new page for this repository section
     if (yPos > pageHeight - 80) {
       pdf.addPage();
@@ -449,7 +467,7 @@ export async function exportMultiRepoPDF(
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
 
-    comparisonData.failed_repos.forEach((failed: any) => {
+    comparisonData.failed_repos.forEach((failed: { repo: string; reason: string }) => {
       if (yPos > pageHeight - margin) {
         pdf.addPage();
         yPos = margin;

@@ -2,20 +2,27 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Space, Button } from 'antd';
-import { HomeOutlined, TeamOutlined, ApiOutlined } from '@ant-design/icons';
+import { Space, Button, Switch, Tooltip, Dropdown } from 'antd';
+import { HomeOutlined, ApiOutlined } from '@ant-design/icons';
+import { useAppSettings } from './AppSettingsContext';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { useCache, setUseCache, model, setModel } = useAppSettings();
 
   const navItems = [
-    { path: '/', label: 'Home', icon: <HomeOutlined /> },
-    { path: '/repos', label: 'Multi-Repo Analysis', icon: <TeamOutlined /> },
+    { path: '/', label: 'Analysis', icon: <HomeOutlined /> },
   ];
 
   // Prefer explicit backend URL in dev/standalone mode; otherwise default to same-origin.
   const apiBase = (process.env.NEXT_PUBLIC_API_SERVER_URL || '').replace(/\/$/, '');
   const apiHref = apiBase ? `${apiBase}/` : '/';
+
+  const modelItems = [
+    { key: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+    { key: 'z-ai/glm-4.7', label: 'Z.AI GLM 4.7' },
+  ];
+  const currentModelLabel = modelItems.find((i) => i.key === model)?.label || model;
 
   return (
     <nav style={{
@@ -39,6 +46,29 @@ export default function Navigation() {
         </div>
 
         <Space size="large">
+          <Tooltip title="启用后优先返回历史评估结果；不启用则强制重新评估（需要配置 LLM Key）。">
+            <Switch
+              checked={useCache}
+              onChange={setUseCache}
+              checkedChildren="cache"
+              unCheckedChildren="no cache"
+            />
+          </Tooltip>
+
+          <Dropdown
+            menu={{
+              items: modelItems,
+              selectable: true,
+              selectedKeys: [model],
+              onClick: ({ key }) => setModel(String(key)),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              Model: {currentModelLabel}
+            </Button>
+          </Dropdown>
+
           {navItems.map((item) => (
             <Link
               key={item.path}

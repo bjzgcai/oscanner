@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import Navigation from '../components/Navigation';
+import { AppSettingsProvider } from '../components/AppSettingsContext';
 import "./globals.css";
 
 const inter = Inter({
@@ -23,8 +24,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
         <AntdRegistry>
-          <Navigation />
-          {children}
+          <AppSettingsProvider>
+            <Navigation />
+            {children}
+          </AppSettingsProvider>
         </AntdRegistry>
       </body>
     </html>
