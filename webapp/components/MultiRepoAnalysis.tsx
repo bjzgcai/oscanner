@@ -16,6 +16,7 @@ import ContributorComparison from './ContributorComparison';
 import { exportHomePagePDF, exportMultiRepoPDF } from '../utils/pdfExport';
 import type { ContributorComparisonData } from '../types';
 import { useAppSettings } from './AppSettingsContext';
+import { getApiBaseUrl } from '../utils/apiBase';
 import { Radar } from 'react-chartjs-2';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -32,7 +33,7 @@ ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, 
 
 const { TextArea } = Input;
 
-const API_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVER_URL || '';
+const API_SERVER_URL = getApiBaseUrl();
 
 interface RepoResult {
   url: string;

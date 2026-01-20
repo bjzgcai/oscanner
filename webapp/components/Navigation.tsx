@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Space, Button, Switch, Tooltip, Dropdown } from 'antd';
 import { HomeOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
+import { getApiBaseUrl } from '../utils/apiBase';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -15,7 +16,7 @@ export default function Navigation() {
   ];
 
   // Prefer explicit backend URL in dev/standalone mode; otherwise default to same-origin.
-  const apiBase = (process.env.NEXT_PUBLIC_API_SERVER_URL || '').replace(/\/$/, '');
+  const apiBase = getApiBaseUrl();
   const apiHref = apiBase ? `${apiBase}/` : '/';
 
   const modelItems = [

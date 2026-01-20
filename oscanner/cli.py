@@ -1100,26 +1100,63 @@ def cmd_dev(args: argparse.Namespace) -> int:
 
     # If something is already listening on the port, assume backend is already running and reuse it,
     # but guard against a "hung" process that accepts TCP but doesn't respond to HTTP.
+    health_url = f"http://127.0.0.1:{int(args.backend_port)}/health"
     if _is_tcp_port_open("127.0.0.1", int(args.backend_port)):
-        health_url = f"http://127.0.0.1:{int(args.backend_port)}/health"
         if _is_http_healthy(health_url, timeout_s=0.6):
             sys.stdout.write(
                 f"[dev] Backend already running on http://localhost:{args.backend_port} (port in use). Reusing it.\n"
             )
         else:
+            # Offer an interactive cleanup path. This is particularly useful on macOS where the
+            # backend may run under a `python -c ...` wrapper (StatReload), which our safe
+            # heuristics might not recognize as `uvicorn evaluator.server:app`.
+            allow_kill = bool(getattr(args, "kill_old", True))
+            interactive = bool(sys.stdin.isatty())
+            pids = _pids_listening_on_tcp_port(int(args.backend_port)) if (allow_kill and interactive) else []
+
             sys.stderr.write(
                 f"ERROR: Port {args.backend_port} is in use, but backend health check did not respond: {health_url}\n"
                 "This usually means a previous uvicorn process is hung (common when heavy sync work runs inside async handlers).\n"
-                "Stop the process on that port, or re-run with `--backend-port <free_port>`.\n"
             )
-            return 1
-    else:
+
+            if pids:
+                sys.stderr.write("Detected processes listening on this port:\n")
+                for pid in pids:
+                    cmdline = _pid_command(pid)
+                    sys.stderr.write(f"  - pid {pid}: {cmdline or '(unknown command)'}\n")
+                ans = input(f"Kill these process(es) and continue? (y/N): ").strip().lower()
+                if ans in ("y", "yes"):
+                    for pid in pids:
+                        sys.stdout.write(f"[dev] Stopping pid {pid}...\n")
+                        _try_terminate_pid(pid, graceful_sig=signal.SIGINT)
+                    # Re-check after termination attempt.
+                    time.sleep(0.15)
+                    if _is_tcp_port_open("127.0.0.1", int(args.backend_port)) and not _is_http_healthy(
+                        health_url, timeout_s=0.6
+                    ):
+                        sys.stderr.write(
+                            f"ERROR: Port {args.backend_port} is still in use and backend is not healthy: {health_url}\n"
+                            "Please stop the process manually, or re-run with `--backend-port <free_port>`.\n"
+                        )
+                        return 1
+                    # If port is now free, fall through to start backend below.
+                else:
+                    sys.stderr.write(
+                        "Stop the process on that port, or re-run with `--backend-port <free_port>`.\n"
+                    )
+                    return 1
+            else:
+                sys.stderr.write(
+                    "Stop the process on that port, or re-run with `--backend-port <free_port>`.\n"
+                )
+                return 1
+
+    if not _is_tcp_port_open("127.0.0.1", int(args.backend_port)):
         sys.stdout.write(f"[dev] Starting backend on http://localhost:{args.backend_port} ...\n")
         backend = subprocess.Popen(backend_cmd, env=env_backend)
         backend_started = True
 
         # Fail-fast if the backend never binds (common symptom: reload process stuck).
-        health_url = f"http://127.0.0.1:{int(args.backend_port)}/health"
         if not _wait_http_ok(health_url, timeout_s=3.0, poll_s=0.2):
             sys.stderr.write(f"ERROR: Backend did not become ready: {health_url}\n")
             try:
