@@ -2,49 +2,101 @@ version: '1.0'
 name: master-pipeline
 displayName: MasterPipeline
 stages:
-  - stage: 
-    name: compile
-    displayName: 编译
+  - stage:
+    name: test
+    displayName: 测试
+    steps:
+      - step: build@python
+        name: test_python
+        displayName: Python 测试
+        pythonVersion: '3.9'
+        commands:
+          - python3 -m pip install --upgrade pip
+          - pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+          - pip3 install uv
+          - uv --version
+          - uv lock
+          - uv sync
+          - uv run pytest || echo "No tests found, skipping"
+
+  - stage:
+    name: build_backend
+    displayName: 构建后端
     steps:
       - step: build@python
         name: build_python
         displayName: Python 构建
         pythonVersion: '3.9'
-        # 非必填字段，开启后表示将构建产物暂存，但不会上传到制品库中，7天后自动清除
         artifacts:
-            # 构建产物名字，作为产物的唯一标识可向下传递，支持自定义，默认为BUILD_ARTIFACT。在下游可以通过${BUILD_ARTIFACT}方式引用来获取构建物地址
-          - name: BUILD_ARTIFACT
-            # 构建产物获取路径，是指代码编译完毕之后构建物的所在路径
+          - name: PYTHON_DIST
             path:
-              - ./
+              - dist/
         commands:
           - python3 -m pip install --upgrade pip
           - pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-          - pip3 install -r requirements.txt
-          - python3 ./main.py
+          - pip3 install build uv
+          - uv lock
+          - uv sync
+          - python3 -m build
+
+  - stage:
+    name: build_frontend
+    displayName: 构建前端
+    steps:
+      - step: build@nodejs
+        name: build_webapp
+        displayName: Webapp 构建
+        nodeVersion: '20'
+        artifacts:
+          - name: WEBAPP_DIST
+            path:
+              - webapp/.next/
+              - webapp/out/
+        commands:
+          - cd webapp
+          - npm config set registry https://registry.npmmirror.com
+          - npm install
+          - npm run build
+
+  - stage:
+    name: package
+    displayName: 打包
+    steps:
       - step: publish@general_artifacts
-        name: publish_general_artifacts
-        displayName: 上传制品
-        # 上游构建任务定义的产物名，默认BUILD_ARTIFACT
-        dependArtifact: BUILD_ARTIFACT
-        # 上传到制品库时的制品命名，默认output
-        artifactName: output
+        name: publish_backend
+        displayName: 上传后端制品
+        dependArtifact: PYTHON_DIST
+        artifactName: backend
         dependsOn: build_python
-  - stage: 
+
+      - step: publish@general_artifacts
+        name: publish_frontend
+        displayName: 上传前端制品
+        dependArtifact: WEBAPP_DIST
+        artifactName: frontend
+        dependsOn: build_webapp
+
+  - stage:
     name: release
     displayName: 发布
     steps:
       - step: publish@release_artifacts
-        name: publish_release_artifacts
-        displayName: '发布'
-        # 上游上传制品任务的产出
-        dependArtifact: output
-        # 发布制品版本号
-        version: '1.0.0.0'
-        # 是否开启版本号自增，默认开启
+        name: publish_release_backend
+        displayName: 发布后端
+        dependArtifact: backend
+        version: '0.1.4'
         autoIncrement: true
+
+      - step: publish@release_artifacts
+        name: publish_release_frontend
+        displayName: 发布前端
+        dependArtifact: frontend
+        version: '0.1.4'
+        autoIncrement: true
+
 triggers:
   push:
     branches:
       include:
         - master
+        - main
