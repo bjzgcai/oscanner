@@ -148,6 +148,62 @@
   }
 }
 
+.repos-log {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.repos-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.repos-log-title {
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.repos-log-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.repos-log-ticker {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  color: rgba(0, 0, 0, 0.75);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+.repos-log-body {
+  max-height: 220px;
+  overflow: auto;
+  border-radius: 8px;
+  background: #0b1220;
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.repos-log-line-error {
+  color: #fca5a5;
+}
+
 .repos-page {
   min-height: calc(100vh - 64px);
   background: var(--background);
