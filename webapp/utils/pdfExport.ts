@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import type { ContributorComparisonData, Comparison } from '../types';
 
 interface Evaluation {
   scores: {
@@ -25,24 +26,6 @@ interface RepoData {
   owner: string;
   repo: string;
   full_name: string;
-}
-
-interface MultiRepoComparison {
-  owner: string;
-  repo_name: string;
-  scores: Record<string, number>;
-  total_commits: number;
-  cached: boolean;
-}
-
-interface MultiRepoComparisonData {
-  success: boolean;
-  contributor: string;
-  comparisons: MultiRepoComparison[];
-  dimension_keys: string[];
-  dimension_names: string[];
-  aggregate?: unknown;
-  failed_repos?: Array<{ repo: string; reason: string }>;
 }
 
 const dimensions = [
@@ -295,7 +278,7 @@ export async function exportHomePagePDF(
  * Export multi-repo comparison report as PDF
  */
 export async function exportMultiRepoPDF(
-  comparisonData: MultiRepoComparisonData,
+  comparisonData: ContributorComparisonData,
   contributorName: string
 ) {
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -344,10 +327,7 @@ export async function exportMultiRepoPDF(
     pdf.setTextColor(255, 255, 255);
 
     const totalRepos = comparisonData.comparisons.length;
-    const totalCommits = comparisonData.comparisons.reduce(
-      (sum: number, comp: MultiRepoComparison) => sum + comp.total_commits,
-      0
-    );
+    const totalCommits = comparisonData.comparisons.reduce((sum: number, comp: Comparison) => sum + comp.total_commits, 0);
 
     pdf.text(`Total Repositories: ${totalRepos}`, margin, yPos);
     yPos += 6;
@@ -378,7 +358,7 @@ export async function exportMultiRepoPDF(
   pdf.text('Repository Breakdown', margin, yPos);
   yPos += 12;
 
-  comparisonData.comparisons.forEach((comp: MultiRepoComparison) => {
+  comparisonData.comparisons.forEach((comp: Comparison) => {
     // Check if we need a new page for this repository section
     if (yPos > pageHeight - 80) {
       pdf.addPage();
@@ -425,7 +405,7 @@ export async function exportMultiRepoPDF(
     const colWidth = 80;
 
     dimensionKeys.forEach((key: string, dimIndex: number) => {
-      const score = comp.scores[key] || 0;
+      const score = (comp.scores as unknown as Record<string, number>)[key] ?? 0;
       const name = dimensionNames[dimIndex];
 
       // Determine column position (alternate between columns)

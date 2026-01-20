@@ -62,3 +62,4 @@ evaluations/cache/
 # Testing
 coverage/
 .nyc_output/
+dashboard_dist/
