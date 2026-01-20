@@ -77,7 +77,12 @@ uv run oscanner dev --reload --install
 ```
 
 默认地址：
-- **Dashboard**：`http://localhost:3000`
+- **Dashboard（dev）**：`http://localhost:3000/dashboard`
+- **API（dev）**：`http://localhost:8000`
+
+> 说明（很重要）：在开发模式下，前端（3000）和后端（8000）是两个不同的 origin。
+> CLI 会自动注入 `NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000`，让前端请求正确打到后端；
+> 而在 **PyPI 发布后的包** 中，Dashboard 静态文件由后端同源挂载在 `http://localhost:8000/dashboard`，此时前端默认同源请求（不设置 `NEXT_PUBLIC_API_SERVER_URL`）才是期望行为。
 
 如果你是通过 PyPI 安装运行（本地没有 `webapp/` 目录），可以用：
 
