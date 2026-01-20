@@ -89,9 +89,15 @@ PORT=3000
 
 #### 3. Access the Application
 
-- **Webapp Dashboard**: http://localhost:3000 (or your configured PORT)
-- **API Server**: http://localhost:8000 (or your configured PORT)
+- **Webapp Dashboard (dev)**: http://localhost:3000/dashboard (or your configured PORT)
+- **API Server (dev)**: http://localhost:8000 (or your configured PORT)
 - **API Documentation**: http://localhost:8000/docs
+
+Notes:
+- In development, the frontend (3000) and backend (8000) run on different origins.
+  The CLI injects `NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000` so the dashboard calls the correct API.
+- In the published PyPI package, the dashboard is served by the backend at `http://localhost:8000/dashboard` (same-origin),
+  so leaving `NEXT_PUBLIC_API_SERVER_URL` unset is the intended setup.
 
 #### 4. Analyze Engineers
 
