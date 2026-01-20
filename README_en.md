@@ -308,6 +308,16 @@ to see instructions.
 └── webapp/                    # Optional dashboard (Next.js)
 ```
 
+## Contributing
+
+We recommend contributing via Gitee's auto-generated PR workflow. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+**Quick Start:**
+1. Create or select an issue on Gitee
+2. Develop directly on the main branch
+3. Reference the issue in your commit message: `fix #issue_number` or `关闭 #issue_number`
+4. Push to trigger auto PR generation and issue linking
+
 ## How It Works
 
 ### 1. Commit Collection

@@ -139,4 +139,14 @@ uv run oscanner extract https://github.com/<owner>/<repo> --out /path/to/output 
 └── webapp/                     # 可选 Dashboard（Next.js）
 ```
 
+## 贡献指南
+
+我们推荐通过 Gitee 自动生成 PR 的方式进行贡献。详细信息请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+**快速开始：**
+1. 在 Gitee 上创建或选择一个 issue
+2. 在 main 分支上直接开发
+3. 提交时在 commit message 中引用 issue：`fix #issue_number` 或 `关闭 #issue_number`
+4. 推送后会自动生成 PR 并关联到 issue
+
 
