@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 import requests
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -793,7 +793,8 @@ def evaluate_author_incremental(
     data_dir: Path,
     model: str,
     use_chunking: bool,
-    api_key: str
+    api_key: str,
+    aliases: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Evaluate author incrementally with weighted merge
@@ -806,12 +807,20 @@ def evaluate_author_incremental(
         model: LLM model to use
         use_chunking: Whether to enable chunked evaluation
         api_key: LLM API key
+        aliases: Optional list of author name aliases (normalized/lowercase)
 
     Returns:
         Evaluation result with merged scores
     """
-    # Filter commits by author
-    author_commits = [c for c in commits if _is_commit_by_author(c, author)]
+    # Filter commits by author (including aliases)
+    if aliases:
+        author_commits = [
+            c for c in commits
+            if any(_is_commit_by_author(c, alias) for alias in aliases)
+        ]
+        print(f"[Incremental] Filtering commits by {len(aliases)} aliases: {aliases}")
+    else:
+        author_commits = [c for c in commits if _is_commit_by_author(c, author)]
 
     if not author_commits:
         return _get_empty_evaluation(author)
@@ -983,7 +992,8 @@ async def evaluate_author(
     author: str,
     use_chunking: bool = Query(True),
     model: str = Query(DEFAULT_LLM_MODEL),
-    platform: str = Query("github")
+    platform: str = Query("github"),
+    request_body: Optional[Dict[str, Any]] = None
 ):
     """
     Evaluate an author with auto-sync and incremental evaluation
@@ -994,6 +1004,11 @@ async def evaluate_author(
     3. Evaluates only new commits incrementally
     4. Merges scores using weighted average
     5. Stores evaluation persistently
+
+    Request body (optional):
+    {
+        "aliases": ["name1", "name2", "name3"]  // Optional list of author name aliases
+    }
 
     Flow:
     1. Auto-sync: Fetch new commits from remote
@@ -1013,6 +1028,15 @@ async def evaluate_author(
         platform: Platform (github or gitee)
     """
     try:
+        # Parse aliases from request body
+        aliases = None
+        if request_body and isinstance(request_body, dict):
+            aliases_list = request_body.get("aliases")
+            if aliases_list and isinstance(aliases_list, list):
+                # Normalize aliases to lowercase
+                aliases = [str(a).lower().strip() for a in aliases_list if a]
+                print(f"[Aliases] Using {len(aliases)} aliases: {aliases}")
+
         # Normalize model parameter
         if not isinstance(model, str):
             model = DEFAULT_LLM_MODEL
@@ -1026,6 +1050,114 @@ async def evaluate_author(
                 detail=f"No local data found for {platform}/{owner}/{repo}. Please extract data first."
             )
 
+        # If aliases provided, evaluate each separately and merge
+        if aliases and len(aliases) > 1:
+            print(f"\n[Aliases] Evaluating {len(aliases)} identities separately then merging...")
+
+            evaluations_to_merge = []
+
+            for alias in aliases:
+                print(f"\n[Aliases] Evaluating identity: {alias}")
+
+                # Load commits
+                commits = load_commits_from_local(data_dir, limit=None)
+                if not commits:
+                    print(f"[Aliases] ⚠ No commits found, skipping {alias}")
+                    continue
+
+                # Filter by this alias
+                alias_commits = [c for c in commits if _is_commit_by_author(c, alias)]
+                if not alias_commits:
+                    print(f"[Aliases] ⚠ No commits found for {alias}, skipping")
+                    continue
+
+                print(f"[Aliases] Found {len(alias_commits)} commits for {alias}")
+
+                # Load previous evaluation for this alias
+                # Normalize alias to lowercase for file path to avoid case sensitivity issues
+                eval_dir = get_platform_eval_dir(platform, owner, repo)
+                eval_path = eval_dir / f"{alias.lower()}.json"
+                previous_evaluation = None
+
+                if eval_path.exists():
+                    try:
+                        with open(eval_path, 'r', encoding='utf-8') as f:
+                            previous_evaluation = json.load(f)
+                        print(f"[Aliases] Found cached evaluation for {alias}")
+                    except Exception as e:
+                        print(f"[Aliases] ⚠ Failed to load cached evaluation: {e}")
+
+                # Evaluate this alias
+                api_key = get_llm_api_key()
+                if not api_key:
+                    raise HTTPException(status_code=500, detail="LLM not configured")
+
+                evaluation = evaluate_author_incremental(
+                    commits=commits,
+                    author=alias,
+                    previous_evaluation=previous_evaluation,
+                    data_dir=data_dir,
+                    model=model,
+                    use_chunking=use_chunking,
+                    api_key=api_key,
+                    aliases=[alias]  # Evaluate this single alias
+                )
+
+                # Save evaluation for this alias
+                eval_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(eval_path, 'w', encoding='utf-8') as f:
+                    json.dump(evaluation, f, indent=2, ensure_ascii=False)
+
+                # Collect for merging
+                evaluations_to_merge.append({
+                    "author": alias,
+                    "weight": len(alias_commits),
+                    "evaluation": evaluation
+                })
+
+                print(f"[Aliases] ✓ Evaluated {alias}: {len(alias_commits)} commits")
+
+            # Merge all evaluations
+            if len(evaluations_to_merge) < 2:
+                # If only one alias had commits, return that evaluation
+                if len(evaluations_to_merge) == 1:
+                    result = {
+                        "success": True,
+                        "evaluation": evaluations_to_merge[0]["evaluation"],
+                        "metadata": {
+                            "cached": False,
+                            "timestamp": datetime.now().isoformat(),
+                            "source": "single_alias"
+                        }
+                    }
+                    return result
+                else:
+                    raise HTTPException(status_code=404, detail="No commits found for any of the provided aliases")
+
+            # Call merge API
+            print(f"[Aliases] Merging {len(evaluations_to_merge)} evaluations...")
+            merge_response = await merge_evaluations({
+                "evaluations": evaluations_to_merge,
+                "model": model
+            })
+
+            merged_eval = merge_response["merged_evaluation"]
+
+            # Return merged result
+            result = {
+                "success": True,
+                "evaluation": merged_eval,
+                "metadata": {
+                    "cached": False,
+                    "timestamp": datetime.now().isoformat(),
+                    "source": "merged_aliases",
+                    "merged_from": len(evaluations_to_merge)
+                }
+            }
+
+            return result
+
+        # Original flow: single author evaluation
         print(f"\n[Auto-Sync] Checking for new commits in {owner}/{repo}...")
 
         try:
@@ -1065,8 +1197,9 @@ async def evaluate_author(
         print(f"[Evaluation] Loaded {len(commits)} total commits")
 
         # Step 3: Load previous evaluation
+        # Normalize author name to lowercase for file path to avoid case sensitivity issues
         eval_dir = get_platform_eval_dir(platform, owner, repo)
-        eval_path = eval_dir / f"{author}.json"
+        eval_path = eval_dir / f"{author.lower()}.json"
         previous_evaluation = None
 
         if eval_path.exists():
@@ -1089,7 +1222,8 @@ async def evaluate_author(
             data_dir=data_dir,
             model=model,
             use_chunking=use_chunking,
-            api_key=api_key
+            api_key=api_key,
+            aliases=aliases
         )
 
         # Step 5: Save evaluation persistently
@@ -1131,6 +1265,204 @@ async def evaluate_author(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
+
+
+@app.post("/api/merge-evaluations")
+async def merge_evaluations(request: dict):
+    """
+    Merge multiple evaluations into one using LLM-based weighted combination
+
+    This is more efficient than re-evaluating all commits from scratch.
+    Each author is evaluated separately (potentially using cached results),
+    then their summaries are merged with weights based on commit count.
+
+    Request body:
+    {
+        "evaluations": [
+            {
+                "author": "CarterWu",
+                "weight": 42,
+                "evaluation": {...}  // Full evaluation object
+            },
+            {
+                "author": "wu-yanbiao",
+                "weight": 3,
+                "evaluation": {...}
+            }
+        ],
+        "model": "openai/gpt-4o"  // Optional
+    }
+
+    Response:
+    {
+        "success": true,
+        "merged_evaluation": {
+            "scores": {...},  // Weighted average scores
+            "reasoning": "...",  // LLM-generated merged summary
+            "total_commits_analyzed": 45,
+            ...
+        }
+    }
+    """
+    evaluations_data = request.get("evaluations", [])
+    model = request.get("model", DEFAULT_LLM_MODEL)
+
+    if not evaluations_data or len(evaluations_data) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 evaluations required for merging")
+
+    try:
+        # Extract evaluations and weights
+        evaluations = []
+        weights = []
+        authors = []
+
+        for item in evaluations_data:
+            author = item.get("author", "Unknown")
+            weight = item.get("weight", 0)
+            evaluation = item.get("evaluation", {})
+
+            authors.append(author)
+            weights.append(weight)
+            evaluations.append(evaluation)
+
+        total_weight = sum(weights)
+        if total_weight == 0:
+            raise HTTPException(status_code=400, detail="Total weight cannot be zero")
+
+        print(f"[Merge] Merging {len(evaluations)} evaluations with weights: {weights}")
+
+        # Step 1: Calculate weighted average scores
+        merged_scores = {}
+        dimension_keys = ['ai_fullstack', 'ai_architecture', 'cloud_native', 'open_source', 'intelligent_dev', 'leadership']
+
+        for key in dimension_keys:
+            weighted_sum = 0
+            for eval_data, weight in zip(evaluations, weights):
+                scores = eval_data.get("scores", {})
+                score_value = scores.get(key, 0)
+                # Handle both numeric and string scores
+                if isinstance(score_value, str):
+                    try:
+                        score_value = float(score_value)
+                    except:
+                        score_value = 0
+                weighted_sum += score_value * weight
+
+            merged_scores[key] = round(weighted_sum / total_weight, 1)
+
+        # Step 2: Merge commit summaries
+        total_commits = sum(eval_data.get("total_commits_analyzed", 0) for eval_data in evaluations)
+
+        merged_commits_summary = {
+            "total_additions": sum(eval_data.get("commits_summary", {}).get("total_additions", 0) for eval_data in evaluations),
+            "total_deletions": sum(eval_data.get("commits_summary", {}).get("total_deletions", 0) for eval_data in evaluations),
+            "files_changed": sum(eval_data.get("commits_summary", {}).get("files_changed", 0) for eval_data in evaluations),
+            "languages": list(set(
+                lang
+                for eval_data in evaluations
+                for lang in eval_data.get("commits_summary", {}).get("languages", [])
+            ))
+        }
+
+        # Step 3: Use LLM to merge reasoning/analysis summaries
+        print(f"[Merge] Using LLM to merge analysis summaries...")
+
+        # Build prompt for LLM
+        summaries_text = ""
+        for author, weight, eval_data in zip(authors, weights, evaluations):
+            reasoning = eval_data.get("scores", {}).get("reasoning", "")
+            percentage = round((weight / total_weight) * 100, 1)
+            summaries_text += f"\n### {author} ({weight} commits, {percentage}% weight):\n{reasoning}\n"
+
+        merge_prompt = f"""You are analyzing a software engineer who uses multiple names/identities in their commits. You have separate evaluations for each identity, and you need to create a unified, comprehensive analysis.
+
+Below are the individual analyses with their weights (based on commit count):
+
+{summaries_text}
+
+Total commits: {total_commits}
+Weighted average scores:
+- AI Model Full-Stack: {merged_scores['ai_fullstack']}/100
+- AI Native Architecture: {merged_scores['ai_architecture']}/100
+- Cloud Native Engineering: {merged_scores['cloud_native']}/100
+- Open Source Collaboration: {merged_scores['open_source']}/100
+- Intelligent Development: {merged_scores['intelligent_dev']}/100
+- Engineering Leadership: {merged_scores['leadership']}/100
+
+Create a unified analysis that:
+1. Synthesizes insights from all identities
+2. Gives more weight to analyses with higher commit counts
+3. Identifies common patterns and themes across all identities
+4. Presents a coherent narrative about this engineer's capabilities
+5. Maintains a professional, objective tone
+
+Write the unified analysis (3-5 paragraphs):"""
+
+        # Call LLM to merge summaries
+        api_key = get_llm_api_key()
+        if not api_key:
+            # Fallback: simple concatenation
+            merged_reasoning = f"Combined analysis from {len(authors)} identities ({', '.join(authors)}):\n\n"
+            merged_reasoning += summaries_text
+        else:
+            try:
+                llm_response = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "user", "content": merge_prompt}
+                        ],
+                        "temperature": 0.3,
+                        "max_tokens": 1500
+                    },
+                    timeout=60
+                )
+
+                if llm_response.ok:
+                    response_data = llm_response.json()
+                    merged_reasoning = response_data["choices"][0]["message"]["content"]
+                    print(f"[Merge] ✓ LLM successfully merged summaries ({len(merged_reasoning)} chars)")
+                else:
+                    print(f"[Merge] ⚠ LLM request failed, using concatenation fallback")
+                    merged_reasoning = f"Combined analysis from {len(authors)} identities:\n\n" + summaries_text
+
+            except Exception as e:
+                print(f"[Merge] ⚠ LLM merge failed: {e}, using concatenation fallback")
+                merged_reasoning = f"Combined analysis from {len(authors)} identities:\n\n" + summaries_text
+
+        # Add merged reasoning to scores
+        merged_scores["reasoning"] = merged_reasoning
+
+        # Build final merged evaluation
+        merged_evaluation = {
+            "username": " + ".join(authors),
+            "mode": "merged",
+            "total_commits_analyzed": total_commits,
+            "merged_from": len(evaluations),
+            "authors": authors,
+            "weights": weights,
+            "scores": merged_scores,
+            "commits_summary": merged_commits_summary,
+            "files_loaded": sum(eval_data.get("files_loaded", 0) for eval_data in evaluations)
+        }
+
+        return {
+            "success": True,
+            "merged_evaluation": merged_evaluation
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Merge failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Merge failed: {str(e)}")
 
 
 @app.post("/api/gitee/evaluate/{owner}/{repo}/{contributor}")
@@ -1375,12 +1707,22 @@ async def find_common_contributors(request: dict):
     }
     """
     repos = request.get("repos", [])
+    author_aliases = request.get("author_aliases", "")  # Comma-separated list of names belonging to the same person
 
     if not repos:
         raise HTTPException(status_code=400, detail="No repositories provided")
 
     if len(repos) < 2:
         raise HTTPException(status_code=400, detail="At least 2 repositories required to find common contributors")
+
+    # Parse author aliases into a set of normalized names
+    user_defined_aliases = set()
+    if author_aliases and isinstance(author_aliases, str):
+        # Split by comma and normalize
+        aliases = [name.strip().lower() for name in author_aliases.split(',') if name.strip()]
+        user_defined_aliases = set(aliases)
+        if user_defined_aliases:
+            print(f"📝 User-defined aliases: {user_defined_aliases}")
 
     # Load authors from each repository
     repo_authors = {}  # {repo_key: {author: {commits, email}}}
@@ -1512,6 +1854,52 @@ async def find_common_contributors(request: dict):
                 "data": author_data
             })
 
+    # Pass 1.5: Handle user-defined aliases
+    # Merge all identity groups that match any of the user-defined aliases
+    if user_defined_aliases:
+        print(f"🔗 Grouping identities by user-defined aliases...")
+        matched_keys = []
+
+        # Find all identity groups that contain names matching the user-defined aliases
+        for canonical_key, identities in identity_groups.items():
+            for identity in identities:
+                if identity["author"].lower().strip() in user_defined_aliases:
+                    matched_keys.append(canonical_key)
+                    break
+
+        # Also check orphaned authors
+        orphaned_matches = []
+        for orphan in orphaned_authors:
+            if orphan["author"].lower().strip() in user_defined_aliases:
+                orphaned_matches.append(orphan)
+
+        # If we found multiple groups/orphans matching the aliases, merge them
+        if len(matched_keys) > 0 or len(orphaned_matches) > 0:
+            # Create or use the first matched group as the primary group
+            if matched_keys:
+                primary_key = f"aliases:{','.join(sorted(user_defined_aliases))}"
+                # Merge all matched groups into the primary group
+                merged_identities = []
+                for key in matched_keys:
+                    merged_identities.extend(identity_groups[key])
+                    if key != primary_key:
+                        del identity_groups[key]
+
+                # Add orphaned matches
+                merged_identities.extend(orphaned_matches)
+
+                # Remove orphaned matches from the orphaned_authors list
+                orphaned_authors = [o for o in orphaned_authors if o not in orphaned_matches]
+
+                identity_groups[primary_key] = merged_identities
+                print(f"✓ Merged {len(matched_keys)} groups + {len(orphaned_matches)} orphans by aliases")
+            else:
+                # Only orphaned matches - create new group
+                primary_key = f"aliases:{','.join(sorted(user_defined_aliases))}"
+                identity_groups[primary_key] = orphaned_matches
+                orphaned_authors = [o for o in orphaned_authors if o not in orphaned_matches]
+                print(f"✓ Created group from {len(orphaned_matches)} orphaned authors matching aliases")
+
     # Pass 2: Try to match orphaned authors to existing groups by fuzzy name
     unmatched_orphans = []
 
@@ -1586,14 +1974,18 @@ async def find_common_contributors(request: dict):
                     display_name = identity["author"]
                     break
 
+            # Collect all unique author names for this identity
+            all_names = list(set(identity["author"] for identity in identities))
+
             common_contributors.append({
                 "author": display_name,
+                "aliases": all_names,  # All names associated with this person
                 "email": email,
                 "github_login": github_login,
                 "repos": repos_with_author,
                 "total_commits": total_commits,
                 "repo_count": len(repos_with_author),
-                "matched_by": canonical_key.split(":")[0]  # "github_id", "github_login", or "name"
+                "matched_by": canonical_key.split(":")[0]  # "github_id", "github_login", "aliases", or "name"
             })
 
     # Sort by repo_count (descending), then by total_commits (descending)
@@ -1651,6 +2043,24 @@ async def compare_contributor_across_repos(request: dict):
     if not isinstance(model, str):
         model = DEFAULT_LLM_MODEL
 
+    # Parse author aliases
+    author_aliases_str = request.get("author_aliases", "")
+    contributor_aliases = None
+
+    if author_aliases_str and isinstance(author_aliases_str, str):
+        # Split by comma and normalize
+        aliases = [name.strip().lower() for name in author_aliases_str.split(',') if name.strip()]
+        # Check if contributor matches any of the aliases
+        if contributor.lower().strip() in aliases:
+            contributor_aliases = aliases
+            print(f"🔗 Using {len(contributor_aliases)} aliases for contributor '{contributor}': {contributor_aliases}")
+        else:
+            # Contributor not in aliases list, just use the contributor name
+            contributor_aliases = [contributor.lower().strip()]
+    else:
+        # No aliases provided, use contributor name only
+        contributor_aliases = [contributor.lower().strip()]
+
     if not contributor:
         raise HTTPException(status_code=400, detail="Contributor name is required")
 
@@ -1700,7 +2110,15 @@ async def compare_contributor_across_repos(request: dict):
                     continue
 
             # Evaluate contributor in this repo
-            eval_result = await evaluate_author(owner, repo, contributor, use_chunking=True, model=model, platform=repo_platform)
+            eval_result = await evaluate_author(
+                owner,
+                repo,
+                contributor,
+                use_chunking=True,
+                model=model,
+                platform=repo_platform,
+                aliases=contributor_aliases
+            )
 
             if eval_result.get("success"):
                 evaluation = eval_result["evaluation"]
