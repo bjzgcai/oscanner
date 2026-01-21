@@ -1,0 +1,11 @@
+id: zgc_ai_native_2026
+name: "ZGC AI-Native 2026"
+version: "0.1.0"
+description: "Rubric-guided evaluation based on engineer_level.md (2026 AI-Native standard)."
+default: false
+scan_entry: "scan/__init__.py"
+view_single_entry: "view/single_repo.tsx"
+view_compare_entry: "view/multi_repo_compare.tsx"
+view_entry: "view/index.tsx"
+
+

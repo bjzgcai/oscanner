@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 FastAPI Backend for Engineer Skill Evaluator
-Integrates CommitEvaluatorModerate with dashboard.html
 """
 
 import os
 import json
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
@@ -19,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from evaluator.paths import ensure_dirs, get_data_dir, get_home_dir, get_platform_data_dir, get_platform_eval_dir
+from evaluator.plugin_registry import discover_plugins, get_default_plugin_id, load_scan_module, PluginLoadError
 
 def get_user_env_path() -> Path:
     # Store config under oscanner home dir (user-local dotfile).
@@ -37,9 +39,6 @@ if user_env_path.exists():
     load_dotenv(str(user_env_path), override=False)
 load_dotenv(override=False)
 
-# Import evaluator
-from evaluator.commit_evaluator_moderate import CommitEvaluatorModerate
-
 app = FastAPI(title="Engineer Skill Evaluator API")
 
 # CORS middleware
@@ -52,6 +51,81 @@ app.add_middleware(
 )
 
 ensure_dirs()
+
+
+def _plugins_snapshot():
+    plugins = discover_plugins()
+    default_id = get_default_plugin_id(plugins)
+    return plugins, default_id
+
+
+@app.get("/api/plugins")
+async def list_plugins():
+    """
+    List available scan plugins discovered from the local `plugins/` directory.
+    """
+    plugins, default_id = _plugins_snapshot()
+    return {
+        "success": True,
+        "default": default_id,
+        "plugins": [
+            {
+                "id": meta.plugin_id,
+                "name": meta.name,
+                "version": meta.version,
+                "description": meta.description,
+                "default": bool(meta.default),
+                "scan_entry": meta.scan_entry,
+                "view_single_entry": meta.view_single_entry,
+                "has_view_single": bool((plugin_dir / meta.view_single_entry).exists()),
+                "view_compare_entry": meta.view_compare_entry,
+                "has_view_compare": bool((plugin_dir / meta.view_compare_entry).exists()),
+                # Legacy (compat) single-view entry
+                "view_entry": meta.view_entry,
+                "has_view": bool((plugin_dir / meta.view_entry).exists()),
+            }
+            for meta, plugin_dir in plugins
+        ],
+    }
+
+
+@app.get("/api/plugins/default")
+async def get_default_plugin():
+    plugins, default_id = _plugins_snapshot()
+    _ = plugins
+    return {"success": True, "default": default_id}
+
+
+def _resolve_plugin_id(requested: Optional[str]) -> str:
+    plugins, default_id = _plugins_snapshot()
+    requested_id = (requested or "").strip()
+    if requested_id:
+        # Validate existence early for clearer errors.
+        if requested_id in {m.plugin_id for m, _ in plugins}:
+            return requested_id
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": f"Unknown plugin '{requested_id}'",
+                "available": [m.plugin_id for m, _ in plugins],
+                "default": default_id,
+            },
+        )
+    if default_id:
+        return default_id
+    raise HTTPException(status_code=500, detail="No plugins discovered (plugins/ directory missing?)")
+
+
+def _evaluation_cache_path(eval_dir: Path, author: str, plugin_id: str, default_id: Optional[str]) -> Path:
+    safe_author = (author or "").strip().lower()
+    if not safe_author:
+        safe_author = "unknown"
+    # Keep legacy path for default plugin to preserve existing caches.
+    if default_id and plugin_id == default_id:
+        return eval_dir / f"{safe_author}.json"
+    if plugin_id in ("", "builtin"):
+        return eval_dir / f"{safe_author}.json"
+    return eval_dir / f"{safe_author}__{plugin_id}.json"
 
 # Optional: serve bundled dashboard static files (exported Next.js build) if present.
 def _try_mount_bundled_dashboard() -> bool:
@@ -71,9 +145,14 @@ def _try_mount_bundled_dashboard() -> bool:
 # Data directory (default: user data dir)
 DATA_DIR = get_data_dir()
 
-# GitHub/Gitee API tokens
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITEE_TOKEN = os.getenv("GITEE_TOKEN")
+def get_github_token() -> Optional[str]:
+    # Read from process env at call time so dashboard updates take effect without restart.
+    return os.getenv("GITHUB_TOKEN")
+
+
+def get_gitee_token() -> Optional[str]:
+    # Read from process env at call time so dashboard updates take effect without restart.
+    return os.getenv("GITEE_TOKEN")
 
 # Default model for evaluation (can be overridden per-request by query param `model=...`)
 DEFAULT_LLM_MODEL = os.getenv("OSCANNER_LLM_MODEL", "Pro/zai-org/GLM-4.7")
@@ -82,7 +161,7 @@ def get_llm_api_key() -> Optional[str]:
     """
     Resolve an API key for LLM calls without leaking secrets.
 
-    Priority matches CommitEvaluatorModerate:
+    Priority matches the plugin evaluator contract:
     - OSCANNER_LLM_API_KEY (OpenAI-compatible bearer token)
     - OPENAI_API_KEY
     - OPEN_ROUTER_KEY
@@ -124,6 +203,8 @@ def _write_env_file(path: Path, env: Dict[str, str]) -> None:
         "",
     ]
     order = [
+        "GITEE_TOKEN",
+        "GITHUB_TOKEN",
         "OPEN_ROUTER_KEY",
         "OSCANNER_LLM_API_KEY",
         "OSCANNER_LLM_BASE_URL",
@@ -172,6 +253,8 @@ async def get_llm_config():
         "mode": "openrouter" if (file_env.get("OPEN_ROUTER_KEY") or os.getenv("OPEN_ROUTER_KEY")) else "openai",
         "openrouter_key_masked": _mask_secret(file_env.get("OPEN_ROUTER_KEY") or os.getenv("OPEN_ROUTER_KEY")),
         "oscanner_llm_api_key_masked": _mask_secret(file_env.get("OSCANNER_LLM_API_KEY") or os.getenv("OSCANNER_LLM_API_KEY")),
+        "gitee_token_masked": _mask_secret(file_env.get("GITEE_TOKEN") or os.getenv("GITEE_TOKEN")),
+        "github_token_masked": _mask_secret(file_env.get("GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")),
         "oscanner_llm_base_url": file_env.get("OSCANNER_LLM_BASE_URL") or os.getenv("OSCANNER_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "",
         "oscanner_llm_chat_completions_url": file_env.get("OSCANNER_LLM_CHAT_COMPLETIONS_URL") or os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL") or "",
         "oscanner_llm_model": file_env.get("OSCANNER_LLM_MODEL") or os.getenv("OSCANNER_LLM_MODEL") or DEFAULT_LLM_MODEL,
@@ -196,29 +279,52 @@ async def set_llm_config(payload: Dict[str, Any]):
     env = _parse_env_file(path) if path.exists() else {}
 
     if mode == "openrouter":
+        # NOTE: The dashboard intentionally does NOT hydrate secrets back into inputs.
+        # So when users click "save" to update *other* fields (e.g. tokens),
+        # openrouter_key may be omitted/empty. In that case, keep the existing key if present.
         key = str(payload.get("openrouter_key") or "").strip()
-        if not key:
+        existing_key = (env.get("OPEN_ROUTER_KEY") or os.getenv("OPEN_ROUTER_KEY") or "").strip()
+        if key:
+            env["OPEN_ROUTER_KEY"] = key
+        elif not existing_key:
             raise HTTPException(status_code=400, detail="openrouter_key is required")
-        env["OPEN_ROUTER_KEY"] = key
         # allow optional model override
         model = str(payload.get("model") or "").strip()
         if model:
             env["OSCANNER_LLM_MODEL"] = model
-        # clear openai-compatible fields to avoid confusion
+        # clear openai-compatible fields only when a mode is explicitly selected
+        # (keeps config consistent and avoids ambiguity)
         env.pop("OSCANNER_LLM_API_KEY", None)
         env.pop("OSCANNER_LLM_BASE_URL", None)
         env.pop("OSCANNER_LLM_CHAT_COMPLETIONS_URL", None)
     elif mode == "openai":
+        # Same idea: allow saving other settings without re-entering secrets,
+        # as long as an existing OpenAI-compatible config already exists.
         api_key = str(payload.get("api_key") or "").strip()
         base_url = str(payload.get("base_url") or "").strip()
         model = str(payload.get("model") or "").strip()
         chat_url = str(payload.get("chat_completions_url") or "").strip()
         fb = str(payload.get("fallback_models") or "").strip()
-        if not api_key or not base_url or not model:
-            raise HTTPException(status_code=400, detail="api_key, base_url, and model are required")
-        env["OSCANNER_LLM_API_KEY"] = api_key
-        env["OSCANNER_LLM_BASE_URL"] = base_url
-        env["OSCANNER_LLM_MODEL"] = model
+
+        existing_api_key = (env.get("OSCANNER_LLM_API_KEY") or os.getenv("OSCANNER_LLM_API_KEY") or "").strip()
+        existing_base_url = (env.get("OSCANNER_LLM_BASE_URL") or os.getenv("OSCANNER_LLM_BASE_URL") or "").strip()
+        existing_model = (env.get("OSCANNER_LLM_MODEL") or os.getenv("OSCANNER_LLM_MODEL") or "").strip()
+
+        if api_key:
+            env["OSCANNER_LLM_API_KEY"] = api_key
+        elif not existing_api_key:
+            raise HTTPException(status_code=400, detail="api_key is required")
+
+        if base_url:
+            env["OSCANNER_LLM_BASE_URL"] = base_url
+        elif not existing_base_url:
+            raise HTTPException(status_code=400, detail="base_url is required")
+
+        if model:
+            env["OSCANNER_LLM_MODEL"] = model
+        elif not existing_model:
+            raise HTTPException(status_code=400, detail="model is required")
+
         if chat_url:
             env["OSCANNER_LLM_CHAT_COMPLETIONS_URL"] = chat_url
         else:
@@ -229,8 +335,29 @@ async def set_llm_config(payload: Dict[str, Any]):
             env.pop("OSCANNER_LLM_FALLBACK_MODELS", None)
         # clear openrouter key to avoid ambiguity
         env.pop("OPEN_ROUTER_KEY", None)
+    elif mode in ("", "none"):
+        # Allow partial updates for non-LLM fields (e.g., platform tokens) without forcing users
+        # to re-enter LLM secrets (inputs are intentionally not hydrated in the UI).
+        pass
     else:
-        raise HTTPException(status_code=400, detail="mode must be openrouter or openai")
+        raise HTTPException(status_code=400, detail="mode must be openrouter or openai (or omitted for partial updates)")
+
+    # Platform tokens (optional, can be updated independently)
+    if "gitee_token" in payload:
+        gitee_token = str(payload.get("gitee_token") or "").strip()
+        if gitee_token:
+            env["GITEE_TOKEN"] = gitee_token
+        else:
+            env.pop("GITEE_TOKEN", None)
+    if "github_token" in payload:
+        github_token = str(payload.get("github_token") or "").strip()
+        if github_token:
+            env["GITHUB_TOKEN"] = github_token
+        else:
+            env.pop("GITHUB_TOKEN", None)
+
+    # If nothing changed, still return success to keep the UI simple/idempotent.
+    # (Users may click "save" without modifying fields.)
 
     _write_env_file(path, env)
     # Load into current process env
@@ -331,8 +458,9 @@ def extract_github_data(owner: str, repo: str) -> bool:
             "500",  # Fetch enough to cover all contributors
         ]
 
-        if GITHUB_TOKEN:
-            cmd.extend(["--token", GITHUB_TOKEN])
+        gh_token = get_github_token()
+        if gh_token:
+            cmd.extend(["--token", gh_token])
 
         # Run extraction tool
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 minute timeout
@@ -410,8 +538,9 @@ def fetch_github_commits(owner: str, repo: str, limit: int = 100) -> list:
     """Fetch commits from GitHub API"""
     url = f"https://api.github.com/repos/{owner}/{repo}/commits"
     headers = {}
-    if GITHUB_TOKEN:
-        headers["Authorization"] = f"token {GITHUB_TOKEN}"
+    gh_token = get_github_token()
+    if gh_token:
+        headers["Authorization"] = f"token {gh_token}"
 
     params = {"per_page": min(limit, 100)}
 
@@ -430,11 +559,12 @@ def fetch_gitee_commits(owner: str, repo: str, limit: int = 100, is_enterprise: 
     else:
         url = f"https://api.gitee.com/repos/{owner}/{repo}/commits"
 
+    # Gitee uses `access_token` query param (Authorization header is not reliable for v5 APIs).
     headers = {}
-    if GITEE_TOKEN:
-        headers["Authorization"] = f"token {GITEE_TOKEN}"
-
     params = {"per_page": min(limit, 100)}
+    gitee_token = get_gitee_token()
+    if gitee_token:
+        params["access_token"] = gitee_token
 
     try:
         response = requests.get(url, headers=headers, params=params, timeout=30)
@@ -550,8 +680,9 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
         while len(commits) < max_commits:
             api_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits"
             params: Dict[str, Any] = {"per_page": per_page, "page": page}
-            if GITEE_TOKEN:
-                params["access_token"] = GITEE_TOKEN
+            gitee_token = get_gitee_token()
+            if gitee_token:
+                params["access_token"] = gitee_token
             resp = requests.get(api_url, params=params, timeout=30)
             if resp.status_code != 200:
                 print(f"✗ Gitee commits list failed: {resp.status_code} {resp.text[:200]}")
@@ -576,8 +707,9 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
                 continue
             detail_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits/{sha}"
             params = {}
-            if GITEE_TOKEN:
-                params["access_token"] = GITEE_TOKEN
+            gitee_token = get_gitee_token()
+            if gitee_token:
+                params["access_token"] = gitee_token
             dresp = requests.get(detail_url, params=params, timeout=30)
             if dresp.status_code != 200:
                 # Fallback to list item
@@ -634,24 +766,22 @@ def get_or_create_evaluator(
     owner: str,
     repo: str,
     commits: list,
-    use_cache: bool = True
-) -> CommitEvaluatorModerate:
+    use_cache: bool = True,
+    plugin_id: str = "",
+    model: str = DEFAULT_LLM_MODEL,
+):
     """
-    Get or create evaluator for repository
+    Legacy helper (kept for compatibility).
+
+    Persists commit JSONs into the repo data dir, then returns a plugin evaluator instance.
     """
-    # Prepare data directory
+    _ = use_cache
     data_dir = get_repo_data_dir(platform, owner, repo)
 
     # Create commits_index.json
-    commits_index = [
-        {
-            "sha": c.get("sha"),
-            "hash": c.get("sha"),
-        }
-        for c in commits
-    ]
-    with open(data_dir / "commits_index.json", 'w') as f:
-        json.dump(commits_index, f, indent=2)
+    commits_index = [{"sha": c.get("sha"), "hash": c.get("sha")} for c in commits]
+    with open(data_dir / "commits_index.json", "w", encoding="utf-8") as f:
+        json.dump(commits_index, f, indent=2, ensure_ascii=False)
 
     # Save individual commits
     commits_dir = data_dir / "commits"
@@ -659,31 +789,28 @@ def get_or_create_evaluator(
     for commit in commits:
         sha = commit.get("sha")
         if sha:
-            with open(commits_dir / f"{sha}.json", 'w') as f:
-                json.dump(commit, f, indent=2)
+            with open(commits_dir / f"{sha}.json", "w", encoding="utf-8") as f:
+                json.dump(commit, f, indent=2, ensure_ascii=False)
 
-    # Create repo_info.json
-    repo_info = {
-        "name": f"{owner}/{repo}",
-        "full_name": f"{owner}/{repo}",
-        "owner": owner,
-        "platform": platform,
-    }
-    with open(data_dir / "repo_info.json", 'w') as f:
-        json.dump(repo_info, f, indent=2)
+    # repo_info.json
+    repo_info = {"name": f"{owner}/{repo}", "full_name": f"{owner}/{repo}", "owner": owner, "platform": platform}
+    with open(data_dir / "repo_info.json", "w", encoding="utf-8") as f:
+        json.dump(repo_info, f, indent=2, ensure_ascii=False)
 
-    # Create evaluator with moderate mode
+    pid = _resolve_plugin_id(plugin_id)
+    meta, scan_mod, scan_path = load_scan_module(pid)
     api_key = get_llm_api_key()
     if not api_key:
         raise HTTPException(status_code=500, detail="LLM not configured")
 
-    evaluator = CommitEvaluatorModerate(
+    evaluator = scan_mod.create_commit_evaluator(
         data_dir=str(data_dir),
         api_key=api_key,
-        mode="moderate"
+        model=model,
+        mode="moderate",
     )
-
-    print(f"✓ Created new evaluator for {owner}/{repo}")
+    print(f"✓ Created evaluator for {owner}/{repo} via plugin={pid} scan={scan_path}")
+    _ = meta
     return evaluator
 
 
@@ -794,7 +921,8 @@ def evaluate_author_incremental(
     model: str,
     use_chunking: bool,
     api_key: str,
-    aliases: Optional[List[str]] = None
+    aliases: Optional[List[str]] = None,
+    evaluator_factory=None,
 ) -> Dict[str, Any]:
     """
     Evaluate author incrementally with weighted merge
@@ -825,24 +953,43 @@ def evaluate_author_incremental(
     if not author_commits:
         return _get_empty_evaluation(author)
 
+    if evaluator_factory is None:
+        raise HTTPException(status_code=500, detail="Evaluator factory not provided (plugin load failed?)")
+
     # Case 1: No previous evaluation → evaluate all commits
     if not previous_evaluation:
         print(f"[Incremental] First evaluation: {len(author_commits)} commits")
 
-        evaluator = CommitEvaluatorModerate(
-            data_dir=str(data_dir),
-            api_key=api_key,
-            mode="moderate",
-            model=model
-        )
+        evaluator = evaluator_factory()
 
-        evaluation = evaluator.evaluate_engineer(
-            commits=author_commits,
-            username=author,
-            max_commits=150,
-            load_files=True,
-            use_chunking=use_chunking
-        )
+        # Heartbeat progress logs: LLM evaluation can take a while with no stdout.
+        stop_event = threading.Event()
+        started_at = time.time()
+
+        def _heartbeat():
+            while not stop_event.wait(15):
+                elapsed = int(time.time() - started_at)
+                print(f"[LLM] Evaluating... elapsed={elapsed}s (author={author}, commits={len(author_commits)}, chunking={use_chunking})")
+
+        hb = threading.Thread(target=_heartbeat, daemon=True)
+        hb.start()
+
+        try:
+            print(f"[LLM] Starting evaluation (author={author}, commits={len(author_commits)}, chunking={use_chunking})")
+            evaluation = evaluator.evaluate_engineer(
+                commits=author_commits,
+                username=author,
+                max_commits=150,
+                load_files=True,
+                use_chunking=use_chunking
+            )
+        except Exception as e:
+            stop_event.set()
+            raise HTTPException(status_code=502, detail=f"LLM evaluation failed: {str(e)}")
+        finally:
+            stop_event.set()
+            elapsed = int(time.time() - started_at)
+            print(f"[LLM] Evaluation finished in {elapsed}s (author={author})")
 
         evaluation["last_commit_sha"] = author_commits[0].get("sha") or author_commits[0].get("hash")
         evaluation["total_commits_evaluated"] = len(author_commits) if len(author_commits) <= 150 else 150
@@ -876,20 +1023,36 @@ def evaluate_author_incremental(
     print(f"[Incremental] Found {len(new_commits)} new commits, evaluating...")
 
     # Evaluate new commits only
-    evaluator = CommitEvaluatorModerate(
-        data_dir=str(data_dir),
-        api_key=api_key,
-        mode="moderate",
-        model=model
-    )
+    evaluator = evaluator_factory()
 
-    new_evaluation = evaluator.evaluate_engineer(
-        commits=new_commits,
-        username=author,
-        max_commits=len(new_commits),
-        load_files=True,
-        use_chunking=use_chunking
-    )
+    # Heartbeat progress logs for incremental run
+    stop_event = threading.Event()
+    started_at = time.time()
+
+    def _heartbeat():
+        while not stop_event.wait(15):
+            elapsed = int(time.time() - started_at)
+            print(f"[LLM] Evaluating incremental... elapsed={elapsed}s (author={author}, new_commits={len(new_commits)}, chunking={use_chunking})")
+
+    hb = threading.Thread(target=_heartbeat, daemon=True)
+    hb.start()
+
+    try:
+        print(f"[LLM] Starting incremental evaluation (author={author}, new_commits={len(new_commits)}, chunking={use_chunking})")
+        new_evaluation = evaluator.evaluate_engineer(
+            commits=new_commits,
+            username=author,
+            max_commits=len(new_commits),
+            load_files=True,
+            use_chunking=use_chunking
+        )
+    except Exception as e:
+        stop_event.set()
+        raise HTTPException(status_code=502, detail=f"LLM evaluation failed: {str(e)}")
+    finally:
+        stop_event.set()
+        elapsed = int(time.time() - started_at)
+        print(f"[LLM] Incremental evaluation finished in {elapsed}s (author={author})")
 
     # Weighted merge of scores
     prev_count = previous_evaluation.get("total_commits_evaluated", 0)
@@ -991,8 +1154,10 @@ async def evaluate_author(
     repo: str,
     author: str,
     use_chunking: bool = Query(True),
+    use_cache: bool = Query(True),
     model: str = Query(DEFAULT_LLM_MODEL),
     platform: str = Query("github"),
+    plugin: str = Query(""),
     request_body: Optional[Dict[str, Any]] = None
 ):
     """
@@ -1028,6 +1193,18 @@ async def evaluate_author(
         platform: Platform (github or gitee)
     """
     try:
+        plugin_id = _resolve_plugin_id(plugin)
+
+        # Load plugin scan module (if available)
+        scan_mod = None
+        meta = None
+        scan_path = None
+        default_plugin_id = get_default_plugin_id(discover_plugins())
+        try:
+            meta, scan_mod, scan_path = load_scan_module(plugin_id)
+        except PluginLoadError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
         # Parse aliases from request body
         aliases = None
         if request_body and isinstance(request_body, dict):
@@ -1076,10 +1253,10 @@ async def evaluate_author(
                 # Load previous evaluation for this alias
                 # Normalize alias to lowercase for file path to avoid case sensitivity issues
                 eval_dir = get_platform_eval_dir(platform, owner, repo)
-                eval_path = eval_dir / f"{alias.lower()}.json"
+                eval_path = _evaluation_cache_path(eval_dir, alias, plugin_id, default_plugin_id)
                 previous_evaluation = None
 
-                if eval_path.exists():
+                if use_cache and eval_path.exists():
                     try:
                         with open(eval_path, 'r', encoding='utf-8') as f:
                             previous_evaluation = json.load(f)
@@ -1092,6 +1269,17 @@ async def evaluate_author(
                 if not api_key:
                     raise HTTPException(status_code=500, detail="LLM not configured")
 
+                evaluator_factory = None
+                if scan_mod is not None:
+                    def _factory():
+                        return scan_mod.create_commit_evaluator(
+                            data_dir=str(data_dir),
+                            api_key=api_key,
+                            model=model,
+                            mode="moderate",
+                        )
+                    evaluator_factory = _factory
+
                 evaluation = evaluate_author_incremental(
                     commits=commits,
                     author=alias,
@@ -1100,13 +1288,18 @@ async def evaluate_author(
                     model=model,
                     use_chunking=use_chunking,
                     api_key=api_key,
-                    aliases=[alias]  # Evaluate this single alias
+                    aliases=[alias],  # Evaluate this single alias
+                    evaluator_factory=evaluator_factory,
                 )
+                evaluation["plugin"] = plugin_id
+                if meta is not None:
+                    evaluation["plugin_version"] = meta.version
 
-                # Save evaluation for this alias
-                eval_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(eval_path, 'w', encoding='utf-8') as f:
-                    json.dump(evaluation, f, indent=2, ensure_ascii=False)
+                # Save evaluation for this alias (optional)
+                if use_cache:
+                    eval_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(eval_path, 'w', encoding='utf-8') as f:
+                        json.dump(evaluation, f, indent=2, ensure_ascii=False)
 
                 # Collect for merging
                 evaluations_to_merge.append({
@@ -1174,9 +1367,12 @@ async def evaluate_author(
 
             # Choose collector based on platform
             if platform == "gitee":
-                collector = GiteeCollector(token=GITEE_TOKEN, cache_dir=str(data_dir))
+                # GiteeCollector distinguishes enterprise token vs public token.
+                # Our dashboard config provides a single GITEE_TOKEN; use it for both.
+                _tk = get_gitee_token()
+                collector = GiteeCollector(token=_tk, public_token=_tk, cache_dir=str(data_dir))
             else:
-                collector = GitHubCollector(token=GITHUB_TOKEN, cache_dir=str(data_dir))
+                collector = GitHubCollector(token=get_github_token(), cache_dir=str(data_dir))
 
             sync_result = sync_manager.sync_incremental(collector)
             print(f"[Auto-Sync] ✓ {sync_result['commits_added']} new commits fetched")
@@ -1199,10 +1395,10 @@ async def evaluate_author(
         # Step 3: Load previous evaluation
         # Normalize author name to lowercase for file path to avoid case sensitivity issues
         eval_dir = get_platform_eval_dir(platform, owner, repo)
-        eval_path = eval_dir / f"{author.lower()}.json"
+        eval_path = _evaluation_cache_path(eval_dir, author, plugin_id, default_plugin_id)
         previous_evaluation = None
 
-        if eval_path.exists():
+        if use_cache and eval_path.exists():
             try:
                 with open(eval_path, 'r', encoding='utf-8') as f:
                     previous_evaluation = json.load(f)
@@ -1215,6 +1411,16 @@ async def evaluate_author(
         if not api_key:
             raise HTTPException(status_code=500, detail="LLM not configured")
 
+        # Plugin contract: create_commit_evaluator(data_dir, api_key, model, mode, **kwargs)
+        def _factory():
+            return scan_mod.create_commit_evaluator(
+                data_dir=str(data_dir),
+                api_key=api_key,
+                model=model,
+                mode="moderate",
+            )
+        evaluator_factory = _factory
+
         evaluation = evaluate_author_incremental(
             commits=commits,
             author=author,
@@ -1223,15 +1429,24 @@ async def evaluate_author(
             model=model,
             use_chunking=use_chunking,
             api_key=api_key,
-            aliases=aliases
+            aliases=aliases,
+            evaluator_factory=evaluator_factory,
         )
+        evaluation["plugin"] = plugin_id
+        if meta is not None:
+            evaluation["plugin_version"] = meta.version
+        if scan_path is not None:
+            evaluation["plugin_scan_path"] = str(scan_path)
+            print(f"[Plugin] Using plugin={plugin_id} scan={scan_path}")
 
-        # Step 5: Save evaluation persistently
-        eval_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(eval_path, 'w', encoding='utf-8') as f:
-            json.dump(evaluation, f, indent=2, ensure_ascii=False)
-
-        print(f"[Evaluation] ✓ Saved evaluation to {eval_path}")
+        # Step 5: Save evaluation persistently (optional)
+        if use_cache:
+            eval_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(eval_path, 'w', encoding='utf-8') as f:
+                json.dump(evaluation, f, indent=2, ensure_ascii=False)
+            print(f"[Evaluation] ✓ Saved evaluation to {eval_path}")
+        else:
+            print(f"[Evaluation] (no-cache) Skipping save to {eval_path}")
 
         # Step 6: Return response
         result = {
@@ -1246,13 +1461,17 @@ async def evaluate_author(
                 "chunks_processed": evaluation.get("chunks_processed", 0),
                 "scores": evaluation.get("scores", {}),
                 "commits_summary": evaluation.get("commits_summary", {}),
-                "incremental": evaluation.get("incremental", False)
+                "incremental": evaluation.get("incremental", False),
+                "plugin": evaluation.get("plugin", plugin_id),
+                "plugin_version": evaluation.get("plugin_version", ""),
+                "plugin_scan_path": evaluation.get("plugin_scan_path", ""),
             },
             "metadata": {
                 "synced": True,
                 "commits_added": sync_result.get("commits_added", 0) if 'sync_result' in locals() else 0,
                 "timestamp": datetime.now().isoformat(),
-                "source": "persistent_storage"
+                "source": "persistent_storage" if use_cache else "no_cache",
+                "use_cache": bool(use_cache),
             }
         }
 
@@ -1472,7 +1691,8 @@ async def evaluate_gitee_contributor(
     contributor: str,
     limit: int = Query(150, ge=1, le=200),
     use_cache: bool = Query(True),
-    is_enterprise: bool = Query(False)
+    is_enterprise: bool = Query(False),
+    plugin: str = Query(""),
 ):
     """Evaluate a Gitee contributor (max 150 commits per contributor)"""
     platform = "gitee"
@@ -1482,15 +1702,30 @@ async def evaluate_gitee_contributor(
         commits = fetch_gitee_commits(owner, repo, 500, is_enterprise)
 
         # 2. Get or create evaluator
-        evaluator = get_or_create_evaluator(platform, owner, repo, commits, use_cache)
+        # Use selected plugin evaluator (default if not provided)
+        plugin_id = _resolve_plugin_id(plugin)
+        meta, scan_mod, scan_path = load_scan_module(plugin_id)
+        api_key = get_llm_api_key()
+        if not api_key:
+            raise HTTPException(status_code=500, detail="LLM not configured")
+        evaluator = scan_mod.create_commit_evaluator(
+            data_dir=str(get_repo_data_dir(platform, owner, repo)),
+            api_key=api_key,
+            model=DEFAULT_LLM_MODEL,
+            mode="moderate",
+        )
+        print(f"[Plugin] Using plugin={plugin_id} scan={scan_path}")
 
         # 3. Evaluate contributor using moderate evaluator
-        evaluation = evaluator.evaluate_engineer(
-            commits=commits,
-            username=contributor,
-            max_commits=limit,
-            load_files=True
-        )
+        try:
+            evaluation = evaluator.evaluate_engineer(
+                commits=commits,
+                username=contributor,
+                max_commits=limit,
+                load_files=True
+            )
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"LLM evaluation failed: {str(e)}")
 
         if not evaluation or "scores" not in evaluation:
             raise HTTPException(status_code=404, detail=f"Contributor '{contributor}' not found")
@@ -1505,7 +1740,10 @@ async def evaluate_gitee_contributor(
                 "total_commits_analyzed": evaluation.get("total_commits_analyzed", 0),
                 "files_loaded": evaluation.get("files_loaded", 0),
                 "scores": evaluation.get("scores", {}),
-                "commits_summary": evaluation.get("commits_summary", {})
+                "commits_summary": evaluation.get("commits_summary", {}),
+                "plugin": plugin_id,
+                "plugin_version": meta.version,
+                "plugin_scan_path": str(scan_path),
             },
             "metadata": {
                 "cached": False,
@@ -2040,6 +2278,8 @@ async def compare_contributor_across_repos(request: dict):
     repos = request.get("repos", [])
     use_cache = bool(request.get("use_cache", False))
     model = request.get("model") or DEFAULT_LLM_MODEL
+    requested_plugin_id = str(request.get("plugin") or "").strip()
+    plugin_id = _resolve_plugin_id(requested_plugin_id)
     if not isinstance(model, str):
         model = DEFAULT_LLM_MODEL
 
@@ -2115,9 +2355,11 @@ async def compare_contributor_across_repos(request: dict):
                 repo,
                 contributor,
                 use_chunking=True,
+                use_cache=use_cache,
                 model=model,
                 platform=repo_platform,
-                aliases=contributor_aliases
+                plugin=plugin_id,
+                request_body={"aliases": contributor_aliases},
             )
 
             if eval_result.get("success"):
@@ -2138,7 +2380,10 @@ async def compare_contributor_across_repos(request: dict):
                     },
                     "total_commits": evaluation.get("total_commits_analyzed", 0),
                     "commits_summary": evaluation.get("commits_summary", {}),
-                    "cached": eval_result.get("metadata", {}).get("cached", False)
+                    "cached": eval_result.get("metadata", {}).get("cached", False),
+                    "plugin": evaluation.get("plugin", plugin_id),
+                    "plugin_version": evaluation.get("plugin_version", ""),
+                    "plugin_scan_path": evaluation.get("plugin_scan_path", ""),
                 })
             else:
                 error_msg = eval_result.get("message", "Evaluation failed")
@@ -2187,6 +2432,8 @@ async def compare_contributor_across_repos(request: dict):
     return {
         "success": True,
         "contributor": contributor,
+        "plugin_requested": requested_plugin_id or None,
+        "plugin_used": plugin_id,
         "comparisons": results,
         "dimension_keys": dimension_keys,
         "dimension_names": [

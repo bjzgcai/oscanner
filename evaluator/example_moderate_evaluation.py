@@ -9,10 +9,10 @@ This demonstrates how to evaluate contributors using the moderate approach
 import os
 import json
 from pathlib import Path
-from evaluator.commit_evaluator_moderate import CommitEvaluatorModerate
 from dotenv import load_dotenv
 
 from evaluator.paths import get_home_dir
+from evaluator.plugin_registry import load_scan_module
 
 # Load environment variables
 load_dotenv('.env.local')
@@ -95,12 +95,14 @@ def evaluate_from_local_data(
 
     # Initialize evaluator
     api_key = os.getenv("OPEN_ROUTER_KEY")
-    evaluator = CommitEvaluatorModerate(
+    meta, scan_mod, scan_path = load_scan_module("zgc_simple")
+    evaluator = scan_mod.create_commit_evaluator(
+        data_dir=str(data_path),
         api_key=api_key,
-        max_input_tokens=190000,
-        data_dir=data_path,
-        mode=mode
+        model=os.getenv("OSCANNER_LLM_MODEL") or None,
+        mode=mode,
     )
+    print(f"[Plugin] example uses plugin={meta.plugin_id} scan={scan_path}")
 
     # Load commits
     print("\n[1/3] Loading commits...")
