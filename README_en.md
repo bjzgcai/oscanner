@@ -217,13 +217,15 @@ uv sync
 Create a `.env.local` file with your API keys:
 
 ```bash
-# OpenRouter API key for LLM evaluation
+# OpenRouter API key for LLM evaluation (required)
 OPEN_ROUTER_KEY=sk-or-v1-your-key-here
 
-# Optional: GitHub token for higher rate limits
+# GitHub token (optional but strongly recommended)
+# Without token: ~60 requests/hour; With token: 5,000 requests/hour
 GITHUB_TOKEN=ghp_your-token-here
 
-# Optional: Gitee token
+# Gitee token (optional but strongly recommended)
+# Without token: low rate limits; With token: higher rate limits
 GITEE_TOKEN=your-gitee-token-here
 ```
 

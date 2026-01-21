@@ -248,89 +248,6 @@ class GitHubCollector:
             "total_commits": len(commits)
         }
 
-    def _get_cache_path(self, url: str) -> Path:
-        """
-        Generate cache file path based on GitHub URL
-
-        Args:
-            url: GitHub repository or user URL
-
-        Returns:
-            Path to cache file
-        """
-        # Try to extract owner/repo from URL
-        repo_match = re.search(r"github\.com/([^/]+)/([^/]+)", url)
-        if repo_match:
-            owner, repo = repo_match.groups()
-            repo = repo.replace(".git", "")
-            # Create path-like structure: data/owner/repo.json
-            cache_path = self.cache_dir / owner / f"{repo}.json"
-            # Ensure parent directory exists
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            return cache_path
-
-        # Try to extract user from URL (e.g., https://github.com/username)
-        user_match = re.search(r"github\.com/([^/]+)$", url)
-        if user_match:
-            username = user_match.group(1)
-            # Create path-like structure: data/users/username.json
-            cache_path = self.cache_dir / "users" / f"{username}.json"
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            return cache_path
-
-        # Fallback to hashed URL if pattern doesn't match
-        url_hash = hashlib.md5(url.encode()).hexdigest()
-        return self.cache_dir / f"{url_hash}.json"
-
-    def _load_from_cache(self, repo_url: str) -> Optional[Dict[str, Any]]:
-        """
-        Load cached data for a repository
-
-        Args:
-            repo_url: GitHub repository URL
-
-        Returns:
-            Cached data if exists, None otherwise
-        """
-        cache_path = self._get_cache_path(repo_url)
-
-        if cache_path.exists():
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    cached_data = json.load(f)
-                    print(f"[Cache] Loaded data from cache: {cache_path}")
-                    return cached_data
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[Cache] Error loading cache file {cache_path}: {e}")
-                return None
-
-        return None
-
-    def _save_to_cache(self, repo_url: str, data: Dict[str, Any]) -> None:
-        """
-        Save repository data to cache
-
-        Args:
-            repo_url: GitHub repository URL
-            data: Data to cache
-        """
-        cache_path = self._get_cache_path(repo_url)
-
-        try:
-            # Add metadata to cached data
-            cached_data = {
-                "cached_at": datetime.now().isoformat(),
-                "repo_url": repo_url,
-                "data": data
-            }
-
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(cached_data, f, indent=2, ensure_ascii=False)
-
-            print(f"[Cache] Saved data to cache: {cache_path}")
-        except IOError as e:
-            print(f"[Cache] Error saving cache file {cache_path}: {e}")
-
     def _get_headers(self) -> Dict[str, str]:
         """Get API request headers"""
         headers = {
@@ -340,7 +257,7 @@ class GitHubCollector:
             headers["Authorization"] = f"token {self.token}"
         return headers
 
-    def fetch_commit_data(self, owner: str, repo: str, commit_sha: str, use_cache: bool = True) -> Dict[str, Any]:
+    def fetch_commit_data(self, owner: str, repo: str, commit_sha: str) -> Dict[str, Any]:
         """
         Fetch detailed commit data from GitHub API
 
@@ -348,21 +265,10 @@ class GitHubCollector:
             owner: Repository owner
             repo: Repository name
             commit_sha: Commit SHA hash
-            use_cache: Whether to use cached data if available
 
         Returns:
             Detailed commit data including files changed and diffs
         """
-        # Create commit URL for cache key
-        commit_url = f"https://github.com/{owner}/{repo}/commit/{commit_sha}"
-
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_commit_from_cache(owner, repo, commit_sha)
-            if cached_data is not None:
-                return cached_data.get("data", cached_data)
-
-        # Make API request
         import requests
 
         api_url = f"{self.base_url}/repos/{owner}/{repo}/commits/{commit_sha}"
@@ -374,16 +280,13 @@ class GitHubCollector:
 
             commit_data = response.json()
 
-            # Save to cache
-            self._save_commit_to_cache(owner, repo, commit_sha, commit_data)
-
             return commit_data
 
         except requests.exceptions.RequestException as e:
             print(f"[API] Error fetching commit {commit_sha}: {e}")
             raise Exception(f"Failed to fetch commit data: {e}")
 
-    def fetch_commits_list(self, owner: str, repo: str, limit: int = 100, use_cache: bool = True) -> List[Dict[str, Any]]:
+    def fetch_commits_list(self, owner: str, repo: str, limit: int = 100, **kwargs) -> List[Dict[str, Any]]:
         """
         Fetch list of commits from a repository
 
@@ -391,27 +294,20 @@ class GitHubCollector:
             owner: Repository owner
             repo: Repository name
             limit: Maximum number of commits to fetch
-            use_cache: Whether to use cached data if available
+            **kwargs: Additional API parameters (e.g., since, until)
 
         Returns:
             List of commit summaries
         """
-        # Create list URL for cache key
-        list_url = f"https://github.com/{owner}/{repo}/commits"
-
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_commits_list_from_cache(owner, repo)
-            if cached_data is not None:
-                return cached_data.get("data", cached_data)
-
-        # Make API request
         import requests
 
         api_url = f"{self.base_url}/repos/{owner}/{repo}/commits"
         params = {"per_page": min(limit, 100)}
 
-        print(f"[API] Fetching commits list from {api_url}")
+        # Add any additional parameters (e.g., since for incremental fetch)
+        params.update(kwargs)
+
+        print(f"[API] Fetching commits list from {api_url} with params: {params}")
 
         try:
             response = requests.get(api_url, headers=self._get_headers(), params=params, timeout=30)
@@ -419,148 +315,11 @@ class GitHubCollector:
 
             commits_list = response.json()
 
-            # Save to cache
-            self._save_commits_list_to_cache(owner, repo, commits_list)
-
             return commits_list
 
         except requests.exceptions.RequestException as e:
             print(f"[API] Error fetching commits list: {e}")
             raise Exception(f"Failed to fetch commits list: {e}")
-
-    def _get_commit_cache_path(self, owner: str, repo: str, commit_sha: str) -> Path:
-        """
-        Generate cache file path for a specific commit
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            commit_sha: Commit SHA hash
-
-        Returns:
-            Path to commit cache file
-        """
-        cache_path = self.cache_dir / owner / repo / "commits" / f"{commit_sha}.json"
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        return cache_path
-
-    def _get_commits_list_cache_path(self, owner: str, repo: str) -> Path:
-        """
-        Generate cache file path for commits list
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-
-        Returns:
-            Path to commits list cache file
-        """
-        cache_path = self.cache_dir / owner / repo / "commits_list.json"
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        return cache_path
-
-    def _load_commit_from_cache(self, owner: str, repo: str, commit_sha: str) -> Optional[Dict[str, Any]]:
-        """
-        Load cached commit data
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            commit_sha: Commit SHA hash
-
-        Returns:
-            Cached commit data if exists, None otherwise
-        """
-        cache_path = self._get_commit_cache_path(owner, repo, commit_sha)
-
-        if cache_path.exists():
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    cached_data = json.load(f)
-                    print(f"[Cache] Loaded commit data from cache: {cache_path}")
-                    return cached_data
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[Cache] Error loading cache file {cache_path}: {e}")
-                return None
-
-        return None
-
-    def _load_commits_list_from_cache(self, owner: str, repo: str) -> Optional[Dict[str, Any]]:
-        """
-        Load cached commits list
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-
-        Returns:
-            Cached commits list if exists, None otherwise
-        """
-        cache_path = self._get_commits_list_cache_path(owner, repo)
-
-        if cache_path.exists():
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    cached_data = json.load(f)
-                    print(f"[Cache] Loaded commits list from cache: {cache_path}")
-                    return cached_data
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[Cache] Error loading cache file {cache_path}: {e}")
-                return None
-
-        return None
-
-    def _save_commit_to_cache(self, owner: str, repo: str, commit_sha: str, data: Dict[str, Any]) -> None:
-        """
-        Save commit data to cache
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            commit_sha: Commit SHA hash
-            data: Commit data to cache
-        """
-        cache_path = self._get_commit_cache_path(owner, repo, commit_sha)
-
-        try:
-            cached_data = {
-                "cached_at": datetime.now().isoformat(),
-                "commit_sha": commit_sha,
-                "repo": f"{owner}/{repo}",
-                "data": data
-            }
-
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(cached_data, f, indent=2, ensure_ascii=False)
-
-            print(f"[Cache] Saved commit data to cache: {cache_path}")
-        except IOError as e:
-            print(f"[Cache] Error saving cache file {cache_path}: {e}")
-
-    def _save_commits_list_to_cache(self, owner: str, repo: str, data: List[Dict[str, Any]]) -> None:
-        """
-        Save commits list to cache
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            data: Commits list to cache
-        """
-        cache_path = self._get_commits_list_cache_path(owner, repo)
-
-        try:
-            cached_data = {
-                "cached_at": datetime.now().isoformat(),
-                "repo": f"{owner}/{repo}",
-                "data": data
-            }
-
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(cached_data, f, indent=2, ensure_ascii=False)
-
-            print(f"[Cache] Saved commits list to cache: {cache_path}")
-        except IOError as e:
-            print(f"[Cache] Error saving cache file {cache_path}: {e}")
 
 
 # Example implementation with actual API calls (commented out)

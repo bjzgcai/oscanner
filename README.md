@@ -39,6 +39,16 @@ uv sync
 uv run oscanner init
 ```
 
+**重要**：除了大模型 Token，强烈建议设置 GitHub Token 和 Gitee Token，以避免被 API 限流：
+
+```bash
+# 在 .env.local 中添加（可选但强烈推荐）
+# 不设置 token：GitHub ~60 次/小时，Gitee 较低限制
+# 设置 token：GitHub ~5000 次/小时，Gitee 较高限制
+GITHUB_TOKEN=ghp_your-token-here
+GITEE_TOKEN=your-gitee-token-here
+```
+
 如果你需要无交互/CI 场景，可以用 `--non-interactive` 配合参数写入（示例）：
 
 ```bash

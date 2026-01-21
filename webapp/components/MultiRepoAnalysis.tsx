@@ -39,6 +39,7 @@ interface RepoResult {
   url: string;
   owner?: string;
   repo?: string;
+  platform?: string;
   status: 'extracted' | 'skipped' | 'failed';
   message: string;
   data_exists: boolean;
@@ -81,7 +82,7 @@ interface CommonContributorsResult {
 export default function MultiRepoAnalysis() {
   const [repoUrls, setRepoUrls] = useState('');
   const [loading, setLoading] = useState(false);
-  const { useCache, model } = useAppSettings();
+  const { model } = useAppSettings();
   const [mode, setMode] = useState<'single' | 'multi' | null>(null);
   const [loadingText, setLoadingText] = useState('');
   const [results, setResults] = useState<BatchResult | null>(null);
@@ -109,7 +110,6 @@ export default function MultiRepoAnalysis() {
     total_commits_analyzed: number;
     commits_summary: { total_additions: number; total_deletions: number; files_changed: number; languages: string[] };
   }>(null);
-  const [isCached, setIsCached] = useState(false);
 
   const dimensions = useMemo(
     () => [
@@ -341,8 +341,7 @@ export default function MultiRepoAnalysis() {
       await exportHomePagePDF(
         { owner: singleRepo.owner, repo: singleRepo.repo, full_name: singleRepo.full_name },
         authorsData[selectedAuthorIndex],
-        evaluation,
-        isCached
+        evaluation
       );
       appendLog('PDF report downloaded.');
     } catch (e: unknown) {
@@ -356,7 +355,8 @@ export default function MultiRepoAnalysis() {
       index: number,
       owner: string,
       repo: string,
-      authorsOverride?: Array<{ author: string; email: string; commits: number; avatar_url: string }>
+      authorsOverride?: Array<{ author: string; email: string; commits: number; avatar_url: string }>,
+      platform?: string
     ) => {
       const author = (authorsOverride && authorsOverride[index]) || authorsData[index];
       if (!author) return;
@@ -365,9 +365,11 @@ export default function MultiRepoAnalysis() {
       setLoadingText(`Evaluating ${author.author}...`);
       appendLog(`Evaluate author: ${author.author}`);
 
+      const platformParam = platform || singleRepo?.platform || 'github';
+
       try {
         const response = await fetch(
-          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?use_cache=${useCache}&model=${encodeURIComponent(model)}`,
+          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}`,
           { method: 'POST' }
         );
         if (!response.ok) {
@@ -381,8 +383,7 @@ export default function MultiRepoAnalysis() {
         const result = await response.json();
         if (!result.success) throw new Error(result.error || 'Evaluation failed');
         setEvaluation(result.evaluation);
-        setIsCached(Boolean(result.metadata?.cached));
-        appendLog(`Evaluation complete (${result.metadata?.cached ? 'cached' : 'fresh'}).`);
+        appendLog('Evaluation complete.');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         appendLog(`Evaluation failed: ${msg}`, 'error');
@@ -391,11 +392,11 @@ export default function MultiRepoAnalysis() {
         setLoadingText('');
       }
     },
-    [appendLog, authorsData, model, useCache]
+    [appendLog, authorsData, model]
   );
 
   const compareContributor = useCallback(
-    async (contributorName: string, reposToCompare: Array<{ owner: string; repo: string }>) => {
+    async (contributorName: string, reposToCompare: Array<{ owner: string; repo: string; platform?: string }>) => {
       setLoadingComparison(true);
       setComparisonData(null);
       setIsExecuting(true);
@@ -408,7 +409,6 @@ export default function MultiRepoAnalysis() {
           body: JSON.stringify({
             contributor: contributorName.trim(),
             repos: reposToCompare,
-            use_cache: useCache,
             model,
           }),
         });
@@ -423,15 +423,14 @@ export default function MultiRepoAnalysis() {
         }
 
         const data: ContributorComparisonData = await response.json();
-        if (!data.success) throw new Error('No evaluation data found');
+        if (!data.success) {
+          // Use the detailed message from backend if available
+          const errorMessage = data.message || 'No evaluation data found';
+          throw new Error(errorMessage);
+        }
 
         setComparisonData(data);
-        const cachedCount = data.comparisons.filter((c) => c.cached).length;
-        appendLog(
-          `Comparison complete: ${data.comparisons.length} repos (${cachedCount} cached, ${
-            data.comparisons.length - cachedCount
-          } fresh).`
-        );
+        appendLog(`Comparison complete: ${data.comparisons.length} repos.`);
         appendLog('Done.');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -442,42 +441,18 @@ export default function MultiRepoAnalysis() {
         setIsExecuting(false);
       }
     },
-    [appendLog, useCache, model]
+    [appendLog, model]
   );
 
   useEffect(() => {
     if (selectedContributor && results) {
       const reposWithData = results.results.filter((r) => r.data_exists && r.owner && r.repo);
       if (reposWithData.length >= 2) {
-        const reposToCompare = reposWithData.map((r) => ({ owner: r.owner!, repo: r.repo! }));
-
-        // If cache is enabled but LLM is not configured, we can only proceed if caches exist.
-        const llmOk = llmConfiguredRef.current !== false;
-        if (useCache && !llmOk) {
-          (async () => {
-            try {
-              for (const r of reposToCompare) {
-                const resp = await fetch(`${API_SERVER_URL}/api/evaluation-cache/status/${r.owner}/${r.repo}`);
-                if (!resp.ok) continue;
-                const st = await resp.json();
-                if (!st.exists) {
-                  appendLog(`Cache enabled but evaluation cache missing for ${r.owner}/${r.repo}; LLM is required for comparison.`, 'error');
-                  appendLog('Done.');
-                  return;
-                }
-              }
-            } catch {
-              // ignore; compare will surface details
-            }
-            compareContributor(selectedContributor, reposToCompare);
-          })();
-          return;
-        }
-
+        const reposToCompare = reposWithData.map((r) => ({ owner: r.owner!, repo: r.repo!, platform: r.platform }));
         compareContributor(selectedContributor, reposToCompare);
       }
     }
-  }, [selectedContributor, results, compareContributor, useCache, appendLog]);
+  }, [selectedContributor, results, compareContributor, appendLog]);
 
   const handleSubmit = async () => {
     setMode(null);
@@ -485,14 +460,13 @@ export default function MultiRepoAnalysis() {
     setAuthorsData([]);
     setSelectedAuthorIndex(-1);
     setEvaluation(null);
-    setIsCached(false);
     setResults(null);
     setCommonContributors(null);
     setSelectedContributor('');
     setComparisonData(null);
     setLogs([]);
     setIsExecuting(true);
-    appendLog(`Start analysis (use_cache=${useCache ? 'true' : 'false'}).`);
+    appendLog('Start analysis.');
 
     const urls = repoUrls
       .split('\n')
@@ -525,13 +499,10 @@ export default function MultiRepoAnalysis() {
             // Auto-open settings modal for user convenience.
             setLlmModalOpen(true);
             refreshLlmConfig();
-            // If cache is disabled, we cannot proceed because evaluation will require LLM.
-            if (!useCache) {
-              setIsExecuting(false);
-              setLoading(false);
-              setLoadingText('');
-              return;
-            }
+            setIsExecuting(false);
+            setLoading(false);
+            setLoadingText('');
+            return;
           }
         }
       } catch {
@@ -556,7 +527,7 @@ export default function MultiRepoAnalysis() {
         appendLog(`Step 1/2: Loading authors for ${platform}:${owner}/${repo}...`);
 
         const response = await fetch(
-          `${API_SERVER_URL}/api/authors/${owner}/${repo}?platform=${encodeURIComponent(platform)}&use_cache=${useCache}`
+          `${API_SERVER_URL}/api/authors/${owner}/${repo}?platform=${encodeURIComponent(platform)}`
         );
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -582,28 +553,8 @@ export default function MultiRepoAnalysis() {
         appendLog(`Loaded ${authors.length} authors.`);
 
         if (authors.length > 0) {
-          // If cache is enabled but LLM is not configured, we can only proceed if cache exists.
-          const llmOk = llmConfiguredRef.current !== false;
-          if (useCache && !llmOk) {
-            try {
-              const cacheResp = await fetch(`${API_SERVER_URL}/api/evaluation-cache/status/${owner}/${repo}`);
-              if (cacheResp.ok) {
-                const cache = await cacheResp.json();
-                if (!cache.exists) {
-                  appendLog('Cache enabled but evaluation cache does not exist for this repo; LLM is required. Please configure LLM and retry.', 'error');
-                  setIsExecuting(false);
-                  setLoading(false);
-                  setLoadingText('');
-                  return;
-                }
-              }
-            } catch {
-              // ignore; evaluation call will surface details
-            }
-          }
-
           appendLog('Step 2/2: Evaluating first author...');
-          await evaluateAuthor(0, owner, repo, authors);
+          await evaluateAuthor(0, owner, repo, authors, platform);
         }
 
         appendLog('Done.');
@@ -661,7 +612,7 @@ export default function MultiRepoAnalysis() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            repos: reposWithData.map((r) => ({ owner: r.owner, repo: r.repo })),
+            repos: reposWithData.map((r) => ({ owner: r.owner, repo: r.repo, platform: r.platform })),
           }),
         });
 
@@ -918,7 +869,7 @@ export default function MultiRepoAnalysis() {
             <p>
               {loadingCommon
                 ? 'Analyzing contributors across repositories...'
-                : 'This may take a few minutes. Please wait while we fetch commits and files from GitHub.'}
+                : 'This may take a few minutes. Please wait while we fetch commits and files from the remote repository.'}
             </p>
           </Card>
         )}
@@ -957,15 +908,6 @@ export default function MultiRepoAnalysis() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                {isCached ? (
-                  <Tag color="success" className="eval-badge">
-                    Cached Result
-                  </Tag>
-                ) : (
-                  <Tag color="purple" className="eval-badge">
-                    AI-Powered Analysis
-                  </Tag>
-                )}
                 <Button type="primary" icon={<DownloadOutlined />} onClick={handleDownloadSinglePDF}>
                   Download PDF
                 </Button>

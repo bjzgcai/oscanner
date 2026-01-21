@@ -63,8 +63,7 @@ async function captureChart(elementId: string): Promise<string | null> {
 export async function exportHomePagePDF(
   repoData: RepoData,
   author: Author,
-  evaluation: Evaluation,
-  isCached: boolean
+  evaluation: Evaluation
 ) {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -117,18 +116,6 @@ export async function exportHomePagePDF(
   pdf.text(`Total Commits: ${author.commits}`, margin + 30, yPos);
 
   yPos += 10;
-
-  // Analysis Badge
-  pdf.setFontSize(10);
-  if (isCached) {
-    pdf.setTextColor(82, 196, 26);
-    pdf.text('⚡ Cached Result', margin, yPos);
-  } else {
-    pdf.setTextColor(147, 51, 234);
-    pdf.text('🤖 AI-Powered Analysis', margin, yPos);
-  }
-
-  yPos += 15;
 
   // Capture and add radar chart
   const chartImage = await captureChart('radar-chart-export');
@@ -379,12 +366,12 @@ export async function exportMultiRepoPDF(
     pdf.text(`${comp.owner}/${comp.repo_name}`, margin + 5, yPos);
     yPos += 7;
 
-    // Commits and cached status
+    // Commits
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(176, 176, 176);
     pdf.text(
-      `Commits: ${comp.total_commits} | ${comp.cached ? 'Cached' : 'Fresh Analysis'}`,
+      `Commits: ${comp.total_commits}`,
       margin + 5,
       yPos
     );

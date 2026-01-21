@@ -14,11 +14,11 @@ from datetime import datetime
 import requests
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
-from evaluator.paths import ensure_dirs, get_cache_dir, get_data_dir, get_eval_cache_dir, get_home_dir
+from evaluator.paths import ensure_dirs, get_data_dir, get_home_dir, get_platform_data_dir, get_platform_eval_dir
 
 def get_user_env_path() -> Path:
     # Store config under oscanner home dir (user-local dotfile).
@@ -68,25 +68,15 @@ def _try_mount_bundled_dashboard() -> bool:
         return False
     return False
 
-# Cache directory for commits (default: user cache dir)
-CACHE_DIR = get_cache_dir()
-
-# Evaluation cache directory (default: user data dir)
-EVAL_CACHE_DIR = get_eval_cache_dir()
-
 # Data directory (default: user data dir)
 DATA_DIR = get_data_dir()
-
-# Repository evaluators cache (in-memory)
-# Key: "{platform}_{owner}_{repo}", Value: CommitEvaluatorModerate instance
-evaluators_cache: Dict[str, CommitEvaluatorModerate] = {}
 
 # GitHub/Gitee API tokens
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITEE_TOKEN = os.getenv("GITEE_TOKEN")
 
 # Default model for evaluation (can be overridden per-request by query param `model=...`)
-DEFAULT_LLM_MODEL = os.getenv("OSCANNER_LLM_MODEL", "anthropic/claude-sonnet-4.5")
+DEFAULT_LLM_MODEL = os.getenv("OSCANNER_LLM_MODEL", "Pro/zai-org/GLM-4.7")
 
 def get_llm_api_key() -> Optional[str]:
     """
@@ -265,26 +255,18 @@ async def llm_status():
     }
 
 
-@app.get("/api/evaluation-cache/status/{owner}/{repo}")
-async def evaluation_cache_status(owner: str, repo: str):
-    """
-    Return whether evaluation cache file exists for this repo, and how many authors are cached.
-    Never returns any evaluation contents.
-    """
-    cache_path = get_evaluation_cache_path(owner, repo)
-    exists = cache_path.exists()
-    authors_cached = 0
-    if exists:
-        try:
-            data = load_evaluation_cache(owner, repo) or {}
-            authors_cached = len(data.keys())
-        except Exception:
-            authors_cached = 0
-    return {
-        "exists": bool(exists),
-        "authors_cached": int(authors_cached),
-        "path": str(cache_path),
-    }
+# NOTE: Cache endpoints disabled (cache functionality removed)
+# @app.get("/api/evaluation-cache/status/{owner}/{repo}")
+# async def evaluation_cache_status(owner: str, repo: str):
+#     """
+#     Return whether evaluation cache file exists for this repo, and how many authors are cached.
+#     Never returns any evaluation contents.
+#     """
+#     return {
+#         "exists": False,
+#         "authors_cached": 0,
+#         "path": "",
+#     }
 
 
 @app.get("/health")
@@ -294,72 +276,26 @@ async def health_check():
 
 
 @app.get("/")
-async def root(request: Request):
+async def root():
     """
-    Root endpoint.
-
-    - For browsers, return a small HTML landing page (so "/" isn't a 404).
-    - For scripts/clients, return JSON.
+    Root endpoint - client-side redirect to dashboard.
     """
-    payload = {
-        "service": "Engineer Skill Evaluator API",
-        "status": "ok",
-        "docs": "/docs",
-        "health": "/health",
-        "dashboard": "/dashboard",
-        "endpoints": {
-            "authors": "/api/authors/{owner}/{repo}",
-            "evaluate": "/api/evaluate/{owner}/{repo}/{author}",
-            "batch_extract": "/api/batch/extract",
-            "batch_common_contributors": "/api/batch/common-contributors",
-            "batch_compare_contributor": "/api/batch/compare-contributor",
-        },
-    }
-
-    accept = (request.headers.get("accept") or "").lower()
-    if "text/html" in accept:
-        html = f"""<!doctype html>
+    html = """<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{payload["service"]}</title>
-    <style>
-      body {{ font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px; line-height: 1.5; }}
-      code {{ background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }}
-      a {{ color: #2563eb; text-decoration: none; }}
-      a:hover {{ text-decoration: underline; }}
-      .card {{ max-width: 780px; padding: 20px 22px; border: 1px solid #e5e7eb; border-radius: 12px; }}
-      ul {{ padding-left: 18px; }}
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h2 style="margin: 0 0 10px 0;">{payload["service"]}</h2>
-      <p style="margin: 0 0 14px 0;">Status: <code>{payload["status"]}</code></p>
-      <ul>
-        <li><a href="{payload["docs"]}">API Docs (Swagger)</a></li>
-        <li><a href="{payload["health"]}">Health Check</a></li>
-        <li><a href="{payload["dashboard"]}">Dashboard</a> (if bundled)</li>
-      </ul>
-      <p style="margin: 14px 0 6px 0;"><strong>Common endpoints</strong>:</p>
-      <ul>
-        <li><code>{payload["endpoints"]["authors"]}</code></li>
-        <li><code>{payload["endpoints"]["evaluate"]}</code></li>
-        <li><code>{payload["endpoints"]["batch_extract"]}</code></li>
-        <li><code>{payload["endpoints"]["batch_common_contributors"]}</code></li>
-        <li><code>{payload["endpoints"]["batch_compare_contributor"]}</code></li>
-      </ul>
-      <p style="margin: 14px 0 0 0; color: #6b7280;">
-        Dashboard UI can be bundled into the Python package and served at <code>/dashboard</code>.
-      </p>
-    </div>
-  </body>
-</html>
-"""
-        return HTMLResponse(content=html, status_code=200)
-
-    return payload
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0; url=/dashboard">
+    <title>Redirecting...</title>
+    <script>
+        window.location.href = '/dashboard';
+    </script>
+</head>
+<body>
+    <p>Redirecting to <a href="/dashboard">dashboard</a>...</p>
+</body>
+</html>"""
+    return HTMLResponse(content=html, status_code=200)
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -372,52 +308,11 @@ async def favicon():
 _DASHBOARD_MOUNTED = _try_mount_bundled_dashboard()
 
 
-def get_evaluation_cache_path(owner: str, repo: str) -> Path:
-    """Get path to evaluation cache file"""
-    cache_dir = EVAL_CACHE_DIR / owner / repo
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / "evaluations.json"
-
-
-def load_evaluation_cache(owner: str, repo: str) -> Optional[Dict[str, Any]]:
-    """Load evaluation cache for repository"""
-    cache_path = get_evaluation_cache_path(owner, repo)
-    if cache_path.exists():
-        try:
-            with open(cache_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"⚠ Failed to load evaluation cache: {e}")
-    return None
-
-
-def save_evaluation_cache(owner: str, repo: str, evaluations: Dict[str, Any]):
-    """Save evaluation cache for repository"""
-    cache_path = get_evaluation_cache_path(owner, repo)
-    try:
-        with open(cache_path, 'w', encoding='utf-8') as f:
-            json.dump(evaluations, f, indent=2, ensure_ascii=False)
-        print(f"✓ Saved evaluation cache to {cache_path}")
-    except Exception as e:
-        print(f"⚠ Failed to save evaluation cache: {e}")
-
-
-def add_evaluation_to_cache(owner: str, repo: str, author: str, evaluation: Dict[str, Any]):
-    """Add or update evaluation for a specific author in cache"""
-    cache = load_evaluation_cache(owner, repo) or {}
-    cache[author] = {
-        "evaluation": evaluation,
-        "timestamp": datetime.now().isoformat(),
-        "cached": True
-    }
-    save_evaluation_cache(owner, repo, cache)
-
-
 def extract_github_data(owner: str, repo: str) -> bool:
     """Extract GitHub repository data using extraction tool"""
     try:
         repo_url = f"https://github.com/{owner}/{repo}"
-        output_dir = DATA_DIR / owner / repo
+        output_dir = get_platform_data_dir("github", owner, repo)
 
         print(f"\n{'='*60}")
         print(f"Extracting GitHub data for {owner}/{repo}...")
@@ -458,34 +353,6 @@ def extract_github_data(owner: str, repo: str) -> bool:
         import traceback
         traceback.print_exc()
         return False
-
-
-def get_cache_key(platform: str, owner: str, repo: str) -> str:
-    """Generate cache key for repository"""
-    return f"{platform}_{owner}_{repo}"
-
-
-def get_commits_cache_path(platform: str, owner: str, repo: str) -> Path:
-    """Get cache file path for commits"""
-    cache_key = get_cache_key(platform, owner, repo)
-    return CACHE_DIR / f"{cache_key}_commits.json"
-
-
-def load_commits_cache(platform: str, owner: str, repo: str) -> Optional[list]:
-    """Load commits from cache"""
-    cache_path = get_commits_cache_path(platform, owner, repo)
-
-    if not cache_path.exists():
-        return None
-
-    try:
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            cached_data = json.load(f)
-            print(f"✓ Using cached commits")
-            return cached_data.get('commits', [])
-    except Exception as e:
-        print(f"⚠ Failed to load commits cache: {e}")
-        return None
 
 
 def load_commits_from_local(data_dir: Path, limit: int = None) -> List[Dict[str, Any]]:
@@ -586,23 +453,8 @@ async def get_gitee_commits(
     is_enterprise: bool = Query(False)
 ):
     """Fetch commits for a Gitee repository"""
-    platform = "gitee"
-
-    # Check cache if enabled
-    if use_cache:
-        cached_commits = load_commits_cache(platform, owner, repo)
-        if cached_commits:
-            return {
-                "success": True,
-                "data": cached_commits[:limit],
-                "cached": True
-            }
-
     # Fetch from Gitee API
     commits = fetch_gitee_commits(owner, repo, limit, is_enterprise)
-
-    # Save to cache
-    save_commits_cache(platform, owner, repo, commits)
 
     return {
         "success": True,
@@ -680,13 +532,13 @@ def parse_repo_url(url: str) -> Optional[Tuple[str, str, str]]:
 
 def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
     """
-    Extract Gitee repository data into DATA_DIR/{owner}/{repo} similar to GitHub extractor.
+    Extract Gitee repository data into platform-specific directory similar to GitHub extractor.
 
     This is a minimal extractor used by the multi-repo compare workflow.
     It fetches commit list then fetches per-commit details (which may include files/diffs depending on API support).
     """
     try:
-        data_dir = DATA_DIR / owner / repo
+        data_dir = get_platform_data_dir("gitee", owner, repo)
         data_dir.mkdir(parents=True, exist_ok=True)
         commits_dir = data_dir / "commits"
         commits_dir.mkdir(parents=True, exist_ok=True)
@@ -770,9 +622,9 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
         return False
 
 
-def get_data_dir(platform: str, owner: str, repo: str) -> Path:
-    """Get or create data directory for repository"""
-    data_dir = DATA_DIR / owner / repo
+def get_repo_data_dir(platform: str, owner: str, repo: str) -> Path:
+    """Get or create platform-specific data directory for repository"""
+    data_dir = get_platform_data_dir(platform, owner, repo)
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
 
@@ -786,17 +638,9 @@ def get_or_create_evaluator(
 ) -> CommitEvaluatorModerate:
     """
     Get or create evaluator for repository
-    Caches evaluator instance to reuse repository context
     """
-    cache_key = get_cache_key(platform, owner, repo)
-
-    # Return cached evaluator if exists
-    if use_cache and cache_key in evaluators_cache:
-        print(f"✓ Reusing cached evaluator for {owner}/{repo}")
-        return evaluators_cache[cache_key]
-
     # Prepare data directory
-    data_dir = get_data_dir(platform, owner, repo)
+    data_dir = get_repo_data_dir(platform, owner, repo)
 
     # Create commits_index.json
     commits_index = [
@@ -839,9 +683,6 @@ def get_or_create_evaluator(
         mode="moderate"
     )
 
-    # Cache the evaluator
-    evaluators_cache[cache_key] = evaluator
-
     print(f"✓ Created new evaluator for {owner}/{repo}")
     return evaluator
 
@@ -849,61 +690,18 @@ def get_or_create_evaluator(
 @app.get("/api/authors/{owner}/{repo}")
 async def get_authors(owner: str, repo: str, platform: str = Query("github"), use_cache: bool = Query(True)):
     """
-    Get list of authors from commit data with smart caching
+    Get list of authors from commit data
 
     Flow:
-    1. Validate evaluation cache if it exists (clear if corrupted)
-    2. Check if local data exists in data/{owner}/{repo}
-    3. If no local data, extract it from GitHub
-    4. Load ALL authors from commits (always scans all commits)
-    5. Evaluate first author automatically (skip if already cached)
-    6. Return complete authors list
+    1. Check if local data exists in platform-specific directory
+    2. If no local data, extract it from GitHub/Gitee
+    3. Load ALL authors from commits (always scans all commits)
+    4. Return complete authors list
     """
     try:
-        data_dir = DATA_DIR / owner / repo
+        data_dir = get_platform_data_dir(platform, owner, repo)
 
-        # Step 1: Validate evaluation cache if it exists
-        cached_evaluations = None
-        if use_cache:
-            cached_evaluations = load_evaluation_cache(owner, repo)
-            if cached_evaluations:
-                print(f"✓ Found cached evaluations for {owner}/{repo}")
-
-                # Validate cache: check if different authors have identical stats (corrupted)
-                cache_valid = True
-                if len(cached_evaluations) > 1:
-                    # Get stats from all evaluations
-                    eval_stats = []
-                    for author, eval_data in cached_evaluations.items():
-                        evaluation = eval_data.get("evaluation", {})
-                        summary = evaluation.get("commits_summary", {})
-                        eval_stats.append({
-                            "author": author,
-                            "total_commits": evaluation.get("total_commits_analyzed", 0),
-                            "additions": summary.get("total_additions", 0),
-                            "deletions": summary.get("total_deletions", 0),
-                            "files": summary.get("files_changed", 0)
-                        })
-
-                    # Check for duplicates
-                    for i in range(len(eval_stats)):
-                        for j in range(i + 1, len(eval_stats)):
-                            if (eval_stats[i]["total_commits"] == eval_stats[j]["total_commits"] and
-                                eval_stats[i]["additions"] == eval_stats[j]["additions"] and
-                                eval_stats[i]["deletions"] == eval_stats[j]["deletions"] and
-                                eval_stats[i]["files"] == eval_stats[j]["files"]):
-                                print(f"⚠ Cache validation failed: {eval_stats[i]['author']} and {eval_stats[j]['author']} have identical stats")
-                                print(f"  Clearing corrupted cache...")
-                                cache_valid = False
-                                cache_path = get_evaluation_cache_path(owner, repo)
-                                if cache_path.exists():
-                                    cache_path.unlink()
-                                cached_evaluations = None
-                                break
-                        if not cache_valid:
-                            break
-
-        # Step 2 & 3: Check if local data exists, if not extract it
+        # Step 1 & 2: Check if local data exists, if not extract it
         if not data_dir.exists() or not (data_dir / "commits").exists():
             plat = (platform or "github").strip().lower()
             if plat == "gitee":
@@ -917,7 +715,7 @@ async def get_authors(owner: str, repo: str, platform: str = Query("github"), us
                 if not success:
                     raise HTTPException(status_code=500, detail=f"Failed to extract GitHub data for {owner}/{repo}")
 
-        # Step 4: Load all authors from commits
+        # Step 3: Load all authors from commits
         commits_dir = data_dir / "commits"
         if not commits_dir.exists():
             raise HTTPException(
@@ -968,53 +766,6 @@ async def get_authors(owner: str, repo: str, platform: str = Query("github"), us
             reverse=True
         )
 
-        # Step 5: Evaluate first author automatically (if not already cached)
-        first_author = authors_list[0]["author"]
-        has_cached_data = bool(cached_evaluations and len(cached_evaluations) > 0)
-        first_author_cached = (first_author in cached_evaluations) if cached_evaluations else False
-
-        if not first_author_cached:
-            print(f"\nAuto-evaluating first author: {first_author}")
-
-            try:
-                # Create evaluator
-                api_key = get_llm_api_key()
-                if not api_key:
-                    raise HTTPException(status_code=500, detail="LLM not configured")
-
-                evaluator = CommitEvaluatorModerate(
-                    data_dir=str(data_dir),
-                    api_key=api_key,
-                    mode="moderate",
-                    model=DEFAULT_LLM_MODEL  # Use default model for auto-evaluation
-                )
-
-                # Load commits from local data
-                commits = load_commits_from_local(data_dir, limit=None)
-                if commits:
-                    # Evaluate first author with limit of 150 commits
-                    evaluation = evaluator.evaluate_engineer(
-                        commits=commits,
-                        username=first_author,
-                        max_commits=150,  # Limit to 150 commits per contributor
-                        load_files=True,
-                        use_chunking=True  # Enable chunked evaluation
-                    )
-
-                    if evaluation and "scores" in evaluation:
-                        # Add email to evaluation
-                        evaluation["email"] = authors_list[0]["email"]
-
-                        # Cache the evaluation
-                        add_evaluation_to_cache(owner, repo, first_author, evaluation)
-                        print(f"✓ Cached evaluation for {first_author}")
-
-            except Exception as e:
-                print(f"⚠ Failed to auto-evaluate first author: {e}")
-                # Continue even if evaluation fails
-        else:
-            print(f"✓ First author {first_author} already cached, skipping evaluation")
-
         return {
             "success": True,
             "data": {
@@ -1022,7 +773,7 @@ async def get_authors(owner: str, repo: str, platform: str = Query("github"), us
                 "repo": repo,
                 "authors": authors_list,
                 "total_authors": len(authors_list),
-                "cached": has_cached_data
+                "cached": False
             }
         }
 
@@ -1035,102 +786,39 @@ async def get_authors(owner: str, repo: str, platform: str = Query("github"), us
         raise HTTPException(status_code=500, detail=f"Failed to get authors: {str(e)}")
 
 
-@app.post("/api/evaluate/{owner}/{repo}/{author}")
-async def evaluate_author(
-    owner: str,
-    repo: str,
+def evaluate_author_incremental(
+    commits: List[Dict[str, Any]],
     author: str,
-    use_cache: bool = Query(True),
-    use_chunking: bool = Query(True),
-    model: str = Query(DEFAULT_LLM_MODEL)
-):
+    previous_evaluation: Optional[Dict[str, Any]],
+    data_dir: Path,
+    model: str,
+    use_chunking: bool,
+    api_key: str
+) -> Dict[str, Any]:
     """
-    Evaluate an author using local commit data with caching
-
-    This endpoint evaluates up to 150 commits per contributor for optimal balance.
-    It automatically uses chunked evaluation with accumulative context for large commit sets.
-
-    Flow:
-    1. Check if evaluation exists in cache
-    2. If cached and use_cache=True, return cached result
-    3. Otherwise, load commits and perform evaluation (max 150 per contributor)
-    4. Use chunked evaluation if needed (automatic for >20 commits)
-    5. Cache the result
-    6. Return evaluation
+    Evaluate author incrementally with weighted merge
 
     Args:
-        owner: Repository owner
-        repo: Repository name
-        author: Author/username to evaluate
-        use_cache: Whether to use cached evaluation if available
-        use_chunking: Whether to enable chunked evaluation for large commit sets
+        commits: All commits from repository
+        author: Author username to evaluate
+        previous_evaluation: Previous evaluation if exists
+        data_dir: Path to repository data directory
+        model: LLM model to use
+        use_chunking: Whether to enable chunked evaluation
+        api_key: LLM API key
+
+    Returns:
+        Evaluation result with merged scores
     """
-    try:
-        # When this function is called directly (not via FastAPI request handling),
-        # parameters using `Query(...)` defaults may arrive as Query objects.
-        # Normalize them here to avoid leaking non-JSON-serializable objects into the LLM call.
-        if not isinstance(model, str):
-            model = DEFAULT_LLM_MODEL
+    # Filter commits by author
+    author_commits = [c for c in commits if _is_commit_by_author(c, author)]
 
-        # Step 1 & 2: Check cache first and validate
-        if use_cache:
-            cached_evaluations = load_evaluation_cache(owner, repo)
-            if cached_evaluations and author in cached_evaluations:
-                cached_data = cached_evaluations[author]
-                cached_eval = cached_data.get("evaluation", {})
+    if not author_commits:
+        return _get_empty_evaluation(author)
 
-                # Validate cached data to prevent serving corrupted cache
-                # Check if cache was created with buggy code (all authors having same stats)
-                cache_valid = True
-                if len(cached_evaluations) > 1:
-                    # Compare with other cached evaluations
-                    for other_author, other_data in cached_evaluations.items():
-                        if other_author != author:
-                            other_eval = other_data.get("evaluation", {})
-                            other_summary = other_eval.get("commits_summary", {})
-                            current_summary = cached_eval.get("commits_summary", {})
-
-                            # If two different authors have IDENTICAL stats, cache is corrupted
-                            if (other_summary.get("total_additions") == current_summary.get("total_additions") and
-                                other_summary.get("total_deletions") == current_summary.get("total_deletions") and
-                                other_summary.get("files_changed") == current_summary.get("files_changed") and
-                                other_eval.get("total_commits_analyzed") == cached_eval.get("total_commits_analyzed")):
-                                print(f"⚠ Cache validation failed: {author} and {other_author} have identical stats")
-                                print(f"  This indicates corrupted cache data. Clearing cache and re-evaluating...")
-                                cache_valid = False
-                                break
-
-                if cache_valid:
-                    print(f"✓ Using validated cached evaluation for {author}")
-                    return {
-                        "success": True,
-                        "evaluation": cached_data["evaluation"],
-                        "metadata": {
-                            "cached": True,
-                            "timestamp": cached_data.get("timestamp", datetime.now().isoformat()),
-                            "source": "cache"
-                        }
-                    }
-                else:
-                    # Clear corrupted cache and continue to re-evaluate
-                    print(f"Clearing corrupted cache for {owner}/{repo}")
-                    cache_path = get_evaluation_cache_path(owner, repo)
-                    if cache_path.exists():
-                        cache_path.unlink()
-
-        # Step 3: Perform evaluation
-        data_dir = DATA_DIR / owner / repo
-
-        if not data_dir.exists():
-            raise HTTPException(
-                status_code=404,
-                detail=f"No local data found for {owner}/{repo}"
-            )
-
-        # Create evaluator
-        api_key = get_llm_api_key()
-        if not api_key:
-            raise HTTPException(status_code=500, detail="LLM not configured")
+    # Case 1: No previous evaluation → evaluate all commits
+    if not previous_evaluation:
+        print(f"[Incremental] First evaluation: {len(author_commits)} commits")
 
         evaluator = CommitEvaluatorModerate(
             data_dir=str(data_dir),
@@ -1139,7 +827,233 @@ async def evaluate_author(
             model=model
         )
 
-        # Load commits from local data
+        evaluation = evaluator.evaluate_engineer(
+            commits=author_commits,
+            username=author,
+            max_commits=150,
+            load_files=True,
+            use_chunking=use_chunking
+        )
+
+        evaluation["last_commit_sha"] = author_commits[0].get("sha") or author_commits[0].get("hash")
+        evaluation["total_commits_evaluated"] = len(author_commits) if len(author_commits) <= 150 else 150
+        evaluation["new_commits_count"] = evaluation["total_commits_evaluated"]
+        evaluation["evaluated_at"] = datetime.now().isoformat()
+        evaluation["incremental"] = False
+
+        return evaluation
+
+    # Case 2: Find new commits since last evaluation
+    last_sha = previous_evaluation.get("last_commit_sha")
+
+    if not last_sha:
+        # Previous evaluation has no SHA, re-evaluate all
+        print(f"[Incremental] No last SHA found, re-evaluating all commits")
+        previous_evaluation = None
+        return evaluate_author_incremental(commits, author, None, data_dir, model, use_chunking, api_key)
+
+    # Find new commits
+    new_commits = []
+    for commit in author_commits:
+        commit_sha = commit.get("sha") or commit.get("hash")
+        if commit_sha == last_sha:
+            break
+        new_commits.append(commit)
+
+    if not new_commits:
+        print(f"[Incremental] No new commits since last evaluation")
+        return previous_evaluation
+
+    print(f"[Incremental] Found {len(new_commits)} new commits, evaluating...")
+
+    # Evaluate new commits only
+    evaluator = CommitEvaluatorModerate(
+        data_dir=str(data_dir),
+        api_key=api_key,
+        mode="moderate",
+        model=model
+    )
+
+    new_evaluation = evaluator.evaluate_engineer(
+        commits=new_commits,
+        username=author,
+        max_commits=len(new_commits),
+        load_files=True,
+        use_chunking=use_chunking
+    )
+
+    # Weighted merge of scores
+    prev_count = previous_evaluation.get("total_commits_evaluated", 0)
+    new_count = len(new_commits)
+    total_count = prev_count + new_count
+
+    print(f"[Incremental] Merging scores: {prev_count} previous + {new_count} new = {total_count} total")
+
+    merged_scores = {}
+    prev_scores = previous_evaluation.get("scores", {})
+    new_scores = new_evaluation.get("scores", {})
+
+    for key in prev_scores.keys():
+        if key == "reasoning":
+            # Prepend new reasoning
+            merged_scores[key] = (
+                f"**Recent Activity ({new_count} new commits):**\n{new_scores.get(key, '')}\n\n"
+                f"---\n\n"
+                f"**Previous Assessment ({prev_count} commits):**\n{prev_scores[key]}"
+            )
+        else:
+            # Weighted average for scores
+            prev_val = prev_scores.get(key, 0)
+            new_val = new_scores.get(key, 0)
+            merged_val = (prev_val * prev_count + new_val * new_count) / total_count
+            merged_scores[key] = int(merged_val)
+
+    # Merge commit summaries
+    prev_summary = previous_evaluation.get("commits_summary", {})
+    new_summary = new_evaluation.get("commits_summary", {})
+
+    merged_summary = {
+        "total_additions": prev_summary.get("total_additions", 0) + new_summary.get("total_additions", 0),
+        "total_deletions": prev_summary.get("total_deletions", 0) + new_summary.get("total_deletions", 0),
+        "files_changed": prev_summary.get("files_changed", 0) + new_summary.get("files_changed", 0),
+        "languages": list(set(prev_summary.get("languages", []) + new_summary.get("languages", [])))[:10]
+    }
+
+    return {
+        "username": author,
+        "total_commits_evaluated": total_count,
+        "new_commits_count": new_count,
+        "last_commit_sha": author_commits[0].get("sha") or author_commits[0].get("hash"),
+        "evaluated_at": datetime.now().isoformat(),
+        "scores": merged_scores,
+        "commits_summary": merged_summary,
+        "mode": "moderate",
+        "incremental": True,
+        "files_loaded": new_evaluation.get("files_loaded", 0),
+        "chunked": new_evaluation.get("chunked", False),
+        "chunks_processed": new_evaluation.get("chunks_processed", 0)
+    }
+
+
+def _is_commit_by_author(commit: Dict[str, Any], username: str) -> bool:
+    """Check if commit is by the specified author"""
+    # Try custom extraction format first
+    if "author" in commit and isinstance(commit["author"], str):
+        return commit["author"].lower() == username.lower()
+
+    # Try GitHub API format
+    if "commit" in commit:
+        author = commit.get("commit", {}).get("author", {}).get("name", "")
+        if author:
+            return author.lower() == username.lower()
+
+    return False
+
+
+def _get_empty_evaluation(username: str) -> Dict[str, Any]:
+    """Return empty evaluation for author with no commits"""
+    return {
+        "username": username,
+        "total_commits_evaluated": 0,
+        "new_commits_count": 0,
+        "scores": {
+            "ai_fullstack": 0,
+            "ai_architecture": 0,
+            "cloud_native": 0,
+            "open_source": 0,
+            "intelligent_dev": 0,
+            "leadership": 0,
+            "reasoning": "No commits found for this author."
+        },
+        "commits_summary": {
+            "total_additions": 0,
+            "total_deletions": 0,
+            "files_changed": 0,
+            "languages": []
+        },
+        "mode": "moderate",
+        "incremental": False
+    }
+
+
+@app.post("/api/evaluate/{owner}/{repo}/{author}")
+async def evaluate_author(
+    owner: str,
+    repo: str,
+    author: str,
+    use_chunking: bool = Query(True),
+    model: str = Query(DEFAULT_LLM_MODEL),
+    platform: str = Query("github")
+):
+    """
+    Evaluate an author with auto-sync and incremental evaluation
+
+    This endpoint:
+    1. Auto-syncs new commits from remote repository
+    2. Loads previous evaluation if exists
+    3. Evaluates only new commits incrementally
+    4. Merges scores using weighted average
+    5. Stores evaluation persistently
+
+    Flow:
+    1. Auto-sync: Fetch new commits from remote
+    2. Load all commits from local data
+    3. Load previous evaluation (if exists)
+    4. Incremental evaluation: Evaluate only new commits
+    5. Weighted merge: Combine new scores with previous scores
+    6. Save evaluation persistently
+    7. Return evaluation
+
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        author: Author/username to evaluate
+        use_chunking: Whether to enable chunked evaluation for large commit sets
+        model: LLM model to use
+        platform: Platform (github or gitee)
+    """
+    try:
+        # Normalize model parameter
+        if not isinstance(model, str):
+            model = DEFAULT_LLM_MODEL
+
+        # Step 1: Auto-sync new commits
+        data_dir = get_platform_data_dir(platform, owner, repo)
+
+        if not data_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"No local data found for {platform}/{owner}/{repo}. Please extract data first."
+            )
+
+        print(f"\n[Auto-Sync] Checking for new commits in {owner}/{repo}...")
+
+        try:
+            from evaluator.sync_manager import SyncManager
+            from evaluator.collectors.github import GitHubCollector
+            from evaluator.collectors.gitee import GiteeCollector
+
+            sync_manager = SyncManager(
+                data_dir=data_dir,
+                platform=platform,
+                owner=owner,
+                repo=repo
+            )
+
+            # Choose collector based on platform
+            if platform == "gitee":
+                collector = GiteeCollector(token=GITEE_TOKEN, cache_dir=str(data_dir))
+            else:
+                collector = GitHubCollector(token=GITHUB_TOKEN, cache_dir=str(data_dir))
+
+            sync_result = sync_manager.sync_incremental(collector)
+            print(f"[Auto-Sync] ✓ {sync_result['commits_added']} new commits fetched")
+
+        except Exception as sync_error:
+            print(f"[Auto-Sync] ⚠ Sync failed: {sync_error}")
+            print("[Auto-Sync] Continuing with existing local data...")
+
+        # Step 2: Load ALL commits from local data
         print(f"\n[Evaluation] Loading commits for {author}...")
         commits = load_commits_from_local(data_dir, limit=None)
         if not commits:
@@ -1150,43 +1064,61 @@ async def evaluate_author(
 
         print(f"[Evaluation] Loaded {len(commits)} total commits")
 
-        # Evaluate author using moderate evaluator with chunking enabled
-        # The evaluator will automatically chunk if there are >20 commits
-        # Limit to 150 commits per contributor for optimal balance
-        evaluation = evaluator.evaluate_engineer(
+        # Step 3: Load previous evaluation
+        eval_dir = get_platform_eval_dir(platform, owner, repo)
+        eval_path = eval_dir / f"{author}.json"
+        previous_evaluation = None
+
+        if eval_path.exists():
+            try:
+                with open(eval_path, 'r', encoding='utf-8') as f:
+                    previous_evaluation = json.load(f)
+                print(f"[Evaluation] Found previous evaluation for {author}")
+            except Exception as e:
+                print(f"[Evaluation] ⚠ Failed to load previous evaluation: {e}")
+
+        # Step 4: Incremental evaluation
+        api_key = get_llm_api_key()
+        if not api_key:
+            raise HTTPException(status_code=500, detail="LLM not configured")
+
+        evaluation = evaluate_author_incremental(
             commits=commits,
-            username=author,
-            max_commits=150,  # Limit to 150 commits per contributor
-            load_files=True,
-            use_chunking=use_chunking
+            author=author,
+            previous_evaluation=previous_evaluation,
+            data_dir=data_dir,
+            model=model,
+            use_chunking=use_chunking,
+            api_key=api_key
         )
 
-        if not evaluation or "scores" not in evaluation:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Author '{author}' not found in commits"
-            )
+        # Step 5: Save evaluation persistently
+        eval_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(eval_path, 'w', encoding='utf-8') as f:
+            json.dump(evaluation, f, indent=2, ensure_ascii=False)
 
-        # Step 4: Cache the evaluation
-        add_evaluation_to_cache(owner, repo, author, evaluation)
+        print(f"[Evaluation] ✓ Saved evaluation to {eval_path}")
 
-        # Step 5: Format and return response
+        # Step 6: Return response
         result = {
             "success": True,
             "evaluation": {
                 "username": evaluation.get("username", author),
                 "mode": evaluation.get("mode", "moderate"),
-                "total_commits_analyzed": evaluation.get("total_commits_analyzed", 0),
+                "total_commits_evaluated": evaluation.get("total_commits_evaluated", 0),
+                "new_commits_count": evaluation.get("new_commits_count", 0),
                 "files_loaded": evaluation.get("files_loaded", 0),
                 "chunked": evaluation.get("chunked", False),
                 "chunks_processed": evaluation.get("chunks_processed", 0),
                 "scores": evaluation.get("scores", {}),
-                "commits_summary": evaluation.get("commits_summary", {})
+                "commits_summary": evaluation.get("commits_summary", {}),
+                "incremental": evaluation.get("incremental", False)
             },
             "metadata": {
-                "cached": False,
+                "synced": True,
+                "commits_added": sync_result.get("commits_added", 0) if 'sync_result' in locals() else 0,
                 "timestamp": datetime.now().isoformat(),
-                "source": "local_data"
+                "source": "persistent_storage"
             }
         }
 
@@ -1195,10 +1127,10 @@ async def evaluate_author(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"✗ Local evaluation failed: {e}")
+        print(f"✗ Evaluation failed: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Local evaluation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
 
 
 @app.post("/api/gitee/evaluate/{owner}/{repo}/{contributor}")
@@ -1214,17 +1146,10 @@ async def evaluate_gitee_contributor(
     platform = "gitee"
 
     try:
-        # 1. Get commits (from cache or API)
-        if use_cache:
-            commits = load_commits_cache(platform, owner, repo)
-            if not commits:
-                commits = fetch_gitee_commits(owner, repo, 500, is_enterprise)
-                save_commits_cache(platform, owner, repo, commits)
-        else:
-            commits = fetch_gitee_commits(owner, repo, 500, is_enterprise)
-            save_commits_cache(platform, owner, repo, commits)
+        # 1. Get commits from API
+        commits = fetch_gitee_commits(owner, repo, 500, is_enterprise)
 
-        # 2. Get or create evaluator (reuses repo context if cached)
+        # 2. Get or create evaluator
         evaluator = get_or_create_evaluator(platform, owner, repo, commits, use_cache)
 
         # 3. Evaluate contributor using moderate evaluator
@@ -1361,7 +1286,7 @@ async def batch_extract_repos(request: dict):
         result["platform"] = platform
 
         # Check if data already exists
-        data_dir = DATA_DIR / owner / repo
+        data_dir = get_platform_data_dir(platform, owner, repo)
         commits_dir = data_dir / "commits"
 
         if data_dir.exists() and commits_dir.exists() and list(commits_dir.glob("*.json")):
@@ -1463,12 +1388,13 @@ async def find_common_contributors(request: dict):
     for repo_info in repos:
         owner = repo_info.get("owner")
         repo = repo_info.get("repo")
+        platform = repo_info.get("platform", "github")  # Default to github if not specified
 
         if not owner or not repo:
             continue
 
         repo_key = f"{owner}/{repo}"
-        data_dir = DATA_DIR / owner / repo
+        data_dir = get_platform_data_dir(platform, owner, repo)
         commits_dir = data_dir / "commits"
 
         if not commits_dir.exists():
@@ -1740,22 +1666,41 @@ async def compare_contributor_across_repos(request: dict):
     for repo_info in repos:
         owner = repo_info.get("owner")
         repo = repo_info.get("repo")
+        repo_platform = repo_info.get("platform", "github")  # Default to github if not specified
 
         if not owner or not repo:
             continue
 
         try:
             # Check if data exists for this repo
-            data_dir = DATA_DIR / owner / repo
+            data_dir = get_platform_data_dir(repo_platform, owner, repo)
             if not data_dir.exists() or not (data_dir / "commits").exists():
-                failed_repos.append({
-                    "repo": f"{owner}/{repo}",
-                    "reason": "Repository data not extracted yet"
-                })
-                continue
+                # Try to extract data in real-time
+                print(f"⚡ Data not found for {owner}/{repo}, triggering real-time extraction...")
+                try:
+                    if repo_platform == "github":
+                        extraction_success = extract_github_data(owner, repo)
+                    else:
+                        extraction_success = extract_gitee_data(owner, repo)
+
+                    if not extraction_success:
+                        failed_repos.append({
+                            "repo": f"{owner}/{repo}",
+                            "reason": "Failed to extract repository data in real-time"
+                        })
+                        continue
+
+                    print(f"✓ Successfully extracted data for {owner}/{repo}")
+                except Exception as extract_error:
+                    print(f"✗ Extraction failed for {owner}/{repo}: {extract_error}")
+                    failed_repos.append({
+                        "repo": f"{owner}/{repo}",
+                        "reason": f"Extraction error: {str(extract_error)}"
+                    })
+                    continue
 
             # Evaluate contributor in this repo
-            eval_result = await evaluate_author(owner, repo, contributor, use_cache=use_cache, model=model)
+            eval_result = await evaluate_author(owner, repo, contributor, use_chunking=True, model=model, platform=repo_platform)
 
             if eval_result.get("success"):
                 evaluation = eval_result["evaluation"]
@@ -1778,9 +1723,10 @@ async def compare_contributor_across_repos(request: dict):
                     "cached": eval_result.get("metadata", {}).get("cached", False)
                 })
             else:
+                error_msg = eval_result.get("message", "Evaluation failed")
                 failed_repos.append({
                     "repo": f"{owner}/{repo}",
-                    "reason": "Evaluation failed"
+                    "reason": error_msg
                 })
 
         except HTTPException as e:
@@ -1853,11 +1799,6 @@ if __name__ == "__main__":
     print(f"📊 Dashboard: Open dashboard.html in your browser")
     print(f"🏥 Health: http://localhost:{port}/health")
     print(f"📚 API Docs: http://localhost:{port}/docs")
-    print(f"\n💡 Caching Strategy:")
-    print(f"   • First request: Loads full repo context, evaluates contributor")
-    print(f"   • Same repo: Reuses cached repo context")
-    print(f"   • Same contributor: Returns cached evaluation")
-    print(f"   • New contributor: Only evaluates new contributor (reuses repo)")
     print(f"{'='*80}\n")
 
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=True)
