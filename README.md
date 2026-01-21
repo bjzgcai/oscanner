@@ -2,7 +2,8 @@
 
 [English README](README_en.md) | [中文 README](README.md)
 
-基于 GitHub / Gitee 的 commit、diff、仓库结构与协作信号，对工程师贡献者进行**六维能力评估（0-100）**的工具链，包含 FastAPI 后端与可选的前端 Dashboard。
+基于 GitHub / Gitee 的 commit、diff、仓库结构与协作信号，对工程师贡献者进行 **多维度能力评估** 的工具链，包含 FastAPI 后端与可选的前端 Dashboard。
+[评选标准参考](http://https://gitee.com/zgcai/oscanner/blob/main/engineer_level.md)
 
 ## 概览
 
