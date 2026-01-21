@@ -13,12 +13,17 @@ export interface Comparison {
   repo_name: string;
   scores: Score;
   total_commits: number;
+  plugin?: string;
+  plugin_version?: string;
+  plugin_scan_path?: string;
 }
 
 export interface ContributorComparisonData {
   success: boolean;
   message?: string;
   contributor: string;
+  plugin_requested?: string | null;
+  plugin_used?: string;
   comparisons: Comparison[];
   dimension_keys: string[];
   dimension_names: string[];

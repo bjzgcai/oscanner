@@ -49,7 +49,7 @@ evaluator/
 ├── core.py                              # Core evaluation engine
 ├── dimensions.py                        # Six-dimensional evaluation framework
 ├── server.py                            # FastAPI web service
-├── commit_evaluator_moderate.py         # Moderate commit analyzer variant
+├── plugins/*/scan/__init__.py           # Plugin-provided evaluators (self-contained)
 ├── contributtor.py                      # Contributor analysis
 ├── collectors/                          # Data collection modules
 │   ├── __init__.py

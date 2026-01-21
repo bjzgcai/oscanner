@@ -1,7 +1,11 @@
 """
-Default scan plugin (self-contained).
+AI-Native 2026 scan plugin.
 
-IMPORTANT: this plugin must not import from `evaluator/`.
+This plugin injects a rubric summary (derived from `engineer_level.md`) into the LLM prompt
+to bias reasoning toward "built-in quality", "reproducibility", "cloud-native", "agent/tooling",
+and "professionalism" evidence.
+
+Output remains compatible with the existing dashboard (six score keys + reasoning).
 """
 
 import json
@@ -12,11 +16,48 @@ from typing import Any, Dict, List, Optional
 import requests
 
 
+_RUBRIC_SUMMARY = """
+You are evaluating an engineer in the Vibe Coding era. Distinguish "AI搬运工" vs "系统构建者".
+Use L1-L5 behavioral profiles as guidance:
+- L1: blind copy/paste, cannot explain, low-level errors, no quality gates
+- L2: can deliver happy-path, basic norms, basic tests/lint, but shallow system thinking
+- L3: one-person full-stack MVP builder, can refactor AI code, stronger type discipline, edge cases
+- L4: team anchor, introduces quality gates, defensive validation, CI, docs, cost/ops thinking
+- L5: leader/maintainer, defines patterns/standards, affects ecosystem, deep architecture decisions
+
+Evidence to look for (prefer repo artifacts over claims):
+- Spec/quality: refactors, modularity, input validation, tests (unit/integration/property), lint/format, CI
+- Reproducibility: dependency locks, one-command run, docker/compose/devcontainer
+- Cloud-native: containerization, IaC, deployment configs, resource limits, automation
+- AI engineering: agent/tooling, structured prompts, tool abstractions, traces/logs, eval datasets
+- Professionalism: docs/ADR, meaningful commits/PRs, careful tradeoffs, security/perf considerations
+
+Scoring mapping: for each dimension, map observed evidence to a rough L1-L5 and convert to 0-100
+(L1≈10-30, L2≈30-50, L3≈50-70, L4≈70-85, L5≈85-100). Be conservative when evidence is missing.
+"""
+
+
+def create_commit_evaluator(
+    *,
+    data_dir: str,
+    api_key: str,
+    model: Optional[str] = None,
+    mode: str = "moderate",
+):
+    return CommitEvaluatorModerate(
+        data_dir=data_dir,
+        api_key=api_key,
+        mode=mode,
+        model=model,
+        rubric_text=_RUBRIC_SUMMARY,
+    )
+
+
 class CommitEvaluatorModerate:
     """
-    Self-contained moderate evaluator:
-    - Uses commit diffs + optional local file contents under data_dir
-    - Calls OpenAI-compatible chat completions endpoint via requests
+    Self-contained evaluator for the AI-Native 2026 rubric.
+
+    IMPORTANT: this plugin must not import from `evaluator/`.
     """
 
     def __init__(
@@ -30,8 +71,6 @@ class CommitEvaluatorModerate:
         api_base_url: Optional[str] = None,
         chat_completions_url: Optional[str] = None,
         fallback_models: Optional[List[str]] = None,
-        dimensions: Optional[Dict[str, str]] = None,
-        dimension_instructions: Optional[Dict[str, str]] = None,
         rubric_text: Optional[str] = None,
     ):
         self.api_key = (
@@ -56,24 +95,24 @@ class CommitEvaluatorModerate:
         self.mode = mode
         self.model = model or os.getenv("OSCANNER_LLM_MODEL") or "anthropic/claude-sonnet-4.5"
         self.fallback_models = fallback_models
-
-        self.dimensions = dimensions or {
-            "ai_fullstack": "AI Model Full-Stack Development",
-            "ai_architecture": "AI Native Architecture Design",
-            "cloud_native": "Cloud Native Engineering",
-            "open_source": "Open Source Collaboration",
-            "intelligent_dev": "Intelligent Development",
-            "leadership": "Engineering Leadership",
-        }
-        self.dimension_instructions = dimension_instructions or {
-            "ai_fullstack": "Assess AI/ML model development, training, optimization, deployment.",
-            "ai_architecture": "Evaluate AI-first system design, API design, microservices.",
-            "cloud_native": "Assess containerization, IaC, CI/CD, deployment automation.",
-            "open_source": "Evaluate collaboration quality, communication, refactoring, bug fixes.",
-            "intelligent_dev": "Assess automation, tooling, testing, linting/formatting.",
-            "leadership": "Evaluate technical decision-making, performance/security, best practices.",
-        }
         self.rubric_text = (rubric_text or "").strip()
+
+        self.dimensions = {
+            "ai_fullstack": "Practical Delivery & Built-in Quality",
+            "ai_architecture": "Architecture Evolution & Trade-offs",
+            "cloud_native": "Reproducibility & Cloud-Native Readiness",
+            "open_source": "Open Source Collaboration & Professionalism",
+            "intelligent_dev": "Intelligent Development & Automation",
+            "leadership": "Engineering Leadership (Reliability/Security/Perf)",
+        }
+        self.dimension_instructions = {
+            "ai_fullstack": "Evidence: refactors, type discipline, edge-case handling, tests, reliable delivery.",
+            "ai_architecture": "Evidence: modular boundaries, APIs, ADR/docs, migration strategy, trade-offs.",
+            "cloud_native": "Evidence: docker/compose, CI/CD, IaC, env management, reproducible builds.",
+            "open_source": "Evidence: meaningful commits, PR hygiene, reviews, iterative improvements.",
+            "intelligent_dev": "Evidence: tooling/scripts, lint/format, test pyramid depth, agent/tool usage.",
+            "leadership": "Evidence: quality gates, defensive programming, perf/security fixes, standards.",
+        }
 
         self._file_cache: Dict[str, str] = {}
         self._repo_structure: Optional[Dict[str, Any]] = None
@@ -89,12 +128,10 @@ class CommitEvaluatorModerate:
     ) -> Dict[str, Any]:
         if not commits:
             return self._get_empty_evaluation(username)
-
         analyzed_commits = commits if max_commits is None else commits[: int(max_commits)]
         author_commits = [c for c in analyzed_commits if self._is_commit_by_author(c, username)]
         if not author_commits:
             return self._get_empty_evaluation(username)
-
         if use_chunking and len(author_commits) > 20:
             return self._evaluate_engineer_chunked(author_commits, username, load_files=load_files)
         return self._evaluate_engineer_standard(author_commits, username, load_files=load_files)
@@ -113,7 +150,6 @@ class CommitEvaluatorModerate:
         if self.mode == "moderate" and load_files and self.data_dir:
             file_contents = self._load_relevant_files(commits)
             repo_structure = self._load_repo_structure()
-
         context = self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure)
         scores = self._evaluate_with_llm(context, username)
         return {
@@ -128,11 +164,9 @@ class CommitEvaluatorModerate:
     def _evaluate_engineer_chunked(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
         commits_per_chunk = 15 if self.mode == "moderate" else 20
         chunks = [commits[i : i + commits_per_chunk] for i in range(0, len(commits), commits_per_chunk)]
-
         repo_structure = None
         if self.mode == "moderate" and load_files and self.data_dir:
             repo_structure = self._load_repo_structure()
-
         accumulated = None
         all_files: Dict[str, str] = {}
         for idx, chunk in enumerate(chunks, 1):
@@ -154,7 +188,6 @@ class CommitEvaluatorModerate:
                 accumulated = chunk_scores
             else:
                 accumulated = self._merge_evaluations(accumulated, chunk_scores, idx)
-
         return {
             "username": username,
             "total_commits_analyzed": len(commits),
@@ -223,7 +256,6 @@ class CommitEvaluatorModerate:
             for f in c.get("files") or []:
                 if isinstance(f, dict) and f.get("filename"):
                     files.append(str(f["filename"]))
-        # de-dup preserve order
         seen = set()
         uniq: List[str] = []
         for p in files:
@@ -231,7 +263,6 @@ class CommitEvaluatorModerate:
                 continue
             seen.add(p)
             uniq.append(p)
-
         out: Dict[str, str] = {}
         for rel in uniq[:25]:
             if rel in self._file_cache:
@@ -267,10 +298,8 @@ class CommitEvaluatorModerate:
             if allow_fallback:
                 return self._fallback_evaluation(context)
             raise RuntimeError("LLM not configured (missing API key)")
-
         prompt = self._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)
         models_to_try = [self.model] + (self.fallback_models or [])
-
         last_err = None
         for m in models_to_try:
             try:
@@ -337,7 +366,7 @@ class CommitEvaluatorModerate:
         dims_text = "\n".join(dim_lines)
 
         reasoning_line = (
-            "  \"reasoning\": \"Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**.\""
+            "  \"reasoning\": \"Use the rubric. Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**.\""
         )
         fmt_lines = ["{"] + [f'  "{k}": <0-100>,' for k in self.dimensions.keys()] + [reasoning_line, "}"]
         fmt_text = "\n".join(fmt_lines)
@@ -387,14 +416,14 @@ class CommitEvaluatorModerate:
                 return 0
             return min(100, int((hits / len(keywords)) * 100))
 
-        # Heuristic keywords (broad/default)
+        # Heuristic keywords tuned toward engineer_level.md signals
         kw = {
-            "ai_fullstack": ["model", "training", "tensorflow", "pytorch", "neural", "ml", "ai", "inference"],
-            "ai_architecture": ["api", "architecture", "design", "service", "endpoint", "microservice", "schema"],
-            "cloud_native": ["docker", "kubernetes", "k8s", "ci/cd", "deploy", "container", "cloud", "terraform"],
-            "open_source": ["fix", "issue", "pr", "review", "merge", "refactor", "improve", "doc"],
-            "intelligent_dev": ["test", "unit", "integration", "auto", "script", "tool", "lint", "format", "cli"],
-            "leadership": ["optimize", "performance", "security", "best practice", "pattern", "migration"],
+            "ai_fullstack": ["refactor", "test", "lint", "type", "validation", "error", "edge", "bugfix"],
+            "ai_architecture": ["architecture", "adr", "design", "interface", "module", "boundary", "migration", "trade-off"],
+            "cloud_native": ["docker", "compose", "kubernetes", "deploy", "ci", "cd", "terraform", "devcontainer"],
+            "open_source": ["pr", "review", "issue", "docs", "changelog", "release", "discussion", "community"],
+            "intelligent_dev": ["automation", "script", "tool", "agent", "prompt", "eval", "dataset", "trace"],
+            "leadership": ["security", "performance", "optimize", "reliability", "incident", "standard", "best practice"],
         }
 
         scores: Dict[str, Any] = {}
@@ -402,9 +431,9 @@ class CommitEvaluatorModerate:
             scores[k] = score_by_keywords(kw.get(k, []))
 
         scores["reasoning"] = (
-            "**Note:** LLM not available or failed; using keyword-based heuristic scoring.\n\n"
-            "**Key Strengths:** Scores reflect presence of relevant keywords in commits/diffs/files.\n\n"
-            "**Areas for Growth:** Configure a working LLM provider for deeper contextual analysis.\n\n"
+            "**Note:** LLM not available or failed; using rubric-flavored keyword heuristic scoring.\n\n"
+            "**Key Strengths:** Scores reflect presence of quality/reproducibility/professionalism signals in artifacts.\n\n"
+            "**Areas for Growth:** Configure a working LLM provider for evidence-weighted, context-aware assessment.\n\n"
             "**Overall Assessment:** Treat these scores as rough indicators only."
         )
         return scores
@@ -442,7 +471,4 @@ class CommitEvaluatorModerate:
             "commits_summary": {"total_additions": 0, "total_deletions": 0, "files_changed": 0, "languages": []},
         }
 
-
-def create_commit_evaluator(*, data_dir: str, api_key: str, model: Optional[str] = None, mode: str = "moderate"):
-    return CommitEvaluatorModerate(data_dir=data_dir, api_key=api_key, model=model, mode=mode)
 

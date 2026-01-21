@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Space, Button, Dropdown } from 'antd';
+import { Space, Button, Dropdown, Switch, Tooltip } from 'antd';
 import { HomeOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { model, setModel } = useAppSettings();
+  const { useCache, setUseCache, model, setModel, pluginId, setPluginId, plugins } = useAppSettings();
 
   const navItems = [
     { path: '/', label: 'Analysis', icon: <HomeOutlined /> },
@@ -24,6 +24,18 @@ export default function Navigation() {
     { key: 'z-ai/glm-4.7', label: 'Z.AI GLM 4.7' },
   ];
   const currentModelLabel = modelItems.find((i) => i.key === model)?.label || model;
+
+  const pluginItems =
+    plugins && plugins.length > 0
+      ? plugins.map((p) => ({
+          key: p.id,
+          label: `${p.name}${p.version ? ` (${p.version})` : ''}`,
+        }))
+      : [
+          { key: 'zgc_simple', label: 'ZGC Simple (Default)' },
+          { key: 'zgc_ai_native_2026', label: 'ZGC AI-Native 2026' },
+        ];
+  const currentPluginLabel = (plugins || []).find((p) => p.id === pluginId)?.name || pluginId || 'zgc_simple';
 
   return (
     <nav style={{
@@ -47,6 +59,24 @@ export default function Navigation() {
         </div>
 
         <Space size="large">
+          <Tooltip title="启用后优先返回历史评估结果；不启用则强制重新评估（需要配置 LLM Key）。">
+            <Switch checked={useCache} onChange={setUseCache} checkedChildren="cache" unCheckedChildren="no cache" />
+          </Tooltip>
+
+          <Dropdown
+            menu={{
+              items: pluginItems,
+              selectable: true,
+              selectedKeys: [pluginId || 'zgc_simple'],
+              onClick: ({ key }) => setPluginId(String(key)),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              Plugin: {currentPluginLabel}
+            </Button>
+          </Dropdown>
+
           <Dropdown
             menu={{
               items: modelItems,

@@ -12,24 +12,12 @@ import {
   TeamOutlined,
   DownloadOutlined,
 } from '@ant-design/icons';
-import ContributorComparison from './ContributorComparison';
 import { exportHomePagePDF, exportMultiRepoPDF } from '../utils/pdfExport';
 import type { ContributorComparisonData } from '../types';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
-import { Radar } from 'react-chartjs-2';
-import ReactMarkdown from 'react-markdown';
-import {
-  Chart as ChartJS,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-
-ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+import PluginViewRenderer from './PluginViewRenderer';
+import PluginComparisonRenderer from './PluginComparisonRenderer';
 
 const { TextArea } = Input;
 
@@ -83,7 +71,7 @@ interface CommonContributorsResult {
 export default function MultiRepoAnalysis() {
   const [repoUrls, setRepoUrls] = useState('');
   const [loading, setLoading] = useState(false);
-  const { model } = useAppSettings();
+  const { model, pluginId, useCache } = useAppSettings();
   const [mode, setMode] = useState<'single' | 'multi' | null>(null);
   const [loadingText, setLoadingText] = useState('');
   const [results, setResults] = useState<BatchResult | null>(null);
@@ -101,6 +89,10 @@ export default function MultiRepoAnalysis() {
   const [llmBaseUrl, setLlmBaseUrl] = useState('');
   const [llmChatUrl, setLlmChatUrl] = useState('');
   const [llmFallbackModels, setLlmFallbackModels] = useState('');
+  const [giteeToken, setGiteeToken] = useState('');
+  const [giteeTokenMasked, setGiteeTokenMasked] = useState('');
+  const [githubToken, setGithubToken] = useState('');
+  const [githubTokenMasked, setGithubTokenMasked] = useState('');
   const [authorAliases, setAuthorAliases] = useState('');
 
   // Single-repo state (merged UI)
@@ -112,18 +104,7 @@ export default function MultiRepoAnalysis() {
     total_commits_analyzed: number;
     commits_summary: { total_additions: number; total_deletions: number; files_changed: number; languages: string[] };
   }>(null);
-
-  const dimensions = useMemo(
-    () => [
-      { name: 'AI Model Full-Stack', key: 'ai_fullstack', description: 'AI/ML model development, training, optimization, and deployment capabilities' },
-      { name: 'AI Native Architecture', key: 'ai_architecture', description: 'AI-first system design, API architecture, and microservices patterns' },
-      { name: 'Cloud Native Engineering', key: 'cloud_native', description: 'Containerization, infrastructure as code, CI/CD, and cloud platform expertise' },
-      { name: 'Open Source Collaboration', key: 'open_source', description: 'Contribution quality, code review, issue management, and communication' },
-      { name: 'Intelligent Development', key: 'intelligent_dev', description: 'AI-assisted development, automation, testing, and development efficiency' },
-      { name: 'Engineering Leadership', key: 'leadership', description: 'Technical decision-making, optimization, security, and best practices' },
-    ],
-    []
-  );
+  // Result visualization is fully handled by plugin views.
 
   const generateAvatarUrl = (author: string) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=128&bold=true`;
@@ -251,6 +232,8 @@ export default function MultiRepoAnalysis() {
       setLlmBaseUrl(String(cfg.oscanner_llm_base_url || ''));
       setLlmChatUrl(String(cfg.oscanner_llm_chat_completions_url || ''));
       setLlmFallbackModels(String(cfg.oscanner_llm_fallback_models || ''));
+      setGiteeTokenMasked(String(cfg.gitee_token_masked || ''));
+      setGithubTokenMasked(String(cfg.github_token_masked || ''));
     } catch {
       // ignore
     }
@@ -270,6 +253,14 @@ export default function MultiRepoAnalysis() {
               fallback_models: llmFallbackModels,
             };
 
+      // Optional platform token updates (do not overwrite if empty)
+      if (giteeToken.trim()) {
+        body.gitee_token = giteeToken.trim();
+      }
+      if (githubToken.trim()) {
+        body.github_token = githubToken.trim();
+      }
+
       const resp = await fetch(`${API_SERVER_URL}/api/config/llm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -286,11 +277,13 @@ export default function MultiRepoAnalysis() {
       // clear sensitive inputs after save
       setOpenRouterKey('');
       setLlmApiKey('');
+      setGiteeToken('');
+      setGithubToken('');
       await refreshLlmConfig();
     } catch (e: unknown) {
       appendLog(`LLM settings save failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
     }
-  }, [appendLog, llmApiKey, llmBaseUrl, llmChatUrl, llmFallbackModels, llmMode, model, openRouterKey, refreshLlmConfig]);
+  }, [appendLog, giteeToken, githubToken, llmApiKey, llmBaseUrl, llmChatUrl, llmFallbackModels, llmMode, model, openRouterKey, refreshLlmConfig]);
 
   const tickerLine = useMemo(() => {
     if (logs.length === 0) return null;
@@ -382,7 +375,7 @@ export default function MultiRepoAnalysis() {
 
       try {
         const response = await fetch(
-          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}`,
+          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -409,7 +402,7 @@ export default function MultiRepoAnalysis() {
         setLoadingText('');
       }
     },
-    [appendLog, authorsData, model, authorAliases, singleRepo?.platform]
+    [appendLog, authorsData, model, authorAliases, singleRepo?.platform, pluginId, useCache]
   );
 
   const compareContributor = useCallback(
@@ -427,6 +420,8 @@ export default function MultiRepoAnalysis() {
             contributor: contributorName.trim(),
             repos: reposToCompare,
             model,
+            plugin: pluginId || undefined,
+            use_cache: useCache,
             author_aliases: authorAliases.trim() ? authorAliases : undefined,
           }),
         });
@@ -459,7 +454,7 @@ export default function MultiRepoAnalysis() {
         setIsExecuting(false);
       }
     },
-    [appendLog, model, authorAliases]
+    [appendLog, model, authorAliases, pluginId, useCache]
   );
 
   useEffect(() => {
@@ -854,6 +849,22 @@ export default function MultiRepoAnalysis() {
           </div>
 
           <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>GITEE_TOKEN（可选，用于避免 Gitee API 限流）</div>
+            <Input.Password value={giteeToken} onChange={(e) => setGiteeToken(e.target.value)} placeholder="Gitee access token" />
+            <div style={{ marginTop: 6, color: 'rgba(0,0,0,0.65)' }}>
+              当前已配置：<code>{giteeTokenMasked || '(not set)'}</code>（留空不修改）
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>GITHUB_TOKEN（可选，用于避免 GitHub API 限流）</div>
+            <Input.Password value={githubToken} onChange={(e) => setGithubToken(e.target.value)} placeholder="GitHub personal access token" />
+            <div style={{ marginTop: 6, color: 'rgba(0,0,0,0.65)' }}>
+              当前已配置：<code>{githubTokenMasked || '(not set)'}</code>（留空不修改）
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
             <Radio.Group value={llmMode} onChange={(e) => setLlmMode(e.target.value)}>
               <Radio value="openrouter">OpenRouter</Radio>
               <Radio value="openai">OpenAI-compatible (base_url + api_key)</Radio>
@@ -958,74 +969,12 @@ export default function MultiRepoAnalysis() {
               </div>
             </div>
 
-            <div className="chart-container" id="radar-chart-export">
-              <Radar
-                data={{
-                  labels: dimensions.map((d) => d.name),
-                  datasets: [
-                    {
-                      label: 'Engineering Skills',
-                      data: dimensions.map((d) => evaluation.scores[d.key] || 0),
-                      fill: true,
-                      backgroundColor: 'rgba(255, 235, 0, 0.15)',
-                      borderColor: '#FFEB00',
-                      pointBackgroundColor: '#00F0FF',
-                      pointBorderColor: '#0A0A0A',
-                      pointHoverBackgroundColor: '#FF006B',
-                      pointHoverBorderColor: '#FFEB00',
-                      pointRadius: 8,
-                      pointHoverRadius: 12,
-                      borderWidth: 3,
-                    },
-                  ],
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { display: false } },
-                  scales: {
-                    r: {
-                      suggestedMin: 0,
-                      suggestedMax: 100,
-                      ticks: { stepSize: 20, backdropColor: 'transparent', color: '#B0B0B0' },
-                      pointLabels: { color: '#FFFFFF' },
-                      angleLines: { display: true, color: '#333', lineWidth: 2 },
-                      grid: { color: '#333', lineWidth: 2 },
-                    },
-                  },
-                }}
-              />
-            </div>
-
-            <div className="dimensions-grid">
-              {dimensions.map((dim) => {
-                const score = evaluation.scores[dim.key] || 0;
-                return (
-                  <Card key={dim.key} className="dimension-card">
-                    <h4>{dim.name}</h4>
-                    <div className="score-display">
-                      <div className="score-row">
-                        <span className="score-label">Score:</span>
-                        <span className="score">{score}</span>
-                      </div>
-                    </div>
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${score}%` }} />
-                    </div>
-                    <div className="description">{dim.description}</div>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {evaluation.scores.reasoning && (
-              <Card className="reasoning-section">
-                <h3>AI Analysis Summary</h3>
-                <div className="markdown-content">
-                  <ReactMarkdown>{evaluation.scores.reasoning as string}</ReactMarkdown>
-                </div>
-              </Card>
-            )}
+            <PluginViewRenderer
+              pluginId={pluginId || 'zgc_simple'}
+              evaluation={evaluation}
+              title={`Analysis View (${pluginId || 'zgc_simple'})`}
+              loading={loading}
+            />
           </Card>
         )}
 
@@ -1073,7 +1022,7 @@ export default function MultiRepoAnalysis() {
                     render: (author: string, record: { author: string; aliases: string[]; email: string; repo_count: number; total_commits: number }) => {
                       const otherAliases = record.aliases.filter((a: string) => a !== author);
                       return (
-                        <Space direction="vertical" size={0}>
+                        <Space orientation="vertical" size={0}>
                           <Space>
                             <Avatar src={`https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=64&bold=true`} icon={<UserOutlined />} />
                             <span style={{ fontWeight: 700 }}>{author}</span>
@@ -1121,7 +1070,8 @@ export default function MultiRepoAnalysis() {
             </Card>
 
             {selectedContributor && (
-              <ContributorComparison
+              <PluginComparisonRenderer
+                pluginId={pluginId || 'zgc_simple'}
                 data={comparisonData}
                 loading={loadingComparison}
                 error={comparisonData === null && !loadingComparison ? 'Failed to load comparison data' : undefined}
