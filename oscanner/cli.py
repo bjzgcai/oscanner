@@ -597,7 +597,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             else:
                 set_model = _prompt("Set OSCANNER_LLM_MODEL? (y/N)", "N").lower().startswith("y")
                 if set_model:
-                    new_env["OSCANNER_LLM_MODEL"] = _prompt("OSCANNER_LLM_MODEL", "anthropic/claude-sonnet-4.5")
+                    new_env["OSCANNER_LLM_MODEL"] = _prompt("OSCANNER_LLM_MODEL", "Pro/zai-org/GLM-4.7")
 
     else:
         # base url

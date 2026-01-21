@@ -84,14 +84,14 @@ stages:
         name: publish_release_backend
         displayName: 发布后端
         dependArtifact: backend
-        version: '0.1.4'
+        version: '0.1.6'
         autoIncrement: true
 
       - step: publish@release_artifacts
         name: publish_release_frontend
         displayName: 发布前端
         dependArtifact: frontend
-        version: '0.1.4'
+        version: '0.1.6'
         autoIncrement: true
 
 triggers:

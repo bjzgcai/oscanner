@@ -344,7 +344,7 @@ export default function ContributorComparison({
                   {comp.repo}
                 </span>
                 <span style={{ color: 'rgba(0, 0, 0, 0.65)', marginLeft: '15px' }}>
-                  Commits: {comp.total_commits} | {comp.cached ? 'Cached' : 'Fresh Analysis'}
+                  Commits: {comp.total_commits}
                 </span>
               </div>
               <Descriptions

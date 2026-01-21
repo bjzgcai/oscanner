@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Input, Button, Card, Avatar, Spin, Alert, Tag, message } from 'antd';
-import { UserOutlined, ThunderboltOutlined, RobotOutlined, DownloadOutlined } from '@ant-design/icons';
+import { UserOutlined, DownloadOutlined } from '@ant-design/icons';
 import { Radar } from 'react-chartjs-2';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -59,13 +59,14 @@ interface Evaluation {
 interface RepoData {
   owner: string;
   repo: string;
+  platform: 'github' | 'gitee';
   full_name: string;
   path: string;
 }
 
 export default function SingleRepoAnalysis() {
   const [repoPath, setRepoPath] = useState('');
-  const { useCache, model } = useAppSettings();
+  const { model } = useAppSettings();
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const [error, setError] = useState('');
@@ -73,7 +74,6 @@ export default function SingleRepoAnalysis() {
   const [authorsData, setAuthorsData] = useState<Author[]>([]);
   const [selectedAuthorIndex, setSelectedAuthorIndex] = useState<number>(-1);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
-  const [isCached, setIsCached] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -132,7 +132,7 @@ export default function SingleRepoAnalysis() {
 
   const analyzeRepository = async () => {
     if (!repoPath) {
-      setError('Please enter a GitHub repository URL');
+      setError('Please enter a repository URL');
       return;
     }
     const parsed = parseRepoUrl(repoPath);
@@ -151,7 +151,7 @@ export default function SingleRepoAnalysis() {
     setEvaluation(null);
 
     try {
-      const response = await fetch(`${API_SERVER_URL}/api/authors/${owner}/${repo}?platform=${encodeURIComponent(platform)}&use_cache=${useCache}`);
+      const response = await fetch(`${API_SERVER_URL}/api/authors/${owner}/${repo}?platform=${encodeURIComponent(platform)}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to load authors');
@@ -168,12 +168,12 @@ export default function SingleRepoAnalysis() {
         .slice(0, 20);
 
       setAuthorsData(authors);
-      setRepoData({ owner, repo, full_name: `${owner}/${repo}`, path: repoPath });
+      setRepoData({ owner, repo, platform, full_name: `${owner}/${repo}`, path: repoPath });
       saveToHistory(repoPath);
 
       if (authors.length > 0) {
         setLoadingText('Loading first author evaluation...');
-        await evaluateAuthor(0, authors, owner, repo);
+        await evaluateAuthor(0, authors, owner, repo, platform);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -183,10 +183,11 @@ export default function SingleRepoAnalysis() {
     }
   };
 
-  const evaluateAuthor = async (index: number, authors?: Author[], owner?: string, repo?: string) => {
+  const evaluateAuthor = async (index: number, authors?: Author[], owner?: string, repo?: string, platform?: 'github' | 'gitee') => {
     const authorsToUse = authors || authorsData;
     const ownerToUse = owner || repoData?.owner;
     const repoToUse = repo || repoData?.repo;
+    const platformToUse = platform || repoData?.platform || 'github';
 
     const author = authorsToUse[index];
     setSelectedAuthorIndex(index);
@@ -195,7 +196,7 @@ export default function SingleRepoAnalysis() {
 
     try {
       const response = await fetch(
-        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?use_cache=${useCache}&model=${encodeURIComponent(model)}`,
+        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}`,
         { method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to evaluate author');
@@ -203,7 +204,6 @@ export default function SingleRepoAnalysis() {
       if (!result.success) throw new Error(result.error || 'Evaluation failed');
 
       setEvaluation(result.evaluation);
-      setIsCached(result.metadata?.cached || false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -242,7 +242,7 @@ export default function SingleRepoAnalysis() {
     }
     try {
       message.loading('Generating PDF report...', 0);
-      await exportHomePagePDF(repoData, authorsData[selectedAuthorIndex], evaluation, isCached);
+      await exportHomePagePDF(repoData, authorsData[selectedAuthorIndex], evaluation);
       message.destroy();
       message.success('PDF report downloaded successfully!');
     } catch (e) {
@@ -285,7 +285,7 @@ export default function SingleRepoAnalysis() {
           <div className="autocomplete-container">
             <Input
               size="large"
-              placeholder="Enter GitHub repository URL (e.g., https://github.com/owner/repo)"
+              placeholder="Enter repository URL (e.g., https://github.com/owner/repo or https://gitee.com/owner/repo)"
               value={repoPath}
               onChange={(e) => setRepoPath(e.target.value)}
               onFocus={() => setShowHistory(true)}
@@ -370,15 +370,6 @@ export default function SingleRepoAnalysis() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                {isCached ? (
-                  <Tag icon={<ThunderboltOutlined />} color="success" className="eval-badge">
-                    Cached Result
-                  </Tag>
-                ) : (
-                  <Tag icon={<RobotOutlined />} color="purple" className="eval-badge">
-                    AI-Powered Analysis
-                  </Tag>
-                )}
                 <Button
                   type="primary"
                   icon={<DownloadOutlined />}

@@ -1,51 +1,33 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 type AppSettings = {
-  useCache: boolean;
-  setUseCache: (v: boolean) => void;
   model: string;
   setModel: (v: string) => void;
 };
 
-const STORAGE_KEY_USE_CACHE = 'oscanner_use_cache';
 const STORAGE_KEY_MODEL = 'oscanner_llm_model';
-const DEFAULT_MODEL = 'anthropic/claude-sonnet-4.5';
+const DEFAULT_MODEL = 'Pro/zai-org/GLM-4.7';
 
 const AppSettingsContext = createContext<AppSettings | null>(null);
 
 export function AppSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [useCache, setUseCacheState] = useState(() => {
-    try {
-      if (typeof window === 'undefined') return false;
-      const raw = window.localStorage.getItem(STORAGE_KEY_USE_CACHE);
-      if (raw === 'true') return true;
-      if (raw === 'false') return false;
-      return false;
-    } catch {
-      return false;
-    }
-  });
+  // Always start with default values to prevent hydration mismatch
+  const [model, setModelState] = useState(DEFAULT_MODEL);
 
-  const [model, setModelState] = useState(() => {
+  // Load from localStorage after hydration is complete
+  useEffect(() => {
     try {
-      if (typeof window === 'undefined') return DEFAULT_MODEL;
       const raw = window.localStorage.getItem(STORAGE_KEY_MODEL);
-      return (raw || DEFAULT_MODEL).trim() || DEFAULT_MODEL;
-    } catch {
-      return DEFAULT_MODEL;
-    }
-  });
-
-  const setUseCache = (v: boolean) => {
-    setUseCacheState(v);
-    try {
-      localStorage.setItem(STORAGE_KEY_USE_CACHE, String(v));
+      if (raw) {
+        const trimmed = raw.trim();
+        if (trimmed) setModelState(trimmed);
+      }
     } catch {
       // ignore
     }
-  };
+  }, []);
 
   const setModel = (v: string) => {
     const next = (v || '').trim() || DEFAULT_MODEL;
@@ -57,7 +39,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const value = useMemo(() => ({ useCache, setUseCache, model, setModel }), [useCache, model]);
+  const value = useMemo(() => ({ model, setModel }), [model]);
 
   return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
 }

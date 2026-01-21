@@ -31,9 +31,9 @@ class GiteeCollector:
         self.public_token = public_token  # For gitee.com (public)
         self.base_url = "https://gitee.com/api/v5"
         self.enterprise_base_url = "https://z.gitee.cn/api/v5"
-        self.cache_dir = Path(cache_dir).expanduser() if cache_dir else get_data_dir()
 
-        # Create cache directory if it doesn't exist
+        from evaluator.paths import get_data_dir
+        self.cache_dir = Path(cache_dir).expanduser() if cache_dir else get_data_dir()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def collect_user_data(self, username: str, use_cache: bool = True) -> Dict[str, Any]:
@@ -280,8 +280,8 @@ class GiteeCollector:
         # Try to parse owner/repo from URL
         try:
             owner, repo = self._parse_repo_url(url)
-            # Create path-like structure: data/gitee/owner/repo.json
-            cache_path = self.cache_dir / "gitee" / owner / f"{repo}.json"
+            # Create path-like structure: owner/repo.json
+            cache_path = self.cache_dir / owner / f"{repo}.json"
             # Ensure parent directory exists
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             return cache_path
@@ -292,14 +292,14 @@ class GiteeCollector:
         user_match = re.search(r"gitee\.com/([^/]+)$", url)
         if user_match:
             username = user_match.group(1)
-            # Create path-like structure: data/gitee/users/username.json
-            cache_path = self.cache_dir / "gitee" / "users" / f"{username}.json"
+            # Create path-like structure: users/username.json
+            cache_path = self.cache_dir / "users" / f"{username}.json"
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             return cache_path
 
         # Fallback to hashed URL if pattern doesn't match
         url_hash = hashlib.md5(url.encode()).hexdigest()
-        return self.cache_dir / "gitee" / f"{url_hash}.json"
+        return self.cache_dir / f"{url_hash}.json"
 
     def _load_from_cache(self, repo_url: str) -> Optional[Dict[str, Any]]:
         """
@@ -350,7 +350,7 @@ class GiteeCollector:
         except IOError as e:
             print(f"[Cache] Error saving cache file {cache_path}: {e}")
 
-    def fetch_commit_data(self, owner: str, repo: str, commit_sha: str, use_cache: bool = True, is_enterprise: bool = False) -> Dict[str, Any]:
+    def fetch_commit_data(self, owner: str, repo: str, commit_sha: str, is_enterprise: bool = False) -> Dict[str, Any]:
         """
         Fetch detailed commit data from Gitee API
 
@@ -358,22 +358,11 @@ class GiteeCollector:
             owner: Repository owner
             repo: Repository name
             commit_sha: Commit SHA hash
-            use_cache: Whether to use cached data if available
             is_enterprise: Whether this is an enterprise (z.gitee.cn) repository
 
         Returns:
             Detailed commit data including files changed and diffs
         """
-        # Create commit URL for cache key
-        commit_url = f"https://gitee.com/{owner}/{repo}/commit/{commit_sha}"
-
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_commit_from_cache(owner, repo, commit_sha)
-            if cached_data is not None:
-                return cached_data.get("data", cached_data)
-
-        # Make API request
         import requests
 
         # Use appropriate API base URL
@@ -392,9 +381,6 @@ class GiteeCollector:
 
             commit_data = response.json()
 
-            # Save to cache
-            self._save_commit_to_cache(owner, repo, commit_sha, commit_data)
-
             return commit_data
 
         except requests.exceptions.RequestException as e:
@@ -410,7 +396,7 @@ class GiteeCollector:
             print(f"[API] Error fetching commit {commit_sha}: {error_detail}")
             raise Exception(f"Failed to fetch commit data: {error_detail}")
 
-    def fetch_commits_list(self, owner: str, repo: str, limit: int = 100, use_cache: bool = True, is_enterprise: bool = False) -> List[Dict[str, Any]]:
+    def fetch_commits_list(self, owner: str, repo: str, limit: int = 100, is_enterprise: bool = False, **kwargs) -> List[Dict[str, Any]]:
         """
         Fetch list of commits from a repository
 
@@ -418,22 +404,12 @@ class GiteeCollector:
             owner: Repository owner
             repo: Repository name
             limit: Maximum number of commits to fetch
-            use_cache: Whether to use cached data if available
             is_enterprise: Whether this is an enterprise (z.gitee.cn) repository
+            **kwargs: Additional API parameters (e.g., since, until)
 
         Returns:
             List of commit summaries
         """
-        # Create list URL for cache key
-        list_url = f"https://gitee.com/{owner}/{repo}/commits"
-
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_commits_list_from_cache(owner, repo)
-            if cached_data is not None:
-                return cached_data.get("data", cached_data)
-
-        # Make API request
         import requests
 
         # Use appropriate API base URL
@@ -443,8 +419,10 @@ class GiteeCollector:
         print(f"[API] Fetching commits list from {api_url}")
 
         try:
-            # Combine limit parameter with auth parameters
-            params = self._get_params({"per_page": min(limit, 100)}, url=api_url)
+            # Combine limit parameter with auth parameters and additional kwargs
+            base_params = {"per_page": min(limit, 100)}
+            base_params.update(kwargs)  # Add since/until/etc parameters
+            params = self._get_params(base_params, url=api_url)
 
             response = requests.get(
                 api_url,
@@ -455,9 +433,6 @@ class GiteeCollector:
             response.raise_for_status()
 
             commits_list = response.json()
-
-            # Save to cache
-            self._save_commits_list_to_cache(owner, repo, commits_list)
 
             return commits_list
 
@@ -486,7 +461,7 @@ class GiteeCollector:
         Returns:
             Path to commit cache file
         """
-        cache_path = self.cache_dir / "gitee" / owner / repo / "commits" / f"{commit_sha}.json"
+        cache_path = self.cache_dir / owner / repo / "commits" / f"{commit_sha}.json"
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         return cache_path
 
@@ -501,7 +476,7 @@ class GiteeCollector:
         Returns:
             Path to commits list cache file
         """
-        cache_path = self.cache_dir / "gitee" / owner / repo / "commits_list.json"
+        cache_path = self.cache_dir / owner / repo / "commits_list.json"
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         return cache_path
 
@@ -679,7 +654,7 @@ class GiteeCollector:
         Returns:
             Path to collaborators cache file
         """
-        cache_path = self.cache_dir / "gitee" / owner / repo / "collaborators.json"
+        cache_path = self.cache_dir / owner / repo / "collaborators.json"
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         return cache_path
 

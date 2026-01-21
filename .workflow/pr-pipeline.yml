@@ -15,7 +15,7 @@ stages:
           - pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
           - pip3 install uv ruff
           - uv lock
-          - uv sync --no-dev || uv sync
+          - uv sync
           - ruff check . || echo "Linting issues found"
 
       - step: build@nodejs

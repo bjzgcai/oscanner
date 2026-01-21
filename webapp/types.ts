@@ -13,11 +13,11 @@ export interface Comparison {
   repo_name: string;
   scores: Score;
   total_commits: number;
-  cached: boolean;
 }
 
 export interface ContributorComparisonData {
   success: boolean;
+  message?: string;
   contributor: string;
   comparisons: Comparison[];
   dimension_keys: string[];
