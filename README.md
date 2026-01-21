@@ -145,6 +145,283 @@ uv run oscanner extract https://github.com/<owner>/<repo> --out /path/to/output 
 - cache：`~/.cache/oscanner/cache`（或 `XDG_CACHE_HOME/oscanner/cache`）
 - evaluations：`~/.local/share/oscanner/evaluations/cache`
 
+## Author Aliases (作者别名) - 跨名称贡献聚合
+
+### 功能说明
+
+同一个工程师可能在不同的 commit 中使用不同的名称（如 "CarterWu"、"wu-yanbiao"、"吴炎标"等）。**Author Aliases** 功能可以将这些不同名称的贡献聚合到一起进行统一评估。
+
+> **注意**：评估缓存文件名采用小写规范化（如 `CarterWu` / `carterwu` / `CARTERWU` 均使用 `carterwu.json`），确保不同大小写请求都能复用缓存。
+
+### 使用方式
+
+#### 1. **单仓库模式（Single Repo）**
+
+在 Dashboard 的 "Author Aliases" 输入框中填入多个名称（逗号分隔）：
+
+```
+CarterWu, wu-yanbiao, 吴炎标
+```
+
+然后点击任意一个匹配的作者头像，系统会：
+
+1. **分别评估每个名称**：
+   - CarterWu (42 commits) → 评估结果 1
+   - wu-yanbiao (3 commits) → 评估结果 2
+   - 吴炎标 (5 commits) → 评估结果 3
+
+2. **使用 LLM 合并分析**：
+   - 根据 commit 数量计算权重：[42, 3, 5]
+   - 对六维能力分数进行加权平均
+   - 调用 `/api/merge-evaluations` 接口，使用 LLM 综合生成统一的分析总结
+
+3. **展示合并结果**：
+   - `.eval-header` 显示所有别名："CarterWu, wu-yanbiao, 吴炎标"
+   - `.chart-container` 显示加权平均后的六维分数
+   - `.reasoning-section` 显示 LLM 生成的综合分析
+
+#### 2. **多仓库模式（Multi Repo）**
+
+在分析多个仓库时，填入 Author Aliases 后：
+
+- **Common Contributors** 表格会自动识别并分组同一个人的不同名称
+- 显示格式："主要名称 (also known as: 别名1, 别名2)"
+- 点击该贡献者进行跨仓库对比时，会聚合所有别名的 commits
+
+### 技术实现
+
+#### 核心优势：Token 效率优化
+
+传统方式需要重新评估所有 commits（如 50 个 commits 的总 token 消耗），而采用 **分别评估 + LLM 合并** 的方式：
+
+1. **复用缓存评估**：每个名称独立评估并缓存（`~/.local/share/oscanner/evaluations/cache/<repo>/<author>.json`）
+2. **增量计算**：后续只需评估新增的 commits
+3. **LLM 仅合并摘要**：只调用一次 LLM 来合并已有的分析文本（~1500 tokens），而不是重新分析所有 commits
+
+**Token 节省示例**：
+
+- 传统方式：50 commits × 平均 2000 tokens/commit = **100,000 tokens**
+- 优化方式：
+  - CarterWu (42 commits，已缓存) = 0 tokens
+  - wu-yanbiao (3 commits，已缓存) = 0 tokens
+  - 吴炎标 (5 commits，新评估) = 10,000 tokens
+  - 合并摘要 (LLM) = 1,500 tokens
+  - **总计：11,500 tokens（节省 88.5%）**
+
+#### API 端点
+
+##### `/api/evaluate/{owner}/{repo}/{author}` (POST)
+
+**支持 Request Body**：
+
+```json
+{
+  "aliases": ["CarterWu", "wu-yanbiao", "吴炎标"]
+}
+```
+
+**处理流程**：
+
+1. 如果提供 `aliases` 且数量 > 1：
+   - 遍历每个别名，分别调用 `evaluate_author_incremental()`
+   - 每个别名的评估结果独立缓存
+   - 收集所有评估结果和对应的 commit 数量作为权重
+   - 调用 `/api/merge-evaluations` 合并
+
+2. 如果只有单个作者或未提供 aliases：
+   - 按原有流程直接评估
+
+##### `/api/merge-evaluations` (POST)
+
+**Request Body**：
+
+```json
+{
+  "evaluations": [
+    {
+      "author": "CarterWu",
+      "weight": 42,
+      "evaluation": { /* 完整的评估对象 */ }
+    },
+    {
+      "author": "wu-yanbiao",
+      "weight": 3,
+      "evaluation": { /* 完整的评估对象 */ }
+    }
+  ],
+  "model": "openai/gpt-4o"  // 可选
+}
+```
+
+**处理逻辑**：
+
+1. **加权平均分数**：
+   ```python
+   merged_score[dimension] = sum(eval[dimension] * weight) / total_weight
+   ```
+
+2. **LLM 合并摘要**：
+   - 提示词包含所有别名的分析文本和权重比例
+   - 要求 LLM 综合生成统一的、加权的分析报告
+   - 自动处理权重较高的贡献者的影响力
+
+3. **响应结果**：
+   ```json
+   {
+     "success": true,
+     "merged_evaluation": {
+       "username": "CarterWu + wu-yanbiao + 吴炎标",
+       "mode": "merged",
+       "total_commits_analyzed": 50,
+       "scores": { /* 加权平均后的六维分数 */ },
+       "commits_summary": { /* 聚合的统计信息 */ }
+     }
+   }
+   ```
+
+##### `/api/batch/common-contributors` (POST)
+
+**支持 `author_aliases` 参数**：
+
+```json
+{
+  "repos": [
+    { "owner": "facebook", "repo": "react" },
+    { "owner": "vercel", "repo": "next.js" }
+  ],
+  "author_aliases": "John Doe, johndoe, John D, jdoe"
+}
+```
+
+**处理流程**：
+
+- Pass 1: 按 GitHub ID/login 分组
+- **Pass 1.5**：如果提供了 `author_aliases`，合并所有匹配别名的身份组
+- Pass 2: 模糊匹配孤立作者
+- Pass 3: 按精确名称分组未匹配的作者
+
+**响应新增字段**：
+
+```json
+{
+  "common_contributors": [
+    {
+      "author": "John Doe",
+      "aliases": ["John Doe", "johndoe", "John D"],  // 新增：所有匹配的名称
+      "repos": [...],
+      "total_commits": 225
+    }
+  ]
+}
+```
+
+##### `/api/batch/compare-contributor` (POST)
+
+**支持 `author_aliases` 参数**：
+
+```json
+{
+  "contributor": "John Doe",
+  "repos": [...],
+  "author_aliases": "John Doe, johndoe, John D"
+}
+```
+
+**处理逻辑**：
+
+- 解析别名列表并归一化（lowercase + trim）
+- 调用 `evaluate_author()` 时传入完整的别名列表
+- 每个仓库都会聚合所有别名的 commits 进行评估
+
+### 前端实现
+
+#### 组件：`MultiRepoAnalysis.tsx`
+
+**新增状态**：
+
+```tsx
+const [authorAliases, setAuthorAliases] = useState('');
+```
+
+**UI 输入**：
+
+```tsx
+<TextArea
+  value={authorAliases}
+  onChange={(e) => setAuthorAliases(e.target.value)}
+  placeholder={'e.g., John Doe, John D, johndoe, jdoe\nGroup multiple names that belong to the same contributor'}
+  rows={2}
+/>
+```
+
+**API 调用更新**：
+
+```tsx
+// 单仓库评估
+if (authorAliases.trim()) {
+  const aliases = authorAliases.split(',').map(a => a.trim().toLowerCase());
+  if (aliases.includes(author.author.toLowerCase())) {
+    requestBody = { aliases };
+  }
+}
+
+// 多仓库 Common Contributors
+body: JSON.stringify({
+  repos: [...],
+  author_aliases: authorAliases.trim() ? authorAliases : undefined
+})
+
+// 跨仓库对比
+body: JSON.stringify({
+  contributor: contributorName,
+  repos: [...],
+  author_aliases: authorAliases.trim() ? authorAliases : undefined
+})
+```
+
+**显示优化**：
+
+```tsx
+// .eval-header: 显示所有别名
+<h2>
+  {(() => {
+    const currentAuthor = authorsData[selectedAuthorIndex]?.author;
+    if (authorAliases.trim()) {
+      const aliases = authorAliases.split(',').map(a => a.trim()).filter(a => a);
+      if (aliases.some(a => a.toLowerCase() === currentAuthor?.toLowerCase())) {
+        return aliases.join(', ');  // "CarterWu, wu-yanbiao, 吴炎标"
+      }
+    }
+    return currentAuthor;
+  })()}
+</h2>
+
+// Common Contributors 表格: "also known as"
+render: (author, record) => {
+  const otherAliases = record.aliases.filter(a => a !== author);
+  return (
+    <Space direction="vertical">
+      <Space>
+        <Avatar src={...} />
+        <span>{author}</span>
+      </Space>
+      {otherAliases.length > 0 && (
+        <span style={{ fontSize: '0.85em', color: 'rgba(0,0,0,0.45)' }}>
+          also known as: {otherAliases.join(', ')}
+        </span>
+      )}
+    </Space>
+  );
+}
+```
+
+### 最佳实践
+
+1. **提前配置别名**：在 Dashboard 中分析前先填入已知的别名
+2. **利用缓存**：系统会自动缓存每个名称的评估结果，后续合并几乎不消耗额外 token
+3. **跨仓库一致性**：在多仓库分析中使用相同的别名配置，确保 Common Contributors 正确识别
+4. **增量更新**：当某个别名有新 commits 时，只需重新评估该别名，然后重新合并即可
+
 ## 项目结构（简版）
 
 ```

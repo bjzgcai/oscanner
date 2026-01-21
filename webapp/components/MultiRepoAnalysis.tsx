@@ -58,6 +58,7 @@ interface BatchResult {
 
 interface CommonContributor {
   author: string;
+  aliases: string[];
   email: string;
   repos: Array<{
     owner: string;
@@ -100,6 +101,7 @@ export default function MultiRepoAnalysis() {
   const [llmBaseUrl, setLlmBaseUrl] = useState('');
   const [llmChatUrl, setLlmChatUrl] = useState('');
   const [llmFallbackModels, setLlmFallbackModels] = useState('');
+  const [authorAliases, setAuthorAliases] = useState('');
 
   // Single-repo state (merged UI)
   const [singleRepo, setSingleRepo] = useState<{ platform: 'github' | 'gitee'; owner: string; repo: string; full_name: string } | null>(null);
@@ -367,10 +369,25 @@ export default function MultiRepoAnalysis() {
 
       const platformParam = platform || singleRepo?.platform || 'github';
 
+      // Parse author aliases and check if current author matches any
+      let requestBody: { aliases?: string[] } | undefined = undefined;
+      if (authorAliases.trim()) {
+        const aliases = authorAliases.split(',').map(a => a.trim().toLowerCase()).filter(a => a);
+        // Check if the current author matches any of the aliases
+        if (aliases.includes(author.author.toLowerCase().trim())) {
+          requestBody = { aliases };
+          appendLog(`Using ${aliases.length} aliases: ${aliases.join(', ')}`);
+        }
+      }
+
       try {
         const response = await fetch(
           `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}`,
-          { method: 'POST' }
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: requestBody ? JSON.stringify(requestBody) : undefined
+          }
         );
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -392,7 +409,7 @@ export default function MultiRepoAnalysis() {
         setLoadingText('');
       }
     },
-    [appendLog, authorsData, model]
+    [appendLog, authorsData, model, authorAliases, singleRepo?.platform]
   );
 
   const compareContributor = useCallback(
@@ -410,6 +427,7 @@ export default function MultiRepoAnalysis() {
             contributor: contributorName.trim(),
             repos: reposToCompare,
             model,
+            author_aliases: authorAliases.trim() ? authorAliases : undefined,
           }),
         });
 
@@ -441,7 +459,7 @@ export default function MultiRepoAnalysis() {
         setIsExecuting(false);
       }
     },
-    [appendLog, model]
+    [appendLog, model, authorAliases]
   );
 
   useEffect(() => {
@@ -613,6 +631,7 @@ export default function MultiRepoAnalysis() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             repos: reposWithData.map((r) => ({ owner: r.owner, repo: r.repo, platform: r.platform })),
+            author_aliases: authorAliases.trim() ? authorAliases : undefined,
           }),
         });
 
@@ -762,6 +781,20 @@ export default function MultiRepoAnalysis() {
                 </Button>
               </div>
             </div>
+
+            <div style={{ marginTop: 16 }}>
+              <label className="repos-label">
+                <UserOutlined />
+                <span>Author Aliases (optional, comma-separated names for the same person)</span>
+              </label>
+              <TextArea
+                value={authorAliases}
+                onChange={(e) => setAuthorAliases(e.target.value)}
+                placeholder={'e.g., John Doe, John D, johndoe, jdoe\nGroup multiple names that belong to the same contributor'}
+                rows={2}
+                disabled={loading}
+              />
+            </div>
           </div>
 
           {/* Errors are shown in Execution logs to keep behavior consistent. */}
@@ -901,7 +934,18 @@ export default function MultiRepoAnalysis() {
             <div className="eval-header">
               <Avatar size={80} src={authorsData[selectedAuthorIndex]?.avatar_url} icon={<UserOutlined />} />
               <div className="eval-header-info">
-                <h2>{authorsData[selectedAuthorIndex]?.author}</h2>
+                <h2>
+                  {(() => {
+                    const currentAuthor = authorsData[selectedAuthorIndex]?.author;
+                    if (authorAliases.trim()) {
+                      const aliases = authorAliases.split(',').map(a => a.trim()).filter(a => a);
+                      if (aliases.some(a => a.toLowerCase() === currentAuthor?.toLowerCase())) {
+                        return aliases.join(', ');
+                      }
+                    }
+                    return currentAuthor;
+                  })()}
+                </h2>
                 <div className="stats">
                   {evaluation.total_commits_analyzed} commits analyzed •{evaluation.commits_summary.total_additions} additions •
                   {evaluation.commits_summary.total_deletions} deletions
@@ -1014,6 +1058,7 @@ export default function MultiRepoAnalysis() {
                 dataSource={commonContributors.common_contributors.map((c) => ({
                   key: c.author,
                   author: c.author,
+                  aliases: c.aliases || [c.author],
                   email: c.email,
                   repo_count: c.repo_count,
                   total_commits: c.total_commits,
@@ -1025,12 +1070,22 @@ export default function MultiRepoAnalysis() {
                     title: 'Contributor',
                     dataIndex: 'author',
                     key: 'author',
-                    render: (author: string) => (
-                      <Space>
-                        <Avatar src={`https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=64&bold=true`} icon={<UserOutlined />} />
-                        <span style={{ fontWeight: 700 }}>{author}</span>
-                      </Space>
-                    ),
+                    render: (author: string, record: { author: string; aliases: string[]; email: string; repo_count: number; total_commits: number }) => {
+                      const otherAliases = record.aliases.filter((a: string) => a !== author);
+                      return (
+                        <Space direction="vertical" size={0}>
+                          <Space>
+                            <Avatar src={`https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=64&bold=true`} icon={<UserOutlined />} />
+                            <span style={{ fontWeight: 700 }}>{author}</span>
+                          </Space>
+                          {otherAliases.length > 0 && (
+                            <span style={{ fontSize: '0.85em', color: 'rgba(0,0,0,0.45)', marginLeft: 40 }}>
+                              also known as: {otherAliases.join(', ')}
+                            </span>
+                          )}
+                        </Space>
+                      );
+                    },
                   },
                   { title: 'Repos', dataIndex: 'repo_count', key: 'repo_count', width: 90 },
                   { title: 'Commits', dataIndex: 'total_commits', key: 'total_commits', width: 110 },
