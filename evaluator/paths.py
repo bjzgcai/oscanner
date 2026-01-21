@@ -25,27 +25,61 @@ def get_home_dir() -> Path:
 
 
 def get_data_dir() -> Path:
+    """
+    Get base data directory (without platform structure).
+    For new code, use get_platform_data_dir() instead.
+    """
     if os.getenv("OSCANNER_DATA_DIR"):
         return Path(os.environ["OSCANNER_DATA_DIR"]).expanduser()
     return get_home_dir() / "data"
 
 
-def get_cache_dir() -> Path:
-    if os.getenv("OSCANNER_CACHE_DIR"):
-        return Path(os.environ["OSCANNER_CACHE_DIR"]).expanduser()
-    cache_home = _xdg_dir("XDG_CACHE_HOME", Path.home() / ".cache")
-    return cache_home / "oscanner" / "cache"
+def get_platform_data_dir(platform: str, owner: str, repo: str) -> Path:
+    """
+    Get platform-specific data directory for a repository.
+
+    Args:
+        platform: Platform name (github, gitee, gitlab)
+        owner: Repository owner
+        repo: Repository name
+
+    Returns:
+        Path: data/{platform}/{owner}/{repo}
+    """
+    base_dir = get_data_dir()
+    return base_dir / platform / owner / repo
 
 
-def get_eval_cache_dir() -> Path:
-    if os.getenv("OSCANNER_EVAL_CACHE_DIR"):
-        return Path(os.environ["OSCANNER_EVAL_CACHE_DIR"]).expanduser()
-    return get_home_dir() / "evaluations" / "cache"
+def get_platform_eval_dir(platform: str, owner: str, repo: str) -> Path:
+    """
+    Get platform-specific evaluation directory for a repository.
+
+    Args:
+        platform: Platform name (github, gitee, gitlab)
+        owner: Repository owner
+        repo: Repository name
+
+    Returns:
+        Path: home/evaluations/{platform}/{owner}/{repo}
+    """
+    home_dir = get_home_dir()
+    return home_dir / "evaluations" / platform / owner / repo
 
 
 def ensure_dirs() -> None:
     get_data_dir().mkdir(parents=True, exist_ok=True)
-    get_cache_dir().mkdir(parents=True, exist_ok=True)
-    get_eval_cache_dir().mkdir(parents=True, exist_ok=True)
+
+
+def ensure_platform_dirs(platform: str, owner: str, repo: str) -> None:
+    """
+    Ensure platform-specific directories exist.
+
+    Args:
+        platform: Platform name (github, gitee, gitlab)
+        owner: Repository owner
+        repo: Repository name
+    """
+    get_platform_data_dir(platform, owner, repo).mkdir(parents=True, exist_ok=True)
+    get_platform_eval_dir(platform, owner, repo).mkdir(parents=True, exist_ok=True)
 
 

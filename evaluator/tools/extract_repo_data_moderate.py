@@ -98,6 +98,7 @@ def main():
     parser.add_argument('--out', required=True, help='Output directory')
     parser.add_argument('--token', help='GitHub token (or set GITHUB_TOKEN env var)')
     parser.add_argument('--max-commits', type=int, default=500, help='Max commits (0=all, recommended: 300-500)')
+    parser.add_argument('--platform', default='github', help='Platform (github, gitee, gitlab) - default: github')
     args = parser.parse_args()
 
     # Get token from args or environment
@@ -130,8 +131,10 @@ def main():
         sys.exit(1)
 
     repo_info = json.loads(repo_data)
+    # Add platform info to repo_info
+    repo_info['platform'] = args.platform
     save_json(out_dir / 'repo_info.json', repo_info)
-    print(f'  ✓ Saved repo info (stars: {repo_info.get("stargazers_count", 0)})')
+    print(f'  ✓ Saved repo info (stars: {repo_info.get("stargazers_count", 0)}, platform: {args.platform})')
 
     default_branch = repo_info.get('default_branch', 'main')
 
@@ -300,6 +303,25 @@ def main():
     }
 
     save_json(out_dir / 'EXTRACTION_INFO.json', summary)
+
+    # Create initial sync_state.json for incremental sync
+    if commits_index:
+        from datetime import datetime
+        first_commit = commits_index[0]
+        sync_state = {
+            "last_synced_at": datetime.now().isoformat(),
+            "last_commit_sha": first_commit.get("sha") or first_commit.get("hash"),
+            "last_commit_date": first_commit.get("date", ""),
+            "total_commits_fetched": len(commits_index),
+            "sync_history": [{
+                "synced_at": datetime.now().isoformat(),
+                "commits_added": len(commits_index),
+                "last_sha": first_commit.get("sha") or first_commit.get("hash"),
+                "mode": "initial_extraction"
+            }]
+        }
+        save_json(out_dir / 'sync_state.json', sync_state)
+        print(f"✓ Created sync_state.json (last commit: {first_commit.get('sha', first_commit.get('hash', ''))[:8]})")
 
     print('\n' + '='*60)
     print('✓ MODERATE EXTRACTION COMPLETE')
