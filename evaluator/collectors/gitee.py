@@ -243,7 +243,9 @@ class GiteeCollector:
         if "z.gitee.cn" in url or self.enterprise_base_url in url:
             return self.token  # Enterprise token
         else:
-            return self.public_token  # Public token
+            # Public token for gitee.com. If only `token` is provided (common),
+            # fall back to it to avoid accidentally making unauthenticated calls.
+            return self.public_token or self.token
 
     def _get_params(self, params: Dict[str, Any] = None, url: str = "") -> Dict[str, Any]:
         """

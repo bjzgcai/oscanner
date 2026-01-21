@@ -1,0 +1,474 @@
+"""
+AI-Native 2026 scan plugin.
+
+This plugin injects a rubric summary (derived from `engineer_level.md`) into the LLM prompt
+to bias reasoning toward "built-in quality", "reproducibility", "cloud-native", "agent/tooling",
+and "professionalism" evidence.
+
+Output remains compatible with the existing dashboard (six score keys + reasoning).
+"""
+
+import json
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import requests
+
+
+_RUBRIC_SUMMARY = """
+You are evaluating an engineer in the Vibe Coding era. Distinguish "AI搬运工" vs "系统构建者".
+Use L1-L5 behavioral profiles as guidance:
+- L1: blind copy/paste, cannot explain, low-level errors, no quality gates
+- L2: can deliver happy-path, basic norms, basic tests/lint, but shallow system thinking
+- L3: one-person full-stack MVP builder, can refactor AI code, stronger type discipline, edge cases
+- L4: team anchor, introduces quality gates, defensive validation, CI, docs, cost/ops thinking
+- L5: leader/maintainer, defines patterns/standards, affects ecosystem, deep architecture decisions
+
+Evidence to look for (prefer repo artifacts over claims):
+- Spec/quality: refactors, modularity, input validation, tests (unit/integration/property), lint/format, CI
+- Reproducibility: dependency locks, one-command run, docker/compose/devcontainer
+- Cloud-native: containerization, IaC, deployment configs, resource limits, automation
+- AI engineering: agent/tooling, structured prompts, tool abstractions, traces/logs, eval datasets
+- Professionalism: docs/ADR, meaningful commits/PRs, careful tradeoffs, security/perf considerations
+
+Scoring mapping: for each dimension, map observed evidence to a rough L1-L5 and convert to 0-100
+(L1≈10-30, L2≈30-50, L3≈50-70, L4≈70-85, L5≈85-100). Be conservative when evidence is missing.
+"""
+
+
+def create_commit_evaluator(
+    *,
+    data_dir: str,
+    api_key: str,
+    model: Optional[str] = None,
+    mode: str = "moderate",
+):
+    return CommitEvaluatorModerate(
+        data_dir=data_dir,
+        api_key=api_key,
+        mode=mode,
+        model=model,
+        rubric_text=_RUBRIC_SUMMARY,
+    )
+
+
+class CommitEvaluatorModerate:
+    """
+    Self-contained evaluator for the AI-Native 2026 rubric.
+
+    IMPORTANT: this plugin must not import from `evaluator/`.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_key: Optional[str] = None,
+        max_input_tokens: int = 190000,
+        data_dir: Optional[str] = None,
+        mode: str = "moderate",
+        model: Optional[str] = None,
+        api_base_url: Optional[str] = None,
+        chat_completions_url: Optional[str] = None,
+        fallback_models: Optional[List[str]] = None,
+        rubric_text: Optional[str] = None,
+    ):
+        self.api_key = (
+            api_key
+            or os.getenv("OSCANNER_LLM_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+            or os.getenv("OPEN_ROUTER_KEY")
+        )
+        self.api_base_url = (
+            api_base_url
+            or os.getenv("OSCANNER_LLM_BASE_URL")
+            or os.getenv("OPENAI_BASE_URL")
+            or "https://openrouter.ai/api/v1"
+        )
+        self.api_url = (
+            chat_completions_url
+            or os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL")
+            or f"{self.api_base_url.rstrip('/')}/chat/completions"
+        )
+        self.max_input_tokens = int(max_input_tokens)
+        self.data_dir = Path(data_dir) if data_dir else None
+        self.mode = mode
+        self.model = model or os.getenv("OSCANNER_LLM_MODEL") or "anthropic/claude-sonnet-4.5"
+        self.fallback_models = fallback_models
+        self.rubric_text = (rubric_text or "").strip()
+
+        self.dimensions = {
+            "ai_fullstack": "Practical Delivery & Built-in Quality",
+            "ai_architecture": "Architecture Evolution & Trade-offs",
+            "cloud_native": "Reproducibility & Cloud-Native Readiness",
+            "open_source": "Open Source Collaboration & Professionalism",
+            "intelligent_dev": "Intelligent Development & Automation",
+            "leadership": "Engineering Leadership (Reliability/Security/Perf)",
+        }
+        self.dimension_instructions = {
+            "ai_fullstack": "Evidence: refactors, type discipline, edge-case handling, tests, reliable delivery.",
+            "ai_architecture": "Evidence: modular boundaries, APIs, ADR/docs, migration strategy, trade-offs.",
+            "cloud_native": "Evidence: docker/compose, CI/CD, IaC, env management, reproducible builds.",
+            "open_source": "Evidence: meaningful commits, PR hygiene, reviews, iterative improvements.",
+            "intelligent_dev": "Evidence: tooling/scripts, lint/format, test pyramid depth, agent/tool usage.",
+            "leadership": "Evidence: quality gates, defensive programming, perf/security fixes, standards.",
+        }
+
+        self._file_cache: Dict[str, str] = {}
+        self._repo_structure: Optional[Dict[str, Any]] = None
+
+    def evaluate_engineer(
+        self,
+        *,
+        commits: List[Dict[str, Any]],
+        username: str,
+        max_commits: Optional[int] = None,
+        load_files: bool = True,
+        use_chunking: bool = True,
+    ) -> Dict[str, Any]:
+        if not commits:
+            return self._get_empty_evaluation(username)
+        analyzed_commits = commits if max_commits is None else commits[: int(max_commits)]
+        author_commits = [c for c in analyzed_commits if self._is_commit_by_author(c, username)]
+        if not author_commits:
+            return self._get_empty_evaluation(username)
+        if use_chunking and len(author_commits) > 20:
+            return self._evaluate_engineer_chunked(author_commits, username, load_files=load_files)
+        return self._evaluate_engineer_standard(author_commits, username, load_files=load_files)
+
+    def _is_commit_by_author(self, commit: Dict[str, Any], username: str) -> bool:
+        if "author" in commit and isinstance(commit["author"], str):
+            return commit["author"].lower() == username.lower()
+        if "commit" in commit:
+            author = commit.get("commit", {}).get("author", {}).get("name", "")
+            return bool(author) and author.lower() == username.lower()
+        return False
+
+    def _evaluate_engineer_standard(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
+        file_contents: Dict[str, str] = {}
+        repo_structure: Optional[Dict[str, Any]] = None
+        if self.mode == "moderate" and load_files and self.data_dir:
+            file_contents = self._load_relevant_files(commits)
+            repo_structure = self._load_repo_structure()
+        context = self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure)
+        scores = self._evaluate_with_llm(context, username)
+        return {
+            "username": username,
+            "total_commits_analyzed": len(commits),
+            "files_loaded": len(file_contents),
+            "mode": self.mode,
+            "scores": scores,
+            "commits_summary": self._summarize_commits(commits),
+        }
+
+    def _evaluate_engineer_chunked(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
+        commits_per_chunk = 15 if self.mode == "moderate" else 20
+        chunks = [commits[i : i + commits_per_chunk] for i in range(0, len(commits), commits_per_chunk)]
+        repo_structure = None
+        if self.mode == "moderate" and load_files and self.data_dir:
+            repo_structure = self._load_repo_structure()
+        accumulated = None
+        all_files: Dict[str, str] = {}
+        for idx, chunk in enumerate(chunks, 1):
+            chunk_files: Dict[str, str] = {}
+            if self.mode == "moderate" and load_files and self.data_dir:
+                chunk_files = self._load_relevant_files(chunk)
+                all_files.update(chunk_files)
+            context = self._build_chunked_context(
+                chunk,
+                username,
+                chunk_idx=idx,
+                total_chunks=len(chunks),
+                file_contents=chunk_files,
+                repo_structure=repo_structure if idx == 1 else None,
+                previous_evaluation=accumulated,
+            )
+            chunk_scores = self._evaluate_with_llm(context, username, chunk_idx=idx)
+            if accumulated is None:
+                accumulated = chunk_scores
+            else:
+                accumulated = self._merge_evaluations(accumulated, chunk_scores, idx)
+        return {
+            "username": username,
+            "total_commits_analyzed": len(commits),
+            "files_loaded": len(all_files),
+            "mode": self.mode,
+            "scores": accumulated or self._fallback_evaluation(""),
+            "commits_summary": self._summarize_commits(commits),
+            "chunked": True,
+            "chunks_processed": len(chunks),
+        }
+
+    def _build_commit_context(
+        self,
+        commits: List[Dict[str, Any]],
+        username: str,
+        *,
+        file_contents: Dict[str, str],
+        repo_structure: Optional[Dict[str, Any]],
+    ) -> str:
+        parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
+        if repo_structure:
+            parts.append("REPO STRUCTURE (truncated):")
+            parts.append(json.dumps(repo_structure, ensure_ascii=False)[:8000])
+            parts.append("")
+        if file_contents:
+            parts.append("RELEVANT FILE CONTENTS:")
+            for p, content in list(file_contents.items())[:25]:
+                parts.append(f"\n--- FILE: {p} ---\n{content[:12000]}")
+            parts.append("")
+        parts.append("COMMITS:")
+        for c in commits[:50]:
+            sha = c.get("sha") or c.get("hash") or ""
+            msg = (c.get("message") or c.get("commit", {}).get("message") or "").split("\n")[0][:160]
+            parts.append(f"\n- {sha} {msg}")
+            for f in (c.get("files") or [])[:30]:
+                if isinstance(f, dict):
+                    fn = f.get("filename") or ""
+                    patch = f.get("patch") or ""
+                    parts.append(f"  * {fn}\n{patch[:4000]}")
+        return "\n".join(parts)
+
+    def _build_chunked_context(
+        self,
+        commits: List[Dict[str, Any]],
+        username: str,
+        *,
+        chunk_idx: int,
+        total_chunks: int,
+        file_contents: Dict[str, str],
+        repo_structure: Optional[Dict[str, Any]],
+        previous_evaluation: Optional[Dict[str, Any]],
+    ) -> str:
+        parts = [f"CHUNK {chunk_idx}/{total_chunks}", ""]
+        if previous_evaluation:
+            parts.append("PREVIOUS EVALUATION (scores+reasoning):")
+            parts.append(json.dumps(previous_evaluation, ensure_ascii=False)[:12000])
+            parts.append("")
+        parts.append(self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure))
+        return "\n".join(parts)
+
+    def _load_relevant_files(self, commits: List[Dict[str, Any]]) -> Dict[str, str]:
+        if not self.data_dir:
+            return {}
+        files: List[str] = []
+        for c in commits:
+            for f in c.get("files") or []:
+                if isinstance(f, dict) and f.get("filename"):
+                    files.append(str(f["filename"]))
+        seen = set()
+        uniq: List[str] = []
+        for p in files:
+            if p in seen:
+                continue
+            seen.add(p)
+            uniq.append(p)
+        out: Dict[str, str] = {}
+        for rel in uniq[:25]:
+            if rel in self._file_cache:
+                out[rel] = self._file_cache[rel]
+                continue
+            abs_path = (self.data_dir / "files" / rel).resolve()
+            try:
+                if abs_path.exists() and abs_path.is_file():
+                    content = abs_path.read_text(encoding="utf-8", errors="ignore")
+                    self._file_cache[rel] = content
+                    out[rel] = content
+            except Exception:
+                continue
+        return out
+
+    def _load_repo_structure(self) -> Optional[Dict[str, Any]]:
+        if self._repo_structure is not None:
+            return self._repo_structure
+        if not self.data_dir:
+            return None
+        p = self.data_dir / "repo_structure.json"
+        try:
+            if p.exists():
+                self._repo_structure = json.loads(p.read_text(encoding="utf-8"))
+                return self._repo_structure
+        except Exception:
+            return None
+        return None
+
+    def _evaluate_with_llm(self, context: str, username: str, chunk_idx: Optional[int] = None) -> Dict[str, Any]:
+        allow_fallback = str(os.getenv("OSCANNER_ALLOW_FALLBACK") or "").strip().lower() in ("1", "true", "yes", "y")
+        if not self.api_key:
+            if allow_fallback:
+                return self._fallback_evaluation(context)
+            raise RuntimeError("LLM not configured (missing API key)")
+        prompt = self._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)
+        models_to_try = [self.model] + (self.fallback_models or [])
+        last_err = None
+        for m in models_to_try:
+            try:
+                resp = requests.post(
+                    self.api_url,
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": m,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.3,
+                        "max_tokens": 1500,
+                    },
+                    timeout=90,
+                )
+                if not resp.ok:
+                    last_err = f"{resp.status_code} {resp.text[:200]}"
+                    continue
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                return self._parse_llm_response(content)
+            except Exception as e:
+                last_err = str(e)
+                continue
+        if allow_fallback:
+            return self._fallback_evaluation(context)
+        raise RuntimeError(f"LLM request failed for all models. last_error={last_err}")
+
+    def _estimate_tokens(self, text: str) -> int:
+        return max(1, len(text) // 4)
+
+    def _truncate_context(self, context: str, max_tokens: int) -> str:
+        cur = self._estimate_tokens(context)
+        if cur <= max_tokens:
+            return context
+        target_chars = max_tokens * 4
+        return context[:target_chars] + "\n\n[... Context truncated ...]"
+
+    def _build_evaluation_prompt(self, context: str, username: str, chunk_idx: Optional[int] = None) -> str:
+        prompt_template_tokens = 900
+        max_context_tokens = self.max_input_tokens - prompt_template_tokens
+        context = self._truncate_context(context, max_context_tokens)
+
+        mode_note = ""
+        if self.mode == "moderate":
+            mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
+
+        chunked_instruction = ""
+        if chunk_idx:
+            chunked_instruction = "\nCHUNKED: Update scores based on previous + new evidence; provide full reasoning."
+
+        rubric_block = ""
+        if self.rubric_text:
+            snippet = self.rubric_text
+            if len(snippet) > 6000:
+                snippet = snippet[:6000] + "\n...[rubric truncated]..."
+            rubric_block = f"\n\nRUBRIC / STANDARD:\n{snippet}\n"
+
+        dim_lines: List[str] = []
+        i = 1
+        for k, title in self.dimensions.items():
+            guide = (self.dimension_instructions.get(k) or "").strip()
+            dim_lines.append(f"{i}. **{title} ({k})**: {guide}" if guide else f"{i}. **{title} ({k})**")
+            i += 1
+        dims_text = "\n".join(dim_lines)
+
+        reasoning_line = (
+            "  \"reasoning\": \"Use the rubric. Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**.\""
+        )
+        fmt_lines = ["{"] + [f'  "{k}": <0-100>,' for k in self.dimensions.keys()] + [reasoning_line, "}"]
+        fmt_text = "\n".join(fmt_lines)
+
+        return (
+            f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
+            f"{mode_note}{chunked_instruction}{rubric_block}\n\nDATA:\n{context}\n\nDIMENSIONS:\n{dims_text}\n\n"
+            f"Return ONLY valid JSON:\n{fmt_text}"
+        )
+
+    def _parse_llm_response(self, content: str) -> Dict[str, Any]:
+        try:
+            start = content.find("{")
+            end = content.rfind("}") + 1
+            if start >= 0 and end > start:
+                data = json.loads(content[start:end])
+                out: Dict[str, Any] = {}
+                for k in self.dimensions.keys():
+                    out[k] = min(100, max(0, int(data.get(k, 0))))
+                if "reasoning" in data:
+                    out["reasoning"] = self._format_reasoning(str(data["reasoning"]))
+                return out
+        except Exception:
+            pass
+        return {k: 50 for k in self.dimensions.keys()}
+
+    def _format_reasoning(self, reasoning: str) -> str:
+        r = (reasoning or "").replace("\\n\\n", "\n\n").replace("\\n", "\n")
+        return r.strip()
+
+    def _merge_evaluations(self, prev: Dict[str, Any], new: Dict[str, Any], chunk_idx: int) -> Dict[str, Any]:
+        out: Dict[str, Any] = {}
+        for k in self.dimensions.keys():
+            out[k] = int(round((int(prev.get(k, 0)) + int(new.get(k, 0))) / 2))
+        pr = str(prev.get("reasoning", "")).strip()
+        nr = str(new.get("reasoning", "")).strip()
+        out["reasoning"] = (nr + "\n\n---\n\n" + pr).strip() if (nr and pr) else (nr or pr)
+        out["chunks_merged"] = chunk_idx
+        return out
+
+    def _fallback_evaluation(self, context: str) -> Dict[str, Any]:
+        text = (context or "").lower()
+
+        def score_by_keywords(keywords: List[str]) -> int:
+            hits = sum(1 for kw in keywords if kw in text)
+            if not keywords:
+                return 0
+            return min(100, int((hits / len(keywords)) * 100))
+
+        # Heuristic keywords tuned toward engineer_level.md signals
+        kw = {
+            "ai_fullstack": ["refactor", "test", "lint", "type", "validation", "error", "edge", "bugfix"],
+            "ai_architecture": ["architecture", "adr", "design", "interface", "module", "boundary", "migration", "trade-off"],
+            "cloud_native": ["docker", "compose", "kubernetes", "deploy", "ci", "cd", "terraform", "devcontainer"],
+            "open_source": ["pr", "review", "issue", "docs", "changelog", "release", "discussion", "community"],
+            "intelligent_dev": ["automation", "script", "tool", "agent", "prompt", "eval", "dataset", "trace"],
+            "leadership": ["security", "performance", "optimize", "reliability", "incident", "standard", "best practice"],
+        }
+
+        scores: Dict[str, Any] = {}
+        for k in self.dimensions.keys():
+            scores[k] = score_by_keywords(kw.get(k, []))
+
+        scores["reasoning"] = (
+            "**Note:** LLM not available or failed; using rubric-flavored keyword heuristic scoring.\n\n"
+            "**Key Strengths:** Scores reflect presence of quality/reproducibility/professionalism signals in artifacts.\n\n"
+            "**Areas for Growth:** Configure a working LLM provider for evidence-weighted, context-aware assessment.\n\n"
+            "**Overall Assessment:** Treat these scores as rough indicators only."
+        )
+        return scores
+
+    def _summarize_commits(self, commits: List[Dict[str, Any]]) -> Dict[str, Any]:
+        total_additions = 0
+        total_deletions = 0
+        files_changed = set()
+        languages = set()
+        for commit in commits:
+            stats = commit.get("stats", {}) if isinstance(commit.get("stats"), dict) else {}
+            total_additions += int(stats.get("additions", 0) or 0)
+            total_deletions += int(stats.get("deletions", 0) or 0)
+            for fi in commit.get("files") or []:
+                if isinstance(fi, dict):
+                    fn = fi.get("filename") or ""
+                    if fn:
+                        files_changed.add(fn)
+                        if "." in fn:
+                            languages.add(fn.rsplit(".", 1)[-1])
+        return {
+            "total_additions": total_additions,
+            "total_deletions": total_deletions,
+            "files_changed": len(files_changed),
+            "languages": list(languages)[:10],
+        }
+
+    def _get_empty_evaluation(self, username: str) -> Dict[str, Any]:
+        return {
+            "username": username,
+            "total_commits_analyzed": 0,
+            "files_loaded": 0,
+            "mode": self.mode,
+            "scores": {k: 0 for k in self.dimensions.keys()},
+            "commits_summary": {"total_additions": 0, "total_deletions": 0, "files_changed": 0, "languages": []},
+        }
+
+

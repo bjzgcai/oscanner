@@ -1,0 +1,9 @@
+id: zgc_simple
+name: "ZGC Simple (Default)"
+version: "0.1.0"
+description: "Default evaluation plugin based on CommitEvaluatorModerate."
+default: true
+scan_entry: "scan/__init__.py"
+view_single_entry: "view/single_repo.tsx"
+view_compare_entry: "view/multi_repo_compare.tsx"
+view_entry: "view/index.tsx"

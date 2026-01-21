@@ -19,13 +19,30 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"],
+      "antd": ["./node_modules/antd"],
+      "antd/*": ["./node_modules/antd/*"],
+      "@ant-design/icons": ["./node_modules/@ant-design/icons"],
+      "@ant-design/icons/*": ["./node_modules/@ant-design/icons/*"],
+      "echarts-for-react": ["./node_modules/echarts-for-react"],
+      "echarts-for-react/*": ["./node_modules/echarts-for-react/*"],
+      "react-markdown": ["./node_modules/react-markdown"],
+      "react-markdown/*": ["./node_modules/react-markdown/*"],
+      "react-chartjs-2": ["./node_modules/react-chartjs-2"],
+      "react-chartjs-2/*": ["./node_modules/react-chartjs-2/*"],
+      "chart.js": ["./node_modules/chart.js"],
+      "chart.js/*": ["./node_modules/chart.js/*"]
     }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "../plugins/**/*.ts",
+    "../plugins/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"

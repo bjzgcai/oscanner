@@ -1,25 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Input, Button, Card, Avatar, Spin, Alert, Tag, message } from 'antd';
+import { Input, Button, Card, Avatar, Spin, Alert, message } from 'antd';
 import { UserOutlined, DownloadOutlined } from '@ant-design/icons';
-import { Radar } from 'react-chartjs-2';
-import ReactMarkdown from 'react-markdown';
-import {
-  Chart as ChartJS,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+import PluginViewRenderer from './PluginViewRenderer';
 import { exportHomePagePDF } from '../utils/pdfExport';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
-
-// Register ChartJS components
-ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 // Default to same-origin so the bundled dashboard works when served by the backend.
 // For separate frontend dev server, set NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000
@@ -27,14 +14,6 @@ const API_SERVER_URL = getApiBaseUrl();
 const STORAGE_KEY = 'local_repo_history';
 const MAX_HISTORY = 20;
 
-const dimensions = [
-  { name: 'AI Model Full-Stack', key: 'ai_fullstack', description: 'AI/ML model development, training, optimization, and deployment capabilities' },
-  { name: 'AI Native Architecture', key: 'ai_architecture', description: 'AI-first system design, API architecture, and microservices patterns' },
-  { name: 'Cloud Native Engineering', key: 'cloud_native', description: 'Containerization, infrastructure as code, CI/CD, and cloud platform expertise' },
-  { name: 'Open Source Collaboration', key: 'open_source', description: 'Contribution quality, code review, issue management, and communication' },
-  { name: 'Intelligent Development', key: 'intelligent_dev', description: 'AI-assisted development, automation, testing, and development efficiency' },
-  { name: 'Engineering Leadership', key: 'leadership', description: 'Technical decision-making, optimization, security, and best practices' },
-];
 
 interface Author {
   author: string;
@@ -66,10 +45,11 @@ interface RepoData {
 
 export default function SingleRepoAnalysis() {
   const [repoPath, setRepoPath] = useState('');
-  const { model } = useAppSettings();
+  const { model, pluginId, useCache } = useAppSettings();
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
-  const [error, setError] = useState('');
+  const [repoError, setRepoError] = useState('');
+  const [evalError, setEvalError] = useState('');
   const [repoData, setRepoData] = useState<RepoData | null>(null);
   const [authorsData, setAuthorsData] = useState<Author[]>([]);
   const [selectedAuthorIndex, setSelectedAuthorIndex] = useState<number>(-1);
@@ -132,12 +112,14 @@ export default function SingleRepoAnalysis() {
 
   const analyzeRepository = async () => {
     if (!repoPath) {
-      setError('Please enter a repository URL');
+      setRepoError('Please enter a repository URL');
       return;
     }
     const parsed = parseRepoUrl(repoPath);
     if (!parsed) {
-      setError('Invalid repository URL. Please use a valid format like: https://github.com/owner/repo or https://gitee.com/owner/repo');
+      setRepoError(
+        'Invalid repository URL. Please use a valid format like: https://github.com/owner/repo or https://gitee.com/owner/repo'
+      );
       return;
     }
 
@@ -145,7 +127,8 @@ export default function SingleRepoAnalysis() {
 
     setLoading(true);
     setLoadingText('Loading repository data...');
-    setError('');
+    setRepoError('');
+    setEvalError('');
     setRepoData(null);
     setAuthorsData([]);
     setEvaluation(null);
@@ -177,7 +160,7 @@ export default function SingleRepoAnalysis() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setRepoError(msg);
     } finally {
       setLoading(false);
     }
@@ -193,10 +176,12 @@ export default function SingleRepoAnalysis() {
     setSelectedAuthorIndex(index);
     setLoading(true);
     setLoadingText(`Analyzing ${author.author}'s commits with AI...`);
+    setEvalError('');
+    setEvaluation(null);
 
     try {
       const response = await fetch(
-        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}`,
+        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}`,
         { method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to evaluate author');
@@ -206,34 +191,13 @@ export default function SingleRepoAnalysis() {
       setEvaluation(result.evaluation);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setEvalError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const getChartData = () => {
-    if (!evaluation) return null;
-    return {
-      labels: dimensions.map((d) => d.name),
-      datasets: [
-        {
-          label: 'Engineering Skills',
-          data: dimensions.map((d) => evaluation.scores[d.key] || 0),
-          fill: true,
-          backgroundColor: 'rgba(255, 235, 0, 0.15)',
-          borderColor: '#FFEB00',
-          pointBackgroundColor: '#00F0FF',
-          pointBorderColor: '#0A0A0A',
-          pointHoverBackgroundColor: '#FF006B',
-          pointHoverBorderColor: '#FFEB00',
-          pointRadius: 8,
-          pointHoverRadius: 12,
-          borderWidth: 3,
-        },
-      ],
-    };
-  };
+  // Result visualization is fully handled by plugin views.
 
   const handleDownloadPDF = async () => {
     if (!repoData || !evaluation || selectedAuthorIndex < 0) {
@@ -252,29 +216,7 @@ export default function SingleRepoAnalysis() {
     }
   };
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      r: {
-        angleLines: { display: true, color: '#333', lineWidth: 2 },
-        grid: { color: '#333', lineWidth: 2 },
-        suggestedMin: 0,
-        suggestedMax: 100,
-        ticks: {
-          stepSize: 20,
-          backdropColor: 'transparent',
-          color: '#B0B0B0',
-          font: { size: 12, family: "'Azeret Mono', monospace", weight: 'bold' as const },
-        },
-        pointLabels: {
-          color: '#FFFFFF',
-          font: { size: 13, weight: 'bold' as const, family: "'Syne', sans-serif" },
-        },
-      },
-    },
-    plugins: { legend: { display: false } },
-  };
+  // Result visualization is fully handled by plugin views.
 
   const filteredHistory = history.filter((h) => h.toLowerCase().includes(repoPath.toLowerCase()));
 
@@ -317,13 +259,13 @@ export default function SingleRepoAnalysis() {
         {/* Model selection is global (Navigation bar). */}
       </Card>
 
-      {error && (
+      {repoError && (
         <Alert
           message="Error"
-          description={error}
+          description={repoError}
           type="error"
           closable
-          onClose={() => setError('')}
+          onClose={() => setRepoError('')}
           style={{ marginBottom: 20 }}
         />
       )}
@@ -357,7 +299,7 @@ export default function SingleRepoAnalysis() {
         </Card>
       )}
 
-      {evaluation && (
+      {(evaluation || evalError || (loading && selectedAuthorIndex >= 0)) && (
         <Card className="evaluation-section">
           <Spin spinning={loading} size="large" tip={loadingText}>
             <div className="eval-header">
@@ -365,8 +307,9 @@ export default function SingleRepoAnalysis() {
               <div className="eval-header-info">
                 <h2>{authorsData[selectedAuthorIndex]?.author}</h2>
                 <div className="stats">
-                  {evaluation.total_commits_analyzed} commits analyzed •{evaluation.commits_summary.total_additions} additions •
-                  {evaluation.commits_summary.total_deletions} deletions
+                  {evaluation
+                    ? `${evaluation.total_commits_analyzed} commits analyzed •${evaluation.commits_summary.total_additions} additions •${evaluation.commits_summary.total_deletions} deletions`
+                    : 'No evaluation available'}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -381,39 +324,13 @@ export default function SingleRepoAnalysis() {
               </div>
             </div>
 
-            <div className="chart-container" id="radar-chart-export">
-              {getChartData() && <Radar data={getChartData()!} options={chartOptions} />}
-            </div>
-
-            <div className="dimensions-grid">
-              {dimensions.map((dim) => {
-                const score = evaluation.scores[dim.key] || 0;
-                return (
-                  <Card key={dim.key} className="dimension-card">
-                    <h4>{dim.name}</h4>
-                    <div className="score-display">
-                      <div className="score-row">
-                        <span className="score-label">Score:</span>
-                        <span className="score">{score}</span>
-                      </div>
-                    </div>
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${score}%` }} />
-                    </div>
-                    <div className="description">{dim.description}</div>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {evaluation.scores.reasoning && (
-              <Card className="reasoning-section">
-                <h3>AI Analysis Summary</h3>
-                <div className="markdown-content">
-                  <ReactMarkdown>{evaluation.scores.reasoning as string}</ReactMarkdown>
-                </div>
-              </Card>
-            )}
+            <PluginViewRenderer
+              pluginId={pluginId || 'zgc_simple'}
+              evaluation={evaluation}
+              title={`Analysis View (${pluginId || 'zgc_simple'})`}
+              loading={loading}
+              error={evalError}
+            />
           </Spin>
         </Card>
       )}

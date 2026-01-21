@@ -302,7 +302,7 @@ to see instructions.
 │   ├── __init__.py
 │   ├── core.py                # Main evaluation engine
 │   ├── dimensions.py          # Six dimension evaluators
-│   ├── commit_evaluator_moderate.py  # LLM-powered commit analysis (moderate)
+│   ├── plugins/*/scan/__init__.py    # Plugin-provided evaluators (self-contained)
 │   ├── paths.py               # Data/cache path strategy (user-dir by default)
 │   ├── collectors/
 │   │   ├── __init__.py
