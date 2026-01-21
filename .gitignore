@@ -63,3 +63,4 @@ evaluations/cache/
 coverage/
 .nyc_output/
 dashboard_dist/
+task_records/
