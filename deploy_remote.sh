@@ -57,7 +57,6 @@ ssh ${REMOTE_USER}@${REMOTE_HOST} "cat > ${REMOTE_PATH}/evaluator/.env.productio
 PORT=${EVALUATOR_PORT}
 OPEN_ROUTER_KEY=$(grep OPEN_ROUTER_KEY evaluator/.env.local | cut -d'=' -f2)
 GITEE_TOKEN=$(grep GITEE_TOKEN evaluator/.env.local | cut -d'=' -f2 | head -1)
-PUBLIC_GITEE_TOKEN=$(grep PUBLIC_GITEE_TOKEN evaluator/.env.local | cut -d'=' -f2)
 GITHUB_TOKEN=$(grep GITHUB_TOKEN evaluator/.env.local | cut -d'=' -f2)
 EOF"
 

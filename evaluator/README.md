@@ -143,7 +143,6 @@ OPEN_ROUTER_KEY=sk-or-v1-your-key-here
 GITHUB_TOKEN=your_github_token
 
 # Gitee tokens (optional)
-PUBLIC_GITEE_TOKEN=your_public_gitee_token
 GITEE_TOKEN=your_enterprise_gitee_token
 ```
 
@@ -668,7 +667,6 @@ data/
 |----------|-------------|----------|
 | `OPEN_ROUTER_KEY` | OpenRouter API key for LLM calls | Yes |
 | `GITHUB_TOKEN` | GitHub personal access token | No |
-| `PUBLIC_GITEE_TOKEN` | Public Gitee access token | No |
 | `GITEE_TOKEN` | Enterprise Gitee access token | No |
 | `PORT` | Server port (default: 8000) | No |
 
