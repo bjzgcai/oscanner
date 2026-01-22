@@ -3,6 +3,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 type AppSettings = {
+  useCache: boolean;
+  setUseCache: (v: boolean) => void;
   model: string;
   setModel: (v: string) => void;
   pluginId: string;
@@ -11,6 +13,7 @@ type AppSettings = {
   refreshPlugins: () => Promise<void>;
 };
 
+const STORAGE_KEY_USE_CACHE = 'oscanner_use_cache';
 const STORAGE_KEY_MODEL = 'oscanner_llm_model';
 const STORAGE_KEY_PLUGIN = 'oscanner_plugin_id';
 const DEFAULT_MODEL = 'Pro/zai-org/GLM-4.7';
@@ -23,9 +26,20 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [model, setModelState] = useState(DEFAULT_MODEL);
   const [pluginId, setPluginIdState] = useState(DEFAULT_PLUGIN);
   const [plugins, setPlugins] = useState<AppSettings['plugins']>([]);
+  const [useCache, setUseCacheState] = useState(true);
 
   // Load from localStorage after hydration is complete
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY_USE_CACHE);
+      if (raw === 'true') {
+        setUseCacheState(true);
+      } else if (raw === 'false') {
+        setUseCacheState(false);
+      }
+    } catch {
+      // ignore
+    }
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY_MODEL);
       if (raw) {
@@ -55,6 +69,16 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     setModelState(next);
     try {
       localStorage.setItem(STORAGE_KEY_MODEL, next);
+    } catch {
+      // ignore
+    }
+  };
+
+  const setUseCache = (v: boolean) => {
+    const next = Boolean(v);
+    setUseCacheState(next);
+    try {
+      localStorage.setItem(STORAGE_KEY_USE_CACHE, String(next));
     } catch {
       // ignore
     }
@@ -92,8 +116,8 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   }, [refreshPlugins]);
 
   const value = useMemo(
-    () => ({ model, setModel, pluginId, setPluginId, plugins, refreshPlugins }),
-    [model, pluginId, plugins, refreshPlugins]
+    () => ({ useCache, setUseCache, model, setModel, pluginId, setPluginId, plugins, refreshPlugins }),
+    [useCache, model, pluginId, plugins, refreshPlugins]
   );
 
   return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
