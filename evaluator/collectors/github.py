@@ -33,13 +33,12 @@ class GitHubCollector:
         # Create cache directory if it doesn't exist
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def collect_user_data(self, username: str, use_cache: bool = True) -> Dict[str, Any]:
+    def collect_user_data(self, username: str) -> Dict[str, Any]:
         """
         Collect comprehensive data for a GitHub user
 
         Args:
             username: GitHub username
-            use_cache: Whether to use cached data if available
 
         Returns:
             Dictionary containing collected data
@@ -47,11 +46,10 @@ class GitHubCollector:
         # Create a pseudo-URL for cache key
         user_url = f"https://github.com/{username}"
 
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_from_cache(user_url)
-            if cached_data is not None:
-                return cached_data.get("data", cached_data)
+        # Check cache first
+        cached_data = self._load_from_cache(user_url)
+        if cached_data is not None:
+            return cached_data.get("data", cached_data)
 
         # Fetch data (in real implementation, this would use the GitHub API)
         print(f"[API] Fetching fresh data for user {username}")
@@ -115,23 +113,21 @@ class GitHubCollector:
 
         return data
 
-    def collect_repo_data(self, repo_url: str, use_cache: bool = True) -> Dict[str, Any]:
+    def collect_repo_data(self, repo_url: str) -> Dict[str, Any]:
         """
         Collect data from a specific repository
 
         Args:
             repo_url: GitHub repository URL
-            use_cache: Whether to use cached data if available
 
         Returns:
             Dictionary containing repository data
         """
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_from_cache(repo_url)
-            if cached_data is not None:
-                # Return the actual data, not the metadata wrapper
-                return cached_data.get("data", cached_data)
+        # Check cache first
+        cached_data = self._load_from_cache(repo_url)
+        if cached_data is not None:
+            # Return the actual data, not the metadata wrapper
+            return cached_data.get("data", cached_data)
 
         # Parse repo URL
         match = re.search(r"github\.com/([^/]+)/([^/]+)", repo_url)
