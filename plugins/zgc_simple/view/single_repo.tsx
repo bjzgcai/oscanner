@@ -11,18 +11,11 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import type { PluginSingleRepoViewProps } from '../../_shared/view/types';
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-type EvalData = {
-  scores: Record<string, number | string>;
-  total_commits_analyzed?: number;
-  commits_summary?: { total_additions: number; total_deletions: number; files_changed: number; languages: string[] };
-  plugin?: string;
-  plugin_version?: string;
-};
-
-export default function PluginView(props: { evaluation: EvalData | null; title?: string; loading?: boolean; error?: string }) {
+export default function PluginView(props: PluginSingleRepoViewProps) {
   const { evaluation, title, loading, error } = props;
   if (error) {
     return <Alert type="error" showIcon title="Evaluation failed" description={error} />;

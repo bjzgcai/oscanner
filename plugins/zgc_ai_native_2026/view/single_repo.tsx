@@ -1,13 +1,7 @@
 import React from 'react';
 import { Alert, Card, Spin, Tag } from 'antd';
 import ReactMarkdown from 'react-markdown';
-
-type EvalData = {
-  scores: Record<string, number | string>;
-  total_commits_analyzed?: number;
-  plugin?: string;
-  plugin_version?: string;
-};
+import type { PluginSingleRepoViewProps } from '../../_shared/view/types';
 
 function levelFromScore(score: number): string {
   if (score >= 85) return 'L5';
@@ -25,7 +19,7 @@ function levelColor(level: string): string {
   return 'red';
 }
 
-export default function PluginView(props: { evaluation: EvalData | null; title?: string; loading?: boolean; error?: string }) {
+export default function PluginView(props: PluginSingleRepoViewProps) {
   const { evaluation, title, loading, error } = props;
   if (error) {
     return <Alert type="error" showIcon title="Evaluation failed" description={error} />;
