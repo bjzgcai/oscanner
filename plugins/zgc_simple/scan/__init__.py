@@ -2,6 +2,9 @@
 Default scan plugin (self-contained).
 
 IMPORTANT: this plugin must not import from `evaluator/`.
+
+Scan contract (inputs/outputs) is documented at:
+- plugins/_shared/scan/README.md
 """
 
 import json

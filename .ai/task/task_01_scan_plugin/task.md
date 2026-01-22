@@ -172,17 +172,33 @@
   - 在根目录的 `plugins/` 目录下，每个插件一个子目录，例如：
     - `plugins/zgc_simple`：把当前默认扫描能力（moderate evaluator）沉淀为默认插件
     - `plugins/zgc_ai_native_2026`：以 `engineer_level.md` 为 rubric 的扫描实现（第一版先做到“可跑 + 有初步差异化输出”）
-2. 每个插件目录包结构如下（view 第一版可空）：
+2. `plugins/` 目录结构（包含共享契约 `_shared/`；view 第一版可空）：
 
 ```
+plugins/
+├── _shared
+│   ├── scan
+│   │   └── README.md               # 【必读】scan 插件契约：输入/输出/函数约定（给插件开发者）
+│   └── view
+│       ├── types.ts                # 【必读】view 输入数据类型：SingleRepo/MultiRepoCompare 的 props 与数据结构
+│       └── ContributorComparisonBase.tsx
+├── zgc_ai_native_2026
+│   ├── index.yaml
+│   ├── scan
+│   │   └── __init__.py
+│   └── view
+│       ├── index.tsx
+│       ├── multi_repo_compare.tsx
+│       ├── README.md
+│       └── single_repo.tsx
 └── zgc_simple
     ├── index.yaml
     ├── scan
     │   └── __init__.py
     └── view
-        ├── single_repo.tsx          # 可选：单仓分析结果视图（SingleRepoAnalysis / MultiRepo 的单仓评估卡片复用）
-        ├── multi_repo_compare.tsx   # 可选：多仓对比视图（MultiRepoAnalysis 的 compare 区域）
-        ├── index.tsx                # 兼容：等价 re-export single_repo.tsx（可选）
+        ├── index.tsx
+        ├── multi_repo_compare.tsx
+        └── single_repo.tsx
 ```
 
 其中 `index.yaml` 描述了该插件的元数据，方便后端和前端解析后加载。
@@ -194,6 +210,33 @@
   - `view/single_repo.tsx`
   - `view/multi_repo_compare.tsx`
 - 这样能让“单仓分析”和“多仓对比”在插件层面可独立演进、易维护、易验收。
+
+### 共享契约（给插件开发者的“明确输入/输出”）
+
+> 目标：插件开发者不需要阅读 webapp 或 server 实现，也能清楚知道：
+> 1) `scan/` 收到什么输入，必须返回什么输出；2) `view/` 收到什么输入数据，应该怎么渲染。
+
+#### View（前端渲染）输入契约：`plugins/_shared/view/types.ts`
+
+- 插件 `view/single_repo.tsx` **必须**导出一个 React 组件，接收统一 props：
+  - `PluginSingleRepoViewProps`（包含 `evaluation | loading | error | title`）
+  - `evaluation` 的核心结构（兼容字段）：
+    - `evaluation.scores`: 至少包含六维分数 + `reasoning`（string）
+    - 可选包含：`total_commits_analyzed` / `commits_summary` / `plugin` / `plugin_version` / `plugin_scan_path`
+- 插件 `view/multi_repo_compare.tsx` **必须**导出一个 React 组件，接收统一 props：
+  - `PluginMultiRepoCompareViewProps`（包含 `data | loading | error`）
+  - `data` 对应后端 compare 接口返回（`ContributorComparisonData`）
+- 插件 view 实现 **禁止**用 `any` 作为输入类型（除非有明确注释解释原因）；应从 `plugins/_shared/view/types.ts` import。
+
+#### Scan（后端评估）输入/输出契约：`plugins/_shared/scan/README.md`
+
+- 插件 `scan/__init__.py` **必须**导出 `create_commit_evaluator(...)`：
+  - 输入：`data_dir`（本 repo 的数据目录）、`api_key`（LLM key）、`model`、`mode`
+  - 返回：evaluator 对象（至少实现 `evaluate_engineer(commits, username, ...) -> dict`）
+- evaluator 的 `evaluate_engineer(...)`：
+  - 输入：`commits: List[dict]`（包含 commit message、files[].patch/stats 等）、`username: str`
+  - 输出：dict（至少包含 `scores`，其内含六维分数 + `reasoning`）
+- 后端会在最终响应中注入/回传：`plugin` / `plugin_version` / `plugin_scan_path`（用于可验证性）
 
 ### 元数据（index.yaml）建议 schema（扁平键）
 
@@ -223,21 +266,18 @@
   - 后端 `POST /api/evaluate...` 响应 `evaluation` 内包含 `plugin` / `plugin_version` / `plugin_scan_path`，且后端日志打印 `[Plugin] Using plugin=... scan=...`
   - 前端插件视图在页面上展示明显标识：`PLUGIN VIEW ACTIVE`
   - 多 repo 对比区域同样有明显标识：`MULTI-REPO COMPARE VIEW ACTIVE`
+- 插件开发者可读性：
+  - `plugins/_shared/view/types.ts` 明确了 view 输入数据类型，并被现有插件 view 复用
+  - `plugins/_shared/scan/README.md` 明确了 scan 输入/输出与函数契约
 - 不引入“模块可能存在可能不存在”的 import 假设；不使用 `typing.TYPE_CHECKING`
 
 # TODO_LIST
 
 > 只维护最新版本；完成后清空 TODO，仅保留“完成记录 + 日期”。
-
-- [x] 1. 更新本任务 `task.md`（闭环描述 + TODO 状态机）
-- [x] 2. 实现后端插件发现与 registry（扫描 `plugins/*/index.yaml`，解析元数据，确定默认插件）
-- [x] 3. 在后端增加插件 API：列出插件、默认插件；并让评估接口支持 `plugin` 参数（默认兼容 + 缓存隔离）
-- [x] 4. 落地 `plugins/zgc_simple`：补齐 `index.yaml` + `scan` 实现（复用现有 `CommitEvaluatorModerate`）
-- [x] 5. 落地 `plugins/zgc_ai_native_2026` 初版：基于 `engineer_level.md` 的 rubric 注入 prompt（保持输出兼容）
-- [x] 6. 前端插件机制：顶部插件下拉框 + API 请求携带 plugin + 动态加载 `plugins/<id>/view` 渲染结果（缺失回退）
+- （本轮已完成，TODO 清空）
 
 ## 完成记录
 
-- （未完成）
+- 2026-01-22：新增 `plugins/_shared/view/types.ts`（view 输入类型契约）与 `plugins/_shared/scan/README.md`（scan 输入/输出契约），并改造现有插件 view/compare 复用共享类型、移除 `any`/重复类型定义
 - 2026-01-21：完成后端插件机制与两个示例插件（默认 `zgc_simple` + `zgc_ai_native_2026` 初版）
 - 2026-01-21：将 evaluator 迁移为插件自包含实现（插件 scan 不再依赖 `evaluator/commit_evaluator_moderate.py`），并补齐可验证性字段/标识
