@@ -1,12 +1,7 @@
 import React from 'react';
 import { Card, Tag } from 'antd';
 import ContributorComparisonBase from '../../_shared/view/ContributorComparisonBase';
-
-type Props = {
-  data: any;
-  loading?: boolean;
-  error?: string;
-};
+import type { PluginMultiRepoCompareViewProps } from '../../_shared/view/types';
 
 function levelFromScore(score: number): string {
   if (score >= 85) return 'L5';
@@ -16,7 +11,7 @@ function levelFromScore(score: number): string {
   return 'L1';
 }
 
-export default function CompareView(props: Props) {
+export default function CompareView(props: PluginMultiRepoCompareViewProps) {
   const { data, loading, error } = props;
   const pluginUsed = data?.plugin_used || 'zgc_ai_native_2026';
   const pluginVersion = data?.comparisons?.[0]?.plugin_version || '';
