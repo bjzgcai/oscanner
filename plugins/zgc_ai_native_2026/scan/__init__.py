@@ -6,6 +6,9 @@ to bias reasoning toward "built-in quality", "reproducibility", "cloud-native", 
 and "professionalism" evidence.
 
 Output remains compatible with the existing dashboard (six score keys + reasoning).
+
+Scan contract (inputs/outputs) is documented at:
+- plugins/_shared/scan/README.md
 """
 
 import json

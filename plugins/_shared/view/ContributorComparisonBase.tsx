@@ -6,49 +6,8 @@ import type { RadioChangeEvent } from 'antd';
 
 type ChartType = 'radar' | 'bar';
 
-export type ComparisonScore = {
-  ai_model_fullstack: number;
-  ai_native_architecture: number;
-  cloud_native: number;
-  open_source_collaboration: number;
-  intelligent_development: number;
-  engineering_leadership: number;
-};
-
-export type Comparison = {
-  repo: string;
-  owner: string;
-  repo_name: string;
-  scores: ComparisonScore;
-  total_commits: number;
-  plugin?: string;
-  plugin_version?: string;
-  plugin_scan_path?: string;
-};
-
-export type ContributorComparisonData = {
-  success: boolean;
-  message?: string;
-  contributor: string;
-  plugin_requested?: string | null;
-  plugin_used?: string;
-  comparisons: Comparison[];
-  dimension_keys: string[];
-  dimension_names: string[];
-  aggregate: {
-    total_repos_evaluated: number;
-    total_commits: number;
-    average_scores: ComparisonScore;
-  };
-  failed_repos?: Array<{ repo: string; reason: string }>;
-};
-
-export type ContributorComparisonBaseProps = {
-  data: ContributorComparisonData | null;
-  loading?: boolean;
-  error?: string;
-  theme?: 'simple' | 'rubric';
-};
+import type { ContributorComparisonBaseProps } from './types';
+export type { Comparison, ComparisonScore, ContributorComparisonData, ContributorComparisonBaseProps } from './types';
 
 export default function ContributorComparisonBase(props: ContributorComparisonBaseProps) {
   const { data, loading = false, error, theme = 'simple' } = props;

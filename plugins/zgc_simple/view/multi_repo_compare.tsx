@@ -1,14 +1,9 @@
 import React from 'react';
 import { Card, Tag } from 'antd';
 import ContributorComparisonBase from '../../_shared/view/ContributorComparisonBase';
+import type { PluginMultiRepoCompareViewProps } from '../../_shared/view/types';
 
-type Props = {
-  data: any;
-  loading?: boolean;
-  error?: string;
-};
-
-export default function CompareView(props: Props) {
+export default function CompareView(props: PluginMultiRepoCompareViewProps) {
   const { data, loading, error } = props;
   const pluginUsed = data?.plugin_used || 'zgc_simple';
   const pluginVersion = data?.comparisons?.[0]?.plugin_version || '';
