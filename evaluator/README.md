@@ -6,40 +6,51 @@ A comprehensive evaluation system that analyzes engineer capabilities based on G
 
 The Engineer Capability Assessment System collects data from GitHub/Gitee repositories and commits, then uses AI-powered analysis to evaluate engineering skills across multiple dimensions. It provides both a programmatic API and a FastAPI web service for evaluation.
 
-## Quick Start (uv + CLI)
+## Quick Start
 
-From repository root:
+### From PyPI (Recommended)
 
 ```bash
-# Install dependencies
-# First-time setup (if `uv.lock` is not present in the repo)
-uv lock
+# Install
+pip install oscanner-skill-evaluator
 
-# Then sync dependencies (creates/updates .venv)
-uv sync
+# Interactive setup (creates .env.local with LLM API keys)
+oscanner init
 
-# Quick start without lock (not reproducible):
-# uv sync --no-lock
-
-# Start backend API
-uv run oscanner serve --reload
+# Start backend + dashboard
+oscanner dev
+# Or backend only: oscanner serve
+# Or dashboard only: oscanner dashboard
 ```
 
-Dashboard (optional):
+### From Source (Development)
 
 ```bash
-cd webapp && npm install && npm run dev
+# Install dependencies with uv
+uv sync
+
+# Interactive configuration
+uv run oscanner init
+
+# Start backend + dashboard together
+uv run oscanner dev --reload
+# Or start separately:
+# Backend: uv run oscanner serve --reload
+# Dashboard: uv run oscanner dashboard
 ```
 
 ## Key Features
 
 - **Six-Dimensional Evaluation Framework**: Comprehensive assessment across AI/ML, architecture, cloud native, collaboration, intelligent development, and leadership
-- **Multi-Platform Support**: Works with both GitHub and Gitee repositories
-- **Smart Caching**: Caches API responses and evaluation results to save time and API tokens
-- **LLM-Powered Analysis**: Uses Claude Sonnet 4.5 via OpenRouter with automatic fallback to Z.AI GLM 4.7 for intelligent commit analysis
-- **Automatic Model Fallback**: Seamlessly switches from Claude to Z.AI GLM 4.7 if the primary model fails
+- **Multi-Platform Support**: Works with both GitHub and Gitee repositories (public and enterprise)
+- **Incremental Sync**: Efficiently fetches only new commits since last sync, tracking sync state per repository
+- **Multi-Alias Support**: Automatically aggregates contributor identities (e.g., "CarterWu", "wu-yanbiao") using intelligent clustering (~88% token savings)
+- **Plugin-Based Architecture**: Extensible evaluation strategies through plugin system
+- **Smart Caching**: Three-tier caching (API responses → local data → evaluation results) saves time and API tokens
+- **LLM-Powered Analysis**: Configurable LLM providers (OpenRouter, OpenAI-compatible APIs) with automatic model fallback
+- **oscanner CLI**: Unified command-line interface for setup, data extraction, and server management
 - **FastAPI Web Service**: RESTful API for integration with dashboards and applications
-- **Local & Remote Data**: Supports both API-based and local file-based data analysis
+- **XDG-Compliant Storage**: Data stored in `~/.local/share/oscanner/` following platform standards
 
 ## Directory Structure
 
