@@ -480,12 +480,12 @@ GET /health
 
 **Get Gitee Commits:**
 ```
-GET /api/gitee/commits/{owner}/{repo}?limit=100&use_cache=true&is_enterprise=false
+GET /api/gitee/commits/{owner}/{repo}?limit=100&is_enterprise=false
 ```
 
 **Evaluate Gitee Contributor:**
 ```
-POST /api/gitee/evaluate/{owner}/{repo}/{contributor}?limit=30&use_cache=true
+POST /api/gitee/evaluate/{owner}/{repo}/{contributor}?limit=30
 ```
 
 **Get Authors List (Smart Cache):**
@@ -500,7 +500,7 @@ Returns all authors with intelligent caching:
 
 **Evaluate Author (Primary Endpoint):**
 ```
-POST /api/evaluate/{owner}/{repo}/{author}?limit=30&use_cache=true
+POST /api/evaluate/{owner}/{repo}/{author}?limit=30
 ```
 Evaluates a specific author with caching:
 - Returns cached result if available
@@ -571,9 +571,6 @@ curl "http://localhost:8000/api/local/authors/anthropics/anthropic-sdk-python"
 # Evaluate a specific author
 curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?limit=30"
 
-# Force fresh evaluation (ignore cache)
-curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?limit=30&use_cache=false"
-
 # Batch extract multiple repositories
 curl -X POST "http://localhost:8000/api/batch/extract" \
   -H "Content-Type: application/json" \
@@ -632,7 +629,6 @@ The system implements intelligent caching to optimize performance and reduce cos
 ### 2. Evaluation Result Caching
 - LLM evaluation results are cached to avoid redundant API calls
 - Cache is stored in `evaluations/` subdirectories
-- Use `use_cache=false` to force fresh evaluation
 
 ### 3. Repository Context Caching
 - Full repository context is cached in-memory during server runtime
@@ -674,8 +670,6 @@ data/
 
 - `max_commits`: Maximum commits to analyze (default varies by evaluator)
 - `max_input_tokens`: Maximum tokens for LLM input (default: 190,000)
-- `use_cache`: Enable/disable caching (default: true)
-- `force_refresh`: Force re-evaluation ignoring cache (default: false)
 
 ### LLM Model Fallback Mechanism
 
@@ -720,8 +714,7 @@ evaluator = FullContextCachedEvaluator(
 )
 
 result = evaluator.evaluate_contributor(
-    contributor_name="Author Name",
-    use_cache=True
+    contributor_name="Author Name"
 )
 ```
 

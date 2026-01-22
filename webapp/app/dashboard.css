@@ -222,32 +222,6 @@
   cursor: not-allowed;
 }
 
-.cache-control {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--border-radius);
-  margin-bottom: 16px;
-  color: var(--color-text);
-}
-
-.cache-control .ant-switch {
-  background: var(--color-text-tertiary);
-}
-
-.cache-control .ant-switch-checked {
-  background: var(--color-primary);
-}
-
-.cache-description {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
 .note {
   color: var(--color-text-secondary);
   font-size: 0.875rem;

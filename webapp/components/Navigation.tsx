@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Space, Button, Dropdown, Switch, Tooltip } from 'antd';
+import { Space, Button, Dropdown } from 'antd';
 import { HomeOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { useCache, setUseCache, model, setModel, pluginId, setPluginId, plugins } = useAppSettings();
+  const { model, setModel, pluginId, setPluginId, plugins } = useAppSettings();
 
   const navItems = [
     { path: '/', label: 'Analysis', icon: <HomeOutlined /> },
@@ -59,10 +59,6 @@ export default function Navigation() {
         </div>
 
         <Space size="large">
-          <Tooltip title="启用后优先返回历史评估结果；不启用则强制重新评估（需要配置 LLM Key）。">
-            <Switch checked={useCache} onChange={setUseCache} checkedChildren="cache" unCheckedChildren="no cache" />
-          </Tooltip>
-
           <Dropdown
             menu={{
               items: pluginItems,
