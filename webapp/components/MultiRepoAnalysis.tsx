@@ -358,7 +358,8 @@ export default function MultiRepoAnalysis() {
       setSelectedAuthorIndex(index);
       setLoading(true);
       setLoadingText(`Evaluating ${author.author}...`);
-      appendLog(`Evaluate author: ${author.author}`);
+      setIsExecuting(true);
+      appendLog(`Evaluating author: ${author.author}`);
 
       const platformParam = platform || singleRepo?.platform || 'github';
 
@@ -394,12 +395,15 @@ export default function MultiRepoAnalysis() {
         if (!result.success) throw new Error(result.error || 'Evaluation failed');
         setEvaluation(result.evaluation);
         appendLog('Evaluation complete.');
+        appendLog('Done.');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         appendLog(`Evaluation failed: ${msg}`, 'error');
+        appendLog('Done.');
       } finally {
         setLoading(false);
         setLoadingText('');
+        setIsExecuting(false);
       }
     },
     [appendLog, authorsData, model, authorAliases, singleRepo?.platform, pluginId, useCache]
@@ -410,7 +414,7 @@ export default function MultiRepoAnalysis() {
       setLoadingComparison(true);
       setComparisonData(null);
       setIsExecuting(true);
-      appendLog(`Step 3/3: Comparing "${contributorName}" across ${reposToCompare.length} repositories...`);
+      appendLog(`Evaluating "${contributorName}" across ${reposToCompare.length} repositories...`);
 
       try {
         const response = await fetch(`${API_SERVER_URL}/api/batch/compare-contributor`, {
@@ -457,15 +461,14 @@ export default function MultiRepoAnalysis() {
     [appendLog, model, authorAliases, pluginId, useCache]
   );
 
-  useEffect(() => {
-    if (selectedContributor && results) {
-      const reposWithData = results.results.filter((r) => r.data_exists && r.owner && r.repo);
-      if (reposWithData.length >= 2) {
-        const reposToCompare = reposWithData.map((r) => ({ owner: r.owner!, repo: r.repo!, platform: r.platform }));
-        compareContributor(selectedContributor, reposToCompare);
-      }
+  const handleEvaluateContributor = useCallback(() => {
+    if (!selectedContributor || !results) return;
+    const reposWithData = results.results.filter((r) => r.data_exists && r.owner && r.repo);
+    if (reposWithData.length >= 2) {
+      const reposToCompare = reposWithData.map((r) => ({ owner: r.owner!, repo: r.repo!, platform: r.platform }));
+      compareContributor(selectedContributor, reposToCompare);
     }
-  }, [selectedContributor, results, compareContributor, appendLog]);
+  }, [selectedContributor, results, compareContributor]);
 
   const handleSubmit = async () => {
     setMode(null);
@@ -537,7 +540,7 @@ export default function MultiRepoAnalysis() {
 
         const { platform, owner, repo } = parsed;
         setLoadingText('Loading authors...');
-        appendLog(`Step 1/2: Loading authors for ${platform}:${owner}/${repo}...`);
+        appendLog(`Step 1/1: Loading authors for ${platform}:${owner}/${repo}...`);
 
         const response = await fetch(
           `${API_SERVER_URL}/api/authors/${owner}/${repo}?platform=${encodeURIComponent(platform)}`
@@ -563,12 +566,7 @@ export default function MultiRepoAnalysis() {
 
         setSingleRepo({ platform, owner, repo, full_name: `${owner}/${repo}` });
         setAuthorsData(authors);
-        appendLog(`Loaded ${authors.length} authors.`);
-
-        if (authors.length > 0) {
-          appendLog('Step 2/2: Evaluating first author...');
-          await evaluateAuthor(0, owner, repo, authors, platform);
-        }
+        appendLog(`Loaded ${authors.length} authors. Select a contributor to evaluate.`);
 
         appendLog('Done.');
         setIsExecuting(false);
@@ -619,7 +617,7 @@ export default function MultiRepoAnalysis() {
       const reposWithData = data.results.filter((r) => r.data_exists && r.owner && r.repo);
       if (reposWithData.length >= 2) {
         setLoadingCommon(true);
-        appendLog(`Step 2/3: Finding common contributors across ${reposWithData.length} repositories...`);
+        appendLog(`Step 2/2: Finding common contributors across ${reposWithData.length} repositories...`);
 
         const commonResponse = await fetch(`${API_SERVER_URL}/api/batch/common-contributors`, {
           method: 'POST',
@@ -635,25 +633,23 @@ export default function MultiRepoAnalysis() {
           setCommonContributors(commonData);
 
           if (commonData.common_contributors.length > 0) {
-            appendLog(`Common contributors found: ${commonData.common_contributors.length}.`);
-            const firstContributor = commonData.common_contributors[0].author;
-            setSelectedContributor(firstContributor);
-            appendLog(`Auto-select contributor: ${firstContributor}`);
-            appendLog('Waiting for comparison...');
+            appendLog(`Common contributors found: ${commonData.common_contributors.length}. Select one to evaluate.`);
+            appendLog('Done.');
+            setIsExecuting(false);
           } else {
             appendLog('No common contributors found.');
             appendLog('Done.');
             setIsExecuting(false);
           }
         } else {
-          appendLog('Step 2/3 failed: common contributors request failed.', 'error');
+          appendLog('Step 2/2 failed: common contributors request failed.', 'error');
           appendLog('Done.');
           setIsExecuting(false);
         }
 
         setLoadingCommon(false);
       } else {
-        appendLog('Step 2/3 skipped: not enough repositories with extracted data.');
+        appendLog('Step 2/2 skipped: not enough repositories with extracted data.');
         appendLog('Done.');
         setIsExecuting(false);
       }
@@ -670,7 +666,7 @@ export default function MultiRepoAnalysis() {
 
   const useTestRepo = () => {
     setRepoUrls('https://gitee.com/zgcai/eval_test_1\nhttps://gitee.com/zgcai/eval_test_2');
-    appendLog('Filled test repositories. Click Analyze to run.');
+    appendLog('Filled test repositories. Click Fetch to run.');
   };
 
   const getStatusIcon = (status: string) => {
@@ -772,7 +768,7 @@ export default function MultiRepoAnalysis() {
                   disabled={loading}
                   icon={loading ? <LoadingOutlined /> : <GithubOutlined />}
                 >
-                  {loading ? 'Processing...' : 'Analyze'}
+                  {loading ? 'Fetching...' : 'Fetch'}
                 </Button>
               </div>
             </div>
@@ -1046,14 +1042,29 @@ export default function MultiRepoAnalysis() {
               title={
                 <div className="repos-compare-title">
                   <div className="repos-compare-left">
-                    <span className="repos-compare-label">Select Contributor to Compare:</span>
-                    <Select value={selectedContributor} onChange={setSelectedContributor} style={{ width: 320 }} size="large">
+                    <span className="repos-compare-label">Select Contributor to Evaluate:</span>
+                    <Select
+                      value={selectedContributor}
+                      onChange={setSelectedContributor}
+                      style={{ width: 320 }}
+                      size="large"
+                      placeholder="Select a contributor..."
+                    >
                       {commonContributors.common_contributors.map((contributor) => (
                         <Select.Option key={contributor.author} value={contributor.author}>
                           {contributor.author} ({contributor.total_commits} commits)
                         </Select.Option>
                       ))}
                     </Select>
+                    <Button
+                      type="primary"
+                      size="large"
+                      onClick={handleEvaluateContributor}
+                      disabled={!selectedContributor || loadingComparison}
+                      loading={loadingComparison}
+                    >
+                      {loadingComparison ? 'Evaluating...' : 'Evaluate'}
+                    </Button>
                   </div>
                   {comparisonData && selectedContributor && (
                     <Button type="primary" icon={<DownloadOutlined />} onClick={handleDownloadPDF}>
@@ -1065,11 +1076,11 @@ export default function MultiRepoAnalysis() {
               className="repos-card"
             >
               <div style={{ color: '#666', fontSize: 14 }}>
-                Compare the selected contributor&apos;s six-dimensional capability scores across all repositories
+                Select a contributor and click Evaluate to compare their six-dimensional capability scores across all repositories
               </div>
             </Card>
 
-            {selectedContributor && (
+            {comparisonData && selectedContributor && (
               <PluginComparisonRenderer
                 pluginId={pluginId || 'zgc_simple'}
                 data={comparisonData}
