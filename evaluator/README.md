@@ -874,13 +874,13 @@ Returns all authors with intelligent caching:
 - Auto-evaluates first author with default plugin
 
 ```
-GET /api/gitee/commits/{owner}/{repo}?limit=100&is_enterprise=false
+GET /api/gitee/commits/{owner}/{repo}?limit=100&use_cache=true&is_enterprise=false
 ```
 Fetch Gitee commits directly from API.
 
 **Evaluation Endpoints:**
 ```
-POST /api/evaluate/{owner}/{repo}/{author}?limit=30&plugin_id=zgc_simple
+POST /api/evaluate/{owner}/{repo}/{author}?limit=30&plugin_id=zgc_simple&use_cache=true
 ```
 **Primary evaluation endpoint** with advanced features:
 - Supports **author aliases**: Pass `{"aliases": ["name1", "name2"]}` in request body
@@ -905,7 +905,7 @@ Merge multiple author evaluations with weighted averaging:
 ```
 
 ```
-POST /api/gitee/evaluate/{owner}/{repo}/{contributor}?limit=30
+POST /api/gitee/evaluate/{owner}/{repo}/{contributor}?limit=30&use_cache=true
 ```
 Gitee-specific evaluation endpoint (legacy compatibility).
 
@@ -988,6 +988,9 @@ curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python
 
 # Evaluate with specific plugin
 curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?plugin_id=zgc_ai_native_2026"
+
+# Force fresh evaluation (ignore cache)
+curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?limit=30&use_cache=false"
 
 # Evaluate author with aliases (multi-identity aggregation)
 curl -X POST "http://localhost:8000/api/evaluate/facebook/react/Dan%20Abramov?limit=30" \
@@ -1078,6 +1081,7 @@ The system implements intelligent caching to optimize performance and reduce cos
 ### 2. Evaluation Result Caching
 - LLM evaluation results are cached to avoid redundant API calls
 - Cache is stored in `evaluations/` subdirectories
+- Use `use_cache=false` to force fresh evaluation
 
 ### 3. Repository Context Caching
 - Full repository context is cached in-memory during server runtime
@@ -1277,6 +1281,8 @@ LOG_LEVEL=DEBUG
 
 - `max_commits`: Maximum commits to analyze (default varies by evaluator)
 - `max_input_tokens`: Maximum tokens for LLM input (default: 190,000)
+- `use_cache`: Enable/disable caching (default: true)
+- `force_refresh`: Force re-evaluation ignoring cache (default: false)
 
 ### LLM Model Configuration
 
@@ -1459,7 +1465,8 @@ evaluator = FullContextCachedEvaluator(
 )
 
 result = evaluator.evaluate_contributor(
-    contributor_name="Author Name"
+    contributor_name="Author Name",
+    use_cache=True
 )
 ```
 
