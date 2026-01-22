@@ -579,7 +579,6 @@ async def get_gitee_commits(
     owner: str,
     repo: str,
     limit: int = Query(500, ge=1, le=1000),
-    use_cache: bool = Query(True),
     is_enterprise: bool = Query(False)
 ):
     """Fetch commits for a Gitee repository"""
@@ -766,7 +765,6 @@ def get_or_create_evaluator(
     owner: str,
     repo: str,
     commits: list,
-    use_cache: bool = True,
     plugin_id: str = "",
     model: str = DEFAULT_LLM_MODEL,
 ):
@@ -775,7 +773,6 @@ def get_or_create_evaluator(
 
     Persists commit JSONs into the repo data dir, then returns a plugin evaluator instance.
     """
-    _ = use_cache
     data_dir = get_repo_data_dir(platform, owner, repo)
 
     # Create commits_index.json
@@ -815,7 +812,7 @@ def get_or_create_evaluator(
 
 
 @app.get("/api/authors/{owner}/{repo}")
-async def get_authors(owner: str, repo: str, platform: str = Query("github"), use_cache: bool = Query(True)):
+async def get_authors(owner: str, repo: str, platform: str = Query("github")):
     """
     Get list of authors from commit data
 
@@ -1154,7 +1151,6 @@ async def evaluate_author(
     repo: str,
     author: str,
     use_chunking: bool = Query(True),
-    use_cache: bool = Query(True),
     model: str = Query(DEFAULT_LLM_MODEL),
     platform: str = Query("github"),
     plugin: str = Query(""),
@@ -1256,7 +1252,7 @@ async def evaluate_author(
                 eval_path = _evaluation_cache_path(eval_dir, alias, plugin_id, default_plugin_id)
                 previous_evaluation = None
 
-                if use_cache and eval_path.exists():
+                if eval_path.exists():
                     try:
                         with open(eval_path, 'r', encoding='utf-8') as f:
                             previous_evaluation = json.load(f)
@@ -1295,11 +1291,10 @@ async def evaluate_author(
                 if meta is not None:
                     evaluation["plugin_version"] = meta.version
 
-                # Save evaluation for this alias (optional)
-                if use_cache:
-                    eval_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(eval_path, 'w', encoding='utf-8') as f:
-                        json.dump(evaluation, f, indent=2, ensure_ascii=False)
+                # Save evaluation for this alias
+                eval_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(eval_path, 'w', encoding='utf-8') as f:
+                    json.dump(evaluation, f, indent=2, ensure_ascii=False)
 
                 # Collect for merging
                 evaluations_to_merge.append({
@@ -1398,7 +1393,7 @@ async def evaluate_author(
         eval_path = _evaluation_cache_path(eval_dir, author, plugin_id, default_plugin_id)
         previous_evaluation = None
 
-        if use_cache and eval_path.exists():
+        if eval_path.exists():
             try:
                 with open(eval_path, 'r', encoding='utf-8') as f:
                     previous_evaluation = json.load(f)
@@ -1439,14 +1434,11 @@ async def evaluate_author(
             evaluation["plugin_scan_path"] = str(scan_path)
             print(f"[Plugin] Using plugin={plugin_id} scan={scan_path}")
 
-        # Step 5: Save evaluation persistently (optional)
-        if use_cache:
-            eval_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(eval_path, 'w', encoding='utf-8') as f:
-                json.dump(evaluation, f, indent=2, ensure_ascii=False)
-            print(f"[Evaluation] ✓ Saved evaluation to {eval_path}")
-        else:
-            print(f"[Evaluation] (no-cache) Skipping save to {eval_path}")
+        # Step 5: Save evaluation persistently
+        eval_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(eval_path, 'w', encoding='utf-8') as f:
+            json.dump(evaluation, f, indent=2, ensure_ascii=False)
+        print(f"[Evaluation] ✓ Saved evaluation to {eval_path}")
 
         # Step 6: Return response
         result = {
@@ -1470,8 +1462,7 @@ async def evaluate_author(
                 "synced": True,
                 "commits_added": sync_result.get("commits_added", 0) if 'sync_result' in locals() else 0,
                 "timestamp": datetime.now().isoformat(),
-                "source": "persistent_storage" if use_cache else "no_cache",
-                "use_cache": bool(use_cache),
+                "source": "persistent_storage",
             }
         }
 
@@ -1690,7 +1681,6 @@ async def evaluate_gitee_contributor(
     repo: str,
     contributor: str,
     limit: int = Query(150, ge=1, le=200),
-    use_cache: bool = Query(True),
     is_enterprise: bool = Query(False),
     plugin: str = Query(""),
 ):
@@ -2276,7 +2266,6 @@ async def compare_contributor_across_repos(request: dict):
     """
     contributor = request.get("contributor")
     repos = request.get("repos", [])
-    use_cache = bool(request.get("use_cache", False))
     model = request.get("model") or DEFAULT_LLM_MODEL
     requested_plugin_id = str(request.get("plugin") or "").strip()
     plugin_id = _resolve_plugin_id(requested_plugin_id)
@@ -2355,7 +2344,6 @@ async def compare_contributor_across_repos(request: dict):
                 repo,
                 contributor,
                 use_chunking=True,
-                use_cache=use_cache,
                 model=model,
                 platform=repo_platform,
                 plugin=plugin_id,
