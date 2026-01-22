@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 
 from evaluator.paths import ensure_dirs, get_data_dir, get_home_dir, get_platform_data_dir, get_platform_eval_dir
@@ -40,6 +41,18 @@ if user_env_path.exists():
 load_dotenv(override=False)
 
 app = FastAPI(title="Engineer Skill Evaluator API")
+
+# Middleware to strip trailing slashes from API requests
+# (Next.js uses trailingSlash: true for static export, but FastAPI routes don't have trailing slashes)
+class TrailingSlashMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path != "/" and request.url.path.endswith("/"):
+            # Strip trailing slash and redirect internally
+            new_path = request.url.path.rstrip("/")
+            request.scope["path"] = new_path
+        return await call_next(request)
+
+app.add_middleware(TrailingSlashMiddleware)
 
 # CORS middleware
 app.add_middleware(
@@ -579,6 +592,7 @@ async def get_gitee_commits(
     owner: str,
     repo: str,
     limit: int = Query(500, ge=1, le=1000),
+    use_cache: bool = Query(True),
     is_enterprise: bool = Query(False)
 ):
     """Fetch commits for a Gitee repository"""
@@ -765,6 +779,7 @@ def get_or_create_evaluator(
     owner: str,
     repo: str,
     commits: list,
+    use_cache: bool = True,
     plugin_id: str = "",
     model: str = DEFAULT_LLM_MODEL,
 ):
@@ -812,7 +827,7 @@ def get_or_create_evaluator(
 
 
 @app.get("/api/authors/{owner}/{repo}")
-async def get_authors(owner: str, repo: str, platform: str = Query("github")):
+async def get_authors(owner: str, repo: str, platform: str = Query("github"), use_cache: bool = Query(True)):
     """
     Get list of authors from commit data
 
@@ -1151,6 +1166,7 @@ async def evaluate_author(
     repo: str,
     author: str,
     use_chunking: bool = Query(True),
+    use_cache: bool = Query(True),
     model: str = Query(DEFAULT_LLM_MODEL),
     platform: str = Query("github"),
     plugin: str = Query(""),
@@ -1252,7 +1268,7 @@ async def evaluate_author(
                 eval_path = _evaluation_cache_path(eval_dir, alias, plugin_id, default_plugin_id)
                 previous_evaluation = None
 
-                if eval_path.exists():
+                if use_cache and eval_path.exists():
                     try:
                         with open(eval_path, 'r', encoding='utf-8') as f:
                             previous_evaluation = json.load(f)
@@ -1292,9 +1308,10 @@ async def evaluate_author(
                     evaluation["plugin_version"] = meta.version
 
                 # Save evaluation for this alias
-                eval_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(eval_path, 'w', encoding='utf-8') as f:
-                    json.dump(evaluation, f, indent=2, ensure_ascii=False)
+                if use_cache:
+                    eval_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(eval_path, 'w', encoding='utf-8') as f:
+                        json.dump(evaluation, f, indent=2, ensure_ascii=False)
 
                 # Collect for merging
                 evaluations_to_merge.append({
@@ -1393,7 +1410,7 @@ async def evaluate_author(
         eval_path = _evaluation_cache_path(eval_dir, author, plugin_id, default_plugin_id)
         previous_evaluation = None
 
-        if eval_path.exists():
+        if use_cache and eval_path.exists():
             try:
                 with open(eval_path, 'r', encoding='utf-8') as f:
                     previous_evaluation = json.load(f)
@@ -1435,10 +1452,13 @@ async def evaluate_author(
             print(f"[Plugin] Using plugin={plugin_id} scan={scan_path}")
 
         # Step 5: Save evaluation persistently
-        eval_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(eval_path, 'w', encoding='utf-8') as f:
-            json.dump(evaluation, f, indent=2, ensure_ascii=False)
-        print(f"[Evaluation] ✓ Saved evaluation to {eval_path}")
+        if use_cache:
+            eval_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(eval_path, 'w', encoding='utf-8') as f:
+                json.dump(evaluation, f, indent=2, ensure_ascii=False)
+            print(f"[Evaluation] ✓ Saved evaluation to {eval_path}")
+        else:
+            print(f"[Evaluation] (no-cache) Skipping save to {eval_path}")
 
         # Step 6: Return response
         result = {
@@ -1462,7 +1482,8 @@ async def evaluate_author(
                 "synced": True,
                 "commits_added": sync_result.get("commits_added", 0) if 'sync_result' in locals() else 0,
                 "timestamp": datetime.now().isoformat(),
-                "source": "persistent_storage",
+                "source": "persistent_storage" if use_cache else "no_cache",
+                "use_cache": bool(use_cache),
             }
         }
 
@@ -1681,6 +1702,7 @@ async def evaluate_gitee_contributor(
     repo: str,
     contributor: str,
     limit: int = Query(150, ge=1, le=200),
+    use_cache: bool = Query(True),
     is_enterprise: bool = Query(False),
     plugin: str = Query(""),
 ):
@@ -2266,6 +2288,7 @@ async def compare_contributor_across_repos(request: dict):
     """
     contributor = request.get("contributor")
     repos = request.get("repos", [])
+    use_cache = bool(request.get("use_cache", True))
     model = request.get("model") or DEFAULT_LLM_MODEL
     requested_plugin_id = str(request.get("plugin") or "").strip()
     plugin_id = _resolve_plugin_id(requested_plugin_id)
@@ -2344,6 +2367,7 @@ async def compare_contributor_across_repos(request: dict):
                 repo,
                 contributor,
                 use_chunking=True,
+                use_cache=use_cache,
                 model=model,
                 platform=repo_platform,
                 plugin=plugin_id,

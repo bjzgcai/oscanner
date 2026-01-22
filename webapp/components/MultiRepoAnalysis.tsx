@@ -71,7 +71,7 @@ interface CommonContributorsResult {
 export default function MultiRepoAnalysis() {
   const [repoUrls, setRepoUrls] = useState('');
   const [loading, setLoading] = useState(false);
-  const { model, pluginId } = useAppSettings();
+  const { model, pluginId, useCache } = useAppSettings();
   const [mode, setMode] = useState<'single' | 'multi' | null>(null);
   const [loadingText, setLoadingText] = useState('');
   const [results, setResults] = useState<BatchResult | null>(null);
@@ -375,7 +375,7 @@ export default function MultiRepoAnalysis() {
 
       try {
         const response = await fetch(
-          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}`,
+          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -402,7 +402,7 @@ export default function MultiRepoAnalysis() {
         setLoadingText('');
       }
     },
-    [appendLog, authorsData, model, authorAliases, singleRepo?.platform, pluginId]
+    [appendLog, authorsData, model, authorAliases, singleRepo?.platform, pluginId, useCache]
   );
 
   const compareContributor = useCallback(
@@ -421,6 +421,7 @@ export default function MultiRepoAnalysis() {
             repos: reposToCompare,
             model,
             plugin: pluginId || undefined,
+            use_cache: useCache,
             author_aliases: authorAliases.trim() ? authorAliases : undefined,
           }),
         });
@@ -453,7 +454,7 @@ export default function MultiRepoAnalysis() {
         setIsExecuting(false);
       }
     },
-    [appendLog, model, authorAliases, pluginId]
+    [appendLog, model, authorAliases, pluginId, useCache]
   );
 
   useEffect(() => {
