@@ -16,30 +16,50 @@ import type { PluginSingleRepoViewProps } from '../../_shared/view/types';
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 export default function PluginView(props: PluginSingleRepoViewProps) {
-  const { evaluation, title, loading, error } = props;
+  const { evaluation, title, loading, error, t: tFromProps } = props;
+  if (typeof tFromProps !== 'function') {
+    throw new Error('zgc_simple plugin view requires `t(key, params?)` prop from host app.');
+  }
+  const t = tFromProps;
   if (error) {
-    return <Alert type="error" showIcon title="Evaluation failed" description={error} />;
+    return (
+      <Alert
+        type="error"
+        showIcon
+        title={t('plugin.zgc_simple.single.error_title')}
+        description={error}
+      />
+    );
   }
   if (loading) {
     return (
       <Card style={{ textAlign: 'center', padding: '60px 20px' }}>
         <Spin size="large" />
-        <div style={{ color: '#9CA3AF', marginTop: 16 }}>Evaluating with plugin...</div>
+        <div style={{ color: '#9CA3AF', marginTop: 16 }}>
+          {t('plugin.zgc_simple.single.loading')}
+        </div>
       </Card>
     );
   }
   if (!evaluation) {
-    return <Alert type="info" showIcon title="No evaluation yet" description="Select an author to start evaluation." />;
+    return (
+      <Alert
+        type="info"
+        showIcon
+        title={t('plugin.zgc_simple.single.no_eval.title')}
+        description={t('plugin.zgc_simple.single.no_eval.desc')}
+      />
+    );
   }
   const reasoning = typeof evaluation?.scores?.reasoning === 'string' ? (evaluation.scores.reasoning as string) : '';
   const scores = evaluation?.scores || {};
   const dims: Array<{ key: string; label: string }> = [
-    { key: 'ai_fullstack', label: 'AI Full-Stack' },
-    { key: 'ai_architecture', label: 'AI Architecture' },
-    { key: 'cloud_native', label: 'Cloud Native' },
-    { key: 'open_source', label: 'Open Source' },
-    { key: 'intelligent_dev', label: 'Intelligent Dev' },
-    { key: 'leadership', label: 'Leadership' },
+    { key: 'ai_fullstack', label: t('plugin.zgc_simple.dim.ai_fullstack') },
+    { key: 'ai_architecture', label: t('plugin.zgc_simple.dim.ai_architecture') },
+    { key: 'cloud_native', label: t('plugin.zgc_simple.dim.cloud_native') },
+    { key: 'open_source', label: t('plugin.zgc_simple.dim.open_source') },
+    { key: 'intelligent_dev', label: t('plugin.zgc_simple.dim.intelligent_dev') },
+    { key: 'leadership', label: t('plugin.zgc_simple.dim.leadership') },
   ];
   const languages = evaluation?.commits_summary?.languages || [];
   const scoreValue = (key: string) => {
@@ -53,7 +73,7 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
     labels: dims.map((d) => d.label),
     datasets: [
       {
-        label: 'Engineering Skills',
+        label: t('plugin.zgc_simple.single.chart.label'),
         data: dims.map((d) => scoreValue(d.key)),
         fill: true,
         backgroundColor: 'rgba(255, 235, 0, 0.15)',
@@ -92,9 +112,13 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        <h3 style={{ margin: 0, color: '#FBBF24' }}>{title || 'SIMPLE VIEW (Single Repo)'}</h3>
+        <h3 style={{ margin: 0, color: '#FBBF24' }}>
+          {title || t('plugin.zgc_simple.single.title_default')}
+        </h3>
         <div style={{ color: '#9CA3AF', fontSize: 12 }}>
-          <span style={{ color: '#FDE68A', fontWeight: 800, marginRight: 10 }}>PLUGIN VIEW ACTIVE</span>
+          <span style={{ color: '#FDE68A', fontWeight: 800, marginRight: 10 }}>
+            {t('plugin.zgc_simple.single.banner.active')}
+          </span>
           {evaluation?.plugin ? `plugin=${evaluation.plugin}` : 'plugin=zgc_simple'}
           {evaluation?.plugin_version ? ` @ ${evaluation.plugin_version}` : ''}
         </div>
@@ -114,14 +138,24 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
         }}
         bordered
       >
-        <Descriptions.Item label="Commits">{evaluation?.total_commits_analyzed ?? '-'}</Descriptions.Item>
-        <Descriptions.Item label="Files Changed">{evaluation?.commits_summary?.files_changed ?? '-'}</Descriptions.Item>
-        <Descriptions.Item label="Additions">{evaluation?.commits_summary?.total_additions ?? '-'}</Descriptions.Item>
-        <Descriptions.Item label="Deletions">{evaluation?.commits_summary?.total_deletions ?? '-'}</Descriptions.Item>
+        <Descriptions.Item label={t('plugin.zgc_simple.single.desc.commits')}>
+          {evaluation?.total_commits_analyzed ?? '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label={t('plugin.zgc_simple.single.desc.files_changed')}>
+          {evaluation?.commits_summary?.files_changed ?? '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label={t('plugin.zgc_simple.single.desc.additions')}>
+          {evaluation?.commits_summary?.total_additions ?? '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label={t('plugin.zgc_simple.single.desc.deletions')}>
+          {evaluation?.commits_summary?.total_deletions ?? '-'}
+        </Descriptions.Item>
       </Descriptions>
 
       <div style={{ marginTop: 12 }}>
-        <div style={{ color: '#F9FAFB', fontWeight: 700, marginBottom: 8 }}>Six-Dimension Scores</div>
+        <div style={{ color: '#F9FAFB', fontWeight: 700, marginBottom: 8 }}>
+          {t('plugin.zgc_simple.single.section.scores')}
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {dims.map((d) => {
             const v = typeof scores[d.key] === 'number' ? (scores[d.key] as number) : 0;
@@ -156,14 +190,18 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
 
       {languages.length ? (
         <div style={{ marginTop: 12, color: '#D1D5DB', fontSize: 13 }}>
-          <span style={{ color: '#FBBF24', fontWeight: 700, marginRight: 8 }}>Languages:</span>
+          <span style={{ color: '#FBBF24', fontWeight: 700, marginRight: 8 }}>
+            {t('plugin.zgc_simple.single.section.languages')}
+          </span>
           {languages.join(', ')}
         </div>
       ) : null}
 
       {reasoning ? (
         <Card style={{ marginTop: 12, background: '#0A0F1C', border: '1px solid #F59E0B' }}>
-          <div style={{ color: '#FBBF24', fontWeight: 800, marginBottom: 8 }}>Notes (Simple)</div>
+          <div style={{ color: '#FBBF24', fontWeight: 800, marginBottom: 8 }}>
+            {t('plugin.zgc_simple.single.section.notes')}
+          </div>
           <div style={{ color: '#E5E7EB' }}>
             <ReactMarkdown>{reasoning}</ReactMarkdown>
           </div>
