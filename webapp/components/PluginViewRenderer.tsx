@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import React from 'react';
 
 import { SINGLE_REPO_VIEW_IMPORTERS } from './generated/pluginViewMap';
+import { useI18n } from './I18nContext';
+import type { I18nParams } from '../i18n/types';
 
 export type PluginEvaluation = {
   scores: Record<string, number | string>;
@@ -18,6 +20,8 @@ type PluginViewProps = {
   title?: string;
   loading?: boolean;
   error?: string;
+  locale?: string;
+  t?: (key: string, params?: I18nParams) => string;
 };
 
 type Props = {
@@ -38,6 +42,7 @@ const VIEW_MAP: Record<string, React.ComponentType<PluginViewProps>> = Object.fr
 
 export default function PluginViewRenderer(props: Props) {
   const { pluginId, evaluation, title, loading, error } = props;
+  const i18n = useI18n();
 
   const View = VIEW_MAP[pluginId];
   if (!View) {
@@ -47,7 +52,7 @@ export default function PluginViewRenderer(props: Props) {
       </div>
     );
   }
-  return <View evaluation={evaluation} title={title} loading={loading} error={error} />;
+  return <View evaluation={evaluation} title={title} loading={loading} error={error} locale={i18n.locale} t={i18n.t} />;
 }
 
 

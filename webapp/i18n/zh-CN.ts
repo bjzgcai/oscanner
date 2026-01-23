@@ -1,0 +1,87 @@
+import type { Messages } from './types';
+
+export const zhCN: Messages = {
+  // Navigation
+  'nav.title': 'Engineer Skill Evaluator',
+  'nav.analysis': '分析',
+  'nav.api': 'API',
+  'nav.cache.tooltip': '启用后 根据历史评估结果和最新代码提交 综合评估；不启用则强制重新评估（需要配置 LLM Key）。',
+  'nav.cache.on': '缓存',
+  'nav.cache.off': '无缓存',
+  'nav.plugin': '插件',
+  'nav.model': '模型',
+  'nav.language': '语言',
+
+  // Common
+  'common.ready': '就绪。',
+  'common.expand': '展开',
+  'common.collapse': '收起',
+  'common.clear': '清空',
+  'common.save': '保存',
+  'common.cancel': '取消',
+  'common.fetching': '请求中…',
+  'common.fetch': '获取',
+  'common.download_pdf': '下载 PDF',
+
+  // Multi repo / main page
+  'multi.repo_urls.label': '仓库 URLs（1-5 个，每行一个）',
+  'multi.repo_urls.placeholder':
+    '单仓：\nhttps://gitee.com/owner/repo\n\n多仓：\nhttps://github.com/owner/repo1\nhttps://gitee.com/owner/repo2',
+  'multi.use_test_repo': '使用测试仓库',
+  'multi.llm_settings': 'LLM 设置',
+  'multi.author_aliases.label': '作者别名（可选，同一人的多个名字，逗号分隔）',
+  'multi.author_aliases.placeholder': '例如：张三, 张三(公司邮箱), zhangsan\n把属于同一人的多个名字归为一组',
+  'multi.execution': '执行日志',
+  'multi.no_logs_yet': '暂无日志。',
+  'multi.loading.common_contributors': '查找共同贡献者中…',
+  'multi.loading.working': '处理中…',
+  'multi.loading.desc.common': '正在分析多个仓库中的贡献者…',
+  'multi.loading.desc.default': '可能需要几分钟，请耐心等待（会抓取 commits 与文件变更）。',
+  'multi.single.loaded_authors': '已加载 {count} 位作者，请选择一位进行评估。',
+  'multi.extraction_results': '抽取结果',
+  'multi.common_contributors': '共同贡献者',
+  'multi.columns.status': '状态',
+  'multi.columns.repo': '仓库',
+  'multi.columns.message': '信息',
+  'multi.status.extracted': '已抽取',
+  'multi.status.skipped': '已跳过',
+  'multi.status.failed': '失败',
+  'multi.table.contributor': '贡献者',
+  'multi.table.repos': '仓库数',
+  'multi.table.commits': '提交数',
+  'multi.also_known_as': '也叫：',
+  'multi.single.analyzing_authors': '基于本地 commits 分析 {count} 位作者',
+  'multi.single.commits': '{count} 次提交',
+  'multi.single.commits_analyzed': '已分析 {count} 次提交',
+  'multi.select_contributor': '选择贡献者进行评估：',
+  'multi.select_contributor.placeholder': '请选择贡献者…',
+  'multi.evaluate': '评估',
+  'multi.evaluating': '评估中…',
+  'multi.compare_hint': '选择贡献者并点击评估，以对比其在所有仓库的六维能力得分。',
+  'multi.no_common.title': '未找到共同贡献者',
+  'multi.no_common.desc': '这些仓库没有共同贡献者。',
+
+  // LLM modal
+  'llm.modal.title': 'LLM 设置',
+  'llm.modal.path': '配置文件路径（已保存到用户目录，不支持打开）：',
+  'llm.gitee_token.title': 'GITEE_TOKEN（可选，用于避免 Gitee API 限流）',
+  'llm.github_token.title': 'GITHUB_TOKEN（可选，用于避免 GitHub API 限流）',
+  'llm.current_set': '当前已配置：',
+  'llm.not_set': '(未设置)',
+  'llm.leave_empty_no_change': '（留空不修改）',
+  'llm.openrouter': 'OpenRouter',
+  'llm.openai_compat': 'OpenAI-compatible（base_url + api_key）',
+  'llm.current_model': '当前全局 Model：',
+
+  // Single repo page (legacy)
+  'single.input.placeholder': '请输入仓库 URL（例如：https://github.com/owner/repo 或 https://gitee.com/owner/repo）',
+  'single.load_authors': '加载作者',
+  'single.error.title': '错误',
+  'single.no_eval': '暂无评估结果',
+  'single.pdf.no_data': '没有可导出的评估数据',
+  'single.pdf.generating': '正在生成 PDF 报告…',
+  'single.pdf.success': 'PDF 已下载',
+  'single.pdf.failed': '生成 PDF 失败',
+};
+
+
