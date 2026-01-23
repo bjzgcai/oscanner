@@ -7,6 +7,7 @@ import PluginViewRenderer from './PluginViewRenderer';
 import { exportHomePagePDF } from '../utils/pdfExport';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
+import { useI18n } from './I18nContext';
 
 // Default to same-origin so the bundled dashboard works when served by the backend.
 // For separate frontend dev server, set NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000
@@ -46,6 +47,7 @@ interface RepoData {
 export default function SingleRepoAnalysis() {
   const [repoPath, setRepoPath] = useState('');
   const { model, pluginId, useCache } = useAppSettings();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const [repoError, setRepoError] = useState('');
@@ -112,7 +114,7 @@ export default function SingleRepoAnalysis() {
 
   const analyzeRepository = async () => {
     if (!repoPath) {
-      setRepoError('Please enter a repository URL');
+      setRepoError(t('single.input.placeholder'));
       return;
     }
     const parsed = parseRepoUrl(repoPath);
@@ -201,17 +203,17 @@ export default function SingleRepoAnalysis() {
 
   const handleDownloadPDF = async () => {
     if (!repoData || !evaluation || selectedAuthorIndex < 0) {
-      message.error('No evaluation data available to export');
+      message.error(t('single.pdf.no_data'));
       return;
     }
     try {
-      message.loading('Generating PDF report...', 0);
+      message.loading(t('single.pdf.generating'), 0);
       await exportHomePagePDF(repoData, authorsData[selectedAuthorIndex], evaluation);
       message.destroy();
-      message.success('PDF report downloaded successfully!');
+      message.success(t('single.pdf.success'));
     } catch (e) {
       message.destroy();
-      message.error('Failed to generate PDF report');
+      message.error(t('single.pdf.failed'));
       console.error('PDF generation error:', e);
     }
   };
@@ -227,7 +229,7 @@ export default function SingleRepoAnalysis() {
           <div className="autocomplete-container">
             <Input
               size="large"
-              placeholder="Enter repository URL (e.g., https://github.com/owner/repo or https://gitee.com/owner/repo)"
+              placeholder={t('single.input.placeholder')}
               value={repoPath}
               onChange={(e) => setRepoPath(e.target.value)}
               onFocus={() => setShowHistory(true)}
@@ -252,7 +254,7 @@ export default function SingleRepoAnalysis() {
             )}
           </div>
           <Button type="primary" size="large" onClick={analyzeRepository} loading={loading} className="analyze-btn">
-            Load Authors
+            {t('single.load_authors')}
           </Button>
         </div>
 
@@ -261,7 +263,7 @@ export default function SingleRepoAnalysis() {
 
       {repoError && (
         <Alert
-          message="Error"
+          message={t('single.error.title')}
           description={repoError}
           type="error"
           closable
@@ -309,7 +311,7 @@ export default function SingleRepoAnalysis() {
                 <div className="stats">
                   {evaluation
                     ? `${evaluation.total_commits_analyzed} commits analyzed •${evaluation.commits_summary.total_additions} additions •${evaluation.commits_summary.total_deletions} deletions`
-                    : 'No evaluation available'}
+                    : t('single.no_eval')}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -319,7 +321,7 @@ export default function SingleRepoAnalysis() {
                   onClick={handleDownloadPDF}
                   style={{ background: '#FFEB00', borderColor: '#FFEB00', color: '#0A0A0A', fontWeight: 'bold' }}
                 >
-                  Download PDF
+                  {t('common.download_pdf')}
                 </Button>
               </div>
             </div>

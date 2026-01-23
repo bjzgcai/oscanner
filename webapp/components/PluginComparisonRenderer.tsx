@@ -5,11 +5,15 @@ import React from 'react';
 
 import type { ContributorComparisonData } from '../types';
 import { MULTI_REPO_COMPARE_VIEW_IMPORTERS } from './generated/pluginViewMap';
+import { useI18n } from './I18nContext';
+import type { I18nParams } from '../i18n/types';
 
 export type PluginCompareViewProps = {
   data: ContributorComparisonData | null;
   loading?: boolean;
   error?: string;
+  locale?: string;
+  t?: (key: string, params?: I18nParams) => string;
 };
 
 type Props = {
@@ -29,6 +33,7 @@ const VIEW_MAP: Record<string, React.ComponentType<PluginCompareViewProps>> = Ob
 
 export default function PluginComparisonRenderer(props: Props) {
   const { pluginId, data, loading, error } = props;
+  const i18n = useI18n();
   const View = VIEW_MAP[pluginId];
   if (!View) {
     return (
@@ -37,7 +42,7 @@ export default function PluginComparisonRenderer(props: Props) {
       </div>
     );
   }
-  return <View data={data} loading={loading} error={error} />;
+  return <View data={data} loading={loading} error={error} locale={i18n.locale} t={i18n.t} />;
 }
 
 

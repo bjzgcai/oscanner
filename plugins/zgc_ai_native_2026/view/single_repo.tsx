@@ -20,20 +20,40 @@ function levelColor(level: string): string {
 }
 
 export default function PluginView(props: PluginSingleRepoViewProps) {
-  const { evaluation, title, loading, error } = props;
+  const { evaluation, title, loading, error, t: tFromProps } = props;
+  if (typeof tFromProps !== 'function') {
+    throw new Error('zgc_ai_native_2026 plugin view requires `t(key, params?)` prop from host app.');
+  }
+  const t = tFromProps;
   if (error) {
-    return <Alert type="error" showIcon title="Evaluation failed" description={error} />;
+    return (
+      <Alert
+        type="error"
+        showIcon
+        title={t('plugin.zgc_ai_native_2026.single.error_title')}
+        description={error}
+      />
+    );
   }
   if (loading) {
     return (
       <Card style={{ textAlign: 'center', padding: '60px 20px' }}>
         <Spin size="large" />
-        <div style={{ color: '#9CA3AF', marginTop: 16 }}>Evaluating with plugin...</div>
+        <div style={{ color: '#9CA3AF', marginTop: 16 }}>
+          {t('plugin.zgc_ai_native_2026.single.loading')}
+        </div>
       </Card>
     );
   }
   if (!evaluation) {
-    return <Alert type="info" showIcon title="No evaluation yet" description="Select an author to start evaluation." />;
+    return (
+      <Alert
+        type="info"
+        showIcon
+        title={t('plugin.zgc_ai_native_2026.single.no_eval.title')}
+        description={t('plugin.zgc_ai_native_2026.single.no_eval.desc')}
+      />
+    );
   }
   const s = evaluation?.scores || {};
   const keys = ['ai_fullstack', 'ai_architecture', 'cloud_native', 'open_source', 'intelligent_dev', 'leadership'];
@@ -50,11 +70,17 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        <h3 style={{ margin: 0, color: '#6EE7B7' }}>{title || 'RUBRIC VIEW (Single Repo, AI-Native 2026)'}</h3>
+        <h3 style={{ margin: 0, color: '#6EE7B7' }}>
+          {title || t('plugin.zgc_ai_native_2026.single.title_default')}
+        </h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Tag color={levelColor(lvl)}>{lvl} (avg {avg.toFixed(1)})</Tag>
+          <Tag color={levelColor(lvl)}>
+            {lvl} ({t('plugin.zgc_ai_native_2026.single.tag.avg')} {avg.toFixed(1)})
+          </Tag>
           <div style={{ color: '#9CA3AF', fontSize: 12 }}>
-            <span style={{ color: '#93C5FD', fontWeight: 800, marginRight: 10 }}>PLUGIN VIEW ACTIVE</span>
+            <span style={{ color: '#93C5FD', fontWeight: 800, marginRight: 10 }}>
+              {t('plugin.zgc_ai_native_2026.single.banner.active')}
+            </span>
             {evaluation?.plugin ? `plugin=${evaluation.plugin}` : 'plugin=zgc_ai_native_2026'}
             {evaluation?.plugin_version ? ` @ ${evaluation.plugin_version}` : ''}
           </div>
@@ -63,7 +89,7 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
 
       <div style={{ marginTop: 12 }}>
         <div style={{ color: '#E5E7EB', fontWeight: 700, marginBottom: 8 }}>
-          Dimension → Level (mapped to engineer_level.md L1–L5)
+          {t('plugin.zgc_ai_native_2026.single.section.mapping')}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {keys.map((k) => {
@@ -79,19 +105,24 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
       </div>
 
       <div style={{ marginTop: 12, border: '1px solid #064E3B', borderRadius: 12, padding: 12, background: '#061A18' }}>
-        <div style={{ color: '#6EE7B7', fontWeight: 700, marginBottom: 8 }}>What this view optimizes for</div>
+        <div style={{ color: '#6EE7B7', fontWeight: 700, marginBottom: 8 }}>
+          {t('plugin.zgc_ai_native_2026.single.section.focus_title')}
+        </div>
         <div style={{ color: '#D1FAE5', fontSize: 13, lineHeight: 1.6 }}>
-          - Built-in Quality (tests / lint / refactor / validation)<br />
-          - Reproducibility (lockfiles / docker / one-command run)<br />
-          - Cloud-Native readiness (CI/CD / IaC / deploy configs)<br />
-          - Intelligent dev workflows (tooling / scripts / agent usage)<br />
-          - Professionalism (docs/ADR / PR hygiene / trade-offs)
+          {(['1', '2', '3', '4', '5'] as const).map((n) => (
+            <span key={n}>
+              - {t(`plugin.zgc_ai_native_2026.single.focus.${n}`)}
+              <br />
+            </span>
+          ))}
         </div>
       </div>
 
       {reasoning ? (
         <Card style={{ marginTop: 12, background: '#071A17', border: '1px solid #10B981' }}>
-          <div style={{ color: '#6EE7B7', fontWeight: 800, marginBottom: 8 }}>Rubric-guided Summary (AI-Native 2026)</div>
+          <div style={{ color: '#6EE7B7', fontWeight: 800, marginBottom: 8 }}>
+            {t('plugin.zgc_ai_native_2026.single.section.summary')}
+          </div>
           <div style={{ color: '#E5E7EB' }}>
             <ReactMarkdown>{reasoning}</ReactMarkdown>
           </div>

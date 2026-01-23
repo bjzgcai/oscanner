@@ -31,6 +31,9 @@ export type PluginSingleRepoViewProps = {
   title?: string;
   loading?: boolean;
   error?: string;
+  // i18n support (optional): webapp may pass locale + t() for plugin views to localize labels.
+  locale?: string;
+  t?: (key: string, params?: Record<string, string | number>) => string;
 };
 
 // -----------------------------
@@ -78,6 +81,9 @@ export type PluginMultiRepoCompareViewProps = {
   data: ContributorComparisonData | null;
   loading?: boolean;
   error?: string;
+  // i18n support (optional): webapp may pass locale + t() for plugin views to localize labels.
+  locale?: string;
+  t?: (key: string, params?: Record<string, string | number>) => string;
 };
 
 
