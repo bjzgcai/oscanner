@@ -18,6 +18,7 @@ import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import PluginViewRenderer from './PluginViewRenderer';
 import PluginComparisonRenderer from './PluginComparisonRenderer';
+import { useI18n } from './I18nContext';
 
 const { TextArea } = Input;
 
@@ -72,6 +73,7 @@ export default function MultiRepoAnalysis() {
   const [repoUrls, setRepoUrls] = useState('');
   const [loading, setLoading] = useState(false);
   const { model, pluginId, useCache } = useAppSettings();
+  const { t } = useI18n();
   const [mode, setMode] = useState<'single' | 'multi' | null>(null);
   const [loadingText, setLoadingText] = useState('');
   const [results, setResults] = useState<BatchResult | null>(null);
@@ -685,11 +687,11 @@ export default function MultiRepoAnalysis() {
   const getStatusTag = (status: string) => {
     switch (status) {
       case 'extracted':
-        return <Tag color="success">Extracted</Tag>;
+        return <Tag color="success">{t('multi.status.extracted')}</Tag>;
       case 'skipped':
-        return <Tag color="warning">Skipped</Tag>;
+        return <Tag color="warning">{t('multi.status.skipped')}</Tag>;
       case 'failed':
-        return <Tag color="error">Failed</Tag>;
+        return <Tag color="error">{t('multi.status.failed')}</Tag>;
       default:
         return <Tag>{status}</Tag>;
     }
@@ -697,7 +699,7 @@ export default function MultiRepoAnalysis() {
 
   const columns = [
     {
-      title: 'Status',
+      title: t('multi.columns.status'),
       dataIndex: 'status',
       key: 'status',
       width: 100,
@@ -709,7 +711,7 @@ export default function MultiRepoAnalysis() {
       ),
     },
     {
-      title: 'Repository',
+      title: t('multi.columns.repo'),
       dataIndex: 'url',
       key: 'url',
       render: (_: unknown, record: RepoResult) => {
@@ -718,7 +720,7 @@ export default function MultiRepoAnalysis() {
       },
     },
     {
-      title: 'Message',
+      title: t('multi.columns.message'),
       dataIndex: 'message',
       key: 'message',
       render: (msg: string) => <span style={{ color: '#666' }}>{msg || '-'}</span>,
@@ -732,22 +734,20 @@ export default function MultiRepoAnalysis() {
           <div className="repos-form">
             <label className="repos-label">
               <GithubOutlined />
-              <span>Repository URLs (1-5 URLs, one per line)</span>
+              <span>{t('multi.repo_urls.label')}</span>
             </label>
 
             <div className="repos-input-row">
               <TextArea
                 value={repoUrls}
                 onChange={(e) => setRepoUrls(e.target.value)}
-                placeholder={
-                  'Single:\nhttps://gitee.com/owner/repo\n\nMulti:\nhttps://github.com/owner/repo1\nhttps://gitee.com/owner/repo2'
-                }
+                placeholder={t('multi.repo_urls.placeholder')}
                 rows={6}
                 disabled={loading}
               />
               <div className="repos-actions">
                 <Button onClick={useTestRepo} disabled={loading}>
-                  use_test_repo
+                  {t('multi.use_test_repo')}
                 </Button>
 
                 <Button
@@ -757,7 +757,7 @@ export default function MultiRepoAnalysis() {
                   }}
                   disabled={loading}
                 >
-                  LLM设置
+                  {t('multi.llm_settings')}
                 </Button>
 
                 <Button
@@ -768,7 +768,7 @@ export default function MultiRepoAnalysis() {
                   disabled={loading}
                   icon={loading ? <LoadingOutlined /> : <GithubOutlined />}
                 >
-                  {loading ? 'Fetching...' : 'Fetch'}
+                  {loading ? t('common.fetching') : t('common.fetch')}
                 </Button>
               </div>
             </div>
@@ -776,12 +776,12 @@ export default function MultiRepoAnalysis() {
             <div style={{ marginTop: 16 }}>
               <label className="repos-label">
                 <UserOutlined />
-                <span>Author Aliases (optional, comma-separated names for the same person)</span>
+                <span>{t('multi.author_aliases.label')}</span>
               </label>
               <TextArea
                 value={authorAliases}
                 onChange={(e) => setAuthorAliases(e.target.value)}
-                placeholder={'e.g., John Doe, John D, johndoe, jdoe\nGroup multiple names that belong to the same contributor'}
+                placeholder={t('multi.author_aliases.placeholder')}
                 rows={2}
                 disabled={loading}
               />
@@ -792,13 +792,13 @@ export default function MultiRepoAnalysis() {
 
           <div className="repos-log" style={{ marginTop: 16 }}>
             <div className="repos-log-header">
-              <div className="repos-log-title">Execution</div>
+              <div className="repos-log-title">{t('multi.execution')}</div>
               <div className="repos-log-actions">
                 <Button size="small" onClick={() => setLogsExpanded((v) => !v)}>
-                  {logsExpanded ? 'Collapse' : 'Expand'}
+                  {logsExpanded ? t('common.collapse') : t('common.expand')}
                 </Button>
                 <Button size="small" onClick={() => setLogs([])} disabled={logs.length === 0}>
-                  Clear
+                  {t('common.clear')}
                 </Button>
               </div>
             </div>
@@ -806,7 +806,7 @@ export default function MultiRepoAnalysis() {
             {!logsExpanded ? (
               <div
                 className="repos-log-ticker"
-                title={tickerLine ? `#${tickerLine.id}/${logs.length} ${tickerLine.text}` : 'Ready.'}
+                title={tickerLine ? `#${tickerLine.id}/${logs.length} ${tickerLine.text}` : t('common.ready')}
                 style={tickerLine?.level === 'error' ? { borderColor: '#fecaca', color: '#b91c1c', background: '#fef2f2' } : undefined}
               >
                 {tickerLine ? (
@@ -817,12 +817,12 @@ export default function MultiRepoAnalysis() {
                     {tickerLine.text}
                   </span>
                 ) : (
-                  <span>Ready.</span>
+                  <span>{t('common.ready')}</span>
                 )}
               </div>
             ) : (
               <div ref={logsBodyRef} className="repos-log-body">
-                {logs.length === 0 ? 'No logs yet.' : logs.map((l) => (
+                {logs.length === 0 ? t('multi.no_logs_yet') : logs.map((l) => (
                   <div key={l.id} className={l.level === 'error' ? 'repos-log-line-error' : undefined}>
                     #{l.id} {l.text}
                   </div>
@@ -833,37 +833,37 @@ export default function MultiRepoAnalysis() {
         </Card>
 
         <Modal
-          title="LLM 设置"
+          title={t('llm.modal.title')}
           open={llmModalOpen}
           onCancel={() => setLlmModalOpen(false)}
           onOk={saveLlmConfig}
-          okText="保存"
-          cancelText="取消"
+          okText={t('common.save')}
+          cancelText={t('common.cancel')}
         >
           <div style={{ marginBottom: 12, color: 'rgba(0,0,0,0.65)' }}>
-            配置文件路径（已保存到用户目录，不支持打开）：<code>{llmConfigPath || '(unknown)'}</code>
+            {t('llm.modal.path')} <code>{llmConfigPath || '(unknown)'}</code>
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>GITEE_TOKEN（可选，用于避免 Gitee API 限流）</div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('llm.gitee_token.title')}</div>
             <Input.Password value={giteeToken} onChange={(e) => setGiteeToken(e.target.value)} placeholder="Gitee access token" />
             <div style={{ marginTop: 6, color: 'rgba(0,0,0,0.65)' }}>
-              当前已配置：<code>{giteeTokenMasked || '(not set)'}</code>（留空不修改）
+              {t('llm.current_set')} <code>{giteeTokenMasked || t('llm.not_set')}</code> {t('llm.leave_empty_no_change')}
             </div>
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>GITHUB_TOKEN（可选，用于避免 GitHub API 限流）</div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('llm.github_token.title')}</div>
             <Input.Password value={githubToken} onChange={(e) => setGithubToken(e.target.value)} placeholder="GitHub personal access token" />
             <div style={{ marginTop: 6, color: 'rgba(0,0,0,0.65)' }}>
-              当前已配置：<code>{githubTokenMasked || '(not set)'}</code>（留空不修改）
+              {t('llm.current_set')} <code>{githubTokenMasked || t('llm.not_set')}</code> {t('llm.leave_empty_no_change')}
             </div>
           </div>
 
           <div style={{ marginBottom: 12 }}>
             <Radio.Group value={llmMode} onChange={(e) => setLlmMode(e.target.value)}>
-              <Radio value="openrouter">OpenRouter</Radio>
-              <Radio value="openai">OpenAI-compatible (base_url + api_key)</Radio>
+              <Radio value="openrouter">{t('llm.openrouter')}</Radio>
+              <Radio value="openai">{t('llm.openai_compat')}</Radio>
             </Radio.Group>
           </div>
 
@@ -874,7 +874,7 @@ export default function MultiRepoAnalysis() {
                 <Input.Password value={openRouterKey} onChange={(e) => setOpenRouterKey(e.target.value)} placeholder="sk-or-..." />
               </div>
               <div style={{ color: 'rgba(0,0,0,0.65)' }}>
-                当前全局 Model：<code>{model}</code>
+                {t('llm.current_model')} <code>{model}</code>
               </div>
             </div>
           ) : (
@@ -896,7 +896,7 @@ export default function MultiRepoAnalysis() {
                 <Input value={llmFallbackModels} onChange={(e) => setLlmFallbackModels(e.target.value)} placeholder="model1,model2" />
               </div>
               <div style={{ color: 'rgba(0,0,0,0.65)' }}>
-                当前全局 Model：<code>{model}</code>
+                {t('llm.current_model')} <code>{model}</code>
               </div>
             </div>
           )}
@@ -905,11 +905,11 @@ export default function MultiRepoAnalysis() {
         {loading && (
           <Card className="repos-loading-card">
             <LoadingOutlined className="repos-loading-icon" />
-            <h3>{loadingText || (loadingCommon ? 'Finding Common Contributors...' : 'Working...')}</h3>
+            <h3>{loadingText || (loadingCommon ? t('multi.loading.common_contributors') : t('multi.loading.working'))}</h3>
             <p>
               {loadingCommon
-                ? 'Analyzing contributors across repositories...'
-                : 'This may take a few minutes. Please wait while we fetch commits and files from the remote repository.'}
+                ? t('multi.loading.desc.common')
+                : t('multi.loading.desc.default')}
             </p>
           </Card>
         )}
@@ -917,7 +917,7 @@ export default function MultiRepoAnalysis() {
         {mode === 'single' && singleRepo && authorsData.length > 0 && (
           <Card className="repo-info">
             <h2>{singleRepo.full_name}</h2>
-            <p>Analyzing {authorsData.length} authors from local commits</p>
+            <p>{t('multi.single.analyzing_authors', { count: authorsData.length })}</p>
 
             <div className="contributors-grid">
               {authorsData.map((author, index) => (
@@ -929,7 +929,7 @@ export default function MultiRepoAnalysis() {
                 >
                   <Avatar size={60} src={author.avatar_url} icon={<UserOutlined />} />
                   <div className="contributor-name">{author.author}</div>
-                  <div className="contributor-commits">{author.commits} commits</div>
+                  <div className="contributor-commits">{t('multi.single.commits', { count: author.commits })}</div>
                 </Card>
               ))}
             </div>
@@ -960,7 +960,7 @@ export default function MultiRepoAnalysis() {
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <Button type="primary" icon={<DownloadOutlined />} onClick={handleDownloadSinglePDF}>
-                  Download PDF
+                  {t('common.download_pdf')}
                 </Button>
               </div>
             </div>
@@ -979,7 +979,7 @@ export default function MultiRepoAnalysis() {
             title={
               <div className="repos-section-title">
                 <GithubOutlined />
-                <span>Extraction Results</span>
+                <span>{t('multi.extraction_results')}</span>
               </div>
             }
             className="repos-card"
@@ -994,7 +994,7 @@ export default function MultiRepoAnalysis() {
               title={
                 <div className="repos-section-title">
                   <TeamOutlined />
-                  <span>Common Contributors</span>
+                  <span>{t('multi.common_contributors')}</span>
                 </div>
               }
               className="repos-card"
@@ -1012,7 +1012,7 @@ export default function MultiRepoAnalysis() {
                 pagination={false}
                 columns={[
                   {
-                    title: 'Contributor',
+                    title: t('multi.table.contributor'),
                     dataIndex: 'author',
                     key: 'author',
                     render: (author: string, record: { author: string; aliases: string[]; email: string; repo_count: number; total_commits: number }) => {
@@ -1025,15 +1025,15 @@ export default function MultiRepoAnalysis() {
                           </Space>
                           {otherAliases.length > 0 && (
                             <span style={{ fontSize: '0.85em', color: 'rgba(0,0,0,0.45)', marginLeft: 40 }}>
-                              also known as: {otherAliases.join(', ')}
+                              {t('multi.also_known_as')} {otherAliases.join(', ')}
                             </span>
                           )}
                         </Space>
                       );
                     },
                   },
-                  { title: 'Repos', dataIndex: 'repo_count', key: 'repo_count', width: 90 },
-                  { title: 'Commits', dataIndex: 'total_commits', key: 'total_commits', width: 110 },
+                  { title: t('multi.table.repos'), dataIndex: 'repo_count', key: 'repo_count', width: 90 },
+                  { title: t('multi.table.commits'), dataIndex: 'total_commits', key: 'total_commits', width: 110 },
                 ]}
               />
             </Card>
@@ -1042,17 +1042,17 @@ export default function MultiRepoAnalysis() {
               title={
                 <div className="repos-compare-title">
                   <div className="repos-compare-left">
-                    <span className="repos-compare-label">Select Contributor to Evaluate:</span>
+                    <span className="repos-compare-label">{t('multi.select_contributor')}</span>
                     <Select
                       value={selectedContributor}
                       onChange={setSelectedContributor}
                       style={{ width: 320 }}
                       size="large"
-                      placeholder="Select a contributor..."
+                      placeholder={t('multi.select_contributor.placeholder')}
                     >
                       {commonContributors.common_contributors.map((contributor) => (
                         <Select.Option key={contributor.author} value={contributor.author}>
-                          {contributor.author} ({contributor.total_commits} commits)
+                          {contributor.author} ({t('multi.single.commits', { count: contributor.total_commits })})
                         </Select.Option>
                       ))}
                     </Select>
@@ -1063,12 +1063,12 @@ export default function MultiRepoAnalysis() {
                       disabled={!selectedContributor || loadingComparison}
                       loading={loadingComparison}
                     >
-                      {loadingComparison ? 'Evaluating...' : 'Evaluate'}
+                      {loadingComparison ? t('multi.evaluating') : t('multi.evaluate')}
                     </Button>
                   </div>
                   {comparisonData && selectedContributor && (
                     <Button type="primary" icon={<DownloadOutlined />} onClick={handleDownloadPDF}>
-                      Download PDF
+                      {t('common.download_pdf')}
                     </Button>
                   )}
                 </div>
@@ -1076,7 +1076,7 @@ export default function MultiRepoAnalysis() {
               className="repos-card"
             >
               <div style={{ color: '#666', fontSize: 14 }}>
-                Select a contributor and click Evaluate to compare their six-dimensional capability scores across all repositories
+                {t('multi.compare_hint')}
               </div>
             </Card>
 
@@ -1094,8 +1094,8 @@ export default function MultiRepoAnalysis() {
         {commonContributors && commonContributors.common_contributors.length === 0 && (
           <Card className="repos-empty-card">
             <TeamOutlined className="repos-empty-icon" />
-            <h3>No Common Contributors Found</h3>
-            <p>{commonContributors.message || 'The analyzed repositories do not have any contributors in common.'}</p>
+            <h3>{t('multi.no_common.title')}</h3>
+            <p>{commonContributors.message || t('multi.no_common.desc')}</p>
           </Card>
         )}
       </div>
