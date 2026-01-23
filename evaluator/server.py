@@ -32,7 +32,7 @@ from evaluator.utils import (
     load_commits_from_local
 )
 from evaluator.services import (
-    getget_plugins_snapshot, resolve_plugin_id, getget_evaluation_cache_path,
+    get_plugins_snapshot, resolve_plugin_id, get_evaluation_cache_path,
     extract_github_data, extract_gitee_data, fetch_github_commits, fetch_gitee_commits, get_repo_data_dir,
     get_or_create_evaluator, evaluate_author_incremental, get_empty_evaluation,
     merge_evaluations_logic
