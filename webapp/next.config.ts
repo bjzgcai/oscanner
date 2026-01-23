@@ -12,7 +12,6 @@ const nextConfig: NextConfig = {
   // and served directly by the FastAPI backend (no Node/npm runtime required).
   // Only use static export for production builds; dev mode needs rewrites for API proxy.
   ...(isDev ? {} : { output: "export" }),
-  basePath: "/dashboard",
   trailingSlash: true,
   // Avoid turbopack "inferred workspace root" warnings when multiple lockfiles exist on disk.
   turbopack: {

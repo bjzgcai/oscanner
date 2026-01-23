@@ -1,7 +1,7 @@
 'use client';
-
+import { getApiBaseUrl } from '../utils/apiBase';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-
+const API_SERVER_URL = getApiBaseUrl();
 type AppSettings = {
   useCache: boolean;
   setUseCache: (v: boolean) => void;
@@ -96,7 +96,9 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
 
   const refreshPlugins = useCallback(async () => {
     try {
-      const resp = await fetch('/api/plugins');
+      console.log('[Info] Refreshing plugin list from backend');
+      const resp = await fetch(`${API_SERVER_URL}/api/plugins`);
+      console.log(`[Info] /api/plugins response: ${resp.status} ${resp.statusText}`);
       if (!resp.ok) return;
       const data = await resp.json();
       const list = Array.isArray(data.plugins) ? data.plugins : [];

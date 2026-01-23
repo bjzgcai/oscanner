@@ -78,6 +78,7 @@ async def list_plugins():
     List available scan plugins discovered from the local `plugins/` directory.
     """
     plugins, default_id = _plugins_snapshot()
+    print(f"[Info] Discovered {len(plugins)} plugins, default={default_id}")
     return {
         "success": True,
         "default": default_id,
@@ -106,6 +107,7 @@ async def list_plugins():
 async def get_default_plugin():
     plugins, default_id = _plugins_snapshot()
     _ = plugins
+    
     return {"success": True, "default": default_id}
 
 
