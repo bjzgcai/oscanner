@@ -6,13 +6,16 @@ import { Space, Button, Dropdown, Switch, Tooltip } from 'antd';
 import { HomeOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
+import { LOCALES } from '../i18n';
+import { useI18n } from './I18nContext';
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { useCache, setUseCache, model, setModel, pluginId, setPluginId, plugins } = useAppSettings();
+  const { useCache, setUseCache, model, setModel, pluginId, setPluginId, plugins, locale, setLocale } = useAppSettings();
+  const { t } = useI18n();
 
   const navItems = [
-    { path: '/', label: 'Analysis', icon: <HomeOutlined /> },
+    { path: '/', label: t('nav.analysis'), icon: <HomeOutlined /> },
   ];
 
   // Prefer explicit backend URL in dev/standalone mode; otherwise default to same-origin.
@@ -55,18 +58,32 @@ export default function Navigation() {
           marginRight: 'auto',
           letterSpacing: '-0.01em'
         }}>
-          Engineer Skill Evaluator
+          {t('nav.title')}
         </div>
 
         <Space size="large">
-          <Tooltip title="启用后 根据历史评估结果和最新代码提交 综合评估；不启用则强制重新评估（需要配置 LLM Key）。">
+          <Tooltip title={t('nav.cache.tooltip')}>
             <Switch
               checked={useCache}
               onChange={setUseCache}
-              checkedChildren="cache"
-              unCheckedChildren="no cache"
+              checkedChildren={t('nav.cache.on')}
+              unCheckedChildren={t('nav.cache.off')}
             />
           </Tooltip>
+
+          <Dropdown
+            menu={{
+              items: LOCALES.map((l) => ({ key: l.key, label: l.label })),
+              selectable: true,
+              selectedKeys: [locale],
+              onClick: ({ key }) => setLocale(String(key) as typeof locale),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              {t('nav.language')}: {LOCALES.find((l) => l.key === locale)?.label || locale}
+            </Button>
+          </Dropdown>
 
           <Dropdown
             menu={{
@@ -78,7 +95,7 @@ export default function Navigation() {
             trigger={['click']}
           >
             <Button size="middle">
-              Plugin: {currentPluginLabel}
+              {t('nav.plugin')}: {currentPluginLabel}
             </Button>
           </Dropdown>
 
@@ -92,7 +109,7 @@ export default function Navigation() {
             trigger={['click']}
           >
             <Button size="middle">
-              Model: {currentModelLabel}
+              {t('nav.model')}: {currentModelLabel}
             </Button>
           </Dropdown>
 
@@ -120,7 +137,7 @@ export default function Navigation() {
 
           <a href={apiHref} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
             <Button icon={<ApiOutlined />} size="middle">
-              API
+              {t('nav.api')}
             </Button>
           </a>
         </Space>
