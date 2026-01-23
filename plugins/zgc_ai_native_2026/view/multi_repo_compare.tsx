@@ -12,11 +12,15 @@ function levelFromScore(score: number): string {
 }
 
 export default function CompareView(props: PluginMultiRepoCompareViewProps) {
-  const { data, loading, error } = props;
+  const { data, loading, error, t: tFromProps } = props;
+  if (typeof tFromProps !== 'function') {
+    throw new Error('zgc_ai_native_2026 plugin compare view requires `t(key, params?)` prop from host app.');
+  }
+  const t = tFromProps;
   const pluginUsed = data?.plugin_used || 'zgc_ai_native_2026';
   const pluginVersion = data?.comparisons?.[0]?.plugin_version || '';
 
-  const avgScores = data?.aggregate?.average_scores || {};
+  const avgScores = (data?.aggregate?.average_scores || {}) as Record<string, unknown>;
   const avg =
     (Number(avgScores.ai_model_fullstack || 0) +
       Number(avgScores.ai_native_architecture || 0) +
@@ -37,18 +41,18 @@ export default function CompareView(props: PluginMultiRepoCompareViewProps) {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <div style={{ color: '#C4B5FD', fontWeight: 900, letterSpacing: 0.2, fontSize: 18 }}>
-            RUBRIC COMPARE VIEW (Multi-Repo, AI-Native 2026)
+            {t('plugin.zgc_ai_native_2026.compare.title')}
           </div>
           <div style={{ color: '#DDD6FE', fontSize: 12, marginTop: 4 }}>
-            Compare is rubric-themed (L1–L5). If you see this wrapper, plugin compare view is active.
+            {t('plugin.zgc_ai_native_2026.compare.banner.active')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Tag color="purple" style={{ fontWeight: 900 }}>
-            MULTI-REPO COMPARE VIEW ACTIVE
+            {t('plugin.zgc_ai_native_2026.compare.tag.active')}
           </Tag>
           <Tag color="geekblue" style={{ fontWeight: 900 }}>
-            {lvl} (avg {Number.isFinite(avg) ? avg.toFixed(1) : '0.0'})
+            {lvl} ({t('plugin.zgc_ai_native_2026.compare.tag.avg')} {Number.isFinite(avg) ? avg.toFixed(1) : '0.0'})
           </Tag>
           <Tag color="blue" style={{ fontWeight: 900 }}>
             plugin={pluginUsed}

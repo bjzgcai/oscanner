@@ -2,6 +2,9 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { DEFAULT_LOCALE, isLocale } from '../i18n';
+import type { Locale } from '../i18n/types';
+
 type AppSettings = {
   useCache: boolean;
   setUseCache: (v: boolean) => void;
@@ -9,6 +12,8 @@ type AppSettings = {
   setModel: (v: string) => void;
   pluginId: string;
   setPluginId: (v: string) => void;
+  locale: Locale;
+  setLocale: (v: Locale) => void;
   plugins: Array<{ id: string; name: string; version: string; description?: string; default?: boolean; has_view?: boolean }>;
   refreshPlugins: () => Promise<void>;
 };
@@ -16,6 +21,7 @@ type AppSettings = {
 const STORAGE_KEY_USE_CACHE = 'oscanner_use_cache';
 const STORAGE_KEY_MODEL = 'oscanner_llm_model';
 const STORAGE_KEY_PLUGIN = 'oscanner_plugin_id';
+const STORAGE_KEY_LOCALE = 'oscanner_locale';
 const DEFAULT_MODEL = 'Pro/zai-org/GLM-4.7';
 const DEFAULT_PLUGIN = 'zgc_simple';
 
@@ -27,6 +33,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [pluginId, setPluginIdState] = useState(DEFAULT_PLUGIN);
   const [plugins, setPlugins] = useState<AppSettings['plugins']>([]);
   const [useCache, setUseCacheState] = useState(true);
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
 
   // Load from localStorage after hydration is complete
   useEffect(() => {
@@ -57,6 +64,25 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         const trimmed = raw.trim();
         if (trimmed) {
           setPluginIdState(trimmed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY_LOCALE);
+      const trimmed = (raw || '').trim();
+      if (trimmed && isLocale(trimmed)) {
+        setLocaleState(trimmed);
+      } else if (!trimmed) {
+        // Prefer browser language when user hasn't chosen yet.
+        const navLang = (navigator.language || '').trim();
+        if (isLocale(navLang)) {
+          setLocaleState(navLang);
+        } else if (navLang.toLowerCase().startsWith('zh')) {
+          setLocaleState('zh-CN');
+        } else if (navLang) {
+          setLocaleState('en-US');
         }
       }
     } catch {
@@ -94,6 +120,16 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     }
   };
 
+  const setLocale = (v: Locale) => {
+    const next = isLocale(String(v)) ? (v as Locale) : DEFAULT_LOCALE;
+    setLocaleState(next);
+    try {
+      localStorage.setItem(STORAGE_KEY_LOCALE, next);
+    } catch {
+      // ignore
+    }
+  };
+
   const refreshPlugins = useCallback(async () => {
     try {
       const resp = await fetch('/api/plugins');
@@ -116,8 +152,8 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   }, [refreshPlugins]);
 
   const value = useMemo(
-    () => ({ useCache, setUseCache, model, setModel, pluginId, setPluginId, plugins, refreshPlugins }),
-    [useCache, model, pluginId, plugins, refreshPlugins]
+    () => ({ useCache, setUseCache, model, setModel, pluginId, setPluginId, locale, setLocale, plugins, refreshPlugins }),
+    [useCache, model, pluginId, locale, plugins, refreshPlugins]
   );
 
   return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
