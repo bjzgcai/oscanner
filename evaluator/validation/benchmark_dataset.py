@@ -3,8 +3,9 @@ Curated benchmark dataset of test repositories for validation
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Any
 from enum import Enum
+from pathlib import Path
 
 
 class SkillLevel(Enum):
@@ -737,3 +738,74 @@ class BenchmarkDataset:
 
 # Create singleton instance
 benchmark_dataset = BenchmarkDataset()
+
+
+# ========== Helper Functions for API Routes ==========
+
+def get_benchmark_dataset_path() -> Path:
+    """Get the path to the benchmark dataset cache directory"""
+    return Path.home() / ".local/share/oscanner/validation_cache"
+
+
+def get_benchmark_repos_list() -> List[Dict[str, Any]]:
+    """
+    Get list of all benchmark repositories as dictionaries
+
+    Returns:
+        List of repository info dictionaries
+    """
+    repos = benchmark_dataset.get_all()
+    return [
+        {
+            "platform": repo.platform,
+            "owner": repo.owner,
+            "repo": repo.repo,
+            "author": repo.author,
+            "identifier": repo.identifier,
+            "category": repo.category,
+            "skill_level": repo.skill_level.value if repo.skill_level else None,
+            "expected_score_range": repo.expected_score_range,
+            "is_ground_truth": repo.is_ground_truth,
+            "is_edge_case": repo.is_edge_case,
+            "description": repo.description,
+            "public_reputation": repo.public_reputation,
+        }
+        for repo in repos
+    ]
+
+
+def load_benchmark_evaluation(
+    platform: str,
+    owner: str,
+    repo: str,
+    author: str,
+    plugin_id: str = ""
+) -> Optional[Dict[str, Any]]:
+    """
+    Load cached benchmark evaluation for a specific repo/author
+
+    Args:
+        platform: Platform (github/gitee)
+        owner: Repository owner
+        repo: Repository name
+        author: Author name
+        plugin_id: Optional plugin ID (not currently used)
+
+    Returns:
+        Evaluation data dictionary or None if not found
+    """
+    import json
+
+    cache_dir = get_benchmark_dataset_path()
+    safe_name = f"{platform}_{owner}_{repo}_{author}.json"
+    cache_path = cache_dir / safe_name
+
+    if not cache_path.exists():
+        return None
+
+    try:
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading cached evaluation: {e}")
+        return None

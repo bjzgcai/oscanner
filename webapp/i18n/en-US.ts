@@ -4,6 +4,7 @@ export const enUS: Messages = {
   // Navigation
   'nav.title': 'Engineer Skill Evaluator',
   'nav.analysis': 'Analysis',
+  'nav.validation': 'Validation',
   'nav.api': 'API',
   'nav.cache.tooltip':
     'When enabled, evaluations may reuse cached results + latest commits; when disabled, it forces a fresh evaluation (requires LLM key).',
@@ -86,6 +87,138 @@ export const enUS: Messages = {
   'single.pdf.generating': 'Generating PDF report...',
   'single.pdf.success': 'PDF report downloaded successfully!',
   'single.pdf.failed': 'Failed to generate PDF report',
+
+  // Validation
+  'validation.title': 'Benchmark Validation',
+  'validation.nav.dataset': 'Dataset',
+  'validation.nav.run': 'Run Validation',
+  'validation.nav.history': 'History',
+  'validation.nav.results': 'Results',
+
+  // Dataset
+  'validation.dataset.total_repos': 'Total Repos',
+  'validation.dataset.categories': 'Categories',
+  'validation.dataset.ground_truth': 'Ground Truth',
+  'validation.dataset.expert': 'Expert Level',
+  'validation.dataset.repos_list': 'Benchmark Repositories',
+  'validation.dataset.filter_category': 'Filter by Category',
+  'validation.dataset.table.platform': 'Platform',
+  'validation.dataset.table.repo': 'Repository',
+  'validation.dataset.table.author': 'Author',
+  'validation.dataset.table.category': 'Category',
+  'validation.dataset.table.skill_level': 'Skill Level',
+  'validation.dataset.table.actions': 'Actions',
+  'validation.dataset.view_evaluation': 'View',
+  'validation.dataset.load_stats_error': 'Failed to load dataset statistics',
+  'validation.dataset.load_repos_error': 'Failed to load repositories',
+
+  // Categories
+  'validation.category.ground_truth': 'Ground Truth',
+  'validation.category.famous_developer': 'Famous Developers',
+  'validation.category.dimension_specialist': 'Dimension Specialists',
+  'validation.category.rising_star': 'Rising Stars',
+  'validation.category.temporal_evolution': 'Temporal Evolution',
+  'validation.category.edge_case': 'Edge Cases',
+  'validation.category.corporate_team': 'Corporate/Team',
+  'validation.category.domain_specialist': 'Domain Specialists',
+  'validation.category.international': 'International',
+  'validation.category.comparison_pair': 'Comparison Pairs',
+
+  // Skill levels
+  'validation.skill.novice': 'Novice',
+  'validation.skill.intermediate': 'Intermediate',
+  'validation.skill.senior': 'Senior',
+  'validation.skill.architect': 'Architect',
+  'validation.skill.expert': 'Expert',
+
+  // Run Validation
+  'validation.run.title': 'Run Validation Tests',
+  'validation.run.info': 'Validation Framework',
+  'validation.run.info_desc': 'Tests the evaluation system against 60+ curated benchmark repositories across 5 validation strategies: Consistency, Correlation, Dimension, Temporal, and Ordering.',
+  'validation.run.subset.label': 'Test Subset',
+  'validation.run.subset.placeholder': 'Select category to test (default: all)',
+  'validation.run.subset.all': 'All Repositories',
+  'validation.run.quick_mode.label': 'Quick Mode',
+  'validation.run.quick_mode.tooltip': 'Skip consistency test for faster validation (single evaluation per repo)',
+  'validation.run.quick_mode.enabled': 'Enabled - Skip consistency test',
+  'validation.run.quick_mode.disabled': 'Disabled - Run all tests',
+  'validation.run.current_settings': 'Current Settings',
+  'validation.run.config': 'Configuration',
+  'validation.run.start': 'Start Validation',
+  'validation.run.running': 'Running Validation...',
+  'validation.run.complete': 'Validation Complete',
+  'validation.run.error': 'Validation failed',
+  'validation.run.failed': 'Validation failed',
+
+  // Settings
+  'validation.settings.model': 'Model',
+  'validation.settings.plugin': 'Plugin',
+  'validation.settings.cache': 'Cache',
+  'validation.settings.enabled': 'Enabled',
+  'validation.settings.disabled': 'Disabled',
+
+  // History
+  'validation.history.title': 'Validation History',
+  'validation.history.run_id': 'Run ID',
+  'validation.history.timestamp': 'Timestamp',
+  'validation.history.score': 'Overall Score',
+  'validation.history.status': 'Status',
+  'validation.history.duration': 'Duration',
+  'validation.history.actions': 'Actions',
+  'validation.history.passed': 'Passed',
+  'validation.history.failed': 'Failed',
+  'validation.history.view_details': 'View Details',
+  'validation.history.refresh': 'Refresh',
+  'validation.history.no_runs': 'No validation runs yet',
+  'validation.history.no_runs_desc': 'Run your first validation test to see results here',
+  'validation.history.total_runs': 'runs',
+  'validation.history.load_error': 'Failed to load validation history',
+
+  // Results
+  'validation.results.title': 'Validation Results',
+  'validation.results.overall_score': 'Overall Score',
+  'validation.results.tests_passed': 'Tests Passed',
+  'validation.results.repos_evaluated': 'Repos Evaluated',
+  'validation.results.duration': 'Duration',
+  'validation.results.timestamp': 'Run Time',
+  'validation.results.dataset_total': 'Dataset Size',
+  'validation.results.repos': 'repositories',
+  'validation.results.all_passed': 'All Tests Passed',
+  'validation.results.some_failed': 'Some Tests Failed',
+  'validation.results.test_details': 'Test Details',
+  'validation.results.no_details': 'No additional details available',
+  'validation.results.download': 'Download Report',
+  'validation.results.download_success': 'Report downloaded successfully',
+  'validation.results.back_to_history': 'Back to History',
+  'validation.results.no_run_selected': 'No Run Selected',
+  'validation.results.no_run_selected_desc': 'Select a validation run from the History tab to view detailed results',
+  'validation.results.loading': 'Loading validation results...',
+  'validation.results.not_found': 'Validation run not found',
+  'validation.results.load_error': 'Failed to load validation results',
+
+  // Status
+  'validation.status.passed': 'Passed',
+  'validation.status.failed': 'Failed',
+
+  // Test names and descriptions
+  'validation.test.consistency': 'Consistency Test',
+  'validation.test.consistency.desc': 'Tests score stability across multiple runs',
+  'validation.test.correlation': 'Correlation Test',
+  'validation.test.correlation.desc': 'Compares actual vs expected scores',
+  'validation.test.dimension': 'Dimension Test',
+  'validation.test.dimension.desc': 'Verifies dimension-specific expectations',
+  'validation.test.temporal': 'Temporal Test',
+  'validation.test.temporal.desc': 'Verifies growth over time',
+  'validation.test.ordering': 'Ordering Test',
+  'validation.test.ordering.desc': 'Verifies skill level ordering',
+
+  // Execution logs
+  'validation.log.starting': 'Starting validation...',
+  'validation.log.complete': 'Validation complete! Overall score: {score}/100',
+  'validation.log.error': 'Validation failed: {error}',
+  'validation.logs.title': 'Execution Logs',
+  'validation.logs.show': 'Show Logs',
+  'validation.logs.hide': 'Hide Logs',
 };
 
 
