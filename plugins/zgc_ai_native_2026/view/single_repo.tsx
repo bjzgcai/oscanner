@@ -1,7 +1,19 @@
 import React from 'react';
 import { Alert, Card, Spin, Tag } from 'antd';
 import ReactMarkdown from 'react-markdown';
+import { Radar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import type { PluginSingleRepoViewProps } from '../../_shared/view/types';
+
+ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 function levelFromScore(score: number): string {
   if (score >= 85) return 'L5';
@@ -56,11 +68,62 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
     );
   }
   const s = evaluation?.scores || {};
-  const keys = ['ai_fullstack', 'ai_architecture', 'cloud_native', 'open_source', 'intelligent_dev', 'leadership'];
+  const keys = ['spec_quality', 'cloud_architecture', 'ai_engineering', 'mastery_professionalism'];
   const avg =
     keys.reduce((acc, k) => acc + (typeof s[k] === 'number' ? (s[k] as number) : 0), 0) / (keys.length || 1);
   const lvl = levelFromScore(avg);
   const reasoning = typeof s.reasoning === 'string' ? (s.reasoning as string) : '';
+
+  // Prepare radar chart data for 4 dimensions
+  const dims: Array<{ key: string; label: string }> = [
+    { key: 'spec_quality', label: t('plugin.zgc_ai_native_2026.dim.spec_quality') },
+    { key: 'cloud_architecture', label: t('plugin.zgc_ai_native_2026.dim.cloud_architecture') },
+    { key: 'ai_engineering', label: t('plugin.zgc_ai_native_2026.dim.ai_engineering') },
+    { key: 'mastery_professionalism', label: t('plugin.zgc_ai_native_2026.dim.mastery_professionalism') },
+  ];
+
+  const scoreValue = (key: string) => {
+    const raw = s[key];
+    const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : 0;
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(100, n));
+  };
+
+  const chartData = {
+    labels: dims.map((d) => d.label),
+    datasets: [
+      {
+        label: t('plugin.zgc_ai_native_2026.single.chart.label') || 'Scores',
+        data: dims.map((d) => scoreValue(d.key)),
+        fill: true,
+        backgroundColor: 'rgba(110, 231, 183, 0.15)',
+        borderColor: '#10B981',
+        pointBackgroundColor: '#6EE7B7',
+        pointBorderColor: '#052e2b',
+        pointHoverBackgroundColor: '#FBBF24',
+        pointHoverBorderColor: '#10B981',
+        pointRadius: 6,
+        pointHoverRadius: 10,
+        borderWidth: 3,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      r: {
+        suggestedMin: 0,
+        suggestedMax: 100,
+        ticks: { stepSize: 20, backdropColor: 'transparent', color: '#9CA3AF' },
+        pointLabels: { color: '#E5E7EB' },
+        angleLines: { display: true, color: '#064E3B', lineWidth: 2 },
+        grid: { color: '#064E3B', lineWidth: 2 },
+      },
+    },
+  };
 
   return (
     <Card
@@ -85,6 +148,10 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
             {evaluation?.plugin_version ? ` @ ${evaluation.plugin_version}` : ''}
           </div>
         </div>
+      </div>
+
+      <div id="radar-chart-export" style={{ marginTop: 12, height: 300 }}>
+        <Radar data={chartData} options={chartOptions as any} />
       </div>
 
       <div style={{ marginTop: 12 }}>

@@ -35,7 +35,7 @@ async def evaluate_author(
     plugin: str = Query(""),
     language: str = Query("en-US"),
     parallel_chunking: bool = Query(True),
-    max_parallel_workers: int = Query(3),
+    max_parallel_workers: int = Query(5),
     request_body: Optional[Dict[str, Any]] = None
 ):
     """Evaluate an author with auto-sync and incremental evaluation."""
