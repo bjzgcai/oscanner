@@ -23,6 +23,8 @@ def get_or_create_evaluator(
     use_cache: bool = True,
     plugin_id: str = "",
     model: str = DEFAULT_LLM_MODEL,
+    parallel_chunking: bool = True,
+    max_parallel_workers: int = 3,
 ):
     """
     Legacy helper (kept for compatibility).
@@ -61,6 +63,8 @@ def get_or_create_evaluator(
         api_key=api_key,
         model=model,
         mode="moderate",
+        parallel_chunking=parallel_chunking,
+        max_parallel_workers=max_parallel_workers,
     )
     print(f"✓ Created evaluator for {owner}/{repo} via plugin={pid} scan={scan_path}")
     _ = meta
@@ -77,6 +81,8 @@ def evaluate_author_incremental(
     api_key: str,
     aliases: Optional[List[str]] = None,
     evaluator_factory=None,
+    parallel_chunking: bool = True,
+    max_parallel_workers: int = 3,
 ) -> Dict[str, Any]:
     """
     Evaluate author incrementally with weighted merge
@@ -219,20 +225,41 @@ def evaluate_author_incremental(
     prev_scores = previous_evaluation.get("scores", {})
     new_scores = new_evaluation.get("scores", {})
 
-    for key in prev_scores.keys():
+    # Merge all keys from both previous and new scores
+    all_keys = set(prev_scores.keys()) | set(new_scores.keys())
+
+    for key in all_keys:
         if key == "reasoning":
-            # Prepend new reasoning
-            merged_scores[key] = (
-                f"**Recent Activity ({new_count} new commits):**\n{new_scores.get(key, '')}\n\n"
-                f"---\n\n"
-                f"**Previous Assessment ({prev_count} commits):**\n{prev_scores[key]}"
-            )
+            # Combine reasoning from both evaluations
+            prev_reasoning = prev_scores.get(key, '')
+            new_reasoning = new_scores.get(key, '')
+
+            if prev_reasoning and new_reasoning:
+                merged_scores[key] = (
+                    f"**Recent Activity ({new_count} new commits):**\n{new_reasoning}\n\n"
+                    f"---\n\n"
+                    f"**Previous Assessment ({prev_count} commits):**\n{prev_reasoning}"
+                )
+            elif new_reasoning:
+                merged_scores[key] = new_reasoning
+            elif prev_reasoning:
+                merged_scores[key] = prev_reasoning
+            else:
+                merged_scores[key] = ""
         else:
-            # Weighted average for scores
+            # Weighted average for numeric scores
             prev_val = prev_scores.get(key, 0)
             new_val = new_scores.get(key, 0)
-            merged_val = (prev_val * prev_count + new_val * new_count) / total_count
-            merged_scores[key] = int(merged_val)
+
+            if prev_val and new_val:
+                merged_val = (prev_val * prev_count + new_val * new_count) / total_count
+                merged_scores[key] = int(merged_val)
+            elif new_val:
+                merged_scores[key] = int(new_val)
+            elif prev_val:
+                merged_scores[key] = int(prev_val)
+            else:
+                merged_scores[key] = 0
 
     # Merge commit summaries
     prev_summary = previous_evaluation.get("commits_summary", {})

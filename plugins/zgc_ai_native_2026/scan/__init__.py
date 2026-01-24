@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
@@ -46,6 +47,9 @@ def create_commit_evaluator(
     api_key: str,
     model: Optional[str] = None,
     mode: str = "moderate",
+    language: str = "en-US",
+    parallel_chunking: bool = False,
+    max_parallel_workers: int = 3,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -53,6 +57,9 @@ def create_commit_evaluator(
         mode=mode,
         model=model,
         rubric_text=_RUBRIC_SUMMARY,
+        language=language,
+        parallel_chunking=parallel_chunking,
+        max_parallel_workers=max_parallel_workers,
     )
 
 
@@ -75,6 +82,9 @@ class CommitEvaluatorModerate:
         chat_completions_url: Optional[str] = None,
         fallback_models: Optional[List[str]] = None,
         rubric_text: Optional[str] = None,
+        language: str = "en-US",
+        parallel_chunking: bool = False,
+        max_parallel_workers: int = 3,
     ):
         self.api_key = (
             api_key
@@ -99,6 +109,9 @@ class CommitEvaluatorModerate:
         self.model = model or os.getenv("OSCANNER_LLM_MODEL") or "anthropic/claude-sonnet-4.5"
         self.fallback_models = fallback_models
         self.rubric_text = (rubric_text or "").strip()
+        self.language = language
+        self.parallel_chunking = parallel_chunking
+        self.max_parallel_workers = max_parallel_workers
 
         self.dimensions = {
             "ai_fullstack": "Practical Delivery & Built-in Quality",
@@ -167,6 +180,16 @@ class CommitEvaluatorModerate:
     def _evaluate_engineer_chunked(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
         commits_per_chunk = 15 if self.mode == "moderate" else 20
         chunks = [commits[i : i + commits_per_chunk] for i in range(0, len(commits), commits_per_chunk)]
+
+        if self.parallel_chunking:
+            print(f"[Chunking] Using PARALLEL mode with {len(chunks)} chunks (max_workers={self.max_parallel_workers})")
+            return self._evaluate_chunks_parallel(chunks, username, load_files=load_files)
+        else:
+            print(f"[Chunking] Using SEQUENTIAL mode with {len(chunks)} chunks")
+            return self._evaluate_chunks_sequential(chunks, username, load_files=load_files)
+
+    def _evaluate_chunks_sequential(self, chunks: List[List[Dict[str, Any]]], username: str, *, load_files: bool) -> Dict[str, Any]:
+        """Original sequential chunking strategy"""
         repo_structure = None
         if self.mode == "moderate" and load_files and self.data_dir:
             repo_structure = self._load_repo_structure()
@@ -191,16 +214,154 @@ class CommitEvaluatorModerate:
                 accumulated = chunk_scores
             else:
                 accumulated = self._merge_evaluations(accumulated, chunk_scores, idx)
+
+        # Flatten all commits for summary
+        all_commits = [c for chunk in chunks for c in chunk]
         return {
             "username": username,
-            "total_commits_analyzed": len(commits),
+            "total_commits_analyzed": len(all_commits),
             "files_loaded": len(all_files),
             "mode": self.mode,
             "scores": accumulated or self._fallback_evaluation(""),
-            "commits_summary": self._summarize_commits(commits),
+            "commits_summary": self._summarize_commits(all_commits),
             "chunked": True,
             "chunks_processed": len(chunks),
+            "chunking_strategy": "sequential",
         }
+
+    def _evaluate_chunks_parallel(self, chunks: List[List[Dict[str, Any]]], username: str, *, load_files: bool) -> Dict[str, Any]:
+        """New parallel chunking strategy with LLM-based merge"""
+        repo_structure = None
+        if self.mode == "moderate" and load_files and self.data_dir:
+            repo_structure = self._load_repo_structure()
+
+        all_files: Dict[str, str] = {}
+        chunk_results: List[Dict[str, Any]] = []
+
+        def evaluate_single_chunk(idx: int, chunk: List[Dict[str, Any]]) -> tuple[int, Dict[str, Any], Dict[str, str]]:
+            """Evaluate a single chunk independently"""
+            chunk_files: Dict[str, str] = {}
+            if self.mode == "moderate" and load_files and self.data_dir:
+                chunk_files = self._load_relevant_files(chunk)
+
+            # Build context WITHOUT previous evaluation (parallel chunks are independent)
+            context = self._build_commit_context(
+                chunk,
+                username,
+                file_contents=chunk_files,
+                repo_structure=repo_structure if idx == 1 else None,
+            )
+
+            # Add chunk metadata to context
+            context_with_meta = f"CHUNK {idx}/{len(chunks)}\n\n{context}"
+
+            chunk_scores = self._evaluate_with_llm(context_with_meta, username, chunk_idx=idx)
+            print(f"[Parallel] Chunk {idx}/{len(chunks)} completed")
+            return idx, chunk_scores, chunk_files
+
+        # Execute chunks in parallel
+        with ThreadPoolExecutor(max_workers=self.max_parallel_workers) as executor:
+            futures = {
+                executor.submit(evaluate_single_chunk, idx, chunk): idx
+                for idx, chunk in enumerate(chunks, 1)
+            }
+
+            for future in as_completed(futures):
+                try:
+                    idx, scores, files = future.result()
+                    chunk_results.append({"chunk_idx": idx, "scores": scores})
+                    all_files.update(files)
+                except Exception as e:
+                    print(f"[Parallel] Chunk evaluation failed: {e}")
+                    raise
+
+        # Sort results by chunk index
+        chunk_results.sort(key=lambda x: x["chunk_idx"])
+
+        # Merge all chunk results using LLM
+        print(f"[Parallel] All {len(chunk_results)} chunks completed, merging with LLM...")
+        merged_scores = self._merge_chunk_results_with_llm(chunk_results, username)
+
+        # Flatten all commits for summary
+        all_commits = [c for chunk in chunks for c in chunk]
+        return {
+            "username": username,
+            "total_commits_analyzed": len(all_commits),
+            "files_loaded": len(all_files),
+            "mode": self.mode,
+            "scores": merged_scores,
+            "commits_summary": self._summarize_commits(all_commits),
+            "chunked": True,
+            "chunks_processed": len(chunks),
+            "chunking_strategy": "parallel",
+        }
+
+    def _merge_chunk_results_with_llm(self, chunk_results: List[Dict[str, Any]], username: str) -> Dict[str, Any]:
+        """Use LLM to intelligently merge all parallel chunk evaluations"""
+        is_chinese = self.language == "zh-CN"
+
+        # Build merge prompt
+        chunks_summary = []
+        for result in chunk_results:
+            idx = result["chunk_idx"]
+            scores = result["scores"]
+            chunks_summary.append(f"Chunk {idx}: {json.dumps(scores, ensure_ascii=False, indent=2)}")
+
+        chunks_text = "\n\n".join(chunks_summary)
+
+        if is_chinese:
+            merge_instruction = f"""你是一位专业的工程能力评估员。下面是对用户 "{username}" 的 {len(chunk_results)} 个独立评估结果。
+
+请综合所有评估结果，生成一个统一的最终评估：
+1. 对于数值分数：考虑所有评估的整体趋势，给出合理的综合分数（不要简单平均）
+2. 对于推理部分：整合所有评估中的关键发现，提供完整的 **主要优势**、**改进空间**、**整体评估** 部分
+
+评估结果：
+{chunks_text}
+
+返回格式与之前相同的JSON格式。"""
+        else:
+            merge_instruction = f"""You are an expert engineering evaluator. Below are {len(chunk_results)} independent evaluations for user "{username}".
+
+Synthesize all evaluations into a unified final assessment:
+1. For numeric scores: Consider overall trends across all evaluations, provide reasonable consolidated scores (not simple averaging)
+2. For reasoning: Integrate key findings from all evaluations, provide complete **Key Strengths**, **Areas for Growth**, **Overall Assessment** sections
+
+Evaluation Results:
+{chunks_text}
+
+Return the same JSON format as before."""
+
+        # Call LLM for intelligent merge
+        try:
+            merged = self._evaluate_with_llm(merge_instruction, username, chunk_idx=None)
+            print(f"[Parallel] LLM merge completed successfully")
+            return merged
+        except Exception as e:
+            print(f"[Parallel] LLM merge failed, falling back to simple averaging: {e}")
+            # Fallback to simple averaging if LLM merge fails
+            return self._simple_average_merge(chunk_results)
+
+    def _simple_average_merge(self, chunk_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Fallback: simple averaging of all chunk scores"""
+        if not chunk_results:
+            return {k: 0 for k in self.dimensions.keys()}
+
+        merged: Dict[str, Any] = {}
+
+        # Average numeric scores
+        for k in self.dimensions.keys():
+            scores = [r["scores"].get(k, 0) for r in chunk_results]
+            merged[k] = int(sum(scores) / len(scores))
+
+        # Concatenate reasoning
+        reasonings = [r["scores"].get("reasoning", "") for r in chunk_results if r["scores"].get("reasoning")]
+        if reasonings:
+            merged["reasoning"] = "\n\n---\n\n".join(f"**Chunk {i+1}:**\n{r}" for i, r in enumerate(reasonings))
+        else:
+            merged["reasoning"] = "Multiple chunks evaluated."
+
+        return merged
 
     def _build_commit_context(
         self,
@@ -345,20 +506,39 @@ class CommitEvaluatorModerate:
         max_context_tokens = self.max_input_tokens - prompt_template_tokens
         context = self._truncate_context(context, max_context_tokens)
 
-        mode_note = ""
-        if self.mode == "moderate":
-            mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
+        is_chinese = self.language == "zh-CN"
 
-        chunked_instruction = ""
-        if chunk_idx:
-            chunked_instruction = "\nCHUNKED: Update scores based on previous + new evidence; provide full reasoning."
+        # Language-specific instructions
+        if is_chinese:
+            base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的数据，并对每个维度评分（0-100分）。'
+            mode_note = ""
+            if self.mode == "moderate":
+                mode_note = "\n注意：你可能会看到提交差异（commit diffs）和文件内容。在有帮助的情况下请使用文件内容。"
+            chunked_instruction = ""
+            if chunk_idx:
+                chunked_instruction = "\n分块评估：基于之前的评分和新证据更新分数。提供完整的推理过程，包括**主要优势**、**改进空间**、**整体评估**部分（不要重复部分）。"
+            data_label = "数据"
+            dimensions_label = "评估维度"
+            return_json_instruction = "仅返回有效的JSON格式"
+        else:
+            base_instruction = f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
+            mode_note = ""
+            if self.mode == "moderate":
+                mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
+            chunked_instruction = ""
+            if chunk_idx:
+                chunked_instruction = "\nCHUNKED: Revise the previous assessment by incorporating new evidence. Provide ONE consolidated reasoning with updated Key Strengths, Areas for Growth, and Overall Assessment sections (do not repeat sections)."
+            data_label = "DATA"
+            dimensions_label = "DIMENSIONS"
+            return_json_instruction = "Return ONLY valid JSON"
 
         rubric_block = ""
         if self.rubric_text:
             snippet = self.rubric_text
             if len(snippet) > 6000:
                 snippet = snippet[:6000] + "\n...[rubric truncated]..."
-            rubric_block = f"\n\nRUBRIC / STANDARD:\n{snippet}\n"
+            rubric_label = "评分标准" if is_chinese else "RUBRIC / STANDARD"
+            rubric_block = f"\n\n{rubric_label}:\n{snippet}\n"
 
         dim_lines: List[str] = []
         i = 1
@@ -368,16 +548,21 @@ class CommitEvaluatorModerate:
             i += 1
         dims_text = "\n".join(dim_lines)
 
-        reasoning_line = (
-            "  \"reasoning\": \"Use the rubric. Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**.\""
-        )
+        if is_chinese:
+            reasoning_line = (
+                "  \"reasoning\": \"使用评分标准。提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。\""
+            )
+        else:
+            reasoning_line = (
+                "  \"reasoning\": \"Use the rubric. Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**.\""
+            )
         fmt_lines = ["{"] + [f'  "{k}": <0-100>,' for k in self.dimensions.keys()] + [reasoning_line, "}"]
         fmt_text = "\n".join(fmt_lines)
 
         return (
-            f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
-            f"{mode_note}{chunked_instruction}{rubric_block}\n\nDATA:\n{context}\n\nDIMENSIONS:\n{dims_text}\n\n"
-            f"Return ONLY valid JSON:\n{fmt_text}"
+            f'{base_instruction}'
+            f"{mode_note}{chunked_instruction}{rubric_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
+            f"{return_json_instruction}:\n{fmt_text}"
         )
 
     def _parse_llm_response(self, content: str) -> Dict[str, Any]:
@@ -404,9 +589,9 @@ class CommitEvaluatorModerate:
         out: Dict[str, Any] = {}
         for k in self.dimensions.keys():
             out[k] = int(round((int(prev.get(k, 0)) + int(new.get(k, 0))) / 2))
-        pr = str(prev.get("reasoning", "")).strip()
+        # Use the new reasoning which already consolidates previous + new evidence
         nr = str(new.get("reasoning", "")).strip()
-        out["reasoning"] = (nr + "\n\n---\n\n" + pr).strip() if (nr and pr) else (nr or pr)
+        out["reasoning"] = nr if nr else str(prev.get("reasoning", "")).strip()
         out["chunks_merged"] = chunk_idx
         return out
 

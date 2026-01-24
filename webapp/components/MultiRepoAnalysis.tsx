@@ -73,7 +73,7 @@ export default function MultiRepoAnalysis() {
   const [repoUrls, setRepoUrls] = useState('');
   const [loading, setLoading] = useState(false);
   const { model, pluginId, useCache } = useAppSettings();
-  const { t } = useI18n();
+  const { t, locale, messages } = useI18n();
   const [mode, setMode] = useState<'single' | 'multi' | null>(null);
   const [loadingText, setLoadingText] = useState('');
   const [results, setResults] = useState<BatchResult | null>(null);
@@ -320,7 +320,7 @@ export default function MultiRepoAnalysis() {
     }
     try {
       appendLog('Generating PDF report...');
-      await exportMultiRepoPDF(comparisonData, selectedContributor);
+      await exportMultiRepoPDF(comparisonData, selectedContributor, messages);
       appendLog('PDF report downloaded.');
     } catch (e: unknown) {
       console.error('PDF generation error:', e);
@@ -338,7 +338,8 @@ export default function MultiRepoAnalysis() {
       await exportHomePagePDF(
         { owner: singleRepo.owner, repo: singleRepo.repo, full_name: singleRepo.full_name },
         authorsData[selectedAuthorIndex],
-        evaluation
+        evaluation,
+        messages
       );
       appendLog('PDF report downloaded.');
     } catch (e: unknown) {
@@ -378,7 +379,7 @@ export default function MultiRepoAnalysis() {
 
       try {
         const response = await fetch(
-          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}`,
+          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}&language=${encodeURIComponent(locale)}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { ContributorComparisonData, Comparison } from '../types';
+import type { Messages } from '../i18n/types';
 
 interface Evaluation {
   scores: {
@@ -28,14 +29,179 @@ interface RepoData {
   full_name: string;
 }
 
-const dimensions = [
-  { name: "AI Model Full-Stack", key: "ai_fullstack" },
-  { name: "AI Native Architecture", key: "ai_architecture" },
-  { name: "Cloud Native Engineering", key: "cloud_native" },
-  { name: "Open Source Collaboration", key: "open_source" },
-  { name: "Intelligent Development", key: "intelligent_dev" },
-  { name: "Engineering Leadership", key: "leadership" }
-];
+interface PDFTexts {
+  titleSingle: string;
+  subtitleSingle: string;
+  titleMulti: string;
+  subtitleMulti: string;
+  repository: string;
+  author: string;
+  contributor: string;
+  email: string;
+  totalCommits: string;
+  skillDimensions: string;
+  contributionSummary: string;
+  commitsAnalyzed: string;
+  linesAdded: string;
+  linesDeleted: string;
+  filesChanged: string;
+  languages: string;
+  aiAnalysis: string;
+  aggregateStats: string;
+  totalRepos: string;
+  repositoryBreakdown: string;
+  failedRepos: string;
+  commits: string;
+  dimensions: {
+    ai_fullstack: string;
+    ai_architecture: string;
+    cloud_native: string;
+    open_source: string;
+    intelligent_dev: string;
+    leadership: string;
+  };
+}
+
+/**
+ * Create localized PDF texts from translations
+ */
+function getPDFTexts(translations: Messages): PDFTexts {
+  return {
+    titleSingle: translations['pdf.title.single'],
+    subtitleSingle: translations['pdf.subtitle.single'],
+    titleMulti: translations['pdf.title.multi'],
+    subtitleMulti: translations['pdf.subtitle.multi'],
+    repository: translations['pdf.repository'],
+    author: translations['pdf.author'],
+    contributor: translations['pdf.contributor'],
+    email: translations['pdf.email'],
+    totalCommits: translations['pdf.total_commits'],
+    skillDimensions: translations['pdf.skill_dimensions'],
+    contributionSummary: translations['pdf.contribution_summary'],
+    commitsAnalyzed: translations['pdf.commits_analyzed'],
+    linesAdded: translations['pdf.lines_added'],
+    linesDeleted: translations['pdf.lines_deleted'],
+    filesChanged: translations['pdf.files_changed'],
+    languages: translations['pdf.languages'],
+    aiAnalysis: translations['pdf.ai_analysis'],
+    aggregateStats: translations['pdf.aggregate_stats'],
+    totalRepos: translations['pdf.total_repos'],
+    repositoryBreakdown: translations['pdf.repository_breakdown'],
+    failedRepos: translations['pdf.failed_repos'],
+    commits: translations['pdf.commits'],
+    dimensions: {
+      ai_fullstack: translations['pdf.dimension.ai_fullstack'],
+      ai_architecture: translations['pdf.dimension.ai_architecture'],
+      cloud_native: translations['pdf.dimension.cloud_native'],
+      open_source: translations['pdf.dimension.open_source'],
+      intelligent_dev: translations['pdf.dimension.intelligent_dev'],
+      leadership: translations['pdf.dimension.leadership'],
+    },
+  };
+}
+
+/**
+ * Renders text as HTML and converts to image for Chinese support
+ * This is a workaround for jsPDF's lack of built-in Chinese font support
+ */
+async function renderTextAsImage(
+  text: string,
+  options: {
+    fontSize?: number;
+    fontWeight?: string;
+    color?: string;
+    maxWidth?: number;
+  } = {}
+): Promise<string> {
+  const { fontSize = 16, fontWeight = 'normal', color = '#ffffff', maxWidth = 500 } = options;
+
+  const div = document.createElement('div');
+  div.style.position = 'absolute';
+  div.style.left = '-9999px';
+  div.style.top = '-9999px';
+  div.style.padding = '10px';
+  div.style.fontSize = `${fontSize}px`;
+  div.style.fontWeight = fontWeight;
+  div.style.color = color;
+  div.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+  div.style.maxWidth = `${maxWidth}px`;
+  div.style.backgroundColor = '#1A1A1A';
+  div.textContent = text;
+
+  document.body.appendChild(div);
+
+  try {
+    const canvas = await html2canvas(div, {
+      backgroundColor: '#1A1A1A',
+      scale: 2,
+      logging: false,
+    });
+    return canvas.toDataURL('image/png');
+  } finally {
+    document.body.removeChild(div);
+  }
+}
+
+/**
+ * Check if text contains Chinese characters
+ */
+function hasChinese(text: string): boolean {
+  return /[\u4e00-\u9fa5]/.test(text);
+}
+
+/**
+ * Add text to PDF with Chinese support
+ * If text contains Chinese, render as image; otherwise use native text
+ */
+async function addTextWithChineseSupport(
+  pdf: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  options: {
+    fontSize?: number;
+    fontWeight?: 'normal' | 'bold';
+    color?: [number, number, number];
+    maxWidth?: number;
+  } = {}
+): Promise<{ height: number }> {
+  const { fontSize = 12, fontWeight = 'normal', color = [255, 255, 255], maxWidth } = options;
+
+  if (hasChinese(text)) {
+    // Render Chinese text as image
+    const imageData = await renderTextAsImage(text, {
+      fontSize,
+      fontWeight,
+      color: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+      maxWidth: maxWidth || 180,
+    });
+
+    // Calculate dimensions
+    const img = new Image();
+    img.src = imageData;
+    await new Promise((resolve) => { img.onload = resolve; });
+
+    const imgWidth = Math.min(img.width / 10, maxWidth || 180);
+    const imgHeight = (img.height / img.width) * imgWidth;
+
+    pdf.addImage(imageData, 'PNG', x, y - imgHeight / 2, imgWidth, imgHeight);
+    return { height: imgHeight };
+  } else {
+    // Use native text rendering for ASCII
+    pdf.setFontSize(fontSize);
+    pdf.setFont('helvetica', fontWeight);
+    pdf.setTextColor(color[0], color[1], color[2]);
+
+    if (maxWidth) {
+      const lines = pdf.splitTextToSize(text, maxWidth);
+      pdf.text(lines, x, y);
+      return { height: lines.length * fontSize * 0.35 };
+    } else {
+      pdf.text(text, x, y);
+      return { height: fontSize * 0.35 };
+    }
+  }
+}
 
 /**
  * Captures a canvas element (chart) as an image
@@ -63,8 +229,10 @@ async function captureChart(elementId: string): Promise<string | null> {
 export async function exportHomePagePDF(
   repoData: RepoData,
   author: Author,
-  evaluation: Evaluation
+  evaluation: Evaluation,
+  translations: Messages
 ) {
+  const texts = getPDFTexts(translations);
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -75,45 +243,59 @@ export async function exportHomePagePDF(
   pdf.setFillColor(10, 10, 10);
   pdf.rect(0, 0, pageWidth, 40, 'F');
 
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(20);
-  pdf.setTextColor(255, 235, 0);
-  pdf.text('Engineer Skill Analysis Report', margin, yPos + 10);
+  // Title
+  await addTextWithChineseSupport(pdf, texts.titleSingle, margin, yPos + 10, {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: [0, 163, 255],
+  });
 
-  pdf.setFontSize(12);
-  pdf.setTextColor(176, 176, 176);
-  pdf.text('LLM-Powered Six-Dimensional Capability Analysis', margin, yPos + 18);
+  // Subtitle
+  await addTextWithChineseSupport(pdf, texts.subtitleSingle, margin, yPos + 18, {
+    fontSize: 12,
+    color: [176, 176, 176],
+  });
 
   yPos = 50;
 
-  // Repository and Author Info
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 235, 0);
-  pdf.text('Repository:', margin, yPos);
+  // Repository Info
+  await addTextWithChineseSupport(pdf, texts.repository, margin, yPos, {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: [0, 163, 255],
+  });
 
   pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(14);
   pdf.setTextColor(255, 255, 255);
-  pdf.text(repoData.full_name, margin + 30, yPos);
+  pdf.text(repoData.full_name, margin + 35, yPos);
 
   yPos += 10;
 
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 235, 0);
-  pdf.text('Author:', margin, yPos);
+  // Author Info
+  await addTextWithChineseSupport(pdf, texts.author, margin, yPos, {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: [0, 163, 255],
+  });
 
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(255, 255, 255);
-  pdf.text(author.author, margin + 30, yPos);
-
-  yPos += 7;
-
-  pdf.setFontSize(10);
-  pdf.setTextColor(176, 176, 176);
-  pdf.text(`Email: ${author.email}`, margin + 30, yPos);
+  await addTextWithChineseSupport(pdf, author.author, margin + 25, yPos, {
+    fontSize: 14,
+    color: [255, 255, 255],
+  });
 
   yPos += 7;
-  pdf.text(`Total Commits: ${author.commits}`, margin + 30, yPos);
+
+  await addTextWithChineseSupport(pdf, `${texts.email} ${author.email}`, margin + 25, yPos, {
+    fontSize: 10,
+    color: [176, 176, 176],
+  });
+
+  yPos += 7;
+  await addTextWithChineseSupport(pdf, `${texts.totalCommits} ${author.commits}`, margin + 25, yPos, {
+    fontSize: 10,
+    color: [176, 176, 176],
+  });
 
   yPos += 10;
 
@@ -134,15 +316,25 @@ export async function exportHomePagePDF(
     yPos = margin;
   }
 
-  // Dimension Scores
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 235, 0);
-  pdf.text('Skill Dimensions', margin, yPos);
+  // Dimension Scores Title
+  await addTextWithChineseSupport(pdf, texts.skillDimensions, margin, yPos, {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: [0, 163, 255],
+  });
   yPos += 10;
 
-  pdf.setFontSize(10);
-  dimensions.forEach((dim) => {
+  // Dimension scores
+  const dimensions = [
+    { name: texts.dimensions.ai_fullstack, key: "ai_fullstack" },
+    { name: texts.dimensions.ai_architecture, key: "ai_architecture" },
+    { name: texts.dimensions.cloud_native, key: "cloud_native" },
+    { name: texts.dimensions.open_source, key: "open_source" },
+    { name: texts.dimensions.intelligent_dev, key: "intelligent_dev" },
+    { name: texts.dimensions.leadership, key: "leadership" }
+  ];
+
+  for (const dim of dimensions) {
     if (yPos > pageHeight - 20) {
       pdf.addPage();
       yPos = margin;
@@ -150,12 +342,15 @@ export async function exportHomePagePDF(
 
     const score = evaluation.scores[dim.key] || 0;
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(255, 255, 255);
-    pdf.text(dim.name, margin, yPos);
+    await addTextWithChineseSupport(pdf, dim.name, margin, yPos, {
+      fontSize: 10,
+      fontWeight: 'bold',
+      color: [255, 255, 255],
+    });
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(255, 235, 0);
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 163, 255);
     pdf.text(`${score}`, pageWidth - margin - 15, yPos);
 
     yPos += 5;
@@ -164,57 +359,58 @@ export async function exportHomePagePDF(
     const barWidth = pageWidth - 2 * margin;
     const barHeight = 4;
 
-    // Background
     pdf.setFillColor(51, 51, 51);
     pdf.rect(margin, yPos, barWidth, barHeight, 'F');
 
-    // Progress
-    pdf.setFillColor(255, 235, 0);
+    pdf.setFillColor(0, 163, 255);
     pdf.rect(margin, yPos, (barWidth * (score as number)) / 100, barHeight, 'F');
 
     yPos += 10;
-  });
+  }
 
   yPos += 5;
 
-  // Commit Summary
+  // Contribution Summary
   if (yPos > pageHeight - 60) {
     pdf.addPage();
     yPos = margin;
   }
 
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 235, 0);
-  pdf.text('Contribution Summary', margin, yPos);
+  await addTextWithChineseSupport(pdf, texts.contributionSummary, margin, yPos, {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: [0, 163, 255],
+  });
   yPos += 10;
 
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(255, 255, 255);
-
   const stats = [
-    `Commits Analyzed: ${evaluation.total_commits_analyzed}`,
-    `Lines Added: +${evaluation.commits_summary.total_additions}`,
-    `Lines Deleted: -${evaluation.commits_summary.total_deletions}`,
-    `Files Changed: ${evaluation.commits_summary.files_changed}`
+    `${texts.commitsAnalyzed} ${evaluation.total_commits_analyzed}`,
+    `${texts.linesAdded} +${evaluation.commits_summary.total_additions}`,
+    `${texts.linesDeleted} -${evaluation.commits_summary.total_deletions}`,
+    `${texts.filesChanged} ${evaluation.commits_summary.files_changed}`
   ];
 
-  stats.forEach(stat => {
-    pdf.text(stat, margin, yPos);
+  for (const stat of stats) {
+    await addTextWithChineseSupport(pdf, stat, margin, yPos, {
+      fontSize: 10,
+      color: [255, 255, 255],
+    });
     yPos += 7;
-  });
+  }
 
   yPos += 5;
 
   // Languages
   if (evaluation.commits_summary.languages.length > 0) {
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(255, 235, 0);
-    pdf.text('Languages:', margin, yPos);
+    await addTextWithChineseSupport(pdf, texts.languages, margin, yPos, {
+      fontSize: 10,
+      fontWeight: 'bold',
+      color: [0, 163, 255],
+    });
     yPos += 7;
 
     pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
     pdf.setTextColor(176, 176, 176);
     pdf.text(evaluation.commits_summary.languages.join(', '), margin, yPos);
     yPos += 10;
@@ -227,26 +423,20 @@ export async function exportHomePagePDF(
       yPos = margin;
     }
 
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(255, 235, 0);
-    pdf.text('AI Analysis Summary', margin, yPos);
+    await addTextWithChineseSupport(pdf, texts.aiAnalysis, margin, yPos, {
+      fontSize: 14,
+      fontWeight: 'bold',
+      color: [0, 163, 255],
+    });
     yPos += 10;
 
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(176, 176, 176);
-
     const reasoning = evaluation.scores.reasoning as string;
-    const lines = pdf.splitTextToSize(reasoning, pageWidth - 2 * margin);
-
-    lines.forEach((line: string) => {
-      if (yPos > pageHeight - margin) {
-        pdf.addPage();
-        yPos = margin;
-      }
-      pdf.text(line, margin, yPos);
-      yPos += 5;
+    // Convert mm to pixels (1mm ≈ 3.78 pixels at 96 DPI)
+    const maxWidthPixels = Math.floor((pageWidth - 2 * margin) * 3.78);
+    await addTextWithChineseSupport(pdf, reasoning, margin, yPos, {
+      fontSize: 9,
+      color: [176, 176, 176],
+      maxWidth: maxWidthPixels,
     });
   }
 
@@ -266,8 +456,10 @@ export async function exportHomePagePDF(
  */
 export async function exportMultiRepoPDF(
   comparisonData: ContributorComparisonData,
-  contributorName: string
+  contributorName: string,
+  translations: Messages
 ) {
+  const texts = getPDFTexts(translations);
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -278,47 +470,55 @@ export async function exportMultiRepoPDF(
   pdf.setFillColor(10, 10, 10);
   pdf.rect(0, 0, pageWidth, 40, 'F');
 
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(20);
-  pdf.setTextColor(0, 240, 255);
-  pdf.text('Multi-Repo Analysis Report', margin, yPos + 10);
+  await addTextWithChineseSupport(pdf, texts.titleMulti, margin, yPos + 10, {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: [0, 240, 255],
+  });
 
-  pdf.setFontSize(12);
-  pdf.setTextColor(176, 176, 176);
-  pdf.text('Cross-Repository Contributor Comparison', margin, yPos + 18);
+  await addTextWithChineseSupport(pdf, texts.subtitleMulti, margin, yPos + 18, {
+    fontSize: 12,
+    color: [176, 176, 176],
+  });
 
   yPos = 50;
 
   // Contributor Info
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 235, 0);
-  pdf.text('Contributor:', margin, yPos);
+  await addTextWithChineseSupport(pdf, texts.contributor, margin, yPos, {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: [255, 235, 0],
+  });
 
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(255, 255, 255);
-  pdf.text(contributorName, margin + 35, yPos);
+  await addTextWithChineseSupport(pdf, contributorName, margin + 35, yPos, {
+    fontSize: 14,
+    color: [255, 255, 255],
+  });
 
   yPos += 15;
 
   // Aggregate Statistics
   if (comparisonData.aggregate) {
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(0, 240, 255);
-    pdf.text('Aggregate Statistics', margin, yPos);
+    await addTextWithChineseSupport(pdf, texts.aggregateStats, margin, yPos, {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: [0, 240, 255],
+    });
     yPos += 8;
-
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(255, 255, 255);
 
     const totalRepos = comparisonData.comparisons.length;
     const totalCommits = comparisonData.comparisons.reduce((sum: number, comp: Comparison) => sum + comp.total_commits, 0);
 
-    pdf.text(`Total Repositories: ${totalRepos}`, margin, yPos);
+    await addTextWithChineseSupport(pdf, `${texts.totalRepos} ${totalRepos}`, margin, yPos, {
+      fontSize: 10,
+      color: [255, 255, 255],
+    });
     yPos += 6;
-    pdf.text(`Total Commits: ${totalCommits}`, margin, yPos);
+
+    await addTextWithChineseSupport(pdf, `${texts.totalCommits} ${totalCommits}`, margin, yPos, {
+      fontSize: 10,
+      color: [255, 255, 255],
+    });
     yPos += 10;
   }
 
@@ -339,14 +539,15 @@ export async function exportMultiRepoPDF(
   }
 
   // Repository Comparisons
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 235, 0);
-  pdf.text('Repository Breakdown', margin, yPos);
+  await addTextWithChineseSupport(pdf, texts.repositoryBreakdown, margin, yPos, {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: [255, 235, 0],
+  });
   yPos += 12;
 
-  comparisonData.comparisons.forEach((comp: Comparison) => {
-    // Check if we need a new page for this repository section
+  for (const comp of comparisonData.comparisons) {
+    // Check if we need a new page
     if (yPos > pageHeight - 80) {
       pdf.addPage();
       yPos = margin;
@@ -367,21 +568,18 @@ export async function exportMultiRepoPDF(
     yPos += 7;
 
     // Commits
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(176, 176, 176);
-    pdf.text(
-      `Commits: ${comp.total_commits}`,
-      margin + 5,
-      yPos
-    );
+    await addTextWithChineseSupport(pdf, `${texts.commits} ${comp.total_commits}`, margin + 5, yPos, {
+      fontSize: 9,
+      color: [176, 176, 176],
+    });
     yPos += 10;
 
     // Dimension scores header
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(255, 255, 255);
-    pdf.text('Skill Dimensions:', margin + 5, yPos);
+    await addTextWithChineseSupport(pdf, texts.skillDimensions + ':', margin + 5, yPos, {
+      fontSize: 9,
+      fontWeight: 'bold',
+      color: [255, 255, 255],
+    });
     yPos += 6;
 
     // Dimension scores in a grid layout (2 columns)
@@ -391,11 +589,12 @@ export async function exportMultiRepoPDF(
     const col2X = margin + 95;
     const colWidth = 80;
 
-    dimensionKeys.forEach((key: string, dimIndex: number) => {
+    for (let dimIndex = 0; dimIndex < dimensionKeys.length; dimIndex++) {
+      const key = dimensionKeys[dimIndex];
       const score = (comp.scores as unknown as Record<string, number>)[key] ?? 0;
       const name = dimensionNames[dimIndex];
 
-      // Determine column position (alternate between columns)
+      // Determine column position
       const isLeftColumn = dimIndex % 2 === 0;
       const xPos = isLeftColumn ? col1X : col2X;
 
@@ -406,6 +605,7 @@ export async function exportMultiRepoPDF(
 
       // Dimension name
       pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
       pdf.setTextColor(200, 200, 200);
       pdf.text(`${name}:`, xPos, yPos);
 
@@ -413,10 +613,10 @@ export async function exportMultiRepoPDF(
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(255, 235, 0);
       pdf.text(`${score}`, xPos + colWidth - 10, yPos);
-    });
+    }
 
     yPos += 10;
-  });
+  }
 
   // Failed repositories
   if (comparisonData.failed_repos && comparisonData.failed_repos.length > 0) {
@@ -425,24 +625,25 @@ export async function exportMultiRepoPDF(
       yPos = margin;
     }
 
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(255, 0, 107);
-    pdf.text('Failed Repositories', margin, yPos);
+    await addTextWithChineseSupport(pdf, texts.failedRepos, margin, yPos, {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: [255, 0, 107],
+    });
     yPos += 8;
 
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'normal');
-
-    comparisonData.failed_repos.forEach((failed: { repo: string; reason: string }) => {
+    for (const failed of comparisonData.failed_repos) {
       if (yPos > pageHeight - margin) {
         pdf.addPage();
         yPos = margin;
       }
 
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(255, 255, 255);
       pdf.text(`${failed.repo}: ${failed.reason}`, margin, yPos);
       yPos += 6;
-    });
+    }
   }
 
   // Footer

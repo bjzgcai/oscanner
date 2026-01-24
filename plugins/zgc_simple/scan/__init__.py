@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
@@ -36,6 +37,9 @@ class CommitEvaluatorModerate:
         dimensions: Optional[Dict[str, str]] = None,
         dimension_instructions: Optional[Dict[str, str]] = None,
         rubric_text: Optional[str] = None,
+        language: str = "en-US",
+        parallel_chunking: bool = False,
+        max_parallel_workers: int = 3,
     ):
         self.api_key = (
             api_key
@@ -77,6 +81,9 @@ class CommitEvaluatorModerate:
             "leadership": "Evaluate technical decision-making, performance/security, best practices.",
         }
         self.rubric_text = (rubric_text or "").strip()
+        self.language = language
+        self.parallel_chunking = parallel_chunking
+        self.max_parallel_workers = max_parallel_workers
 
         self._file_cache: Dict[str, str] = {}
         self._repo_structure: Optional[Dict[str, Any]] = None
@@ -316,20 +323,39 @@ class CommitEvaluatorModerate:
         max_context_tokens = self.max_input_tokens - prompt_template_tokens
         context = self._truncate_context(context, max_context_tokens)
 
-        mode_note = ""
-        if self.mode == "moderate":
-            mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
+        is_chinese = self.language == "zh-CN"
 
-        chunked_instruction = ""
-        if chunk_idx:
-            chunked_instruction = "\nCHUNKED: Update scores based on previous + new evidence; provide full reasoning."
+        # Language-specific instructions
+        if is_chinese:
+            base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的数据，并对每个维度评分（0-100分）。'
+            mode_note = ""
+            if self.mode == "moderate":
+                mode_note = "\n注意：你可能会看到提交差异（commit diffs）和文件内容。在有帮助的情况下请使用文件内容。"
+            chunked_instruction = ""
+            if chunk_idx:
+                chunked_instruction = "\n分块评估：基于之前的评分和新证据更新分数；提供完整的推理过程。"
+            data_label = "数据"
+            dimensions_label = "评估维度"
+            return_json_instruction = "仅返回有效的JSON格式"
+        else:
+            base_instruction = f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
+            mode_note = ""
+            if self.mode == "moderate":
+                mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
+            chunked_instruction = ""
+            if chunk_idx:
+                chunked_instruction = "\nCHUNKED: Update scores based on previous + new evidence; provide full reasoning."
+            data_label = "DATA"
+            dimensions_label = "DIMENSIONS"
+            return_json_instruction = "Return ONLY valid JSON"
 
         rubric_block = ""
         if self.rubric_text:
             snippet = self.rubric_text
             if len(snippet) > 6000:
                 snippet = snippet[:6000] + "\n...[rubric truncated]..."
-            rubric_block = f"\n\nRUBRIC / STANDARD:\n{snippet}\n"
+            rubric_label = "评分标准" if is_chinese else "RUBRIC / STANDARD"
+            rubric_block = f"\n\n{rubric_label}:\n{snippet}\n"
 
         dim_lines: List[str] = []
         i = 1
@@ -339,16 +365,21 @@ class CommitEvaluatorModerate:
             i += 1
         dims_text = "\n".join(dim_lines)
 
-        reasoning_line = (
-            "  \"reasoning\": \"Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**.\""
-        )
+        if is_chinese:
+            reasoning_line = (
+                "  \"reasoning\": \"提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。\""
+            )
+        else:
+            reasoning_line = (
+                "  \"reasoning\": \"Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**.\""
+            )
         fmt_lines = ["{"] + [f'  "{k}": <0-100>,' for k in self.dimensions.keys()] + [reasoning_line, "}"]
         fmt_text = "\n".join(fmt_lines)
 
         return (
-            f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
-            f"{mode_note}{chunked_instruction}{rubric_block}\n\nDATA:\n{context}\n\nDIMENSIONS:\n{dims_text}\n\n"
-            f"Return ONLY valid JSON:\n{fmt_text}"
+            f'{base_instruction}'
+            f"{mode_note}{chunked_instruction}{rubric_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
+            f"{return_json_instruction}:\n{fmt_text}"
         )
 
     def _parse_llm_response(self, content: str) -> Dict[str, Any]:
@@ -446,6 +477,23 @@ class CommitEvaluatorModerate:
         }
 
 
-def create_commit_evaluator(*, data_dir: str, api_key: str, model: Optional[str] = None, mode: str = "moderate"):
-    return CommitEvaluatorModerate(data_dir=data_dir, api_key=api_key, model=model, mode=mode)
+def create_commit_evaluator(
+    *,
+    data_dir: str,
+    api_key: str,
+    model: Optional[str] = None,
+    mode: str = "moderate",
+    language: str = "en-US",
+    parallel_chunking: bool = False,
+    max_parallel_workers: int = 3,
+):
+    return CommitEvaluatorModerate(
+        data_dir=data_dir,
+        api_key=api_key,
+        model=model,
+        mode=mode,
+        language=language,
+        parallel_chunking=parallel_chunking,
+        max_parallel_workers=max_parallel_workers,
+    )
 
