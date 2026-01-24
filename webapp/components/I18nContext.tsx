@@ -8,6 +8,7 @@ import type { I18nParams, Locale, Messages } from '../i18n/types';
 export type I18n = {
   locale: Locale;
   t: (key: string, params?: I18nParams) => string;
+  messages: Messages;
 };
 
 const I18nContext = createContext<I18n | null>(null);
@@ -58,7 +59,7 @@ export function I18nProvider({
       return interpolate(String(msg), params);
     };
 
-    return { locale: activeLocale, t };
+    return { locale: activeLocale, t, messages: active };
   }, [extraMessages, locale]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
