@@ -83,6 +83,7 @@ export const enUS: Messages = {
   'single.load_authors': 'Load Authors',
   'single.error.title': 'Error',
   'single.no_eval': 'No evaluation available',
+  'single.eval.please_wait': 'This may take 1-2 minutes. Please wait while AI analyzes the commits...',
   'single.pdf.no_data': 'No evaluation data available to export',
   'single.pdf.generating': 'Generating PDF report...',
   'single.pdf.success': 'PDF report downloaded successfully!',
@@ -90,7 +91,7 @@ export const enUS: Messages = {
 
   // PDF Export
   'pdf.title.single': 'Engineer Skill Analysis Report',
-  'pdf.subtitle.single': 'LLM-Powered Six-Dimensional Capability Analysis',
+  'pdf.subtitle.single': 'LLM-Powered Capability Analysis',
   'pdf.title.multi': 'Multi-Repo Analysis Report',
   'pdf.subtitle.multi': 'Cross-Repository Contributor Comparison',
   'pdf.repository': 'Repository:',

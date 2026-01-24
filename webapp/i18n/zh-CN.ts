@@ -79,6 +79,7 @@ export const zhCN: Messages = {
   'single.load_authors': '加载作者',
   'single.error.title': '错误',
   'single.no_eval': '暂无评估结果',
+  'single.eval.please_wait': '这可能需要 1-2 分钟。请稍候，AI 正在分析提交记录…',
   'single.pdf.no_data': '没有可导出的评估数据',
   'single.pdf.generating': '正在生成 PDF 报告…',
   'single.pdf.success': 'PDF 已下载',
@@ -86,7 +87,7 @@ export const zhCN: Messages = {
 
   // PDF Export
   'pdf.title.single': '工程师能力分析报告',
-  'pdf.subtitle.single': '基于 LLM 的六维能力分析',
+  'pdf.subtitle.single': '基于 LLM 的能力分析',
   'pdf.title.multi': '多仓库分析报告',
   'pdf.subtitle.multi': '跨仓库贡献者对比',
   'pdf.repository': '仓库：',

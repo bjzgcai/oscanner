@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Input, Button, Card, Table, Tag, Space, Avatar, Select, Modal, Radio } from 'antd';
+import { Input, Button, Card, Table, Tag, Space, Avatar, Select, Modal, Radio, Progress } from 'antd';
 import {
   GithubOutlined,
   CheckCircleOutlined,
@@ -83,6 +83,9 @@ export default function MultiRepoAnalysis() {
   const [comparisonData, setComparisonData] = useState<ContributorComparisonData | null>(null);
   const [loadingComparison, setLoadingComparison] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [evaluationProgress, setEvaluationProgress] = useState(0);
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
+  const [evaluationLoadingText, setEvaluationLoadingText] = useState('');
   const [llmModalOpen, setLlmModalOpen] = useState(false);
   const [llmConfigPath, setLlmConfigPath] = useState<string>('');
   const [llmMode, setLlmMode] = useState<'openrouter' | 'openai'>('openrouter');
@@ -361,10 +364,21 @@ export default function MultiRepoAnalysis() {
       setSelectedAuthorIndex(index);
       setLoading(true);
       setLoadingText(`Evaluating ${author.author}...`);
+      setEvaluationLoading(true);
+      setEvaluationLoadingText(`Analyzing ${author.author}'s commits with AI...`);
+      setEvaluationProgress(0);
       setIsExecuting(true);
       appendLog(`Evaluating author: ${author.author}`);
 
       const platformParam = platform || singleRepo?.platform || 'github';
+
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setEvaluationProgress(prev => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 10;
+        });
+      }, 1000);
 
       // Parse author aliases and check if current author matches any
       let requestBody: { aliases?: string[] } | undefined = undefined;
@@ -378,6 +392,7 @@ export default function MultiRepoAnalysis() {
       }
 
       try {
+        setEvaluationProgress(10);
         const response = await fetch(
           `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}&language=${encodeURIComponent(locale)}`,
           {
@@ -396,6 +411,7 @@ export default function MultiRepoAnalysis() {
         }
         const result = await response.json();
         if (!result.success) throw new Error(result.error || 'Evaluation failed');
+        setEvaluationProgress(100);
         setEvaluation(result.evaluation);
         appendLog('Evaluation complete.');
         appendLog('Done.');
@@ -404,8 +420,11 @@ export default function MultiRepoAnalysis() {
         appendLog(`Evaluation failed: ${msg}`, 'error');
         appendLog('Done.');
       } finally {
+        clearInterval(progressInterval);
         setLoading(false);
         setLoadingText('');
+        setEvaluationLoading(false);
+        setEvaluationProgress(0);
         setIsExecuting(false);
       }
     },
@@ -1099,6 +1118,33 @@ export default function MultiRepoAnalysis() {
             <p>{commonContributors.message || t('multi.no_common.desc')}</p>
           </Card>
         )}
+
+        {/* Progress Modal - blocks user interaction during evaluation */}
+        <Modal
+          open={evaluationLoading}
+          closable={false}
+          footer={null}
+          centered
+          maskClosable={false}
+          keyboard={false}
+          width={400}
+        >
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <LoadingOutlined style={{ fontSize: 48, color: '#1890ff', marginBottom: 20 }} spin />
+            <h3 style={{ marginBottom: 20 }}>{evaluationLoadingText}</h3>
+            <Progress
+              percent={Math.round(evaluationProgress)}
+              status="active"
+              strokeColor={{
+                '0%': '#108ee9',
+                '100%': '#87d068',
+              }}
+            />
+            <p style={{ marginTop: 20, color: '#999', fontSize: 12 }}>
+              {t('single.eval.please_wait')}
+            </p>
+          </div>
+        </Modal>
       </div>
     </div>
   );

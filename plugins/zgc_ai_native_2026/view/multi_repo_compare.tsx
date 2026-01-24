@@ -22,13 +22,11 @@ export default function CompareView(props: PluginMultiRepoCompareViewProps) {
 
   const avgScores = (data?.aggregate?.average_scores || {}) as Record<string, unknown>;
   const avg =
-    (Number(avgScores.ai_model_fullstack || 0) +
-      Number(avgScores.ai_native_architecture || 0) +
-      Number(avgScores.cloud_native || 0) +
-      Number(avgScores.open_source_collaboration || 0) +
-      Number(avgScores.intelligent_development || 0) +
-      Number(avgScores.engineering_leadership || 0)) /
-    6;
+    (Number(avgScores.spec_quality || 0) +
+      Number(avgScores.cloud_architecture || 0) +
+      Number(avgScores.ai_engineering || 0) +
+      Number(avgScores.mastery_professionalism || 0)) /
+    4;
   const lvl = levelFromScore(avg);
 
   return (

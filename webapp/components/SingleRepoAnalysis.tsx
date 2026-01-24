@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Input, Button, Card, Avatar, Spin, Alert, message } from 'antd';
-import { UserOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Input, Button, Card, Avatar, Spin, Alert, message, Modal, Progress } from 'antd';
+import { UserOutlined, DownloadOutlined, LoadingOutlined } from '@ant-design/icons';
 import PluginViewRenderer from './PluginViewRenderer';
 import { exportHomePagePDF } from '../utils/pdfExport';
 import { useAppSettings } from './AppSettingsContext';
@@ -50,6 +50,7 @@ export default function SingleRepoAnalysis() {
   const { t, locale, messages } = useI18n();
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
+  const [progress, setProgress] = useState(0);
   const [repoError, setRepoError] = useState('');
   const [evalError, setEvalError] = useState('');
   const [repoData, setRepoData] = useState<RepoData | null>(null);
@@ -178,10 +179,20 @@ export default function SingleRepoAnalysis() {
     setSelectedAuthorIndex(index);
     setLoading(true);
     setLoadingText(`Analyzing ${author.author}'s commits with AI...`);
+    setProgress(0);
     setEvalError('');
     setEvaluation(null);
 
+    // Simulate progress for better UX
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 10;
+      });
+    }, 1000);
+
     try {
+      setProgress(10);
       const response = await fetch(
         `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}&language=${encodeURIComponent(locale)}`,
         { method: 'POST' }
@@ -190,12 +201,15 @@ export default function SingleRepoAnalysis() {
       const result = await response.json();
       if (!result.success) throw new Error(result.error || 'Evaluation failed');
 
+      setProgress(100);
       setEvaluation(result.evaluation);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setEvalError(msg);
     } finally {
+      clearInterval(progressInterval);
       setLoading(false);
+      setProgress(0);
     }
   };
 
@@ -336,6 +350,33 @@ export default function SingleRepoAnalysis() {
           </Spin>
         </Card>
       )}
+
+      {/* Progress Modal - blocks user interaction during evaluation */}
+      <Modal
+        open={loading}
+        closable={false}
+        footer={null}
+        centered
+        maskClosable={false}
+        keyboard={false}
+        width={400}
+      >
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <LoadingOutlined style={{ fontSize: 48, color: '#1890ff', marginBottom: 20 }} spin />
+          <h3 style={{ marginBottom: 20 }}>{loadingText}</h3>
+          <Progress
+            percent={Math.round(progress)}
+            status="active"
+            strokeColor={{
+              '0%': '#108ee9',
+              '100%': '#87d068',
+            }}
+          />
+          <p style={{ marginTop: 20, color: '#999', fontSize: 12 }}>
+            {t('single.eval.please_wait')}
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

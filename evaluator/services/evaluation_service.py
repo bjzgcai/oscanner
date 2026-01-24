@@ -24,7 +24,7 @@ def get_or_create_evaluator(
     plugin_id: str = "",
     model: str = DEFAULT_LLM_MODEL,
     parallel_chunking: bool = True,
-    max_parallel_workers: int = 3,
+    max_parallel_workers: int = 5,
 ):
     """
     Legacy helper (kept for compatibility).
@@ -82,7 +82,7 @@ def evaluate_author_incremental(
     aliases: Optional[List[str]] = None,
     evaluator_factory=None,
     parallel_chunking: bool = True,
-    max_parallel_workers: int = 3,
+    max_parallel_workers: int = 5,
 ) -> Dict[str, Any]:
     """
     Evaluate author incrementally with weighted merge

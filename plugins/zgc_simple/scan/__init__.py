@@ -1,10 +1,17 @@
 """
 Default scan plugin (self-contained).
 
+This plugin uses the traditional six-dimensional evaluation standard
+documented in `engineer_level_old.md`. It provides baseline scoring
+without AI-Native 2026 rubric guidance.
+
 IMPORTANT: this plugin must not import from `evaluator/`.
 
 Scan contract (inputs/outputs) is documented at:
 - plugins/_shared/scan/README.md
+
+Standard reference:
+- engineer_level_old.md (traditional six-dimensional framework)
 """
 
 import json
@@ -39,7 +46,7 @@ class CommitEvaluatorModerate:
         rubric_text: Optional[str] = None,
         language: str = "en-US",
         parallel_chunking: bool = False,
-        max_parallel_workers: int = 3,
+        max_parallel_workers: int = 5,
     ):
         self.api_key = (
             api_key
@@ -274,6 +281,7 @@ class CommitEvaluatorModerate:
     def _evaluate_with_llm(self, context: str, username: str, chunk_idx: Optional[int] = None) -> Dict[str, Any]:
         allow_fallback = str(os.getenv("OSCANNER_ALLOW_FALLBACK") or "").strip().lower() in ("1", "true", "yes", "y")
         if not self.api_key:
+            print("[ERROR] LLM API key not configured")
             if allow_fallback:
                 return self._fallback_evaluation(context)
             raise RuntimeError("LLM not configured (missing API key)")
@@ -284,6 +292,7 @@ class CommitEvaluatorModerate:
         last_err = None
         for m in models_to_try:
             try:
+                print(f"[LLM] Calling {m} at {self.api_url}")
                 resp = requests.post(
                     self.api_url,
                     headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
@@ -297,14 +306,19 @@ class CommitEvaluatorModerate:
                 )
                 if not resp.ok:
                     last_err = f"{resp.status_code} {resp.text[:200]}"
+                    print(f"[ERROR] LLM API returned error: {last_err}")
                     continue
                 data = resp.json()
                 content = data["choices"][0]["message"]["content"]
+                print(f"[LLM] Response received, parsing...")
                 return self._parse_llm_response(content)
             except Exception as e:
                 last_err = str(e)
+                print(f"[ERROR] LLM request failed for model {m}: {last_err}")
                 continue
+        print(f"[ERROR] All LLM models failed. Last error: {last_err}")
         if allow_fallback:
+            print("[WARNING] Using fallback evaluation (keyword-based)")
             return self._fallback_evaluation(context)
         raise RuntimeError(f"LLM request failed for all models. last_error={last_err}")
 
@@ -393,10 +407,19 @@ class CommitEvaluatorModerate:
                     out[k] = min(100, max(0, int(data.get(k, 0))))
                 if "reasoning" in data:
                     out["reasoning"] = self._format_reasoning(str(data["reasoning"]))
+                else:
+                    # LLM didn't provide reasoning - add placeholder
+                    print("[WARNING] LLM response missing 'reasoning' field")
+                    out["reasoning"] = "LLM evaluation completed but reasoning was not provided."
                 return out
-        except Exception:
-            pass
-        return {k: 50 for k in self.dimensions.keys()}
+        except Exception as e:
+            print(f"[ERROR] Failed to parse LLM response: {e}")
+            print(f"[ERROR] LLM response content: {content[:500]}")
+
+        # Fallback with reasoning
+        fallback = {k: 50 for k in self.dimensions.keys()}
+        fallback["reasoning"] = "**Error:** LLM response parsing failed. Using default scores."
+        return fallback
 
     def _format_reasoning(self, reasoning: str) -> str:
         r = (reasoning or "").replace("\\n\\n", "\n\n").replace("\\n", "\n")
@@ -485,7 +508,7 @@ def create_commit_evaluator(
     mode: str = "moderate",
     language: str = "en-US",
     parallel_chunking: bool = False,
-    max_parallel_workers: int = 3,
+    max_parallel_workers: int = 5,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,

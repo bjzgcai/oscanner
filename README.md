@@ -12,6 +12,53 @@
 - **CLI**：`oscanner`（统一命令行入口）
 - **依赖管理**：推荐使用 `uv`（`pyproject.toml` + `uv.lock`）
 
+## 评估标准 (Evaluation Standards)
+
+本系统支持两套评估标准，通过 **插件机制** 实现不同的评估逻辑：
+
+### 1. **传统六维度标准** (`zgc_simple`)
+- **文档**: [engineer_level_old.md](engineer_level_old.md)
+- **适用场景**: 传统软件工程能力评估
+- **评估重点**: 技术广度和深度，基于量化指标（提交数、代码行数等）
+- **评分方式**: 基础的关键词和模式匹配，适合快速评估
+- **六维度**:
+  1. AI 模型全栈开发 (AI Model Full-Stack Development)
+  2. AI 原生架构设计 (AI Native Architecture Design)
+  3. 云原生工程 (Cloud Native Engineering)
+  4. 开源协作 (Open Source Collaboration)
+  5. 智能开发 (Intelligent Development)
+  6. 工程领导力 (Engineering Leadership)
+
+### 2. **AI-Native 2026 标准** (`zgc_ai_native_2026`)
+- **文档**: [engineer_level.md](engineer_level.md)
+- **适用场景**: 2026 年 AI 辅助开发时代的工程能力评估
+- **评估重点**: 区分"AI 搬运工"与"系统构建者"，强调行为证据
+- **四维度**:
+  1. 规格实现与内建质量 (Specification & Built-in Quality)
+  2. 云原生与架构演进 (Cloud-Native & Architecture Evolution)
+  3. AI 工程与自动进化 (AI Engineering & Automated Evolution)
+  4. 工程底座与职业操守 (Engineering Mastery & Professionalism)
+- **L1-L5 行为画像**:
+  - L1 (理论认知): 依赖 AI，无法鉴别代码正误
+  - L2 (独立实践): 能独立完成任务，符合基本规范
+  - L3 (一人全栈): 快速构建 MVP，熟练配合 AI 工具
+  - L4 (团队基石): 建立质量门禁、测试体系、工程规范
+  - L5 (领导者): 定义技术标准，影响开源生态
+- **评分重点**:
+  - 内建质量（测试/lint/重构/校验）
+  - 可复现性（lockfiles/docker/一键运行）
+  - 云原生就绪（CI/CD/IaC/部署配置）
+  - 智能开发工作流（工具/脚本/agent 使用）
+  - 专业性（文档/ADR/PR 规范/取舍说明）
+
+### 如何选择标准？
+
+在 Dashboard 中，可以通过选择不同的插件来使用不同的评估标准：
+- 使用 `zgc_simple` 插件 → 传统六维度评估
+- 使用 `zgc_ai_native_2026` 插件 → AI-Native 2026 四维度评估
+
+两种标准输出不同数量的维度分数，采用不同的评估标准和侧重点。
+
 ## 快速开始
 
 TODO: 增加 uv 和 npm 的安装说明

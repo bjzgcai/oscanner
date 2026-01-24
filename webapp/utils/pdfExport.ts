@@ -53,12 +53,16 @@ interface PDFTexts {
   failedRepos: string;
   commits: string;
   dimensions: {
-    ai_fullstack: string;
-    ai_architecture: string;
-    cloud_native: string;
-    open_source: string;
-    intelligent_dev: string;
-    leadership: string;
+    ai_fullstack?: string;
+    ai_architecture?: string;
+    cloud_native?: string;
+    open_source?: string;
+    intelligent_dev?: string;
+    leadership?: string;
+    spec_quality?: string;
+    cloud_architecture?: string;
+    ai_engineering?: string;
+    mastery_professionalism?: string;
   };
 }
 
@@ -90,12 +94,18 @@ function getPDFTexts(translations: Messages): PDFTexts {
     failedRepos: translations['pdf.failed_repos'],
     commits: translations['pdf.commits'],
     dimensions: {
+      // zgc_simple dimensions (6)
       ai_fullstack: translations['pdf.dimension.ai_fullstack'],
       ai_architecture: translations['pdf.dimension.ai_architecture'],
       cloud_native: translations['pdf.dimension.cloud_native'],
       open_source: translations['pdf.dimension.open_source'],
       intelligent_dev: translations['pdf.dimension.intelligent_dev'],
       leadership: translations['pdf.dimension.leadership'],
+      // zgc_ai_native_2026 dimensions (4)
+      spec_quality: translations['plugin.zgc_ai_native_2026.dim.spec_quality'],
+      cloud_architecture: translations['plugin.zgc_ai_native_2026.dim.cloud_architecture'],
+      ai_engineering: translations['plugin.zgc_ai_native_2026.dim.ai_engineering'],
+      mastery_professionalism: translations['plugin.zgc_ai_native_2026.dim.mastery_professionalism'],
     },
   };
 }
@@ -239,75 +249,88 @@ export async function exportHomePagePDF(
   const margin = 15;
   let yPos = margin;
 
-  // Header
+  // Header background
   pdf.setFillColor(10, 10, 10);
-  pdf.rect(0, 0, pageWidth, 40, 'F');
+  pdf.rect(0, 0, pageWidth, 45, 'F');
 
-  // Title
-  await addTextWithChineseSupport(pdf, texts.titleSingle, margin, yPos + 10, {
-    fontSize: 20,
+  // Title - ensure it doesn't wrap by using larger maxWidth
+  await addTextWithChineseSupport(pdf, texts.titleSingle, margin, yPos + 12, {
+    fontSize: 22,
     fontWeight: 'bold',
     color: [0, 163, 255],
+    maxWidth: pageWidth - 2 * margin,
   });
 
   // Subtitle
-  await addTextWithChineseSupport(pdf, texts.subtitleSingle, margin, yPos + 18, {
-    fontSize: 12,
+  await addTextWithChineseSupport(pdf, texts.subtitleSingle, margin, yPos + 22, {
+    fontSize: 11,
     color: [176, 176, 176],
   });
 
-  yPos = 50;
+  yPos = 55;
 
-  // Repository Info
-  await addTextWithChineseSupport(pdf, texts.repository, margin, yPos, {
-    fontSize: 14,
+  // Repository Info section with better styling
+  pdf.setDrawColor(0, 163, 255);
+  pdf.setLineWidth(0.3);
+  pdf.line(margin, yPos - 2, pageWidth - margin, yPos - 2);
+
+  await addTextWithChineseSupport(pdf, texts.repository, margin, yPos + 5, {
+    fontSize: 13,
     fontWeight: 'bold',
     color: [0, 163, 255],
   });
 
   pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(14);
+  pdf.setFontSize(13);
   pdf.setTextColor(255, 255, 255);
-  pdf.text(repoData.full_name, margin + 35, yPos);
+  pdf.text(repoData.full_name, margin + 30, yPos + 5);
 
-  yPos += 10;
+  yPos += 12;
 
-  // Author Info
+  // Author Info section
   await addTextWithChineseSupport(pdf, texts.author, margin, yPos, {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     color: [0, 163, 255],
   });
 
   await addTextWithChineseSupport(pdf, author.author, margin + 25, yPos, {
-    fontSize: 14,
+    fontSize: 13,
     color: [255, 255, 255],
   });
 
-  yPos += 7;
+  yPos += 8;
 
   await addTextWithChineseSupport(pdf, `${texts.email} ${author.email}`, margin + 25, yPos, {
-    fontSize: 10,
+    fontSize: 9,
     color: [176, 176, 176],
   });
 
-  yPos += 7;
+  yPos += 6;
   await addTextWithChineseSupport(pdf, `${texts.totalCommits} ${author.commits}`, margin + 25, yPos, {
-    fontSize: 10,
+    fontSize: 9,
     color: [176, 176, 176],
   });
 
-  yPos += 10;
+  yPos += 15;
 
-  // Capture and add radar chart
+  // Capture and add radar chart with proper aspect ratio
   const chartImage = await captureChart('radar-chart-export');
   if (chartImage) {
-    const imgWidth = 120;
-    const imgHeight = 120;
+    // Create an image to get actual dimensions
+    const img = new Image();
+    img.src = chartImage;
+    await new Promise((resolve) => { img.onload = resolve; });
+
+    // Calculate dimensions preserving aspect ratio
+    const maxWidth = 140;
+    const aspectRatio = img.height / img.width;
+    const imgWidth = maxWidth;
+    const imgHeight = maxWidth * aspectRatio;
     const imgX = (pageWidth - imgWidth) / 2;
 
     pdf.addImage(chartImage, 'PNG', imgX, yPos, imgWidth, imgHeight);
-    yPos += imgHeight + 10;
+    yPos += imgHeight + 15;
   }
 
   // Check if we need a new page
@@ -316,23 +339,40 @@ export async function exportHomePagePDF(
     yPos = margin;
   }
 
+  // Section separator
+  pdf.setDrawColor(0, 163, 255);
+  pdf.setLineWidth(0.3);
+  pdf.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
+
   // Dimension Scores Title
-  await addTextWithChineseSupport(pdf, texts.skillDimensions, margin, yPos, {
-    fontSize: 14,
+  await addTextWithChineseSupport(pdf, texts.skillDimensions, margin, yPos + 5, {
+    fontSize: 15,
     fontWeight: 'bold',
     color: [0, 163, 255],
   });
-  yPos += 10;
+  yPos += 12;
 
-  // Dimension scores
-  const dimensions = [
+  // Dynamically determine dimensions based on evaluation scores
+  // zgc_simple has 6 dimensions, zgc_ai_native_2026 has 4 dimensions
+  const allDimensions = [
+    // zgc_simple dimensions (6)
     { name: texts.dimensions.ai_fullstack, key: "ai_fullstack" },
     { name: texts.dimensions.ai_architecture, key: "ai_architecture" },
     { name: texts.dimensions.cloud_native, key: "cloud_native" },
     { name: texts.dimensions.open_source, key: "open_source" },
     { name: texts.dimensions.intelligent_dev, key: "intelligent_dev" },
-    { name: texts.dimensions.leadership, key: "leadership" }
+    { name: texts.dimensions.leadership, key: "leadership" },
+    // zgc_ai_native_2026 dimensions (4)
+    { name: texts.dimensions.spec_quality, key: "spec_quality" },
+    { name: texts.dimensions.cloud_architecture, key: "cloud_architecture" },
+    { name: texts.dimensions.ai_engineering, key: "ai_engineering" },
+    { name: texts.dimensions.mastery_professionalism, key: "mastery_professionalism" }
   ];
+
+  // Filter to only include dimensions that exist in the evaluation scores
+  const dimensions = allDimensions.filter(dim =>
+    dim.name && evaluation.scores[dim.key] !== undefined && evaluation.scores[dim.key] !== null
+  );
 
   for (const dim of dimensions) {
     if (yPos > pageHeight - 20) {
@@ -368,20 +408,25 @@ export async function exportHomePagePDF(
     yPos += 10;
   }
 
-  yPos += 5;
+  yPos += 8;
 
-  // Contribution Summary
+  // Contribution Summary with separator
   if (yPos > pageHeight - 60) {
     pdf.addPage();
     yPos = margin;
   }
 
-  await addTextWithChineseSupport(pdf, texts.contributionSummary, margin, yPos, {
-    fontSize: 14,
+  // Section separator
+  pdf.setDrawColor(0, 163, 255);
+  pdf.setLineWidth(0.3);
+  pdf.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
+
+  await addTextWithChineseSupport(pdf, texts.contributionSummary, margin, yPos + 5, {
+    fontSize: 15,
     fontWeight: 'bold',
     color: [0, 163, 255],
   });
-  yPos += 10;
+  yPos += 12;
 
   const stats = [
     `${texts.commitsAnalyzed} ${evaluation.total_commits_analyzed}`,
@@ -423,19 +468,24 @@ export async function exportHomePagePDF(
       yPos = margin;
     }
 
-    await addTextWithChineseSupport(pdf, texts.aiAnalysis, margin, yPos, {
-      fontSize: 14,
+    // Section separator
+    pdf.setDrawColor(0, 163, 255);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
+
+    await addTextWithChineseSupport(pdf, texts.aiAnalysis, margin, yPos + 5, {
+      fontSize: 15,
       fontWeight: 'bold',
       color: [0, 163, 255],
     });
-    yPos += 10;
+    yPos += 12;
 
     const reasoning = evaluation.scores.reasoning as string;
     // Convert mm to pixels (1mm ≈ 3.78 pixels at 96 DPI)
     const maxWidthPixels = Math.floor((pageWidth - 2 * margin) * 3.78);
     await addTextWithChineseSupport(pdf, reasoning, margin, yPos, {
       fontSize: 9,
-      color: [176, 176, 176],
+      color: [200, 200, 200],
       maxWidth: maxWidthPixels,
     });
   }

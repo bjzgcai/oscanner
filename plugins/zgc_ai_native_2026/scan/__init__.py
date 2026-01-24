@@ -1,14 +1,19 @@
 """
 AI-Native 2026 scan plugin.
 
-This plugin injects a rubric summary (derived from `engineer_level.md`) into the LLM prompt
-to bias reasoning toward "built-in quality", "reproducibility", "cloud-native", "agent/tooling",
-and "professionalism" evidence.
+This plugin uses the AI-Native 2026 evaluation standard documented in `engineer_level.md`.
+It injects a rubric summary (L1-L5 behavioral profiles) into the LLM prompt to bias
+reasoning toward "built-in quality", "reproducibility", "cloud-native", "agent/tooling",
+and "professionalism" evidence, helping distinguish "AI搬运工" from "系统构建者".
 
-Output remains compatible with the existing dashboard (six score keys + reasoning).
+Output remains compatible with the existing dashboard (six score keys + reasoning),
+but the evaluation criteria are stricter and more focused on evidence-based assessment.
 
 Scan contract (inputs/outputs) is documented at:
 - plugins/_shared/scan/README.md
+
+Standard reference:
+- engineer_level.md (2026 AI-Native Engineer Practical Competency Standard)
 """
 
 import json
@@ -49,7 +54,7 @@ def create_commit_evaluator(
     mode: str = "moderate",
     language: str = "en-US",
     parallel_chunking: bool = False,
-    max_parallel_workers: int = 3,
+    max_parallel_workers: int = 5,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -84,7 +89,7 @@ class CommitEvaluatorModerate:
         rubric_text: Optional[str] = None,
         language: str = "en-US",
         parallel_chunking: bool = False,
-        max_parallel_workers: int = 3,
+        max_parallel_workers: int = 5,
     ):
         self.api_key = (
             api_key
@@ -114,20 +119,16 @@ class CommitEvaluatorModerate:
         self.max_parallel_workers = max_parallel_workers
 
         self.dimensions = {
-            "ai_fullstack": "Practical Delivery & Built-in Quality",
-            "ai_architecture": "Architecture Evolution & Trade-offs",
-            "cloud_native": "Reproducibility & Cloud-Native Readiness",
-            "open_source": "Open Source Collaboration & Professionalism",
-            "intelligent_dev": "Intelligent Development & Automation",
-            "leadership": "Engineering Leadership (Reliability/Security/Perf)",
+            "spec_quality": "Specification & Built-in Quality",
+            "cloud_architecture": "Cloud-Native & Architecture Evolution",
+            "ai_engineering": "AI Engineering & Automated Evolution",
+            "mastery_professionalism": "Engineering Mastery & Professionalism",
         }
         self.dimension_instructions = {
-            "ai_fullstack": "Evidence: refactors, type discipline, edge-case handling, tests, reliable delivery.",
-            "ai_architecture": "Evidence: modular boundaries, APIs, ADR/docs, migration strategy, trade-offs.",
-            "cloud_native": "Evidence: docker/compose, CI/CD, IaC, env management, reproducible builds.",
-            "open_source": "Evidence: meaningful commits, PR hygiene, reviews, iterative improvements.",
-            "intelligent_dev": "Evidence: tooling/scripts, lint/format, test pyramid depth, agent/tool usage.",
-            "leadership": "Evidence: quality gates, defensive programming, perf/security fixes, standards.",
+            "spec_quality": "Evidence: refactors, tests (unit/integration/property), type discipline, edge cases, schema validation, modularity, reproducible builds (docker/compose), lint/format, CI/CD.",
+            "cloud_architecture": "Evidence: containerization, IaC (Terraform/Pulumi), K8s configs, deployment automation, resource optimization, architecture docs/ADR, API design, migration patterns (anti-corruption layer).",
+            "ai_engineering": "Evidence: agent orchestration, tool definitions, structured prompts, LLM traces/logs, eval datasets, feedback loops, automation scripts, intelligent workflows.",
+            "mastery_professionalism": "Evidence: open source collaboration, meaningful commits/PRs, code reviews, documentation, trade-off analysis, security/performance fixes, mentorship, standards definition.",
         }
 
         self._file_cache: Dict[str, str] = {}
@@ -278,9 +279,9 @@ class CommitEvaluatorModerate:
         # Sort results by chunk index
         chunk_results.sort(key=lambda x: x["chunk_idx"])
 
-        # Merge all chunk results using LLM
-        print(f"[Parallel] All {len(chunk_results)} chunks completed, merging with LLM...")
-        merged_scores = self._merge_chunk_results_with_llm(chunk_results, username)
+        # Merge all chunk results using simple averaging (fast)
+        print(f"[Parallel] All {len(chunk_results)} chunks completed, merging results...")
+        merged_scores = self._simple_average_merge(chunk_results)
 
         # Flatten all commits for summary
         all_commits = [c for chunk in chunks for c in chunk]
@@ -459,6 +460,7 @@ Return the same JSON format as before."""
     def _evaluate_with_llm(self, context: str, username: str, chunk_idx: Optional[int] = None) -> Dict[str, Any]:
         allow_fallback = str(os.getenv("OSCANNER_ALLOW_FALLBACK") or "").strip().lower() in ("1", "true", "yes", "y")
         if not self.api_key:
+            print("[ERROR] LLM API key not configured")
             if allow_fallback:
                 return self._fallback_evaluation(context)
             raise RuntimeError("LLM not configured (missing API key)")
@@ -467,6 +469,7 @@ Return the same JSON format as before."""
         last_err = None
         for m in models_to_try:
             try:
+                print(f"[LLM] Calling {m} at {self.api_url}")
                 resp = requests.post(
                     self.api_url,
                     headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
@@ -480,14 +483,19 @@ Return the same JSON format as before."""
                 )
                 if not resp.ok:
                     last_err = f"{resp.status_code} {resp.text[:200]}"
+                    print(f"[ERROR] LLM API returned error: {last_err}")
                     continue
                 data = resp.json()
                 content = data["choices"][0]["message"]["content"]
+                print(f"[LLM] Response received, parsing...")
                 return self._parse_llm_response(content)
             except Exception as e:
                 last_err = str(e)
+                print(f"[ERROR] LLM request failed for model {m}: {last_err}")
                 continue
+        print(f"[ERROR] All LLM models failed. Last error: {last_err}")
         if allow_fallback:
+            print("[WARNING] Using fallback evaluation (keyword-based)")
             return self._fallback_evaluation(context)
         raise RuntimeError(f"LLM request failed for all models. last_error={last_err}")
 
@@ -576,10 +584,19 @@ Return the same JSON format as before."""
                     out[k] = min(100, max(0, int(data.get(k, 0))))
                 if "reasoning" in data:
                     out["reasoning"] = self._format_reasoning(str(data["reasoning"]))
+                else:
+                    # LLM didn't provide reasoning - add placeholder
+                    print("[WARNING] LLM response missing 'reasoning' field")
+                    out["reasoning"] = "LLM evaluation completed but reasoning was not provided."
                 return out
-        except Exception:
-            pass
-        return {k: 50 for k in self.dimensions.keys()}
+        except Exception as e:
+            print(f"[ERROR] Failed to parse LLM response: {e}")
+            print(f"[ERROR] LLM response content: {content[:500]}")
+
+        # Fallback with reasoning
+        fallback = {k: 50 for k in self.dimensions.keys()}
+        fallback["reasoning"] = "**Error:** LLM response parsing failed. Using default scores."
+        return fallback
 
     def _format_reasoning(self, reasoning: str) -> str:
         r = (reasoning or "").replace("\\n\\n", "\n\n").replace("\\n", "\n")
