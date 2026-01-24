@@ -33,6 +33,9 @@ async def evaluate_author(
     model: str = Query(DEFAULT_LLM_MODEL),
     platform: str = Query("github"),
     plugin: str = Query(""),
+    language: str = Query("en-US"),
+    parallel_chunking: bool = Query(True),
+    max_parallel_workers: int = Query(3),
     request_body: Optional[Dict[str, Any]] = None
 ):
     """Evaluate an author with auto-sync and incremental evaluation."""
@@ -96,6 +99,9 @@ async def evaluate_author(
                         api_key=api_key,
                         model=model,
                         mode="moderate",
+                        language=language,
+                        parallel_chunking=parallel_chunking,
+                        max_parallel_workers=max_parallel_workers,
                     )
 
                 evaluation = evaluate_author_incremental(
@@ -108,6 +114,8 @@ async def evaluate_author(
                     api_key=api_key,
                     aliases=[alias],
                     evaluator_factory=_factory,
+                    parallel_chunking=parallel_chunking,
+                    max_parallel_workers=max_parallel_workers,
                 )
                 evaluation["plugin"] = plugin_id
                 if meta:
@@ -173,6 +181,9 @@ async def evaluate_author(
                 api_key=api_key,
                 model=model,
                 mode="moderate",
+                language=language,
+                parallel_chunking=parallel_chunking,
+                max_parallel_workers=max_parallel_workers,
             )
 
         evaluation = evaluate_author_incremental(
@@ -185,6 +196,8 @@ async def evaluate_author(
             api_key=api_key,
             aliases=aliases,
             evaluator_factory=_factory,
+            parallel_chunking=parallel_chunking,
+            max_parallel_workers=max_parallel_workers,
         )
         evaluation["plugin"] = plugin_id
         if meta:

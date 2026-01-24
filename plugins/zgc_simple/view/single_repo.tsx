@@ -76,12 +76,12 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
         label: t('plugin.zgc_simple.single.chart.label'),
         data: dims.map((d) => scoreValue(d.key)),
         fill: true,
-        backgroundColor: 'rgba(255, 235, 0, 0.15)',
-        borderColor: '#FFEB00',
+        backgroundColor: 'rgba(0, 163, 255, 0.15)',
+        borderColor: '#00A3FF',
         pointBackgroundColor: '#00F0FF',
         pointBorderColor: '#0A0A0A',
         pointHoverBackgroundColor: '#FF006B',
-        pointHoverBorderColor: '#FFEB00',
+        pointHoverBorderColor: '#00A3FF',
         pointRadius: 6,
         pointHoverRadius: 10,
         borderWidth: 3,
@@ -107,16 +107,16 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
   return (
     <Card
       style={{
-        border: '1px solid #F59E0B',
+        border: '1px solid #0080FF',
         background: 'linear-gradient(180deg, #111827 0%, #0B1220 100%)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        <h3 style={{ margin: 0, color: '#FBBF24' }}>
+        <h3 style={{ margin: 0, color: '#00A3FF' }}>
           {title || t('plugin.zgc_simple.single.title_default')}
         </h3>
         <div style={{ color: '#9CA3AF', fontSize: 12 }}>
-          <span style={{ color: '#FDE68A', fontWeight: 800, marginRight: 10 }}>
+          <span style={{ color: '#66C7FF', fontWeight: 800, marginRight: 10 }}>
             {t('plugin.zgc_simple.single.banner.active')}
           </span>
           {evaluation?.plugin ? `plugin=${evaluation.plugin}` : 'plugin=zgc_simple'}
@@ -124,7 +124,7 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
         </div>
       </div>
 
-      <div style={{ marginTop: 12, height: 360 }}>
+      <div id="radar-chart-export" style={{ marginTop: 12, height: 360 }}>
         <Radar data={chartData} options={chartOptions as any} />
       </div>
 
@@ -171,14 +171,14 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div style={{ color: '#E5E7EB', fontWeight: 600 }}>{d.label}</div>
-                  <div style={{ color: '#FBBF24', fontWeight: 700 }}>{v}</div>
+                  <div style={{ color: '#00A3FF', fontWeight: 700 }}>{v}</div>
                 </div>
                 <div style={{ height: 8, background: '#111827', borderRadius: 999, overflow: 'hidden' }}>
                   <div
                     style={{
                       width: `${Math.min(100, Math.max(0, v))}%`,
                       height: 8,
-                      background: 'linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%)',
+                      background: 'linear-gradient(90deg, #00A3FF 0%, #0080FF 100%)',
                     }}
                   />
                 </div>
@@ -190,7 +190,7 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
 
       {languages.length ? (
         <div style={{ marginTop: 12, color: '#D1D5DB', fontSize: 13 }}>
-          <span style={{ color: '#FBBF24', fontWeight: 700, marginRight: 8 }}>
+          <span style={{ color: '#00A3FF', fontWeight: 700, marginRight: 8 }}>
             {t('plugin.zgc_simple.single.section.languages')}
           </span>
           {languages.join(', ')}
@@ -198,11 +198,11 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
       ) : null}
 
       {reasoning ? (
-        <Card style={{ marginTop: 12, background: '#0A0F1C', border: '1px solid #F59E0B' }}>
-          <div style={{ color: '#FBBF24', fontWeight: 800, marginBottom: 8 }}>
+        <Card style={{ marginTop: 12, background: '#0A0F1C', border: '1px solid #0080FF' }}>
+          <div style={{ color: '#00A3FF', fontWeight: 800, marginBottom: 8 }}>
             {t('plugin.zgc_simple.single.section.notes')}
           </div>
-          <div style={{ color: '#E5E7EB' }}>
+          <div style={{ color: '#E5E7EB', width: '100%' }}>
             <ReactMarkdown>{reasoning}</ReactMarkdown>
           </div>
         </Card>
