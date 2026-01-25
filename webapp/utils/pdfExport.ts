@@ -380,7 +380,19 @@ export async function exportHomePagePDF(
       yPos = margin;
     }
 
-    const score = evaluation.scores[dim.key] || 0;
+    // Robust score parsing (consistent with webapp plugin views)
+    const rawScore = evaluation.scores[dim.key];
+    let score: number;
+    if (typeof rawScore === 'number') {
+      score = rawScore;
+    } else if (typeof rawScore === 'string') {
+      const parsed = Number(rawScore);
+      score = Number.isFinite(parsed) ? parsed : 0;
+    } else {
+      score = 0;
+    }
+    // Clamp score to 0-100 range
+    score = Math.max(0, Math.min(100, score));
 
     await addTextWithChineseSupport(pdf, dim.name, margin, yPos, {
       fontSize: 10,
@@ -403,7 +415,7 @@ export async function exportHomePagePDF(
     pdf.rect(margin, yPos, barWidth, barHeight, 'F');
 
     pdf.setFillColor(0, 163, 255);
-    pdf.rect(margin, yPos, (barWidth * (score as number)) / 100, barHeight, 'F');
+    pdf.rect(margin, yPos, (barWidth * score) / 100, barHeight, 'F');
 
     yPos += 10;
   }
@@ -641,7 +653,21 @@ export async function exportMultiRepoPDF(
 
     for (let dimIndex = 0; dimIndex < dimensionKeys.length; dimIndex++) {
       const key = dimensionKeys[dimIndex];
-      const score = (comp.scores as unknown as Record<string, number>)[key] ?? 0;
+
+      // Robust score parsing (consistent with webapp plugin views)
+      const rawScore = (comp.scores as unknown as Record<string, any>)[key];
+      let score: number;
+      if (typeof rawScore === 'number') {
+        score = rawScore;
+      } else if (typeof rawScore === 'string') {
+        const parsed = Number(rawScore);
+        score = Number.isFinite(parsed) ? parsed : 0;
+      } else {
+        score = 0;
+      }
+      // Clamp score to 0-100 range
+      score = Math.max(0, Math.min(100, score));
+
       const name = dimensionNames[dimIndex];
 
       // Determine column position
