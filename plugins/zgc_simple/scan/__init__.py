@@ -46,7 +46,7 @@ class CommitEvaluatorModerate:
         rubric_text: Optional[str] = None,
         language: str = "en-US",
         parallel_chunking: bool = False,
-        max_parallel_workers: int = 5,
+        max_parallel_workers: int = 3,
     ):
         self.api_key = (
             api_key
@@ -380,43 +380,74 @@ class CommitEvaluatorModerate:
         dims_text = "\n".join(dim_lines)
 
         if is_chinese:
-            reasoning_line = (
-                "  \"reasoning\": \"提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。\""
-            )
+            reasoning_example = "提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。"
+            format_note = "每个维度评分范围：0-100"
         else:
-            reasoning_line = (
-                "  \"reasoning\": \"Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**.\""
-            )
-        fmt_lines = ["{"] + [f'  "{k}": <0-100>,' for k in self.dimensions.keys()] + [reasoning_line, "}"]
-        fmt_text = "\n".join(fmt_lines)
+            reasoning_example = "Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**."
+            format_note = "Each dimension: score 0-100"
+
+        # Create proper valid JSON example
+        fmt_example = {k: 0 for k in self.dimensions.keys()}
+        fmt_example["reasoning"] = reasoning_example
+        fmt_text = json.dumps(fmt_example, ensure_ascii=False, indent=2)
+        fmt_text_with_note = f"{format_note}\n\n{fmt_text}"
 
         return (
             f'{base_instruction}'
             f"{mode_note}{chunked_instruction}{rubric_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
-            f"{return_json_instruction}:\n{fmt_text}"
+            f"{return_json_instruction}:\n{fmt_text_with_note}"
         )
 
     def _parse_llm_response(self, content: str) -> Dict[str, Any]:
         try:
+            # Enhanced debugging: log response length and first/last parts
+            print(f"[DEBUG] LLM response length: {len(content)} chars")
+            print(f"[DEBUG] Response start: {content[:200]}")
+            print(f"[DEBUG] Response end: {content[-200:]}")
+
             start = content.find("{")
             end = content.rfind("}") + 1
-            if start >= 0 and end > start:
-                data = json.loads(content[start:end])
-                out: Dict[str, Any] = {}
-                for k in self.dimensions.keys():
-                    out[k] = min(100, max(0, int(data.get(k, 0))))
-                if "reasoning" in data:
-                    out["reasoning"] = self._format_reasoning(str(data["reasoning"]))
-                else:
-                    # LLM didn't provide reasoning - add placeholder
-                    print("[WARNING] LLM response missing 'reasoning' field")
-                    out["reasoning"] = "LLM evaluation completed but reasoning was not provided."
-                return out
+
+            # Debug JSON extraction
+            if start < 0:
+                print("[ERROR] No opening brace '{' found in LLM response")
+                raise ValueError("No JSON object found in response")
+            if end <= start:
+                print(f"[ERROR] Invalid JSON boundaries: start={start}, end={end}")
+                raise ValueError("Invalid JSON object boundaries")
+
+            json_str = content[start:end]
+            print(f"[DEBUG] Extracted JSON length: {len(json_str)} chars")
+            print(f"[DEBUG] Extracted JSON: {json_str[:300]}...")
+
+            data = json.loads(json_str)
+            print(f"[DEBUG] JSON parsed successfully, keys: {list(data.keys())}")
+
+            out: Dict[str, Any] = {}
+            for k in self.dimensions.keys():
+                score_val = data.get(k, 0)
+                out[k] = min(100, max(0, int(score_val)))
+                print(f"[DEBUG] Dimension {k}: {score_val} -> {out[k]}")
+
+            if "reasoning" in data:
+                out["reasoning"] = self._format_reasoning(str(data["reasoning"]))
+                print(f"[DEBUG] Reasoning found, length: {len(out['reasoning'])} chars")
+            else:
+                # LLM didn't provide reasoning - add placeholder
+                print("[WARNING] LLM response missing 'reasoning' field")
+                out["reasoning"] = "LLM evaluation completed but reasoning was not provided."
+
+            print("[SUCCESS] LLM response parsed successfully")
+            return out
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] JSON parsing failed: {e}")
+            print(f"[ERROR] JSON string attempted: {content[start:end][:1000]}")
         except Exception as e:
             print(f"[ERROR] Failed to parse LLM response: {e}")
-            print(f"[ERROR] LLM response content: {content[:500]}")
+            print(f"[ERROR] LLM response content: {content[:1000]}")
 
         # Fallback with reasoning
+        print("[FALLBACK] Using default scores due to parsing failure")
         fallback = {k: 50 for k in self.dimensions.keys()}
         fallback["reasoning"] = "**Error:** LLM response parsing failed. Using default scores."
         return fallback
@@ -508,7 +539,7 @@ def create_commit_evaluator(
     mode: str = "moderate",
     language: str = "en-US",
     parallel_chunking: bool = False,
-    max_parallel_workers: int = 5,
+    max_parallel_workers: int = 3,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,

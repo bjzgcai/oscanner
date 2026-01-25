@@ -26,6 +26,7 @@ export default function Navigation() {
   const modelItems = [
     { key: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
     { key: 'z-ai/glm-4.7', label: 'Z.AI GLM 4.7' },
+    { key: 'qwen/qwen3-coder-flash', label: 'Qwen: Qwen3 Coder Flash' },
   ];
   const currentModelLabel = modelItems.find((i) => i.key === model)?.label || model;
 
