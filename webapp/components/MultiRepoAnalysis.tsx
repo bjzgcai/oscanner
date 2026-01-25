@@ -12,7 +12,7 @@ import {
   TeamOutlined,
   DownloadOutlined,
 } from '@ant-design/icons';
-import { exportHomePagePDF, exportMultiRepoPDF } from '../utils/pdfExport';
+import { exportHomePageMD, exportMultiRepoMD } from '../utils/mdExport';
 import type { ContributorComparisonData } from '../types';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
@@ -318,36 +318,36 @@ export default function MultiRepoAnalysis() {
 
   const handleDownloadPDF = async () => {
     if (!comparisonData || !selectedContributor) {
-      appendLog('PDF export skipped: no comparison data yet.');
+      appendLog('MD export skipped: no comparison data yet.');
       return;
     }
     try {
-      appendLog('Generating PDF report...');
-      await exportMultiRepoPDF(comparisonData, selectedContributor, messages);
-      appendLog('PDF report downloaded.');
+      appendLog('Generating MD report...');
+      await exportMultiRepoMD(comparisonData, selectedContributor, messages);
+      appendLog('MD report downloaded.');
     } catch (e: unknown) {
-      console.error('PDF generation error:', e);
-      appendLog('PDF export failed.');
+      console.error('MD generation error:', e);
+      appendLog('MD export failed.');
     }
   };
 
   const handleDownloadSinglePDF = async () => {
     if (!singleRepo || !evaluation || selectedAuthorIndex < 0) {
-      appendLog('PDF export skipped: no single-repo evaluation yet.');
+      appendLog('MD export skipped: no single-repo evaluation yet.');
       return;
     }
     try {
-      appendLog('Generating PDF report (single repo)...');
-      await exportHomePagePDF(
+      appendLog('Generating MD report (single repo)...');
+      await exportHomePageMD(
         { owner: singleRepo.owner, repo: singleRepo.repo, full_name: singleRepo.full_name },
         authorsData[selectedAuthorIndex],
         evaluation,
         messages
       );
-      appendLog('PDF report downloaded.');
+      appendLog('MD report downloaded.');
     } catch (e: unknown) {
-      console.error('PDF generation error:', e);
-      appendLog('PDF export failed.');
+      console.error('MD generation error:', e);
+      appendLog('MD export failed.');
     }
   };
 

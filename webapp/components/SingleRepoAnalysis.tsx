@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Input, Button, Card, Avatar, Spin, Alert, message, Modal, Progress } from 'antd';
 import { UserOutlined, DownloadOutlined, LoadingOutlined } from '@ant-design/icons';
 import PluginViewRenderer from './PluginViewRenderer';
-import { exportHomePagePDF } from '../utils/pdfExport';
+import { exportHomePageMD } from '../utils/mdExport';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import { useI18n } from './I18nContext';
@@ -222,13 +222,13 @@ export default function SingleRepoAnalysis() {
     }
     try {
       message.loading(t('single.pdf.generating'), 0);
-      await exportHomePagePDF(repoData, authorsData[selectedAuthorIndex], evaluation, messages);
+      await exportHomePageMD(repoData, authorsData[selectedAuthorIndex], evaluation, messages);
       message.destroy();
       message.success(t('single.pdf.success'));
     } catch (e) {
       message.destroy();
       message.error(t('single.pdf.failed'));
-      console.error('PDF generation error:', e);
+      console.error('MD generation error:', e);
     }
   };
 

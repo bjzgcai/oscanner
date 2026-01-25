@@ -23,7 +23,7 @@ export const enUS: Messages = {
   'common.cancel': 'Cancel',
   'common.fetching': 'Fetching...',
   'common.fetch': 'Fetch',
-  'common.download_pdf': 'Download PDF',
+  'common.download_pdf': 'Download MD',
 
   // Multi repo / main page
   'multi.repo_urls.label': 'Repository URLs (1-5 URLs, one per line)',
