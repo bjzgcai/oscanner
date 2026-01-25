@@ -22,7 +22,7 @@ export const zhCN: Messages = {
   'common.cancel': '取消',
   'common.fetching': '请求中…',
   'common.fetch': '获取',
-  'common.download_pdf': '下载 PDF',
+  'common.download_pdf': '下载 MD',
 
   // Multi repo / main page
   'multi.repo_urls.label': '仓库 URLs（1-5 个，每行一个）',
