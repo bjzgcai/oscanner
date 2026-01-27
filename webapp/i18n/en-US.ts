@@ -13,6 +13,7 @@ export const enUS: Messages = {
   'nav.plugin': 'Plugin',
   'nav.model': 'Model',
   'nav.language': 'Language',
+  'nav.settings': 'Settings',
 
   // Common
   'common.ready': 'Ready.',
@@ -250,6 +251,26 @@ export const enUS: Messages = {
   'validation.logs.title': 'Execution Logs',
   'validation.logs.show': 'Show Logs',
   'validation.logs.hide': 'Hide Logs',
+
+  // Settings
+  'settings.title': 'User Settings',
+  'settings.description': 'Manage your default repositories and author aliases',
+  'settings.default_username.label': 'Default Username',
+  'settings.default_username.placeholder': 'e.g., CarterWu',
+  'settings.default_username.help': 'Used as default author name for analysis',
+  'settings.repo_urls.label': 'Repository URLs (one per line, max 5)',
+  'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner\nhttps://github.com/owner/repo',
+  'settings.repo_urls.help': 'Will be auto-filled when starting analysis',
+  'settings.username_groups.label': 'Author Aliases (comma-separated)',
+  'settings.username_groups.placeholder': 'e.g., CarterWu, wu-yanbiao, 吴炎标',
+  'settings.username_groups.help': 'Multiple names belonging to same contributor',
+  'settings.save': 'Save',
+  'settings.reset': 'Reset to Defaults',
+  'settings.save_success': 'Settings saved successfully!',
+  'settings.save_error': 'Failed to save settings',
+  'settings.reset_confirm': 'Reset all settings to defaults?',
+  'settings.validation.invalid_url': 'Invalid repository URL: {url}',
+  'settings.validation.max_urls': 'Maximum 5 repository URLs allowed',
 };
 
 

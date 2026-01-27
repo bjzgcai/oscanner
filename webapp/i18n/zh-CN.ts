@@ -12,6 +12,7 @@ export const zhCN: Messages = {
   'nav.plugin': '插件',
   'nav.model': '模型',
   'nav.language': '语言',
+  'nav.settings': '设置',
 
   // Common
   'common.ready': '就绪。',
@@ -246,6 +247,26 @@ export const zhCN: Messages = {
   'validation.logs.title': '执行日志',
   'validation.logs.show': '显示日志',
   'validation.logs.hide': '隐藏日志',
+
+  // Settings
+  'settings.title': '用户设置',
+  'settings.description': '管理您的默认仓库和作者别名',
+  'settings.default_username.label': '默认用户名',
+  'settings.default_username.placeholder': '例如：CarterWu',
+  'settings.default_username.help': '用于分析的默认作者名字',
+  'settings.repo_urls.label': '仓库 URLs（每行一个，最多 5 个）',
+  'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner\nhttps://github.com/owner/repo',
+  'settings.repo_urls.help': '在开始分析时将自动填充',
+  'settings.username_groups.label': '作者别名（逗号分隔）',
+  'settings.username_groups.placeholder': '例如：CarterWu, wu-yanbiao, 吴炎标',
+  'settings.username_groups.help': '属于同一贡献者的多个名字',
+  'settings.save': '保存',
+  'settings.reset': '重置为默认值',
+  'settings.save_success': '设置已成功保存！',
+  'settings.save_error': '保存设置失败',
+  'settings.reset_confirm': '确定要将所有设置重置为默认值吗？',
+  'settings.validation.invalid_url': '无效的仓库 URL：{url}',
+  'settings.validation.max_urls': '最多允许 5 个仓库 URL',
 };
 
 

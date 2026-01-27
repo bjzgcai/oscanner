@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Space, Button, Dropdown, Switch, Tooltip } from 'antd';
-import { HomeOutlined, ApiOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { HomeOutlined, ApiOutlined, CheckCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import { LOCALES } from '../i18n';
@@ -17,6 +17,7 @@ export default function Navigation() {
   const navItems = [
     { path: '/', label: t('nav.analysis'), icon: <HomeOutlined /> },
     { path: '/validation', label: t('nav.validation'), icon: <CheckCircleOutlined /> },
+    { path: '/settings', label: t('nav.settings'), icon: <SettingOutlined /> },
   ];
 
   // Prefer explicit backend URL in dev/standalone mode; otherwise default to same-origin.
