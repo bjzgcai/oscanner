@@ -13,7 +13,8 @@ export const enUS: Messages = {
   'nav.plugin': 'Plugin',
   'nav.model': 'Model',
   'nav.language': 'Language',
-  'nav.settings': 'Settings',
+  'nav.llm_settings': 'LLM Settings',
+  'nav.settings': 'User',
 
   // Common
   'common.ready': 'Ready.',

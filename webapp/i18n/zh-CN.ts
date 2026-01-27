@@ -12,7 +12,8 @@ export const zhCN: Messages = {
   'nav.plugin': '插件',
   'nav.model': '模型',
   'nav.language': '语言',
-  'nav.settings': '设置',
+  'nav.llm_settings': 'LLM 设置',
+  'nav.settings': '用户',
 
   // Common
   'common.ready': '就绪。',

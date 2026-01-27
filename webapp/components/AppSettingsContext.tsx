@@ -17,6 +17,8 @@ type AppSettings = {
   setLocale: (v: Locale) => void;
   plugins: Array<{ id: string; name: string; version: string; description?: string; default?: boolean; has_view?: boolean }>;
   refreshPlugins: () => Promise<void>;
+  llmModalOpen: boolean;
+  setLlmModalOpen: (v: boolean) => void;
 };
 
 const STORAGE_KEY_USE_CACHE = 'oscanner_use_cache';
@@ -35,6 +37,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [plugins, setPlugins] = useState<AppSettings['plugins']>([]);
   const [useCache, setUseCacheState] = useState(true);
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+  const [llmModalOpen, setLlmModalOpen] = useState(false);
 
   // Load from localStorage after hydration is complete
   useEffect(() => {
@@ -155,8 +158,8 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   }, [refreshPlugins]);
 
   const value = useMemo(
-    () => ({ useCache, setUseCache, model, setModel, pluginId, setPluginId, locale, setLocale, plugins, refreshPlugins }),
-    [useCache, model, pluginId, locale, plugins, refreshPlugins]
+    () => ({ useCache, setUseCache, model, setModel, pluginId, setPluginId, locale, setLocale, plugins, refreshPlugins, llmModalOpen, setLlmModalOpen }),
+    [useCache, model, pluginId, locale, plugins, refreshPlugins, llmModalOpen]
   );
 
   return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
