@@ -55,9 +55,21 @@ async def evaluate_author(
             if aliases_list and isinstance(aliases_list, list):
                 aliases = [str(a).lower().strip() for a in aliases_list if a]
 
-        # Normalize model parameter
+        # Normalize parameters (handle Query objects and type conversion)
+        # When this function is called programmatically, Query objects aren't resolved by FastAPI
+        from fastapi.params import Query as QueryType
+
         if not isinstance(model, str):
             model = DEFAULT_LLM_MODEL
+
+        # Ensure parallel_chunking and max_parallel_workers are proper types, not Query objects
+        if isinstance(parallel_chunking, QueryType):
+            parallel_chunking = parallel_chunking.default
+        parallel_chunking = bool(parallel_chunking)
+
+        if isinstance(max_parallel_workers, QueryType):
+            max_parallel_workers = max_parallel_workers.default
+        max_parallel_workers = int(max_parallel_workers)
 
         # Check data directory
         data_dir = get_platform_data_dir(platform, owner, repo)
