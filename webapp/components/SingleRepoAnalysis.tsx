@@ -6,6 +6,7 @@ import { UserOutlined, DownloadOutlined, LoadingOutlined } from '@ant-design/ico
 import PluginViewRenderer from './PluginViewRenderer';
 import { exportHomePageMD } from '../utils/mdExport';
 import { useAppSettings } from './AppSettingsContext';
+import { useUserSettings } from './UserSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import { useI18n } from './I18nContext';
 
@@ -47,6 +48,7 @@ interface RepoData {
 export default function SingleRepoAnalysis() {
   const [repoPath, setRepoPath] = useState('');
   const { model, pluginId, useCache } = useAppSettings();
+  const { repoUrls } = useUserSettings();
   const { t, locale, messages } = useI18n();
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
@@ -64,6 +66,13 @@ export default function SingleRepoAnalysis() {
     const savedHistory = localStorage.getItem(STORAGE_KEY);
     if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
+
+  // Auto-populate repo URL from user settings if empty
+  useEffect(() => {
+    if (!repoPath && repoUrls.length > 0) {
+      setRepoPath(repoUrls[0]);
+    }
+  }, [repoPath, repoUrls]);
 
   const saveToHistory = (path: string) => {
     let newHistory = [...history];

@@ -15,6 +15,7 @@ import {
 import { exportHomePageMD, exportMultiRepoMD } from '../utils/mdExport';
 import type { ContributorComparisonData } from '../types';
 import { useAppSettings } from './AppSettingsContext';
+import { useUserSettings } from './UserSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import PluginViewRenderer from './PluginViewRenderer';
 import PluginComparisonRenderer from './PluginComparisonRenderer';
@@ -73,7 +74,9 @@ export default function MultiRepoAnalysis() {
   const [repoUrls, setRepoUrls] = useState('');
   const [loading, setLoading] = useState(false);
   const { model, pluginId, useCache } = useAppSettings();
+  const userSettings = useUserSettings();
   const { t, locale, messages } = useI18n();
+  const [isInitialized, setIsInitialized] = useState(false);
   const [mode, setMode] = useState<'single' | 'multi' | null>(null);
   const [loadingText, setLoadingText] = useState('');
   const [results, setResults] = useState<BatchResult | null>(null);
@@ -166,6 +169,19 @@ export default function MultiRepoAnalysis() {
   useEffect(() => {
     if (isExecuting) setLogsExpanded(true);
   }, [isExecuting]);
+
+  // Auto-populate repo URLs and username groups from user settings
+  useEffect(() => {
+    if (!isInitialized && !repoUrls.trim()) {
+      if (userSettings.repoUrls.length > 0) {
+        setRepoUrls(userSettings.repoUrls.join('\n'));
+      }
+      if (!authorAliases.trim() && userSettings.usernameGroups) {
+        setAuthorAliases(userSettings.usernameGroups);
+      }
+      setIsInitialized(true);
+    }
+  }, [isInitialized, repoUrls, authorAliases, userSettings]);
 
   const stopTicker = useCallback(
     (pinToLatest: boolean) => {

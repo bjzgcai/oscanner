@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import Navigation from '../components/Navigation';
 import { AppSettingsProvider } from '../components/AppSettingsContext';
+import { UserSettingsProvider } from '../components/UserSettingsContext';
 import I18nProviderFromSettings from '../components/I18nProviderFromSettings';
 import "./globals.css";
 
@@ -26,10 +27,12 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <AntdRegistry>
           <AppSettingsProvider>
-            <I18nProviderFromSettings>
-              <Navigation />
-              {children}
-            </I18nProviderFromSettings>
+            <UserSettingsProvider>
+              <I18nProviderFromSettings>
+                <Navigation />
+                {children}
+              </I18nProviderFromSettings>
+            </UserSettingsProvider>
           </AppSettingsProvider>
         </AntdRegistry>
       </body>
