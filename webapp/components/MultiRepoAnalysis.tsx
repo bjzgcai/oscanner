@@ -73,7 +73,7 @@ interface CommonContributorsResult {
 export default function MultiRepoAnalysis() {
   const [repoUrls, setRepoUrls] = useState('');
   const [loading, setLoading] = useState(false);
-  const { model, pluginId, useCache } = useAppSettings();
+  const { model, pluginId, useCache, llmModalOpen, setLlmModalOpen } = useAppSettings();
   const userSettings = useUserSettings();
   const { t, locale, messages } = useI18n();
   const [isInitialized, setIsInitialized] = useState(false);
@@ -89,7 +89,6 @@ export default function MultiRepoAnalysis() {
   const [evaluationProgress, setEvaluationProgress] = useState(0);
   const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [evaluationLoadingText, setEvaluationLoadingText] = useState('');
-  const [llmModalOpen, setLlmModalOpen] = useState(false);
   const [llmConfigPath, setLlmConfigPath] = useState<string>('');
   const [llmMode, setLlmMode] = useState<'openrouter' | 'openai'>('openrouter');
   const [openRouterKey, setOpenRouterKey] = useState('');
@@ -259,6 +258,13 @@ export default function MultiRepoAnalysis() {
       // ignore
     }
   }, []);
+
+  // Refresh LLM config when modal opens
+  useEffect(() => {
+    if (llmModalOpen) {
+      refreshLlmConfig();
+    }
+  }, [llmModalOpen, refreshLlmConfig]);
 
   const saveLlmConfig = useCallback(async () => {
     try {
@@ -552,7 +558,6 @@ export default function MultiRepoAnalysis() {
             appendLog('LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init).', 'error');
             // Auto-open settings modal for user convenience.
             setLlmModalOpen(true);
-            refreshLlmConfig();
             setIsExecuting(false);
             setLoading(false);
             setLoadingText('');
@@ -784,16 +789,6 @@ export default function MultiRepoAnalysis() {
               <div className="repos-actions">
                 <Button onClick={useTestRepo} disabled={loading}>
                   {t('multi.use_test_repo')}
-                </Button>
-
-                <Button
-                  onClick={() => {
-                    setLlmModalOpen(true);
-                    refreshLlmConfig();
-                  }}
-                  disabled={loading}
-                >
-                  {t('multi.llm_settings')}
                 </Button>
 
                 <Button
