@@ -64,3 +64,15 @@ coverage/
 .nyc_output/
 dashboard_dist/
 task_records/
+
+# Jekyll build artifacts
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+.bundle/
+vendor/bundle/
+vendor/cache/
+vendor/gems/
+vendor/ruby/
+Gemfile.lock

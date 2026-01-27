@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{ site.description }}">
+    <title>{{ page.title | default: site.title }}</title>
+
+    <!-- SEO -->
+    {% seo %}
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <header class="site-header">
+        <nav class="navbar">
+            <div class="container">
+                <div class="nav-brand">
+                    <a href="{{ '/' | relative_url }}">
+                        <span class="logo">oscanner</span>
+                    </a>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#evaluation-standards">Standards</a></li>
+                    <li><a href="#quick-start">Quick Start</a></li>
+                    <li><a href="https://gitee.com/zgcai/oscanner" target="_blank">Gitee</a></li>
+                    <li><a href="https://github.com/bjzgcai/oscanner" target="_blank">GitHub</a></li>
+                </ul>
+                <button class="nav-toggle" aria-label="Toggle navigation">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        {{ content }}
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>oscanner</h4>
+                    <p>Engineer Capability Assessment System</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="https://gitee.com/zgcai/oscanner/blob/main/README.md"
+                                target="_blank">Documentation</a></li>
+                        <li><a href="https://gitee.com/zgcai/oscanner/blob/main/engineer_level.md"
+                                target="_blank">AI-Native 2026 Standard</a></li>
+                        <li><a href="https://gitee.com/zgcai/oscanner/blob/main/engineer_level_old.md"
+                                target="_blank">Traditional 6D Standard</a></li>
+                        <li><a href="https://gitee.com/zgcai/oscanner/blob/main/CONTRIBUTING.md"
+                                target="_blank">Contributing</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Community</h4>
+                    <ul>
+                        <li><a href="https://gitee.com/zgcai/oscanner" target="_blank">Gitee Repository</a></li>
+                        <li><a href="https://github.com/bjzgcai/oscanner" target="_blank">GitHub Repository</a></li>
+                        <li><a href="https://gitee.com/zgcai/oscanner/issues" target="_blank">Issues</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>License</h4>
+                    <p>Apache License 2.0</p>
+                    <p class="footer-copyright">© 2026 oscanner</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ '/assets/js/main.js' | relative_url }}"></script>
+</body>
+
+</html>
