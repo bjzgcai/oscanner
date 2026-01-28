@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions, AutoComplete } from 'antd';
-import { RiseOutlined, LoadingOutlined, CheckCircleOutlined, GithubOutlined, UserOutlined } from '@ant-design/icons';
+import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions, AutoComplete, Switch, Tooltip, Dropdown } from 'antd';
+import { RiseOutlined, LoadingOutlined, CheckCircleOutlined, GithubOutlined, UserOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons';
 import { useUserSettings } from './UserSettingsContext';
 import { useAppSettings } from './AppSettingsContext';
 import { useI18n } from './I18nContext';
 import TrajectoryCharts from './TrajectoryCharts';
 import GrowthReport from './GrowthReport';
+import LlmConfigModal from './LlmConfigModal';
 import { getApiBaseUrl } from '@/utils/apiBase';
 import { TrajectoryCache, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
+import { LOCALES } from '../i18n';
 
 export default function TrajectoryAnalysis() {
   const [loading, setLoading] = useState(false);
@@ -19,7 +21,7 @@ export default function TrajectoryAnalysis() {
   const [isRepoUrlValid, setIsRepoUrlValid] = useState(false);
   const [isAuthorNameValid, setIsAuthorNameValid] = useState(false);
   const { defaultUsername, repoUrls, usernameGroups } = useUserSettings();
-  const { model, pluginId, useCache, language } = useAppSettings();
+  const { model, setModel, pluginId, setPluginId, plugins, useCache, setUseCache, locale, setLocale, setLlmModalOpen } = useAppSettings();
   const { t } = useI18n();
 
   // Validate repo URL (GitHub or Gitee format)
@@ -73,6 +75,31 @@ export default function TrajectoryAnalysis() {
   // Check if both inputs are valid
   const isFormValid = isRepoUrlValid && isAuthorNameValid;
 
+  // API docs URL points to backend /docs endpoint
+  const apiBase = getApiBaseUrl();
+  const apiDocsHref = apiBase ? `${apiBase}/docs` : '/docs';
+
+  // Model items for dropdown
+  const modelItems = [
+    { key: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+    { key: 'z-ai/glm-4.7', label: 'Z.AI GLM 4.7' },
+    { key: 'qwen/qwen3-coder-flash', label: 'Qwen: Qwen3 Coder Flash' },
+  ];
+  const currentModelLabel = modelItems.find((i) => i.key === model)?.label || model;
+
+  // Plugin items for dropdown
+  const pluginItems =
+    plugins && plugins.length > 0
+      ? plugins.map((p) => ({
+          key: p.id,
+          label: `${p.name}${p.version ? ` (${p.version})` : ''}`,
+        }))
+      : [
+          { key: 'zgc_simple', label: 'ZGC Simple (Default)' },
+          { key: 'zgc_ai_native_2026', label: 'ZGC AI-Native 2026' },
+        ];
+  const currentPluginLabel = (plugins || []).find((p) => p.id === pluginId)?.name || pluginId || 'zgc_simple';
+
   const analyzeTrajectory = async () => {
     if (!isFormValid) {
       message.error('Please provide valid repo URL and author name');
@@ -89,7 +116,7 @@ export default function TrajectoryAnalysis() {
       const url = `${apiBase}/api/trajectory/analyze?plugin=${encodeURIComponent(
         pluginId
       )}&model=${encodeURIComponent(model)}&language=${encodeURIComponent(
-        language
+        locale
       )}&use_cache=${useCache}`;
 
       const response = await fetch(url, {
@@ -231,6 +258,82 @@ export default function TrajectoryAnalysis() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Configuration Controls Bar */}
+      <div style={{
+        background: '#F9FAFB',
+        borderBottom: '1px solid #E5E7EB',
+        padding: '12px 16px',
+        marginBottom: '24px',
+        borderRadius: '8px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'flex-end' }}>
+          <Tooltip title={t('nav.cache.tooltip')}>
+            <Switch
+              checked={useCache}
+              onChange={setUseCache}
+              checkedChildren={t('nav.cache.on')}
+              unCheckedChildren={t('nav.cache.off')}
+            />
+          </Tooltip>
+
+          <Dropdown
+            menu={{
+              items: LOCALES.map((l) => ({ key: l.key, label: l.label })),
+              selectable: true,
+              selectedKeys: [locale],
+              onClick: ({ key }) => setLocale(String(key) as typeof locale),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              {t('nav.language')}: {LOCALES.find((l) => l.key === locale)?.label || locale}
+            </Button>
+          </Dropdown>
+
+          <Dropdown
+            menu={{
+              items: pluginItems,
+              selectable: true,
+              selectedKeys: [pluginId || 'zgc_simple'],
+              onClick: ({ key }) => setPluginId(String(key)),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              {t('nav.plugin')}: {currentPluginLabel}
+            </Button>
+          </Dropdown>
+
+          <Dropdown
+            menu={{
+              items: modelItems,
+              selectable: true,
+              selectedKeys: [model],
+              onClick: ({ key }) => setModel(String(key)),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              {t('nav.model')}: {currentModelLabel}
+            </Button>
+          </Dropdown>
+
+          <Button
+            icon={<SettingOutlined />}
+            size="middle"
+            onClick={() => setLlmModalOpen(true)}
+          >
+            {t('nav.llm_settings')}
+          </Button>
+
+          <a href={apiDocsHref} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+            <Button icon={<ApiOutlined />} size="middle">
+              {t('nav.api')}
+            </Button>
+          </a>
+        </div>
+      </div>
+
       <Card>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div>
@@ -383,6 +486,8 @@ export default function TrajectoryAnalysis() {
           )}
         </Space>
       </Card>
+
+      <LlmConfigModal />
 
       <Modal
         open={loading}

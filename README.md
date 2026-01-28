@@ -103,7 +103,7 @@ uv run oscanner init \
   --provider openai \
   --base-url https://api.siliconflow.cn/v1 \
   --api-key sk-your-key-here \
-  --model Pro/zai-org/GLM-4.7 \
+  --model qwen/qwen3-coder-flash \
   --action overwrite \
   --non-interactive
 ```
