@@ -43,6 +43,15 @@ Evidence to look for (prefer repo artifacts over claims):
 
 Scoring mapping: for each dimension, map observed evidence to a rough L1-L5 and convert to 0-100
 (L1≈10-30, L2≈30-50, L3≈50-70, L4≈70-85, L5≈85-100). Be conservative when evidence is missing.
+
+TRAJECTORY EVALUATION CONTEXT:
+- This evaluation is part of a growth trajectory tracking system
+- Commits are grouped into evaluation nodes (minimum 10 commits per node from 2-week periods)
+- Scores should generally show INCREASING trend over time as engineers learn and improve
+- ONLY decrease scores if there is CLEAR NEGATIVE EVIDENCE (regression in quality, bugs introduced, anti-patterns)
+- When previous checkpoint scores are provided, use them as baseline for comparison
+- If current work maintains similar quality to previous, scores should be equal or slightly higher
+- Significant score increases require clear evidence of new capabilities or improved practices
 """
 
 
@@ -55,6 +64,7 @@ def create_commit_evaluator(
     language: str = "en-US",
     parallel_chunking: bool = False,
     max_parallel_workers: int = 3,
+    previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -65,6 +75,7 @@ def create_commit_evaluator(
         language=language,
         parallel_chunking=parallel_chunking,
         max_parallel_workers=max_parallel_workers,
+        previous_checkpoint_scores=previous_checkpoint_scores,
     )
 
 
@@ -90,6 +101,7 @@ class CommitEvaluatorModerate:
         language: str = "en-US",
         parallel_chunking: bool = False,
         max_parallel_workers: int = 3,
+        previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
     ):
         self.api_key = (
             api_key
@@ -117,6 +129,7 @@ class CommitEvaluatorModerate:
         self.language = language
         self.parallel_chunking = parallel_chunking
         self.max_parallel_workers = max_parallel_workers
+        self.previous_checkpoint_scores = previous_checkpoint_scores
 
         self.dimensions = {
             "spec_quality": "Specification & Built-in Quality",
@@ -540,6 +553,15 @@ Return the same JSON format as before."""
 
         is_chinese = self.language == "zh-CN"
 
+        # Build previous checkpoint context if available
+        previous_scores_block = ""
+        if self.previous_checkpoint_scores:
+            prev_scores = {k: v for k, v in self.previous_checkpoint_scores.items() if k != 'reasoning'}
+            if is_chinese:
+                previous_scores_block = f"\n\n上一个评估节点的分数（基线参考）:\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\n注意：当前评估应该基于上一个节点的分数，除非有明确的负面证据，否则分数应该保持稳定或略有增长。"
+            else:
+                previous_scores_block = f"\n\nPREVIOUS CHECKPOINT SCORES (baseline reference):\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\nNOTE: Current evaluation should build on previous scores. Maintain or gradually increase scores unless clear negative evidence exists."
+
         # Language-specific instructions
         if is_chinese:
             base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的数据，并对每个维度评分（0-100分）。'
@@ -595,7 +617,7 @@ Return the same JSON format as before."""
 
         return (
             f'{base_instruction}'
-            f"{mode_note}{chunked_instruction}{rubric_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
+            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
             f"{return_json_instruction}:\n{fmt_text_with_note}"
         )
 

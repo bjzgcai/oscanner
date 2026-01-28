@@ -1,6 +1,6 @@
 """Growth trajectory schemas for tracking user development over time."""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 from .evaluation import EvaluationSchema
 
@@ -11,6 +11,9 @@ class CommitsRange(BaseModel):
     start_sha: str = Field(..., description="SHA of the oldest commit in this checkpoint")
     end_sha: str = Field(..., description="SHA of the newest commit in this checkpoint")
     commit_count: int = Field(..., ge=1, description="Number of commits in this checkpoint")
+    period_start: Optional[str] = Field(None, description="ISO 8601 timestamp of period start")
+    period_end: Optional[str] = Field(None, description="ISO 8601 timestamp of period end")
+    accumulated_from_periods: int = Field(1, ge=1, description="Number of 2-week periods that contributed commits")
 
 
 class TrajectoryCheckpoint(BaseModel):
@@ -22,6 +25,17 @@ class TrajectoryCheckpoint(BaseModel):
     evaluation: EvaluationSchema = Field(..., description="Full evaluation result for this checkpoint")
     repos_analyzed: Optional[List[str]] = Field(None, description="List of repo URLs analyzed")
     aliases_used: Optional[List[str]] = Field(None, description="Author aliases used in filtering")
+    previous_checkpoint_id: Optional[int] = Field(None, description="ID of the previous checkpoint for comparison")
+    growth_comparison: Optional[Dict[str, Any]] = Field(None, description="Comparison metrics with previous checkpoint")
+
+
+class PeriodAccumulationState(BaseModel):
+    """Tracks the state of period-based commit accumulation."""
+
+    current_period_start: str = Field(..., description="ISO 8601 timestamp of current period start")
+    current_period_end: str = Field(..., description="ISO 8601 timestamp of current period end")
+    accumulated_commits: List[str] = Field(default_factory=list, description="SHAs of commits not yet in a checkpoint")
+    repo_start_date: str = Field(..., description="ISO 8601 timestamp of first commit across all repos")
 
 
 class TrajectoryCache(BaseModel):
@@ -33,6 +47,8 @@ class TrajectoryCache(BaseModel):
     last_synced_sha: Optional[str] = Field(None, description="SHA of most recent commit processed")
     last_synced_at: Optional[str] = Field(None, description="ISO 8601 timestamp of last sync")
     total_checkpoints: int = Field(0, ge=0, description="Total number of checkpoints created")
+    accumulation_state: Optional['PeriodAccumulationState'] = Field(None, description="Current period accumulation state")
+    repo_start_date: Optional[str] = Field(None, description="Cached earliest commit date across all repos")
 
 
 class TrajectoryResponse(BaseModel):

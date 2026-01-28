@@ -12,6 +12,11 @@ Scan contract (inputs/outputs) is documented at:
 
 Standard reference:
 - engineer_level_old.md (traditional six-dimensional framework)
+
+TRAJECTORY EVALUATION:
+- This plugin supports period-based trajectory tracking with 10-commit minimum nodes
+- Scores should generally increase over time unless clear negative evidence exists
+- Previous checkpoint scores are used as baseline reference when available
 """
 
 import json
@@ -47,6 +52,7 @@ class CommitEvaluatorModerate:
         language: str = "en-US",
         parallel_chunking: bool = False,
         max_parallel_workers: int = 3,
+        previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
     ):
         self.api_key = (
             api_key
@@ -91,6 +97,7 @@ class CommitEvaluatorModerate:
         self.language = language
         self.parallel_chunking = parallel_chunking
         self.max_parallel_workers = max_parallel_workers
+        self.previous_checkpoint_scores = previous_checkpoint_scores
 
         self._file_cache: Dict[str, str] = {}
         self._repo_structure: Optional[Dict[str, Any]] = None
@@ -339,6 +346,15 @@ class CommitEvaluatorModerate:
 
         is_chinese = self.language == "zh-CN"
 
+        # Build previous checkpoint context if available
+        previous_scores_block = ""
+        if self.previous_checkpoint_scores:
+            prev_scores = {k: v for k, v in self.previous_checkpoint_scores.items() if k != 'reasoning'}
+            if is_chinese:
+                previous_scores_block = f"\n\n上一个评估节点的分数（基线参考）:\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\n注意：当前评估应该基于上一个节点的分数，除非有明确的负面证据，否则分数应该保持稳定或略有增长。这是成长轨迹追踪系统的一部分，评估节点基于2周周期累积的至少10个提交。"
+            else:
+                previous_scores_block = f"\n\nPREVIOUS CHECKPOINT SCORES (baseline reference):\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\nNOTE: Current evaluation should build on previous scores. Maintain or gradually increase scores unless clear negative evidence exists. This is part of a growth trajectory tracking system with evaluation nodes based on 10+ commits from 2-week periods."
+
         # Language-specific instructions
         if is_chinese:
             base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的数据，并对每个维度评分（0-100分）。'
@@ -394,7 +410,7 @@ class CommitEvaluatorModerate:
 
         return (
             f'{base_instruction}'
-            f"{mode_note}{chunked_instruction}{rubric_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
+            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
             f"{return_json_instruction}:\n{fmt_text_with_note}"
         )
 
@@ -540,6 +556,7 @@ def create_commit_evaluator(
     language: str = "en-US",
     parallel_chunking: bool = False,
     max_parallel_workers: int = 3,
+    previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -549,5 +566,6 @@ def create_commit_evaluator(
         language=language,
         parallel_chunking=parallel_chunking,
         max_parallel_workers=max_parallel_workers,
+        previous_checkpoint_scores=previous_checkpoint_scores,
     )
 
