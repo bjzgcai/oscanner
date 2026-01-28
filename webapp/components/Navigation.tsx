@@ -15,10 +15,11 @@ export default function Navigation() {
   const { t } = useI18n();
 
   const navItems = [
-    { path: '/settings', label: t('nav.settings'), icon: <SettingOutlined /> },
+    // Hidden pages (not removed, just not displayed in navigation)
+    // { path: '/settings', label: t('nav.settings'), icon: <SettingOutlined /> },
+    // { path: '/', label: t('nav.analysis'), icon: <HomeOutlined /> },
+    // { path: '/validation', label: t('nav.validation'), icon: <CheckCircleOutlined /> },
     { path: '/trajectory', label: t('nav.trajectory'), icon: <RiseOutlined /> },
-    { path: '/', label: t('nav.analysis'), icon: <HomeOutlined /> },
-    { path: '/validation', label: t('nav.validation'), icon: <CheckCircleOutlined /> },
   ];
 
   // Show config controls only on analysis and validation pages
