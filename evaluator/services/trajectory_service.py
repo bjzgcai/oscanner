@@ -26,11 +26,17 @@ def load_trajectory_cache(username: str) -> Optional[TrajectoryCache]:
     Load trajectory cache from disk.
 
     Args:
-        username: Username to load trajectory for
+        username: Username or comma-separated list of usernames to load trajectory for.
+                 If comma-separated, authors will be sorted alphabetically for consistent caching.
 
     Returns:
         TrajectoryCache if exists, None otherwise
     """
+    # Normalize username (sort if comma-separated)
+    if ',' in username:
+        authors = [a.strip() for a in username.split(',')]
+        username = ','.join(sorted(authors))
+
     cache_path = get_trajectory_cache_path(username)
 
     if not cache_path.exists():
@@ -760,7 +766,8 @@ def analyze_growth_trajectory(
     Main orchestration function for growth trajectory analysis.
 
     Args:
-        username: Primary username
+        username: Primary username or comma-separated list of usernames (e.g., "author1,author2")
+                 If comma-separated, they will be sorted alphabetically for consistent caching
         repo_urls: List of repository URLs to track
         aliases: List of author name aliases
         plugin_id: Plugin to use for evaluation
@@ -773,6 +780,12 @@ def analyze_growth_trajectory(
     Returns:
         TrajectoryResponse with analysis results
     """
+    # Normalize username for consistent caching (sort if comma-separated)
+    if ',' in username:
+        authors = [a.strip() for a in username.split(',')]
+        username = ','.join(sorted(authors))
+        print(f"[Trajectory] Normalized grouped username: {username}")
+
     # Load existing trajectory
     trajectory = load_trajectory_cache(username) if use_cache else None
 

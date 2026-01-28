@@ -159,8 +159,7 @@ export default function SingleRepoAnalysis() {
           email: author.email || '',
           commits: author.commits,
           avatar_url: generateAvatarUrl(author.author),
-        }))
-        .slice(0, 20);
+        }));
 
       setAuthorsData(authors);
       setRepoData({ owner, repo, platform, full_name: `${owner}/${repo}`, path: repoPath });
