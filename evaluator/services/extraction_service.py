@@ -41,7 +41,7 @@ def extract_github_data(owner: str, repo: str) -> bool:
             cmd.extend(["--token", gh_token])
 
         # Run extraction tool
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 minute timeout
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minute timeout
 
         if result.returncode != 0:
             print(f"✗ Extraction failed: {result.stderr}")
@@ -52,7 +52,7 @@ def extract_github_data(owner: str, repo: str) -> bool:
         return True
 
     except subprocess.TimeoutExpired:
-        print(f"✗ Extraction timeout after 5 minutes")
+        print(f"✗ Extraction timeout after 30 minutes")
         return False
     except Exception as e:
         print(f"✗ Extraction error: {e}")

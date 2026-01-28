@@ -1217,7 +1217,7 @@ The system uses a **priority-based configuration system** with multiple sources:
 | `OSCANNER_LLM_API_KEY` | Primary LLM API key | Yes* | - |
 | `OPENAI_API_KEY` | Secondary LLM API key | Yes* | - |
 | `OPEN_ROUTER_KEY` | Fallback LLM API key (OpenRouter) | Yes* | - |
-| `OSCANNER_LLM_MODEL` | Default LLM model name | No | `Pro/zai-org/GLM-4.7` |
+| `OSCANNER_LLM_MODEL` | Default LLM model name | No | `qwen/qwen3-coder-flash` |
 | `OSCANNER_LLM_BASE_URL` | Custom LLM endpoint base URL | No | `https://openrouter.ai/api/v1` |
 | `OPENAI_BASE_URL` | OpenAI-compatible base URL | No | - |
 | `OSCANNER_LLM_CHAT_COMPLETIONS_URL` | Full chat completions endpoint URL | No | `{base_url}/chat/completions` |
@@ -1305,7 +1305,7 @@ The system provides flexible LLM configuration with multiple providers and fallb
    - Or `{base_url}/chat/completions` (constructed)
 
 4. **Model Selection**:
-   - `OSCANNER_LLM_MODEL` (default: `Pro/zai-org/GLM-4.7`)
+   - `OSCANNER_LLM_MODEL` (default: `qwen/qwen3-coder-flash`)
    - Model names are provider-specific
 
 5. **Fallback Models**:

@@ -203,7 +203,7 @@ export default function SingleRepoAnalysis() {
     try {
       setProgress(10);
       const response = await fetch(
-        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}&language=${encodeURIComponent(locale)}`,
+        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}&language=${encodeURIComponent(language)}`,
         { method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to evaluate author');
