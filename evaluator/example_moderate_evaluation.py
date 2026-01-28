@@ -39,8 +39,6 @@ def load_commits_from_local(data_dir: Path, limit: int = 30) -> list:
     with open(commits_index_path, 'r', encoding='utf-8') as f:
         commits_index = json.load(f)
 
-    print(f"[Info] Found {len(commits_index)} commits in index")
-
     # Load detailed commit data
     commits = []
     commits_dir = data_dir / "commits"

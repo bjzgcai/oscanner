@@ -83,3 +83,29 @@ def ensure_platform_dirs(platform: str, owner: str, repo: str) -> None:
     get_platform_eval_dir(platform, owner, repo).mkdir(parents=True, exist_ok=True)
 
 
+def get_trajectory_cache_dir() -> Path:
+    """
+    Get trajectory cache directory for growth tracking.
+
+    Returns:
+        Path: home/track
+    """
+    home_dir = get_home_dir()
+    return home_dir / "track"
+
+
+def get_trajectory_cache_path(username: str) -> Path:
+    """
+    Get trajectory cache file path for a specific user.
+
+    Args:
+        username: Username to get trajectory for
+
+    Returns:
+        Path: home/track/{username}.json
+    """
+    cache_dir = get_trajectory_cache_dir()
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / f"{username}.json"
+
+
