@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions } from 'antd';
-import { RiseOutlined, LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { useState, useEffect, useMemo } from 'react';
+import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions, AutoComplete } from 'antd';
+import { RiseOutlined, LoadingOutlined, CheckCircleOutlined, GithubOutlined, UserOutlined } from '@ant-design/icons';
 import { useUserSettings } from './UserSettingsContext';
 import { useAppSettings } from './AppSettingsContext';
 import { useI18n } from './I18nContext';
@@ -14,28 +14,76 @@ import { TrajectoryCache, TrajectoryResponse, TrajectoryCheckpoint } from '@/typ
 export default function TrajectoryAnalysis() {
   const [loading, setLoading] = useState(false);
   const [trajectory, setTrajectory] = useState<TrajectoryCache | null>(null);
+  const [repoUrl, setRepoUrl] = useState('');
+  const [authorName, setAuthorName] = useState('');
+  const [isRepoUrlValid, setIsRepoUrlValid] = useState(false);
+  const [isAuthorNameValid, setIsAuthorNameValid] = useState(false);
   const { defaultUsername, repoUrls, usernameGroups } = useUserSettings();
   const { model, pluginId, useCache, language } = useAppSettings();
   const { t } = useI18n();
 
-  const analyzeTrajectory = async () => {
-    if (!defaultUsername) {
-      message.error(t('trajectory.no_username'));
-      return;
+  // Validate repo URL (GitHub or Gitee format)
+  const validateRepoUrl = (url: string): boolean => {
+    if (!url.trim()) return false;
+
+    const githubPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/;
+    const giteePattern = /^https?:\/\/(www\.)?gitee\.com\/[\w-]+\/[\w.-]+\/?$/;
+
+    return githubPattern.test(url.trim()) || giteePattern.test(url.trim());
+  };
+
+  // Validate author name (not empty)
+  const validateAuthorName = (name: string): boolean => {
+    return name.trim().length > 0;
+  };
+
+  // Update validation state when inputs change
+  useEffect(() => {
+    setIsRepoUrlValid(validateRepoUrl(repoUrl));
+  }, [repoUrl]);
+
+  useEffect(() => {
+    setIsAuthorNameValid(validateAuthorName(authorName));
+  }, [authorName]);
+
+  // Prepare autocomplete options for repo URLs
+  const repoUrlOptions = useMemo(() => {
+    if (!repoUrls || repoUrls.length === 0) return [];
+    return repoUrls.map((url) => ({ value: url }));
+  }, [repoUrls]);
+
+  // Prepare autocomplete options for author names
+  const authorNameOptions = useMemo(() => {
+    const names = new Set<string>();
+
+    if (defaultUsername) {
+      names.add(defaultUsername);
     }
 
-    if (!repoUrls || repoUrls.length === 0) {
-      message.error(t('trajectory.no_repos'));
+    if (usernameGroups) {
+      usernameGroups.split(',').forEach((name) => {
+        const trimmed = name.trim();
+        if (trimmed) names.add(trimmed);
+      });
+    }
+
+    return Array.from(names).map((name) => ({ value: name }));
+  }, [defaultUsername, usernameGroups]);
+
+  // Check if both inputs are valid
+  const isFormValid = isRepoUrlValid && isAuthorNameValid;
+
+  const analyzeTrajectory = async () => {
+    if (!isFormValid) {
+      message.error('Please provide valid repo URL and author name');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Parse aliases from usernameGroups
-      const aliases = usernameGroups
-        ? usernameGroups.split(',').map((s) => s.trim()).filter(Boolean)
-        : [defaultUsername];
+      // Use input values instead of settings
+      const aliases = [authorName.trim()];
 
       const apiBase = getApiBaseUrl();
       const url = `${apiBase}/api/trajectory/analyze?plugin=${encodeURIComponent(
@@ -50,8 +98,8 @@ export default function TrajectoryAnalysis() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: defaultUsername,
-          repo_urls: repoUrls,
+          username: authorName.trim(),
+          repo_urls: [repoUrl.trim()],
           aliases: aliases,
         }),
       });
@@ -185,20 +233,76 @@ export default function TrajectoryAnalysis() {
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       <Card>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
             <h2>
               <RiseOutlined /> {t('trajectory.title')}
             </h2>
-            <Button
-              type="primary"
-              size="large"
-              icon={loading ? <LoadingOutlined /> : <RiseOutlined />}
-              onClick={analyzeTrajectory}
-              loading={loading}
-            >
-              {t('trajectory.analyze_button')}
-            </Button>
           </div>
+
+          {/* Input fields */}
+          <Card type="inner" title="Analysis Configuration" style={{ marginBottom: '16px' }}>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                  <GithubOutlined /> Repository URL
+                </label>
+                <AutoComplete
+                  size="large"
+                  placeholder="https://github.com/owner/repo or https://gitee.com/owner/repo"
+                  value={repoUrl}
+                  onChange={setRepoUrl}
+                  options={repoUrlOptions}
+                  status={repoUrl && !isRepoUrlValid ? 'error' : undefined}
+                  disabled={loading}
+                  style={{ width: '100%' }}
+                  filterOption={(inputValue, option) =>
+                    option?.value.toLowerCase().includes(inputValue.toLowerCase())
+                  }
+                />
+                {repoUrl && !isRepoUrlValid && (
+                  <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}>
+                    Please enter a valid GitHub or Gitee repository URL
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                  <UserOutlined /> Author Name
+                </label>
+                <AutoComplete
+                  size="large"
+                  placeholder="Enter author username"
+                  value={authorName}
+                  onChange={setAuthorName}
+                  options={authorNameOptions}
+                  status={authorName && !isAuthorNameValid ? 'error' : undefined}
+                  disabled={loading}
+                  style={{ width: '100%' }}
+                  filterOption={(inputValue, option) =>
+                    option?.value.toLowerCase().includes(inputValue.toLowerCase())
+                  }
+                />
+                {authorName && !isAuthorNameValid && (
+                  <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}>
+                    Author name cannot be empty
+                  </div>
+                )}
+              </div>
+
+              <Button
+                type="primary"
+                size="large"
+                icon={loading ? <LoadingOutlined /> : <RiseOutlined />}
+                onClick={analyzeTrajectory}
+                loading={loading}
+                disabled={!isFormValid || loading}
+                block
+              >
+                {t('trajectory.analyze_button')}
+              </Button>
+            </Space>
+          </Card>
 
           {!trajectory && !loading && (
             <Empty
