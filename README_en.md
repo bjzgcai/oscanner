@@ -251,10 +251,10 @@ By default the backend uses OpenRouter (`OPEN_ROUTER_KEY`). If you use an **Open
 ```bash
 OSCANNER_LLM_BASE_URL=https://api.siliconflow.cn/v1
 OSCANNER_LLM_API_KEY=sk-your-key-here
-OSCANNER_LLM_MODEL=Pro/zai-org/GLM-4.7
+OSCANNER_LLM_MODEL=qwen/qwen3-coder-flash
 
 # Optional: comma-separated fallbacks
-# OSCANNER_LLM_FALLBACK_MODELS=Pro/zai-org/GLM-4.7,another-model-id
+# OSCANNER_LLM_FALLBACK_MODELS=qwen/qwen3-coder-flash,another-model-id
 ```
 
 Note: `OSCANNER_LLM_BASE_URL` auto-appends `/chat/completions`. If your provider has a non-standard path, set:

@@ -25,7 +25,7 @@ const STORAGE_KEY_USE_CACHE = 'oscanner_use_cache';
 const STORAGE_KEY_MODEL = 'oscanner_llm_model';
 const STORAGE_KEY_PLUGIN = 'oscanner_plugin_id';
 const STORAGE_KEY_LOCALE = 'oscanner_locale';
-const DEFAULT_MODEL = 'Pro/zai-org/GLM-4.7';
+const DEFAULT_MODEL = 'qwen/qwen3-coder-flash';
 const DEFAULT_PLUGIN = 'zgc_simple';
 
 const AppSettingsContext = createContext<AppSettings | null>(null);
