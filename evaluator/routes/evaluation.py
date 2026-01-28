@@ -10,6 +10,7 @@ from evaluator.paths import get_platform_data_dir, get_platform_eval_dir
 from evaluator.plugin_registry import load_scan_module, PluginLoadError
 from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL, get_gitee_token
 from evaluator.utils import load_commits_from_local
+from evaluator.schemas import EvaluationResponseSchema
 from evaluator.services import (
     resolve_plugin_id,
     get_evaluation_cache_path,
@@ -23,7 +24,7 @@ from evaluator.services import (
 router = APIRouter()
 
 
-@router.post("/api/evaluate/{owner}/{repo}/{author}")
+@router.post("/api/evaluate/{owner}/{repo}/{author}", response_model=EvaluationResponseSchema)
 async def evaluate_author(
     owner: str,
     repo: str,
@@ -250,7 +251,7 @@ async def merge_evaluations(request: dict):
     }
 
 
-@router.post("/api/gitee/evaluate/{owner}/{repo}/{contributor}")
+@router.post("/api/gitee/evaluate/{owner}/{repo}/{contributor}", response_model=EvaluationResponseSchema)
 async def evaluate_gitee_contributor(
     owner: str,
     repo: str,

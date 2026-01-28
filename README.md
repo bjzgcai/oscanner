@@ -191,6 +191,7 @@ uv run oscanner extract https://github.com/<owner>/<repo> --out /path/to/output 
 - data：`~/.local/share/oscanner/data`（或 `XDG_DATA_HOME/oscanner/data`）
 - cache：`~/.cache/oscanner/cache`（或 `XDG_CACHE_HOME/oscanner/cache`）
 - evaluations：`~/.local/share/oscanner/evaluations/cache`
+- track：`~/.local/share/oscanner/track/cache`
 
 ## Author Aliases (作者别名) - 跨名称贡献聚合
 
