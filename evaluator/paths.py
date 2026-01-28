@@ -96,16 +96,32 @@ def get_trajectory_cache_dir() -> Path:
 
 def get_trajectory_cache_path(username: str) -> Path:
     """
-    Get trajectory cache file path for a specific user.
+    Get trajectory cache file path for a specific user or group of users.
 
     Args:
-        username: Username to get trajectory for
+        username: Username or comma-separated list of usernames (e.g., "author1,author2")
+                 Authors will be sorted alphabetically for consistent cache keys.
 
     Returns:
-        Path: home/track/{username}.json
+        Path: home/track/{author1,author2,...}.json (sorted alphabetically)
+
+    Examples:
+        "alice" -> home/track/alice.json
+        "bob,alice" -> home/track/alice,bob.json (sorted)
+        "alice,bob" -> home/track/alice,bob.json (sorted)
     """
     cache_dir = get_trajectory_cache_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / f"{username}.json"
+
+    # If username contains commas, split and sort authors for consistent cache key
+    if ',' in username:
+        authors = [a.strip() for a in username.split(',')]
+        # Sort authors alphabetically for order-insensitive caching
+        sorted_authors = sorted(authors)
+        normalized_username = ','.join(sorted_authors)
+    else:
+        normalized_username = username.strip()
+
+    return cache_dir / f"{normalized_username}.json"
 
 

@@ -124,11 +124,14 @@ class CommitEvaluatorModerate:
         return self._evaluate_engineer_standard(author_commits, username, load_files=load_files)
 
     def _is_commit_by_author(self, commit: Dict[str, Any], username: str) -> bool:
+        # Handle comma-separated usernames as multiple aliases
+        aliases = [alias.strip().lower() for alias in username.split(',')]
+
         if "author" in commit and isinstance(commit["author"], str):
-            return commit["author"].lower() == username.lower()
+            return commit["author"].lower() in aliases
         if "commit" in commit:
             author = commit.get("commit", {}).get("author", {}).get("name", "")
-            return bool(author) and author.lower() == username.lower()
+            return bool(author) and author.lower() in aliases
         return False
 
     def _evaluate_engineer_standard(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
@@ -537,12 +540,14 @@ class CommitEvaluatorModerate:
         }
 
     def _get_empty_evaluation(self, username: str) -> Dict[str, Any]:
+        scores = {k: 0 for k in self.dimensions.keys()}
+        scores["reasoning"] = "No commits found for this user in the analyzed data."
         return {
             "username": username,
             "total_commits_analyzed": 0,
             "files_loaded": 0,
             "mode": self.mode,
-            "scores": {k: 0 for k in self.dimensions.keys()},
+            "scores": scores,
             "commits_summary": {"total_additions": 0, "total_deletions": 0, "files_changed": 0, "languages": []},
         }
 

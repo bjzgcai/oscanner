@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions, AutoComplete, Switch, Tooltip, Dropdown } from 'antd';
+import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions, Input, Switch, Tooltip, Dropdown, Table, Radio } from 'antd';
 import { RiseOutlined, LoadingOutlined, CheckCircleOutlined, GithubOutlined, UserOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons';
 import { useUserSettings } from './UserSettingsContext';
 import { useAppSettings } from './AppSettingsContext';
@@ -17,9 +17,10 @@ export default function TrajectoryAnalysis() {
   const [loading, setLoading] = useState(false);
   const [trajectory, setTrajectory] = useState<TrajectoryCache | null>(null);
   const [repoUrl, setRepoUrl] = useState('');
-  const [authorName, setAuthorName] = useState('');
   const [isRepoUrlValid, setIsRepoUrlValid] = useState(false);
-  const [isAuthorNameValid, setIsAuthorNameValid] = useState(false);
+  const [authors, setAuthors] = useState<Array<{ author: string; email: string; commits: number }>>([]);
+  const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
+  const [fetchingAuthors, setFetchingAuthors] = useState(false);
   const { defaultUsername, repoUrls, usernameGroups } = useUserSettings();
   const { model, setModel, pluginId, setPluginId, plugins, useCache, setUseCache, locale, setLocale, setLlmModalOpen } = useAppSettings();
   const { t } = useI18n();
@@ -34,9 +35,21 @@ export default function TrajectoryAnalysis() {
     return githubPattern.test(url.trim()) || giteePattern.test(url.trim());
   };
 
-  // Validate author name (not empty)
-  const validateAuthorName = (name: string): boolean => {
-    return name.trim().length > 0;
+  // Parse owner and repo from URL
+  const parseRepoUrl = (url: string): { owner: string; repo: string; platform: string } | null => {
+    if (!url.trim()) return null;
+
+    const githubMatch = url.match(/^https?:\/\/(www\.)?github\.com\/([\w-]+)\/([\w.-]+)\/?$/);
+    if (githubMatch) {
+      return { owner: githubMatch[2], repo: githubMatch[3], platform: 'github' };
+    }
+
+    const giteeMatch = url.match(/^https?:\/\/(www\.)?gitee\.com\/([\w-]+)\/([\w.-]+)\/?$/);
+    if (giteeMatch) {
+      return { owner: giteeMatch[2], repo: giteeMatch[3], platform: 'gitee' };
+    }
+
+    return null;
   };
 
   // Update validation state when inputs change
@@ -44,9 +57,55 @@ export default function TrajectoryAnalysis() {
     setIsRepoUrlValid(validateRepoUrl(repoUrl));
   }, [repoUrl]);
 
+  // Fetch authors when repo URL is valid
   useEffect(() => {
-    setIsAuthorNameValid(validateAuthorName(authorName));
-  }, [authorName]);
+    const fetchAuthors = async () => {
+      if (!isRepoUrlValid) {
+        setAuthors([]);
+        setSelectedAuthors([]);
+        return;
+      }
+
+      const parsed = parseRepoUrl(repoUrl);
+      if (!parsed) {
+        setAuthors([]);
+        setSelectedAuthors([]);
+        return;
+      }
+
+      setFetchingAuthors(true);
+      try {
+        const apiBase = getApiBaseUrl();
+        const url = `${apiBase}/api/authors/${parsed.owner}/${parsed.repo}?platform=${parsed.platform}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch authors');
+        }
+
+        const data = await response.json();
+        if (data.success && data.data.authors) {
+          setAuthors(data.data.authors);
+          // Auto-select first author if available
+          if (data.data.authors.length > 0) {
+            setSelectedAuthors([data.data.authors[0].author]);
+          }
+        } else {
+          setAuthors([]);
+          setSelectedAuthors([]);
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch authors:', error);
+        message.error('Failed to fetch authors from repository');
+        setAuthors([]);
+        setSelectedAuthors([]);
+      } finally {
+        setFetchingAuthors(false);
+      }
+    };
+
+    fetchAuthors();
+  }, [isRepoUrlValid, repoUrl]);
 
   // Prepare autocomplete options for repo URLs
   const repoUrlOptions = useMemo(() => {
@@ -54,26 +113,8 @@ export default function TrajectoryAnalysis() {
     return repoUrls.map((url) => ({ value: url }));
   }, [repoUrls]);
 
-  // Prepare autocomplete options for author names
-  const authorNameOptions = useMemo(() => {
-    const names = new Set<string>();
-
-    if (defaultUsername) {
-      names.add(defaultUsername);
-    }
-
-    if (usernameGroups) {
-      usernameGroups.split(',').forEach((name) => {
-        const trimmed = name.trim();
-        if (trimmed) names.add(trimmed);
-      });
-    }
-
-    return Array.from(names).map((name) => ({ value: name }));
-  }, [defaultUsername, usernameGroups]);
-
   // Check if both inputs are valid
-  const isFormValid = isRepoUrlValid && isAuthorNameValid;
+  const isFormValid = isRepoUrlValid && selectedAuthors.length > 0;
 
   // API docs URL points to backend /docs endpoint
   const apiBase = getApiBaseUrl();
@@ -102,15 +143,17 @@ export default function TrajectoryAnalysis() {
 
   const analyzeTrajectory = async () => {
     if (!isFormValid) {
-      message.error('Please provide valid repo URL and author name');
+      message.error('Please provide valid repo URL and select at least one author');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Use input values instead of settings
-      const aliases = [authorName.trim()];
+      // Use selected authors as aliases
+      const aliases = selectedAuthors.map(a => a.trim());
+      // Create a grouped username from all selected authors (sorted for consistency)
+      const groupedUsername = aliases.slice().sort().join(',');
 
       const apiBase = getApiBaseUrl();
       const url = `${apiBase}/api/trajectory/analyze?plugin=${encodeURIComponent(
@@ -125,7 +168,7 @@ export default function TrajectoryAnalysis() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: authorName.trim(),
+          username: groupedUsername,
           repo_urls: [repoUrl.trim()],
           aliases: aliases,
         }),
@@ -349,18 +392,14 @@ export default function TrajectoryAnalysis() {
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
                   <GithubOutlined /> Repository URL
                 </label>
-                <AutoComplete
+                <Input
                   size="large"
                   placeholder="https://github.com/owner/repo or https://gitee.com/owner/repo"
                   value={repoUrl}
-                  onChange={setRepoUrl}
-                  options={repoUrlOptions}
+                  onChange={(e) => setRepoUrl(e.target.value)}
                   status={repoUrl && !isRepoUrlValid ? 'error' : undefined}
                   disabled={loading}
-                  style={{ width: '100%' }}
-                  filterOption={(inputValue, option) =>
-                    option?.value.toLowerCase().includes(inputValue.toLowerCase())
-                  }
+                  autoComplete="url"
                 />
                 {repoUrl && !isRepoUrlValid && (
                   <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}>
@@ -369,29 +408,85 @@ export default function TrajectoryAnalysis() {
                 )}
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-                  <UserOutlined /> Author Name
-                </label>
-                <AutoComplete
-                  size="large"
-                  placeholder="Enter author username"
-                  value={authorName}
-                  onChange={setAuthorName}
-                  options={authorNameOptions}
-                  status={authorName && !isAuthorNameValid ? 'error' : undefined}
-                  disabled={loading}
-                  style={{ width: '100%' }}
-                  filterOption={(inputValue, option) =>
-                    option?.value.toLowerCase().includes(inputValue.toLowerCase())
-                  }
+              {/* Authors Table */}
+              {fetchingAuthors && (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <LoadingOutlined style={{ fontSize: 24 }} />
+                  <div style={{ marginTop: '8px' }}>Fetching authors...</div>
+                </div>
+              )}
+
+              {!fetchingAuthors && authors.length > 0 && (
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                    <UserOutlined /> Select Author(s) ({authors.length} found, {selectedAuthors.length} selected)
+                  </label>
+                  {selectedAuthors.length > 1 && (
+                    <Alert
+                      message={`Grouped as: ${selectedAuthors.slice().sort().join(', ')}`}
+                      description="Selected authors will be treated as one identity for trajectory analysis"
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: '8px' }}
+                    />
+                  )}
+                  <Table
+                    size="small"
+                    dataSource={authors}
+                    rowKey="author"
+                    pagination={authors.length > 10 ? { pageSize: 10 } : false}
+                    rowSelection={{
+                      type: 'checkbox',
+                      selectedRowKeys: selectedAuthors,
+                      onChange: (selectedRowKeys) => {
+                        setSelectedAuthors(selectedRowKeys as string[]);
+                      },
+                    }}
+                    onRow={(record) => ({
+                      onClick: () => {
+                        // Toggle selection
+                        setSelectedAuthors(prev => {
+                          if (prev.includes(record.author)) {
+                            return prev.filter(a => a !== record.author);
+                          } else {
+                            return [...prev, record.author];
+                          }
+                        });
+                      },
+                      style: { cursor: 'pointer' },
+                    })}
+                    columns={[
+                      {
+                        title: 'Author',
+                        dataIndex: 'author',
+                        key: 'author',
+                        render: (text) => <strong>{text}</strong>,
+                      },
+                      {
+                        title: 'Email',
+                        dataIndex: 'email',
+                        key: 'email',
+                      },
+                      {
+                        title: 'Commits',
+                        dataIndex: 'commits',
+                        key: 'commits',
+                        align: 'right',
+                        render: (count) => <Tag color="blue">{count}</Tag>,
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+
+              {!fetchingAuthors && isRepoUrlValid && authors.length === 0 && (
+                <Alert
+                  message="No authors found"
+                  description="No commit data found for this repository. The repository may be empty or the data needs to be extracted first."
+                  type="info"
+                  showIcon
                 />
-                {authorName && !isAuthorNameValid && (
-                  <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}>
-                    Author name cannot be empty
-                  </div>
-                )}
-              </div>
+              )}
 
               <Button
                 type="primary"
