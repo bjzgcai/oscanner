@@ -1,9 +1,14 @@
 'use client';
 
-import MultiRepoAnalysis from '../components/MultiRepoAnalysis';
-import './dashboard.css';
-import './repos/repos.css';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Page() {
-  return <MultiRepoAnalysis />;
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/trajectory');
+  }, [router]);
+
+  return null;
 }
