@@ -76,11 +76,6 @@ export default function GrowthReport({ trajectory }: GrowthReportProps) {
     };
   });
 
-  // Sort by improvement
-  const topImprovements = [...improvements]
-    .sort((a, b) => b.change - a.change)
-    .slice(0, 3);
-
   // Total commits analyzed
   const totalCommits = checkpoints.reduce(
     (sum, cp) => sum + cp.evaluation.total_commits_analyzed,
@@ -93,11 +88,6 @@ export default function GrowthReport({ trajectory }: GrowthReportProps) {
   const daysBetween = Math.ceil(
     (latestDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)
   );
-
-  // Languages learned
-  const firstLanguages = firstCheckpoint.evaluation.commits_summary.languages;
-  const latestLanguages = latestCheckpoint.evaluation.commits_summary.languages;
-  const newLanguages = latestLanguages.filter((lang: string) => !firstLanguages.includes(lang));
 
   // Average score
   const avgScore = (scores: any) => {
@@ -123,15 +113,12 @@ export default function GrowthReport({ trajectory }: GrowthReportProps) {
 
 ## ${t('trajectory.report.summary')}
 
-- **${t('trajectory.report.total_checkpoints')}**: ${trajectory.total_checkpoints}
-- **${t('trajectory.report.time_span')}**: ${daysBetween} ${t('trajectory.report.days')}
 - **${t('trajectory.report.total_commits')}**: ${totalCommits}
 - **${t('trajectory.report.avg_improvement')}**: ${avgImprovement.toFixed(2)} ${t('trajectory.report.points')}
-- **${t('trajectory.report.repos_tracked')}**: ${trajectory.repo_urls.length}
 
 ## ${t('trajectory.report.key_achievements')}
 
-${topImprovements
+${improvements
   .map(
     (imp, idx) =>
       `${idx + 1}. **${dimensionNames[imp.dimension]}**: ${imp.first} → ${imp.current} (+${imp.change.toFixed(
@@ -139,12 +126,6 @@ ${topImprovements
       )} ${t('trajectory.report.points')})`
   )
   .join('\n')}
-
-${
-  newLanguages.length > 0
-    ? `\n### ${t('trajectory.report.new_languages')}\n${newLanguages.map((lang: string) => `- ${lang}`).join('\n')}`
-    : ''
-}
 
 ## ${t('trajectory.report.dimension_analysis')}
 
@@ -224,14 +205,6 @@ ${improvements
           <h4>{t('trajectory.report.summary')}</h4>
           <ul>
             <li>
-              <strong>{t('trajectory.report.total_checkpoints')}:</strong>{' '}
-              {trajectory.total_checkpoints}
-            </li>
-            <li>
-              <strong>{t('trajectory.report.time_span')}:</strong> {daysBetween}{' '}
-              {t('trajectory.report.days')}
-            </li>
-            <li>
               <strong>{t('trajectory.report.total_commits')}:</strong> {totalCommits}
             </li>
             <li>
@@ -248,19 +221,13 @@ ${improvements
         <div>
           <h4>{t('trajectory.report.key_achievements')}</h4>
           <ul>
-            {topImprovements.map((imp, idx) => (
+            {improvements.map((imp, idx) => (
               <li key={imp.dimension}>
                 <strong>{getDimensionLabel(imp.dimension)}:</strong> {imp.first} → {imp.current}{' '}
                 (+{imp.change.toFixed(1)} {t('trajectory.report.points')})
               </li>
             ))}
           </ul>
-          {newLanguages.length > 0 && (
-            <div style={{ marginTop: '8px' }}>
-              <strong>{t('trajectory.report.new_languages')}:</strong>{' '}
-              {newLanguages.join(', ')}
-            </div>
-          )}
         </div>
 
         <Divider />

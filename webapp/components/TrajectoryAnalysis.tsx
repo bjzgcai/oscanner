@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, message, Modal, Space, Empty, Alert } from 'antd';
-import { RiseOutlined, LoadingOutlined } from '@ant-design/icons';
+import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions } from 'antd';
+import { RiseOutlined, LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useUserSettings } from './UserSettingsContext';
 import { useAppSettings } from './AppSettingsContext';
 import { useI18n } from './I18nContext';
 import TrajectoryCharts from './TrajectoryCharts';
 import GrowthReport from './GrowthReport';
 import { getApiBaseUrl } from '@/utils/apiBase';
-import { TrajectoryCache, TrajectoryResponse } from '@/types/trajectory';
+import { TrajectoryCache, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
 
 export default function TrajectoryAnalysis() {
   const [loading, setLoading] = useState(false);
@@ -86,6 +86,101 @@ export default function TrajectoryAnalysis() {
     }
   };
 
+  // Helper function to get dimension label
+  const getDimensionLabel = (dimensionKey: string, pluginId: string): string => {
+    const pluginSpecificKey = `plugin.${pluginId}.dim.${dimensionKey}`;
+    const translated = t(pluginSpecificKey);
+    if (translated === pluginSpecificKey) {
+      return t(`dimensions.${dimensionKey}`) || dimensionKey;
+    }
+    return translated;
+  };
+
+  // Render checkpoint details in collapse panel
+  const renderCheckpointDetails = (checkpoint: TrajectoryCheckpoint) => {
+    const { evaluation } = checkpoint;
+    const scores = evaluation.scores;
+
+    // Get all dimension keys (excluding reasoning)
+    const dimensionKeys = Object.keys(scores).filter(
+      (key) => key !== 'reasoning' && scores[key] !== null && scores[key] !== undefined
+    );
+
+    // Get score color based on value
+    const getScoreColor = (score: number) => {
+      if (score >= 80) return 'green';
+      if (score >= 60) return 'blue';
+      if (score >= 40) return 'orange';
+      return 'red';
+    };
+
+    return (
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        {/* Evaluation Scores */}
+        <div>
+          <h4 style={{ marginBottom: '12px' }}>Evaluation Scores</h4>
+          <Descriptions bordered column={2} size="small">
+            {dimensionKeys.map((key) => {
+              const score = scores[key as keyof typeof scores] as number;
+              return (
+                <Descriptions.Item
+                  key={key}
+                  label={getDimensionLabel(key, evaluation.plugin)}
+                >
+                  <Tag color={getScoreColor(score)} style={{ fontSize: '14px', padding: '4px 12px' }}>
+                    {score}/100
+                  </Tag>
+                </Descriptions.Item>
+              );
+            })}
+          </Descriptions>
+        </div>
+
+        {/* Reasoning */}
+        {scores.reasoning && (
+          <div>
+            <h4 style={{ marginBottom: '12px' }}>Evaluation Reasoning</h4>
+            <Card size="small" style={{ background: '#f5f5f5' }}>
+              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                {scores.reasoning}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Additional Metadata */}
+        <div>
+          <h4 style={{ marginBottom: '12px' }}>Checkpoint Metadata</h4>
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Checkpoint ID">
+              #{checkpoint.checkpoint_id}
+            </Descriptions.Item>
+            <Descriptions.Item label="Created At">
+              {new Date(checkpoint.created_at).toLocaleString()}
+            </Descriptions.Item>
+            <Descriptions.Item label="Commits Analyzed">
+              {checkpoint.commits_range.commit_count} commits
+            </Descriptions.Item>
+            <Descriptions.Item label="Total Additions">
+              +{evaluation.commits_summary.total_additions} lines
+            </Descriptions.Item>
+            <Descriptions.Item label="Total Deletions">
+              -{evaluation.commits_summary.total_deletions} lines
+            </Descriptions.Item>
+            <Descriptions.Item label="Files Changed">
+              {evaluation.commits_summary.files_changed} files
+            </Descriptions.Item>
+            {evaluation.commits_summary.languages.length > 0 && (
+              <Descriptions.Item label="Languages">
+                {evaluation.commits_summary.languages.join(', ')}
+              </Descriptions.Item>
+            )}
+          </Descriptions>
+        </div>
+      </Space>
+    );
+  };
+
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       <Card>
@@ -133,14 +228,6 @@ export default function TrajectoryAnalysis() {
                   <div>
                     <strong>{t('trajectory.username')}:</strong> {trajectory.username}
                   </div>
-                  <div>
-                    <strong>{t('trajectory.total_checkpoints')}:</strong>{' '}
-                    {trajectory.total_checkpoints}
-                  </div>
-                  <div>
-                    <strong>{t('trajectory.repos_tracked')}:</strong>{' '}
-                    {trajectory.repo_urls.length}
-                  </div>
                   {trajectory.last_synced_at && (
                     <div>
                       <strong>{t('trajectory.last_synced')}:</strong>{' '}
@@ -159,6 +246,34 @@ export default function TrajectoryAnalysis() {
               </div>
 
               <TrajectoryCharts trajectory={trajectory} />
+
+              {/* Checkpoint Details Collapse */}
+              <Card title={<span><CheckCircleOutlined /> Checkpoint Details</span>}>
+                <Collapse
+                  defaultActiveKey={[trajectory.checkpoints.length - 1]}
+                  items={trajectory.checkpoints.map((checkpoint, index) => ({
+                    key: index,
+                    label: (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <span>
+                          <strong>Checkpoint #{checkpoint.checkpoint_id}</strong>
+                          {index === trajectory.checkpoints.length - 1 && (
+                            <Tag color="blue" style={{ marginLeft: '8px' }}>Latest</Tag>
+                          )}
+                        </span>
+                        <span style={{ color: '#888', fontSize: '12px' }}>
+                          {checkpoint.commits_range.period_end
+                            ? new Date(checkpoint.commits_range.period_end).toLocaleDateString()
+                            : new Date(checkpoint.created_at).toLocaleDateString()
+                          } - {checkpoint.commits_range.commit_count} commits
+                        </span>
+                      </div>
+                    ),
+                    children: renderCheckpointDetails(checkpoint),
+                  }))}
+                />
+              </Card>
+
               <GrowthReport trajectory={trajectory} />
             </>
           )}
