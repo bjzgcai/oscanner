@@ -56,8 +56,18 @@ export default function TrajectoryCharts({ trajectory }: TrajectoryChartsProps) 
   // Chart 1: Line Chart - Score trend over time
   const trendData = checkpoints.map((cp) => ({
     checkpoint: `#${cp.checkpoint_id}`,
+    checkpointObj: cp,  // Store full checkpoint for tooltip
     ...getDimensionScores(cp),
   }));
+
+  const formatDate = (dateStr: string | undefined | null) => {
+    if (!dateStr) return 'N/A';
+    try {
+      return new Date(dateStr).toLocaleDateString();
+    } catch {
+      return 'N/A';
+    }
+  };
 
   const lineOption = {
     title: {
@@ -72,7 +82,33 @@ export default function TrajectoryCharts({ trajectory }: TrajectoryChartsProps) 
       textStyle: { color: '#fff' },
       type: 'scroll',
     },
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        if (!params || params.length === 0) return '';
+        const dataIndex = params[0].dataIndex;
+        const checkpoint = checkpoints[dataIndex];
+        const range = checkpoint.commits_range;
+
+        let tooltip = `<strong>Checkpoint ${checkpoint.checkpoint_id}</strong><br/>`;
+        tooltip += `Commits: ${range.commit_count}<br/>`;
+
+        if (range.period_start && range.period_end) {
+          tooltip += `Period: ${formatDate(range.period_start)} - ${formatDate(range.period_end)}<br/>`;
+        }
+
+        if (range.accumulated_from_periods && range.accumulated_from_periods > 1) {
+          tooltip += `<em>(Accumulated from ${range.accumulated_from_periods} periods)</em><br/>`;
+        }
+
+        tooltip += '<br/><strong>Scores:</strong><br/>';
+        params.forEach((param: any) => {
+          tooltip += `${param.marker} ${param.seriesName}: ${param.value}<br/>`;
+        });
+
+        return tooltip;
+      }
+    },
     xAxis: {
       type: 'category',
       data: trendData.map((d) => d.checkpoint),

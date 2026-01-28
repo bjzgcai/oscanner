@@ -12,6 +12,7 @@ from .trajectory import (
     TrajectoryCheckpoint,
     TrajectoryCache,
     TrajectoryResponse,
+    PeriodAccumulationState,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "TrajectoryCheckpoint",
     "TrajectoryCache",
     "TrajectoryResponse",
+    "PeriodAccumulationState",
 ]

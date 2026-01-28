@@ -147,6 +147,14 @@ export default function TrajectoryAnalysis() {
                       {new Date(trajectory.last_synced_at).toLocaleString()}
                     </div>
                   )}
+                  {trajectory.accumulation_state && trajectory.accumulation_state.accumulated_commits.length > 0 && (
+                    <div style={{ marginTop: '8px', padding: '8px', background: '#fff3cd', borderRadius: '4px' }}>
+                      <strong>📊 Accumulation Progress:</strong>{' '}
+                      {trajectory.accumulation_state.accumulated_commits.length} commits accumulated
+                      {' '}
+                      (Need {10 - trajectory.accumulation_state.accumulated_commits.length} more for next checkpoint)
+                    </div>
+                  )}
                 </Space>
               </div>
 

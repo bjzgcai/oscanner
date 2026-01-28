@@ -80,6 +80,16 @@ export interface CommitsRange {
   start_sha: string;
   end_sha: string;
   commit_count: number;
+  period_start?: string | null;
+  period_end?: string | null;
+  accumulated_from_periods?: number;
+}
+
+export interface GrowthComparison {
+  dimension_changes: Record<string, number>;
+  overall_trend: 'increasing' | 'stable' | 'decreasing';
+  improved_dimensions: string[];
+  regressed_dimensions: string[];
 }
 
 export interface TrajectoryCheckpoint {
@@ -89,6 +99,15 @@ export interface TrajectoryCheckpoint {
   evaluation: EvaluationSchema;
   repos_analyzed?: string[] | null;
   aliases_used?: string[] | null;
+  previous_checkpoint_id?: number | null;
+  growth_comparison?: GrowthComparison | null;
+}
+
+export interface PeriodAccumulationState {
+  current_period_start: string;
+  current_period_end: string;
+  accumulated_commits: string[];
+  repo_start_date: string;
 }
 
 export interface TrajectoryCache {
@@ -98,6 +117,8 @@ export interface TrajectoryCache {
   last_synced_sha?: string | null;
   last_synced_at?: string | null;
   total_checkpoints: number;
+  accumulation_state?: PeriodAccumulationState | null;
+  repo_start_date?: string | null;
 }
 
 export interface TrajectoryResponse {
