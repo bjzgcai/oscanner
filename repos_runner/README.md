@@ -69,16 +69,34 @@ API documentation available at: `http://localhost:8001/docs`
 }
 ```
 
-### 2. Explore Repository (Streaming)
+### 2. Explore Repository (SSE Streaming)
 
 **POST** `/api/runner/explore?clone_path=/path/to/repo`
 
-Returns Server-Sent Events stream:
+**Returns:** Server-Sent Events (SSE) stream with real-time progress updates.
+
+**How SSE Streaming Works:**
+- Connection stays open during exploration process
+- Events are sent as they occur (not buffered until completion)
+- Frontend receives and displays progress messages in real-time
+- Each event is prefixed with `data: ` followed by JSON
+
+**Event Format:**
 ```
 data: {"event":"progress","data":{"message":"Starting repository exploration..."}}
 data: {"event":"progress","data":{"message":"Analyzing repository structure..."}}
+data: {"event":"progress","data":{"message":"Generating overview with Claude..."}}
+data: {"event":"progress","data":{"message":"Generated 200 characters..."}}
+data: {"event":"progress","data":{"message":"Generated 400 characters..."}}
+data: {"event":"progress","data":{"message":"Writing REPO_OVERVIEW.md..."}}
 data: {"event":"status","data":{"status":"completed","overview_path":"/path/to/REPO_OVERVIEW.md"}}
 ```
+
+**Event Types:**
+- `progress`: Incremental update messages during processing
+- `status`: Final completion or failure event
+  - `{"status": "completed", "overview_path": "..."}` - Success
+  - `{"status": "failed", "error": "..."}` - Failure
 
 ### 3. Run Tests (Streaming)
 
@@ -231,6 +249,40 @@ pytest repos_runner/tests/ --cov=repos_runner --cov-report=term-missing
 
 # Run specific test file
 pytest repos_runner/tests/test_repo_service.py -v
+```
+
+### Manual SSE Streaming Test
+
+To verify SSE streaming is working correctly:
+
+```bash
+# Ensure the server is running
+./start_server.sh
+
+# In another terminal, run the test script
+python test_sse_streaming.py
+```
+
+This script will:
+1. Clone a test repository via `/api/runner/clone`
+2. Test SSE streaming for `/api/runner/explore`
+3. Display all progress events as they arrive in real-time
+4. Report timing and event statistics
+
+**Expected output:**
+```
+📡 Receiving SSE stream (events shown as they arrive):
+
+[0.45s] 📝 Progress: Starting repository exploration...
+[0.67s] 📝 Progress: Analyzing repository structure...
+[0.89s] 📝 Progress: Generating overview with Claude...
+[1.23s] 📝 Progress: Generated 200 characters...
+[1.56s] 📝 Progress: Generated 400 characters...
+[2.34s] 📝 Progress: Writing REPO_OVERVIEW.md...
+[2.45s] ✅ Completed!
+
+✅ SSE streaming is working correctly!
+   Multiple progress events were received in real-time.
 ```
 
 ### Test Scoring Methodology

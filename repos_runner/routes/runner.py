@@ -15,7 +15,8 @@ from repos_runner.schemas import (
 from repos_runner.services import (
     clone_repository,
     explore_repository,
-    run_tests
+    run_tests,
+    detect_test_commands
 )
 
 router = APIRouter(prefix="/api/runner")
@@ -103,6 +104,24 @@ async def explore_repo_stream(clone_path: str):
             "X-Accel-Buffering": "no"
         }
     )
+
+
+@router.get("/detect-tests")
+async def detect_tests(overview_path: str):
+    """
+    Detect test commands from REPO_OVERVIEW.md without running them.
+
+    Args:
+        overview_path: Path to REPO_OVERVIEW.md
+
+    Returns:
+        Dictionary containing test commands and setup commands
+    """
+    try:
+        test_info = await detect_test_commands(overview_path)
+        return test_info
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/run-tests")

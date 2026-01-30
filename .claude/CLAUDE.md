@@ -49,9 +49,14 @@ Same engineer, multiple names (e.g., "CarterWu", "wu-yanbiao", "吴炎标"):
 
 ### 5. Repos Runner (Automated Testing)
 Independent service for unknown repository analysis:
-- **Clone** - Shallow clone (depth=1) from GitHub/Gitee
-- **Explore** - Generate `REPO_OVERVIEW.md` via Claude Sonnet 4.5 (streaming)
-- **Run Tests** - Auto-detect test commands, create isolated `.venv`, execute tests
+- **Clone** - Shallow clone (depth=1) from GitHub/Gitee (standard REST response)
+- **Explore** - Generate `REPO_OVERVIEW.md` via Claude Sonnet 4.5 with **Server-Sent Events (SSE)** streaming
+  - Real-time progress updates: "Analyzing repository...", "Generating overview...", character count, etc.
+  - Frontend receives and displays progress messages as they happen
+  - Events: `{"event": "progress", "data": {"message": "..."}}` and `{"event": "status", "data": {...}}`
+- **Run Tests** - Auto-detect test commands, create isolated `.venv`, execute tests via **SSE streaming**
+  - Real-time test execution progress: "Running test 1/5: pytest", "Test 1 passed", etc.
+  - Completion event includes full results with pass/fail metrics
 - Output: `TEST_REPORT.md` with pass/fail metrics (0-100 score)
 - Isolated environments per repo to prevent dependency conflicts
 
