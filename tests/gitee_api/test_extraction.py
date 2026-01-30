@@ -5,15 +5,17 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 import shutil
-
-# Import directly from the module to avoid importing __init__.py which requires fastapi
 import sys
-from pathlib import Path
 
 # Add project root to path if not already there
 project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
+
+# Add backend directory to Python path so evaluator can be imported as top-level package
+backend_dir = project_root / "backend"
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 # Import directly from extraction_service module
 from evaluator.services.extraction_service import (

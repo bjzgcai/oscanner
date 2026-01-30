@@ -16,13 +16,9 @@ export type MultiRepoCompareViewProps = {
 };
 
 export const SINGLE_REPO_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<SingleRepoViewProps> }>> = {
-  "zgc_ai_native_2026": () => import("../../../plugins/zgc_ai_native_2026/view/single_repo"),
-  "zgc_simple": () => import("../../../plugins/zgc_simple/view/single_repo"),
 };
 
 export const MULTI_REPO_COMPARE_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<MultiRepoCompareViewProps> }>> = {
-  "zgc_ai_native_2026": () => import("../../../plugins/zgc_ai_native_2026/view/multi_repo_compare"),
-  "zgc_simple": () => import("../../../plugins/zgc_simple/view/multi_repo_compare"),
 };
 
 export type PluginI18nPack = {
@@ -31,6 +27,4 @@ export type PluginI18nPack = {
 };
 
 export const PLUGIN_I18N_IMPORTERS: Record<string, () => Promise<{ default: PluginI18nPack }>> = {
-  "zgc_ai_native_2026": () => import("../../../plugins/zgc_ai_native_2026/view/i18n"),
-  "zgc_simple": () => import("../../../plugins/zgc_simple/view/i18n"),
 };

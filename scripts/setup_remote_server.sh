@@ -31,31 +31,31 @@ fi
 echo -e "${BLUE}Setting up environment files...${NC}"
 
 # Evaluator .env.local
-if [ ! -f "${PROJECT_ROOT}/evaluator/.env.local" ]; then
-    if [ -f "${PROJECT_ROOT}/evaluator/.env.local.template" ]; then
-        cp "${PROJECT_ROOT}/evaluator/.env.local.template" "${PROJECT_ROOT}/evaluator/.env.local"
-        echo -e "${GREEN}✓${NC} Created evaluator/.env.local from template"
-        echo -e "${YELLOW}⚠${NC} Please edit evaluator/.env.local and add your API keys:"
+if [ ! -f "${PROJECT_ROOT}/backend/evaluator/.env.local" ]; then
+    if [ -f "${PROJECT_ROOT}/backend/evaluator/.env.local.template" ]; then
+        cp "${PROJECT_ROOT}/backend/evaluator/.env.local.template" "${PROJECT_ROOT}/backend/evaluator/.env.local"
+        echo -e "${GREEN}✓${NC} Created backend/evaluator/.env.local from template"
+        echo -e "${YELLOW}⚠${NC} Please edit backend/evaluator/.env.local and add your API keys:"
         echo "  - OPEN_ROUTER_KEY (required)"
         echo "  - GITEE_TOKEN (required for Gitee repos)"
         echo "  - GITHUB_TOKEN (optional, for higher rate limits)"
     else
-        echo -e "${RED}✗${NC} Template not found: evaluator/.env.local.template"
+        echo -e "${RED}✗${NC} Template not found: backend/evaluator/.env.local.template"
     fi
 else
-    echo -e "${YELLOW}⚠${NC} evaluator/.env.local already exists, skipping"
+    echo -e "${YELLOW}⚠${NC} backend/evaluator/.env.local already exists, skipping"
 fi
 
 # Webapp .env.local
-if [ ! -f "${PROJECT_ROOT}/webapp/.env.local" ]; then
-    if [ -f "${PROJECT_ROOT}/webapp/.env.local.template" ]; then
-        cp "${PROJECT_ROOT}/webapp/.env.local.template" "${PROJECT_ROOT}/webapp/.env.local"
-        echo -e "${GREEN}✓${NC} Created webapp/.env.local from template"
+if [ ! -f "${PROJECT_ROOT}/frontend/webapp/.env.local" ]; then
+    if [ -f "${PROJECT_ROOT}/frontend/webapp/.env.local.template" ]; then
+        cp "${PROJECT_ROOT}/frontend/webapp/.env.local.template" "${PROJECT_ROOT}/frontend/webapp/.env.local"
+        echo -e "${GREEN}✓${NC} Created frontend/webapp/.env.local from template"
     else
-        echo -e "${RED}✗${NC} Template not found: webapp/.env.local.template"
+        echo -e "${RED}✗${NC} Template not found: frontend/webapp/.env.local.template"
     fi
 else
-    echo -e "${YELLOW}⚠${NC} webapp/.env.local already exists, skipping"
+    echo -e "${YELLOW}⚠${NC} frontend/webapp/.env.local already exists, skipping"
 fi
 
 # Check for required tools
@@ -112,20 +112,20 @@ echo -e "${BLUE}======================================${NC}\n"
 echo -e "${YELLOW}Next Steps:${NC}"
 echo ""
 echo "1. Edit environment files with your API keys:"
-echo "   ${BLUE}nano ${PROJECT_ROOT}/evaluator/.env.local${NC}"
+echo "   ${BLUE}nano ${PROJECT_ROOT}/backend/evaluator/.env.local${NC}"
 echo ""
 echo "2. Deploy and start services:"
-echo "   ${BLUE}./start_production.sh --daemon${NC}"
+echo "   ${BLUE}./scripts/start_production.sh --daemon${NC}"
 echo ""
 echo "3. Or deploy from your local machine:"
-echo "   ${BLUE}./deploy.sh${NC}"
+echo "   ${BLUE}./scripts/deploy.sh${NC}"
 echo ""
 
 # Check if API keys are set
-if [ -f "${PROJECT_ROOT}/evaluator/.env.local" ]; then
-    if grep -q "your-actual-key-here" "${PROJECT_ROOT}/evaluator/.env.local" || \
-       grep -q "your-actual-gitee-token-here" "${PROJECT_ROOT}/evaluator/.env.local"; then
-        echo -e "${RED}⚠ WARNING: Please update API keys in evaluator/.env.local${NC}"
+if [ -f "${PROJECT_ROOT}/backend/evaluator/.env.local" ]; then
+    if grep -q "your-actual-key-here" "${PROJECT_ROOT}/backend/evaluator/.env.local" || \
+       grep -q "your-actual-gitee-token-here" "${PROJECT_ROOT}/backend/evaluator/.env.local"; then
+        echo -e "${RED}⚠ WARNING: Please update API keys in backend/evaluator/.env.local${NC}"
         echo "   Required: OPEN_ROUTER_KEY, GITEE_TOKEN"
     fi
 fi
