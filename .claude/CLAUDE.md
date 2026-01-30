@@ -1,56 +1,82 @@
 # CLAUDE Project
 
 ## Purpose
-Engineer capability assessment system using six-dimensional evaluation framework.
+Engineer capability assessment system using multi-dimensional evaluation framework and automated repository testing.
 
 ## Structure
-- evaluator  # FastAPI backend - evaluation engine & data collection
-- webapp     # Next.js frontend - dashboard with charts & PDF export
-- oscanner   # CLI package
+- **evaluator/** - FastAPI backend (evaluation engine, data extraction, API endpoints)
+- **webapp/** - Next.js frontend (dashboard with charts, PDF export, plugin UI)
+- **oscanner/** - CLI wrapper (commands: init, serve, dev, dashboard, extract)
+- **repos_runner/** - Repository testing service (clone, explore, run tests)
+- **plugins/** - Plugin system (zgc_simple, zgc_ai_native_2026, _shared)
 
 ## Core Logic
 
-### 1. Author Alias (Multi-Identity Aggregation)
-Engineers may use different names across platforms (e.g., "CarterWu", "wu-yanbiao", "吴炎标").
-- Separate evaluation per alias → cached results
-- Weighted merge based on commit count
-- LLM synthesis for unified analysis
-- **Token savings: ~88%** (cached evaluations reused)
+### 1. Plugin System
+Modular evaluation framework supporting different assessment standards:
+- **zgc_simple** - Six-dimensional evaluation (default)
+- **zgc_ai_native_2026** - AI-Native 2026 four-dimensional rubric
+- Plugin discovery via `index.yaml` (scan_entry, view_entry)
+- Each plugin provides: `create_commit_evaluator()` + React components
 
-### 2. Multi-Platform Support (GitHub/Gitee)
-- Unified collector interface: GitHubCollector, GiteeCollector
-- Platform-specific API handling (public + enterprise Gitee)
-- Consistent data structure across platforms
-- URL parsing: auto-detect platform from repo URL
+### 2. Data Pipeline
+```
+API Fetch → Local Cache → Plugin Evaluation → Result Cache
+   ↓            ↓               ↓                 ↓
+commits    commits/        LLM scores        evaluations/
+from       {sha}.json      + reasoning       {author}_{plugin}.json
+GitHub
+```
 
-### 3. Incremental Evaluation
-- Tracks sync state: `sync_state.json` (last_commit_sha, last_commit_date)
-- Fetches only new commits since last sync ("since" parameter)
-- Atomic writes prevent data corruption
-- Merges new data into `commits_index.json`
-- **Cache strategy**: API response → Local data → Evaluation results
+**Incremental sync:**
+- Track last sync: `sync_state.json` (last_commit_sha, last_commit_date)
+- Fetch only new commits since last checkpoint
+- Merge new data into `commits_index.json`
+- Weighted merge with previous evaluation by commit count
 
-### 4. Data Directory
+### 3. Author Alias (Multi-Identity Aggregation)
+Same engineer, multiple names (e.g., "CarterWu", "wu-yanbiao", "吴炎标"):
+- Evaluate each alias separately → cached results (reuse existing caches)
+- Weighted average of scores by commit count
+- LLM synthesis for unified analysis text
+- **Token savings: ~88%** (only merge summary needed, not re-evaluation)
+
+### 4. Multi-Platform Support
+- GitHub API + Gitee API (public + enterprise)
+- Unified data structure across platforms
+- Auto-detect platform from repo URL
+- Rate limits: GitHub 5000/hr with token (60 without), Gitee similar
+
+### 5. Repos Runner (Automated Testing)
+Independent service for unknown repository analysis:
+- **Clone** - Shallow clone (depth=1) from GitHub/Gitee
+- **Explore** - Generate `REPO_OVERVIEW.md` via Claude Sonnet 4.5 (streaming)
+- **Run Tests** - Auto-detect test commands, create isolated `.venv`, execute tests
+- Output: `TEST_REPORT.md` with pass/fail metrics (0-100 score)
+- Isolated environments per repo to prevent dependency conflicts
+
+### 6. Data Directory
 ```
 ~/.local/share/oscanner/
-├── data/{platform}/{owner}/{repo}/      # Extracted commits & diffs
-└── evaluations/{platform}/{owner}/{repo}/{author}.json  # Cached results
+├── data/{platform}/{owner}/{repo}/
+│   ├── commits_index.json           # Summary index
+│   ├── commits/{sha}.json           # Individual commits + diffs
+│   ├── repo_info.json              # Repository metadata
+│   └── sync_state.json             # Last sync checkpoint
+├── evaluations/{platform}/{owner}/{repo}/
+│   └── {author}_{plugin_id}.json   # Cached evaluation results
+├── track/
+│   └── {author1,author2,...}.json  # Trajectory tracking cache
+└── repos/
+    └── {repo_name}/                # Cloned repos for testing
+        ├── REPO_OVERVIEW.md
+        ├── TEST_REPORT.md
+        └── .venv/
 ```
 Priority: `OSCANNER_HOME` > `XDG_DATA_HOME` > `~/.local/share`
 
-### 5. Six Dimensions
-1. AI Model Full-Stack & Trade-off
-2. AI Native Architecture & Communication
-3. Cloud Native Engineering
-4. Open Source Collaboration
-5. Intelligent Development
-6. Engineering Leadership
-
 ## Development Workflow
 - Develop on main branch directly
-- Auto-push triggers PR generation via Gitee workflow
-- Connect PR to issue: use commit message format "fix: #issue_number"
-- If no issue: use normal commit message
-
-## Cleanup
-Remove temporary files (.md, scratch files) after task completion.
+- Commit message: `fix #issue_number` to link PR to issue
+- Push triggers auto-PR generation via Gitee workflow
+- Remove temporary files (.md, scratch files) after task completion

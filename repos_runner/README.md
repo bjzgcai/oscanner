@@ -87,8 +87,13 @@ data: {"event":"status","data":{"status":"completed","overview_path":"/path/to/R
 Returns Server-Sent Events stream with test results:
 ```
 data: {"event":"progress","data":{"message":"Running test 1/3: npm test"}}
-data: {"event":"status","data":{"status":"completed","results":{...}}}
+data: {"event":"status","data":{"status":"completed","results":{...},"report_path":"/path/to/TEST_REPORT.md"}}
 ```
+
+Automatically generates `TEST_REPORT.md` in the repository directory with:
+- Summary (total, passed, failed, score)
+- Detailed test results (pass/fail status, duration, output)
+- Score breakdown and recommendations
 
 ## Web Interface
 
@@ -103,12 +108,33 @@ The web interface provides:
 
 ## Data Storage
 
-Cloned repositories are stored in:
+Cloned repositories and test environments are stored in:
 ```
-~/.local/share/oscanner/repos/{repo_name}
+~/.local/share/oscanner/repos/
+├── repo1/                        # Analyzed repository
+│   ├── REPO_OVERVIEW.md         # Generated documentation
+│   ├── TEST_REPORT.md           # Test results and metrics
+│   ├── .venv/                   # Dedicated virtual environment
+│   │   ├── bin/python          # Isolated Python interpreter
+│   │   └── lib/python3.x/      # Repository-specific packages
+│   └── ... (repository files)
+├── repo2/                        # Another repository
+│   ├── REPO_OVERVIEW.md
+│   ├── TEST_REPORT.md
+│   ├── .venv/                   # Separate environment
+│   └── ...
+└── .pip_cache/                  # Shared package cache (optional)
 ```
 
-Generated REPO_OVERVIEW.md files are saved in each repository's root directory.
+This isolated structure ensures:
+- Your main codebase stays clean
+- Test dependencies don't pollute project dependencies
+- **Each repository has its own isolated virtual environment**
+- **Dependency conflicts are prevented** (repo A's packages won't affect repo B)
+- **Python version flexibility** (different repos can use different Python versions)
+- **Security isolation** (potentially malicious packages are contained)
+- Each repository has its own test report
+- Easy cleanup (just delete `~/.local/share/oscanner/repos/`)
 
 ## Implementation Details
 
@@ -125,10 +151,13 @@ Generated REPO_OVERVIEW.md files are saved in each repository's root directory.
 
 ### Test Running
 - Uses Claude to identify test commands from REPO_OVERVIEW.md
-- Executes setup commands if needed
-- Runs all identified test commands
+- Creates isolated virtual environment per repository at `{repo_path}/.venv`
+- Executes setup commands if needed (installs dependencies in repo's venv)
+- Runs all identified test commands in isolated environment
 - Calculates score based on pass/fail ratio
 - Captures full test output for debugging
+- Each repository has its own dependency isolation
+- Generates TEST_REPORT.md in each repository directory
 
 ## Architecture
 
@@ -144,6 +173,92 @@ repos_runner/
 ├── requirements.txt       # Python dependencies
 ├── start_server.sh        # Startup script
 └── stop_server.sh         # Shutdown script
+```
+
+## Testing
+
+### Testing Metrics
+
+The repos_runner service can be tested using the following approach.
+
+**Important**: See [TESTING_SUMMARY.md](TESTING_SUMMARY.md) for complete testing documentation structure.
+
+**Current Test Status (repos_runner service):**
+- Total Tests: 0 (no tests implemented yet)
+- Passed: 0
+- Failed: 0
+- Coverage: 0%
+- Test Score: 0/100
+
+See [REPOS_RUNNER_TEST_REPORT.md](REPOS_RUNNER_TEST_REPORT.md) for detailed test plan.
+
+**For Analyzed Repositories:**
+- Test reports auto-generated at `~/.local/share/oscanner/repos/{repo_name}/TEST_REPORT.md`
+- See [TEST_REPORT_EXAMPLE.md](TEST_REPORT_EXAMPLE.md) for sample output
+
+**Testing Focus Areas:**
+
+1. **Service Layer Tests** ([repo_service.py](repos_runner/services/repo_service.py))
+   - URL parsing: GitHub/Gitee formats
+   - Repository cloning: shallow clone verification
+   - Context building: README extraction, directory tree
+   - Test identification: Claude-based command extraction
+   - Score calculation: pass/fail ratio accuracy
+
+2. **API Endpoint Tests** ([runner.py](repos_runner/routes/runner.py))
+   - `/api/runner/clone`: Valid/invalid URLs
+   - `/api/runner/explore`: SSE streaming
+   - `/api/runner/run-tests`: Test execution flow
+
+3. **Integration Tests**
+   - End-to-end: Clone → Explore → Test
+   - Real repository testing
+   - Error handling scenarios
+
+### Running Tests
+
+Once tests are implemented, run them with:
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run all tests
+pytest repos_runner/tests/ -v
+
+# Run with coverage
+pytest repos_runner/tests/ --cov=repos_runner --cov-report=term-missing
+
+# Run specific test file
+pytest repos_runner/tests/test_repo_service.py -v
+```
+
+### Test Scoring Methodology
+
+Tests are scored based on the following metrics:
+
+- **Pass Rate**: (Passed / Total) × 100
+- **Coverage**: Percentage of code covered by tests
+- **Critical Path**: Clone, explore, and test execution paths must pass
+- **Error Handling**: Graceful handling of network failures, invalid inputs
+
+**Grade Scale:**
+- 90-100: Excellent (all critical paths covered)
+- 70-89: Good (most functionality tested)
+- 50-69: Fair (basic tests only)
+- 0-49: Poor (insufficient testing)
+
+### Automated Test Exploration
+
+Use the `/test-explore` Claude Code skill to automatically:
+1. Explore the codebase structure
+2. Plan a comprehensive test suite
+3. Run tests and calculate scores
+4. Generate test coverage reports
+
+```bash
+# Usage in Claude Code CLI
+/test-explore
 ```
 
 ## Troubleshooting
