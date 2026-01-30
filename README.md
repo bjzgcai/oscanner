@@ -178,6 +178,44 @@ uv run oscanner extract https://github.com/<owner>/<repo> --out /path/to/output 
 
 > 说明：后端在需要时也会自动触发抽取（见 API 的 `/api/authors/{owner}/{repo}`）。
 
+## 运行测试
+
+项目使用 `pytest` 进行单元测试。推荐使用 `uv run pytest` 来运行测试，以确保使用正确的虚拟环境。
+
+### 运行所有测试
+
+```bash
+uv run pytest
+```
+
+### 运行特定测试文件
+
+```bash
+# 运行 Gitee API 提取相关测试
+uv run pytest tests/gitee_api/test_extraction.py -v
+
+# 运行所有测试并显示详细信息
+uv run pytest -v
+```
+
+### 运行特定测试类或测试方法
+
+```bash
+# 运行特定测试类
+uv run pytest tests/gitee_api/test_extraction.py::TestDNSResolution
+
+# 运行特定测试方法
+uv run pytest tests/gitee_api/test_extraction.py::TestDNSResolution::test_dns_resolution_success
+```
+
+### 运行测试并生成覆盖率报告
+
+```bash
+uv run pytest --cov=evaluator --cov-report=html
+```
+
+更多测试相关信息请参阅 [tests/README.md](tests/README.md)。
+
 ## 数据/缓存落盘位置（默认策略）
 
 为了保证 **pip 安装后在任意目录运行都不会把数据写到当前工作目录**，本仓库已改为默认写入用户目录，并支持环境变量覆盖：
