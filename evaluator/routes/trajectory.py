@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Query
 
-from evaluator.config import DEFAULT_LLM_MODEL
+from evaluator.config import DEFAULT_LLM_MODEL, get_llm_api_key, get_github_token, get_gitee_token
 from evaluator.schemas import TrajectoryResponse
 from evaluator.services import (
     load_trajectory_cache,
@@ -13,6 +13,7 @@ from evaluator.services import (
     get_commits_by_date
 )
 from evaluator.paths import get_trajectory_cache_path
+from evaluator.utils import parse_repo_url
 
 router = APIRouter()
 
@@ -62,6 +63,46 @@ async def analyze_trajectory(
         # Ensure aliases includes username
         if username not in aliases:
             aliases = [username] + aliases
+
+        # Check LLM configuration before analysis
+        api_key = get_llm_api_key()
+        if not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
+            )
+
+        # Check platform token configuration before analysis
+        github_token = get_github_token()
+        gitee_token = get_gitee_token()
+        missing_platforms = []
+        
+        for repo_url in repo_urls:
+            parsed = parse_repo_url(repo_url)
+            if not parsed:
+                continue  # Skip invalid URLs, they'll be handled later
+            
+            platform, owner, repo = parsed
+            if platform == "github" and not github_token:
+                if "github" not in missing_platforms:
+                    missing_platforms.append("github")
+            elif platform == "gitee" and not gitee_token:
+                if "gitee" not in missing_platforms:
+                    missing_platforms.append("gitee")
+        
+        if missing_platforms:
+            missing_tokens = []
+            if "github" in missing_platforms:
+                missing_tokens.append("GitHub Token (GITHUB_TOKEN)")
+            if "gitee" in missing_platforms:
+                missing_tokens.append("Gitee Token (GITEE_TOKEN)")
+            
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required platform tokens: {', '.join(missing_tokens)}. "
+                       f"Please configure them in Settings (LLM Settings) before analyzing. "
+                       f"Without tokens, API rate limits are very low (~60 requests/hour for GitHub, lower for Gitee)."
+            )
 
         # Resolve plugin ID
         plugin_id = resolve_plugin_id(plugin)

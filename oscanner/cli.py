@@ -92,7 +92,7 @@ def _print_dashboard_instructions() -> None:
         "Dashboard options:\n\n"
         "  A) Bundled dashboard (recommended for PyPI installs)\n"
         "     - Run backend:  oscanner serve\n"
-        "     - Open:         http://localhost:8000/dashboard\n"
+        "     - Open:         http://localhost:8000/\n"
         "     - Runtime deps: NO npm required (static files served by backend)\n\n"
         "  B) Frontend dev server (repo only)\n"
         "     1) Start backend:\n"
@@ -1018,14 +1018,14 @@ def cmd_dev(args: argparse.Namespace) -> int:
     One-command dev mode: start backend + frontend together.
     """
     # In PyPI installs, the `webapp/` source is not bundled. The dashboard can be bundled as
-    # pre-built static files and served by the backend at /dashboard.
+    # pre-built static files and served by the backend at /.
     webapp_dir = _resolve_webapp_dir(args.webapp_dir)
     if args.backend_only or not webapp_dir:
         if not webapp_dir and not args.backend_only:
             sys.stdout.write("[dev] Frontend source (webapp/) not found; starting backend only.\n")
-            sys.stdout.write("[dev] If dashboard is bundled, open: http://localhost:8000/dashboard\n")
+            sys.stdout.write("[dev] If dashboard is bundled, open: http://localhost:8000/\n")
         if not args.no_open:
-            _open_url(f"http://localhost:{int(args.backend_port)}/dashboard")
+            _open_url(f"http://localhost:{int(args.backend_port)}/")
         serve_args = argparse.Namespace(host=args.host, port=int(args.backend_port), reload=bool(args.reload))
         return cmd_serve(serve_args)
 
@@ -1185,10 +1185,10 @@ def cmd_dev(args: argparse.Namespace) -> int:
         sys.stdout.write(f"[dev] Starting frontend on http://localhost:{args.frontend_port} ...\n")
         frontend = subprocess.Popen([npm, "run", "dev"], cwd=str(webapp_dir), env=env_frontend)
         if not args.no_open:
-            # Next has basePath=/dashboard in this repo.
+            # Next serves from root in this repo.
             # Next dev compiles lazily on first request; warm it up before opening the browser
             # so users don't just see a "spinning" page while compilation happens.
-            dash_url = f"http://localhost:{int(args.frontend_port)}/dashboard"
+            dash_url = f"http://localhost:{int(args.frontend_port)}/"
             if _wait_http_ok(dash_url, timeout_s=12.0):
                 _http_get_best_effort(dash_url, timeout_s=60.0)
             _open_url(dash_url)

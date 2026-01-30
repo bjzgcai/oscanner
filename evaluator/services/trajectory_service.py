@@ -128,7 +128,7 @@ def ensure_repo_data_synced(repo_url: str, max_commits: int = 500) -> Tuple[str,
         was_synced is True if data was freshly extracted
 
     Raises:
-        Exception if extraction fails
+        Exception if extraction fails, with detailed error message
     """
     platform, owner, repo = parse_repo_url(repo_url)
     data_dir = get_platform_data_dir(platform, owner, repo)
@@ -144,15 +144,40 @@ def ensure_repo_data_synced(repo_url: str, max_commits: int = 500) -> Tuple[str,
     # Extract data
     print(f"[Trajectory] No local data found for {platform}/{owner}/{repo}, extracting...")
 
-    if platform == "github":
-        success = extract_github_data(owner, repo)
-    elif platform == "gitee":
-        success = extract_gitee_data(owner, repo, max_commits=max_commits)
-    else:
-        raise ValueError(f"Unsupported platform: {platform}")
+    try:
+        if platform == "github":
+            success = extract_github_data(owner, repo)
+        elif platform == "gitee":
+            success = extract_gitee_data(owner, repo, max_commits=max_commits)
+        else:
+            raise ValueError(f"Unsupported platform: {platform}")
 
-    if not success:
-        raise Exception(f"Failed to extract data from {repo_url}")
+        if not success:
+            raise Exception(f"Failed to extract data from {repo_url}")
+    except Exception as e:
+        error_msg = str(e)
+        # Enhance error message for common network issues
+        if "Failed to resolve" in error_msg or "NameResolutionError" in error_msg or "nodename nor servname" in error_msg:
+            raise Exception(
+                f"Network error: Cannot resolve DNS for {repo_url}. "
+                f"Please check your internet connection and DNS settings. "
+                f"Original error: {error_msg}"
+            )
+        elif "HTTPSConnectionPool" in error_msg or "Max retries exceeded" in error_msg:
+            raise Exception(
+                f"Connection error: Cannot connect to {repo_url}. "
+                f"Please check your network connection and firewall settings. "
+                f"Original error: {error_msg}"
+            )
+        elif "timeout" in error_msg.lower():
+            raise Exception(
+                f"Timeout error: Request to {repo_url} timed out. "
+                f"Please check your network connection or try again later. "
+                f"Original error: {error_msg}"
+            )
+        else:
+            # Re-raise with original message
+            raise Exception(f"Failed to extract data from {repo_url}: {error_msg}")
 
     print(f"[Trajectory] Successfully extracted data for {platform}/{owner}/{repo}")
     return platform, owner, repo, True
@@ -805,14 +830,22 @@ def analyze_growth_trajectory(
 
     # Ensure all repos have data synced
     print(f"[Trajectory] Ensuring data is synced for {len(repo_urls)} repositories")
+    sync_errors = []
     for repo_url in repo_urls:
         try:
             platform, owner, repo, was_synced = ensure_repo_data_synced(repo_url, max_commits=500)
             if was_synced:
                 print(f"[Trajectory] Extracted fresh data for {platform}/{owner}/{repo}")
         except Exception as e:
-            print(f"[Trajectory] Warning: Failed to sync {repo_url}: {e}")
-            # Continue with other repos even if one fails
+            error_msg = str(e)
+            print(f"[Trajectory] Warning: Failed to sync {repo_url}: {error_msg}")
+            # Check if it's a network/DNS error
+            if "Failed to resolve" in error_msg or "NameResolutionError" in error_msg or "nodename nor servname" in error_msg:
+                sync_errors.append(f"Network error: Cannot connect to {repo_url}. Please check your internet connection and DNS settings.")
+            elif "HTTPSConnectionPool" in error_msg or "Max retries exceeded" in error_msg:
+                sync_errors.append(f"Connection error: Cannot reach {repo_url}. Please check your network connection.")
+            else:
+                sync_errors.append(f"Failed to extract data from {repo_url}: {error_msg}")
 
     # Get new commits
     new_commits_count, new_commits, repos_analyzed = get_new_commits_from_repos(
@@ -823,6 +856,19 @@ def analyze_growth_trajectory(
     )
 
     print(f"[Trajectory] Found {new_commits_count} new commits (last_synced_sha: {trajectory.last_synced_sha})")
+
+    # Check if we have any data at all
+    if new_commits_count == 0 and sync_errors:
+        # If we failed to sync and have no commits, return error immediately
+        error_message = "Failed to extract repository data. " + "; ".join(sync_errors)
+        print(f"[Trajectory] Error: {error_message}")
+        return TrajectoryResponse(
+            success=False,
+            trajectory=trajectory,
+            new_checkpoint_created=False,
+            message=error_message,
+            commits_pending=0
+        )
 
     # Get or calculate repo start date
     if trajectory.repo_start_date:
@@ -835,11 +881,16 @@ def analyze_growth_trajectory(
             print(f"[Trajectory] Calculated repo_start_date: {repo_start_date.date()}")
         else:
             print(f"[Trajectory] Warning: Could not determine repo start date")
+            # Provide more context if we had sync errors
+            if sync_errors:
+                error_message = "Could not determine repository start date. " + "; ".join(sync_errors)
+            else:
+                error_message = "Could not determine repository start date. No commits found for the specified author."
             return TrajectoryResponse(
                 success=False,
                 trajectory=trajectory,
                 new_checkpoint_created=False,
-                message="Could not determine repository start date",
+                message=error_message,
                 commits_pending=new_commits_count
             )
 

@@ -88,19 +88,18 @@ app.include_router(trajectory.router, tags=["trajectory"])
 
 
 # Optional: serve bundled dashboard static files (exported Next.js build) if present.
-def _try_mount_bundled_dashboard() -> bool:
+def _try_mount_bundled_dashboard() -> Optional[Path]:
     try:
         import oscanner  # the CLI package; may include dashboard_dist/
 
         dash_dir = Path(oscanner.__file__).resolve().parent / "dashboard_dist"
         if dash_dir.is_dir() and (dash_dir / "index.html").exists():
             # Mount AFTER API routes are registered (Starlette route order matters).
-            # We mount at /dashboard to avoid conflicts with the API root.
-            app.mount("/dashboard", StaticFiles(directory=str(dash_dir), html=True), name="dashboard")
-            return True
+            app.mount("/", StaticFiles(directory=str(dash_dir), html=True), name="dashboard")
+            return dash_dir
     except Exception:
-        return False
-    return False
+        return None
+    return None
 
 # Data directory (default: user data dir)
 DATA_DIR = get_data_dir()
@@ -129,21 +128,24 @@ async def health_check():
 @app.get("/")
 async def root():
     """
-    Root endpoint - client-side redirect to dashboard.
+    Root endpoint - serves bundled dashboard if available.
     """
+    if _DASHBOARD_DIR and (_DASHBOARD_DIR / "index.html").exists():
+        return HTMLResponse(content=(_DASHBOARD_DIR / "index.html").read_text(encoding="utf-8"), status_code=200)
     html = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0; url=/dashboard">
-    <title>Redirecting...</title>
-    <script>
-        window.location.href = '/dashboard';
-    </script>
+    <title>Oscanner API</title>
 </head>
 <body>
-    <p>Redirecting to <a href="/dashboard">dashboard</a>...</p>
+    <h1>Oscanner API</h1>
+    <p>The dashboard is not bundled in this install.</p>
+    <ul>
+        <li><a href="/docs">API Docs</a></li>
+        <li><a href="/health">Health Check</a></li>
+    </ul>
 </body>
 </html>"""
     return HTMLResponse(content=html, status_code=200)
@@ -156,7 +158,7 @@ async def favicon():
 
 
 # Mount dashboard static files as late as possible (after route declarations above).
-_DASHBOARD_MOUNTED = _try_mount_bundled_dashboard()
+_DASHBOARD_DIR = _try_mount_bundled_dashboard()
 
 
 # NOTE: Score normalization endpoints disabled (ScoreNormalizer module removed)

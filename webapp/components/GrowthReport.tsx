@@ -199,7 +199,7 @@ ${improvements
         </Button>
       }
     >
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         {/* Summary Statistics */}
         <div>
           <h4>{t('trajectory.report.summary')}</h4>
