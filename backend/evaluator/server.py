@@ -20,6 +20,11 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 
+# Add backend directory to Python path to allow 'evaluator' imports
+_backend_dir = Path(__file__).resolve().parent.parent
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
+
 from evaluator.paths import ensure_dirs, get_data_dir, get_home_dir, get_platform_data_dir, get_platform_eval_dir
 from evaluator.plugin_registry import discover_plugins, get_default_plugin_id, load_scan_module, PluginLoadError
 from evaluator.config import (
@@ -90,9 +95,9 @@ app.include_router(trajectory.router, tags=["trajectory"])
 # Optional: serve bundled dashboard static files (exported Next.js build) if present.
 def _try_mount_bundled_dashboard() -> Optional[Path]:
     try:
-        import oscanner  # the CLI package; may include dashboard_dist/
+        import cli  # the CLI package; may include dashboard_dist/
 
-        dash_dir = Path(oscanner.__file__).resolve().parent / "dashboard_dist"
+        dash_dir = Path(cli.__file__).resolve().parent / "dashboard_dist"
         if dash_dir.is_dir() and (dash_dir / "index.html").exists():
             # Mount AFTER API routes are registered (Starlette route order matters).
             app.mount("/", StaticFiles(directory=str(dash_dir), html=True), name="dashboard")

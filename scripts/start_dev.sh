@@ -18,21 +18,21 @@ echo -e "${BLUE}  Engineer Skill Evaluator - Development${NC}"
 echo -e "${BLUE}======================================${NC}\n"
 
 # Load evaluator environment variables
-EVALUATOR_ENV="${PROJECT_ROOT}/evaluator/.env.local"
+EVALUATOR_ENV="${PROJECT_ROOT}/backend/evaluator/.env.local"
 if [ -f "$EVALUATOR_ENV" ]; then
     echo -e "${GREEN}✓${NC} Loading evaluator configuration from .env.local"
     export $(cat "$EVALUATOR_ENV" | grep -v '^#' | grep -v '^$' | xargs)
 else
-    echo -e "${YELLOW}⚠${NC} Warning: evaluator/.env.local not found, using defaults"
+    echo -e "${YELLOW}⚠${NC} Warning: backend/evaluator/.env.local not found, using defaults"
 fi
 
 # Load repos_runner environment variables
-RUNNER_ENV="${PROJECT_ROOT}/repos_runner/.env.local"
+RUNNER_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.local"
 if [ -f "$RUNNER_ENV" ]; then
     echo -e "${GREEN}✓${NC} Loading repos_runner configuration from .env.local"
     export $(cat "$RUNNER_ENV" | grep -v '^#' | grep -v '^$' | xargs)
 else
-    echo -e "${YELLOW}⚠${NC} Warning: repos_runner/.env.local not found"
+    echo -e "${YELLOW}⚠${NC} Warning: backend/repos_runner/.env.local not found"
 fi
 
 # Set evaluator port (default: 8000)
@@ -44,14 +44,14 @@ RUNNER_PORT=${RUNNER_PORT:-8001}
 export RUNNER_PORT
 
 # Load webapp environment variables
-WEBAPP_ENV="${PROJECT_ROOT}/webapp/.env.local"
+WEBAPP_ENV="${PROJECT_ROOT}/frontend/webapp/.env.local"
 if [ -f "$WEBAPP_ENV" ]; then
     echo -e "${GREEN}✓${NC} Loading webapp configuration from .env.local"
     # Parse webapp PORT separately to avoid conflict
     WEBAPP_PORT=$(grep "^PORT=" "$WEBAPP_ENV" | cut -d '=' -f2)
     WEBAPP_PORT=${WEBAPP_PORT:-3000}
 else
-    echo -e "${YELLOW}⚠${NC} Warning: webapp/.env.local not found, using defaults"
+    echo -e "${YELLOW}⚠${NC} Warning: frontend/webapp/.env.local not found, using defaults"
     WEBAPP_PORT=3000
 fi
 export PORT=$WEBAPP_PORT
@@ -103,16 +103,16 @@ echo -e "${BLUE}Starting repos_runner backend (development mode with auto-reload
 cd "${PROJECT_ROOT}"
 
 # Check if virtual environment exists
-if [ ! -d "${PROJECT_ROOT}/evaluator/venv" ]; then
-    echo -e "${RED}✗${NC} Error: Virtual environment not found at ${PROJECT_ROOT}/evaluator/venv"
+if [ ! -d "${PROJECT_ROOT}/backend/evaluator/venv" ]; then
+    echo -e "${RED}✗${NC} Error: Virtual environment not found at ${PROJECT_ROOT}/backend/evaluator/venv"
     echo "  Please create a virtual environment first:"
-    echo "  cd ${PROJECT_ROOT}/evaluator && python3 -m venv venv"
+    echo "  cd ${PROJECT_ROOT}/backend/evaluator && python3 -m venv venv"
     exit 1
 fi
 
 # Install repos_runner dependencies if needed
-source "${PROJECT_ROOT}/evaluator/venv/bin/activate"
-pip install -q -r "${PROJECT_ROOT}/repos_runner/requirements.txt"
+source "${PROJECT_ROOT}/backend/evaluator/venv/bin/activate"
+pip install -q -r "${PROJECT_ROOT}/backend/repos_runner/requirements.txt"
 
 RUNNER_PORT=$RUNNER_PORT python -m repos_runner.server &
 RUNNER_PID=$!
@@ -132,11 +132,11 @@ fi
 # Start webapp frontend in development mode
 echo ""
 echo -e "${BLUE}Starting webapp frontend (development mode with hot-reload)...${NC}"
-cd "${PROJECT_ROOT}/webapp"
+cd "${PROJECT_ROOT}/frontend/webapp"
 
 if [ ! -d "node_modules" ]; then
-    echo -e "${RED}✗${NC} Error: node_modules not found in webapp/"
-    echo "  Please run: cd webapp && npm install"
+    echo -e "${RED}✗${NC} Error: node_modules not found in frontend/webapp/"
+    echo "  Please run: cd frontend/webapp && npm install"
     exit 1
 fi
 

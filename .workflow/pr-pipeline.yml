@@ -23,7 +23,7 @@ stages:
         displayName: Webapp 代码检查
         nodeVersion: '20'
         commands:
-          - cd webapp
+          - cd frontend/webapp
           - npm config set registry https://registry.npmmirror.com
           - npm install
           - npm run lint || echo "Linting issues found"
@@ -65,7 +65,7 @@ stages:
         displayName: Webapp 构建
         nodeVersion: '20'
         commands:
-          - cd webapp
+          - cd frontend/webapp
           - npm config set registry https://registry.npmmirror.com
           - npm install
           - npm run build

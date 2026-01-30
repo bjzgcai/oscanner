@@ -266,7 +266,7 @@ export default function RepositoryRunner() {
 
         {error && (
           <Alert
-            message="Error"
+            title="Error"
             description={error}
             type="error"
             closable
@@ -404,7 +404,7 @@ export default function RepositoryRunner() {
                 </Space>
 
                 {testResults.message && (
-                  <Alert message={testResults.message} type="info" />
+                  <Alert title={testResults.message} type="info" />
                 )}
 
                 {testResults.details && testResults.details.length > 0 && (

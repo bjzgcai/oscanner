@@ -53,14 +53,14 @@ echo -e "${GREEN}✓${NC} Files synced"
 
 # Create production environment files on remote
 echo -e "\n${BLUE}[4/7] Setting up environment files...${NC}"
-ssh ${REMOTE_USER}@${REMOTE_HOST} "cat > ${REMOTE_PATH}/evaluator/.env.production <<'EOF'
+ssh ${REMOTE_USER}@${REMOTE_HOST} "cat > ${REMOTE_PATH}/backend/evaluator/.env.production <<'EOF'
 PORT=${EVALUATOR_PORT}
-OPEN_ROUTER_KEY=$(grep OPEN_ROUTER_KEY evaluator/.env.local | cut -d'=' -f2)
-GITEE_TOKEN=$(grep GITEE_TOKEN evaluator/.env.local | cut -d'=' -f2 | head -1)
-GITHUB_TOKEN=$(grep GITHUB_TOKEN evaluator/.env.local | cut -d'=' -f2)
+OPEN_ROUTER_KEY=$(grep OPEN_ROUTER_KEY backend/evaluator/.env.local | cut -d'=' -f2)
+GITEE_TOKEN=$(grep GITEE_TOKEN backend/evaluator/.env.local | cut -d'=' -f2 | head -1)
+GITHUB_TOKEN=$(grep GITHUB_TOKEN backend/evaluator/.env.local | cut -d'=' -f2)
 EOF"
 
-ssh ${REMOTE_USER}@${REMOTE_HOST} "cat > ${REMOTE_PATH}/webapp/.env.production.local <<'EOF'
+ssh ${REMOTE_USER}@${REMOTE_HOST} "cat > ${REMOTE_PATH}/frontend/webapp/.env.production.local <<'EOF'
 PORT=${WEBAPP_PORT}
 NEXT_PUBLIC_API_SERVER_URL=http://${REMOTE_HOST}:${EVALUATOR_PORT}
 EOF"
@@ -68,7 +68,7 @@ echo -e "${GREEN}✓${NC} Environment files created"
 
 # Set up Python virtual environment and install dependencies
 echo -e "\n${BLUE}[5/7] Setting up Python environment...${NC}"
-ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH}/evaluator && \
+ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH}/backend/evaluator && \
     python3 -m venv venv && \
     source venv/bin/activate && \
     pip install --upgrade pip && \
@@ -77,7 +77,7 @@ echo -e "${GREEN}✓${NC} Python environment ready"
 
 # Install Node.js dependencies and build webapp
 echo -e "\n${BLUE}[6/7] Building webapp...${NC}"
-ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH}/webapp && \
+ssh ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_PATH}/frontend/webapp && \
     export NVM_DIR=\"\$HOME/.nvm\" && \
     [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\" && \
     nvm install 20 && \
@@ -98,10 +98,10 @@ After=network.target
 [Service]
 Type=simple
 User=${REMOTE_USER}
-WorkingDirectory=${REMOTE_PATH}/evaluator
-Environment=\"PATH=${REMOTE_PATH}/evaluator/venv/bin\"
-EnvironmentFile=${REMOTE_PATH}/evaluator/.env.production
-ExecStart=${REMOTE_PATH}/evaluator/venv/bin/python ${REMOTE_PATH}/evaluator/server.py
+WorkingDirectory=${REMOTE_PATH}/backend/evaluator
+Environment=\"PATH=${REMOTE_PATH}/backend/evaluator/venv/bin\"
+EnvironmentFile=${REMOTE_PATH}/backend/evaluator/.env.production
+ExecStart=${REMOTE_PATH}/backend/evaluator/venv/bin/python ${REMOTE_PATH}/backend/evaluator/server.py
 Restart=always
 RestartSec=10
 
@@ -118,8 +118,8 @@ After=network.target evaluator.service
 [Service]
 Type=simple
 User=${REMOTE_USER}
-WorkingDirectory=${REMOTE_PATH}/webapp
-EnvironmentFile=${REMOTE_PATH}/webapp/.env.production.local
+WorkingDirectory=${REMOTE_PATH}/frontend/webapp
+EnvironmentFile=${REMOTE_PATH}/frontend/webapp/.env.production.local
 ExecStart=/bin/bash -c 'export NVM_DIR=\"\$HOME/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\" && nvm use 20 && npm start'
 Restart=always
 RestartSec=10

@@ -521,7 +521,7 @@ export default function TrajectoryAnalysis() {
                   </label>
                   {selectedAuthors.length > 1 && (
                     <Alert
-                      message={`Grouped as: ${selectedAuthors.slice().sort().join(', ')}`}
+                      title={`Grouped as: ${selectedAuthors.slice().sort().join(', ')}`}
                       description="Selected authors will be treated as one identity for trajectory analysis"
                       type="info"
                       showIcon
@@ -579,7 +579,7 @@ export default function TrajectoryAnalysis() {
 
               {!fetchingAuthors && isRepoUrlValid && authors.length === 0 && (
                 <Alert
-                  message="No authors found"
+                  title="No authors found"
                   description="No commit data found for this repository. The repository may be empty or the data needs to be extracted first."
                   type="info"
                   showIcon
@@ -603,7 +603,7 @@ export default function TrajectoryAnalysis() {
           {/* Error Message Display */}
           {errorMessage && (
             <Alert
-              message="Analysis Failed"
+              title="Analysis Failed"
               description={errorMessage}
               type="error"
               showIcon
@@ -622,7 +622,7 @@ export default function TrajectoryAnalysis() {
 
           {trajectory && trajectory.total_checkpoints === 0 && (
             <Alert
-              message={t('trajectory.no_checkpoints')}
+              title={t('trajectory.no_checkpoints')}
               type="info"
               showIcon
             />

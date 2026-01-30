@@ -66,7 +66,7 @@ def _is_repo_checkout() -> bool:
     """
     try:
         repo_root = Path(__file__).resolve().parents[1]
-        return (repo_root / "pyproject.toml").exists() and (repo_root / "webapp").is_dir()
+        return (repo_root / "pyproject.toml").exists() and (repo_root / "frontend" / "webapp").is_dir()
     except Exception:
         return False
 
@@ -117,9 +117,11 @@ def _resolve_webapp_dir(webapp_dir_arg: Optional[str]) -> Optional[Path]:
     if webapp_dir_arg:
         candidates.append(Path(webapp_dir_arg).expanduser())
     candidates.append(Path.cwd() / "webapp")
+    candidates.append(Path.cwd() / "frontend" / "webapp")
     try:
         repo_root = Path(__file__).resolve().parents[1]
         candidates.append(repo_root / "webapp")
+        candidates.append(repo_root / "frontend" / "webapp")
     except Exception:
         pass
 
@@ -481,7 +483,7 @@ def _cleanup_dev_ports_if_safe(
     if _is_tcp_port_open("127.0.0.1", int(backend_port)) and not _is_http_healthy(health_url, timeout_s=0.6):
         for pid in _pids_listening_on_tcp_port(int(backend_port)):
             cmdline = _pid_command(pid)
-            if "uvicorn" in cmdline and "evaluator.server:app" in cmdline:
+            if "uvicorn" in cmdline and ("evaluator.server:app" in cmdline or "backend.evaluator.server:app" in cmdline):
                 sys.stdout.write(f"[dev] Found hung backend on :{backend_port} (pid {pid}). Stopping it...\n")
                 _try_terminate_pid(pid, graceful_sig=signal.SIGINT)
 
@@ -754,7 +756,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
         if bool(getattr(args, "kill_old", True)):
             for pid in _pids_listening_on_tcp_port(int(args.port)):
                 cmdline = _pid_command(pid)
-                if "uvicorn" in cmdline and "evaluator.server:app" in cmdline:
+                if "uvicorn" in cmdline and ("evaluator.server:app" in cmdline or "backend.evaluator.server:app" in cmdline):
                     sys.stdout.write(f"[serve] Found hung backend on :{args.port} (pid {pid}). Stopping it...\n")
                     _try_terminate_pid(pid, graceful_sig=signal.SIGINT)
         # If it's still occupied after cleanup attempt, bail with a clear error.
@@ -776,7 +778,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
         try:
             repo_root = Path(__file__).resolve().parents[1]
             reload_kwargs = {
-                "reload_dirs": [str(repo_root / "evaluator"), str(repo_root / "oscanner")],
+                "reload_dirs": [str(repo_root / "backend" / "evaluator"), str(repo_root / "cli")],
             }
         except Exception:
             reload_kwargs = {}
@@ -786,10 +788,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
         reload_dirs = reload_kwargs.get("reload_dirs", []) if isinstance(reload_kwargs, dict) else []
         if not reload_dirs:
             reload_dirs = [str(Path.cwd())]
-        return _run_uvicorn_statreload("evaluator.server:app", args.host, int(args.port), list(reload_dirs))
+        return _run_uvicorn_statreload("backend.evaluator.server:app", args.host, int(args.port), list(reload_dirs))
 
     uvicorn.run(
-        "evaluator.server:app",
+        "backend.evaluator.server:app",
         host=args.host,
         port=int(args.port),
         reload=bool(args.reload),
@@ -803,7 +805,7 @@ def cmd_extract(args: argparse.Namespace) -> int:
     cmd = [
         sys.executable,
         "-m",
-        "evaluator.tools.extract_repo_data_moderate",
+        "backend.evaluator.tools.extract_repo_data_moderate",
         "--repo-url",
         args.repo_url,
         "--out",
@@ -934,7 +936,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
                 )
                 return 6
 
-            dest = project_dir / "oscanner" / "dashboard_dist"
+            dest = project_dir / "cli" / "dashboard_dist"
             if dest.exists():
                 shutil.rmtree(dest)
             dest.mkdir(parents=True, exist_ok=True)
@@ -1050,7 +1052,7 @@ def cmd_dev(args: argparse.Namespace) -> int:
         sys.executable,
         "-m",
         "uvicorn",
-        "evaluator.server:app",
+        "backend.evaluator.server:app",
         "--host",
         args.host,
         "--port",
@@ -1061,15 +1063,15 @@ def cmd_dev(args: argparse.Namespace) -> int:
         if sys.platform == "darwin":
             try:
                 repo_root = Path(__file__).resolve().parents[1]
-                reload_dirs = [str(repo_root / "evaluator"), str(repo_root / "oscanner")]
+                reload_dirs = [str(repo_root / "backend" / "evaluator"), str(repo_root / "cli")]
             except Exception:
                 reload_dirs = [str(Path.cwd())]
             backend_cmd = [
                 sys.executable,
                 "-c",
                 (
-                    "from oscanner.cli import _run_uvicorn_statreload; "
-                    "_run_uvicorn_statreload('evaluator.server:app', %r, %r, %r)"
+                    "from cli.cli import _run_uvicorn_statreload; "
+                    "_run_uvicorn_statreload('backend.evaluator.server:app', %r, %r, %r)"
                     % (args.host, int(args.backend_port), reload_dirs)
                 ),
             ]
@@ -1078,8 +1080,8 @@ def cmd_dev(args: argparse.Namespace) -> int:
             # Restrict reload watching in this monorepo (avoid webapp/node_modules causing watcher instability).
             try:
                 repo_root = Path(__file__).resolve().parents[1]
-                backend_cmd.extend(["--reload-dir", str(repo_root / "evaluator")])
-                backend_cmd.extend(["--reload-dir", str(repo_root / "oscanner")])
+                backend_cmd.extend(["--reload-dir", str(repo_root / "backend" / "evaluator")])
+                backend_cmd.extend(["--reload-dir", str(repo_root / "cli")])
                 backend_cmd.extend(["--reload-exclude", "**/webapp/**"])
                 backend_cmd.extend(["--reload-exclude", "**/node_modules/**"])
                 backend_cmd.extend(["--reload-exclude", "**/.next/**"])
@@ -1089,6 +1091,17 @@ def cmd_dev(args: argparse.Namespace) -> int:
 
     env_backend = os.environ.copy()
     env_backend["PORT"] = str(args.backend_port)
+    # Ensure backend directory is in PYTHONPATH for uvicorn subprocess
+    try:
+        repo_root = Path(__file__).resolve().parents[1]
+        backend_dir = repo_root / "backend"
+        pythonpath = str(backend_dir)
+        if "PYTHONPATH" in env_backend:
+            env_backend["PYTHONPATH"] = f"{pythonpath}:{env_backend['PYTHONPATH']}"
+        else:
+            env_backend["PYTHONPATH"] = pythonpath
+    except Exception:
+        pass
     if args.reload:
         # Same rationale as in cmd_serve(): avoid macOS FSEvents watcher hangs in watchfiles.
         if sys.platform == "darwin" and not env_backend.get("WATCHFILES_FORCE_POLLING"):
