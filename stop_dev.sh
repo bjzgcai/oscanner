@@ -32,9 +32,11 @@ else
 fi
 
 EVALUATOR_PORT=${PORT:-8000}
+RUNNER_PORT=${RUNNER_PORT:-8001}
 
 echo -e "${BLUE}Stopping services on ports:${NC}"
 echo -e "  Evaluator: ${YELLOW}${EVALUATOR_PORT}${NC}"
+echo -e "  Runner:    ${YELLOW}${RUNNER_PORT}${NC}"
 echo -e "  Webapp:    ${YELLOW}${WEBAPP_PORT}${NC}"
 echo ""
 
@@ -67,6 +69,9 @@ stop_by_port() {
 # Stop evaluator backend
 stop_by_port $EVALUATOR_PORT "Evaluator Backend"
 
+# Stop repos_runner backend
+stop_by_port $RUNNER_PORT "Repos Runner Backend"
+
 # Stop webapp frontend
 stop_by_port $WEBAPP_PORT "Webapp Frontend"
 
@@ -75,7 +80,10 @@ echo ""
 echo -e "${BLUE}Cleaning up any remaining processes...${NC}"
 
 # Kill any remaining evaluator server processes
-pkill -f "python.*server.py" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up evaluator processes" || true
+pkill -f "python.*server.py" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up server processes" || true
+
+# Kill any remaining repos_runner server processes
+pkill -f "python.*repos_runner.server" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up repos_runner processes" || true
 
 # Kill any remaining Next.js dev processes
 pkill -f "next dev" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up Next.js processes" || true
