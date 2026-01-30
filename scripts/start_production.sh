@@ -30,12 +30,12 @@ echo -e "${BLUE}  Engineer Skill Evaluator - Production${NC}"
 echo -e "${BLUE}======================================${NC}\n"
 
 # Load evaluator environment variables
-EVALUATOR_ENV="${PROJECT_ROOT}/evaluator/.env.local"
+EVALUATOR_ENV="${PROJECT_ROOT}/backend/evaluator/.env.local"
 if [ -f "$EVALUATOR_ENV" ]; then
     echo -e "${GREEN}✓${NC} Loading evaluator configuration from .env.local"
     export $(cat "$EVALUATOR_ENV" | grep -v '^#' | grep -v '^$' | xargs)
 else
-    echo -e "${YELLOW}⚠${NC} Warning: evaluator/.env.local not found, using defaults"
+    echo -e "${YELLOW}⚠${NC} Warning: backend/evaluator/.env.local not found, using defaults"
 fi
 
 # Set evaluator port (default: 8000)
@@ -43,14 +43,14 @@ EVALUATOR_PORT=${PORT:-8000}
 export EVALUATOR_PORT
 
 # Load webapp environment variables
-WEBAPP_ENV="${PROJECT_ROOT}/webapp/.env.local"
+WEBAPP_ENV="${PROJECT_ROOT}/frontend/webapp/.env.local"
 if [ -f "$WEBAPP_ENV" ]; then
     echo -e "${GREEN}✓${NC} Loading webapp configuration from .env.local"
     # Parse webapp PORT separately to avoid conflict
     WEBAPP_PORT=$(grep "^PORT=" "$WEBAPP_ENV" | cut -d '=' -f2)
     WEBAPP_PORT=${WEBAPP_PORT:-3000}
 else
-    echo -e "${YELLOW}⚠${NC} Warning: webapp/.env.local not found, using defaults"
+    echo -e "${YELLOW}⚠${NC} Warning: frontend/webapp/.env.local not found, using defaults"
     WEBAPP_PORT=3000
 fi
 export PORT=$WEBAPP_PORT
@@ -110,7 +110,7 @@ echo -e "${GREEN}✓${NC} Python dependencies ready"
 # Install/check webapp dependencies
 echo ""
 echo -e "${BLUE}Checking webapp dependencies...${NC}"
-cd "${PROJECT_ROOT}/webapp"
+cd "${PROJECT_ROOT}/frontend/webapp"
 
 if [ ! -d "node_modules" ] || [ "$REBUILD" = true ]; then
     echo -e "${YELLOW}Installing Node.js dependencies...${NC}"
@@ -169,7 +169,7 @@ fi
 # Start webapp frontend
 echo ""
 echo -e "${BLUE}Starting webapp frontend...${NC}"
-cd "${PROJECT_ROOT}/webapp"
+cd "${PROJECT_ROOT}/frontend/webapp"
 
 if [ "$DAEMON" = true ]; then
     nohup bash -c "PORT=$WEBAPP_PORT npm start" > ../webapp.log 2>&1 &

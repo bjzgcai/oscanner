@@ -13,6 +13,11 @@ project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+# Add backend directory to Python path so evaluator can be imported as top-level package
+backend_dir = project_root / "backend"
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
 from evaluator.services.extraction_service import (
     extract_github_data,
     fetch_github_commits,

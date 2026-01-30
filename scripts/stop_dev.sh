@@ -18,12 +18,12 @@ echo -e "${BLUE}  Stopping Development Services${NC}"
 echo -e "${BLUE}======================================${NC}\n"
 
 # Load environment variables to get ports
-EVALUATOR_ENV="${PROJECT_ROOT}/evaluator/.env.local"
+EVALUATOR_ENV="${PROJECT_ROOT}/backend/evaluator/.env.local"
 if [ -f "$EVALUATOR_ENV" ]; then
     export $(cat "$EVALUATOR_ENV" | grep -v '^#' | grep -v '^$' | xargs)
 fi
 
-WEBAPP_ENV="${PROJECT_ROOT}/webapp/.env.local"
+WEBAPP_ENV="${PROJECT_ROOT}/frontend/webapp/.env.local"
 if [ -f "$WEBAPP_ENV" ]; then
     WEBAPP_PORT=$(grep "^PORT=" "$WEBAPP_ENV" | cut -d '=' -f2)
     WEBAPP_PORT=${WEBAPP_PORT:-3000}

@@ -5,12 +5,18 @@ Handles repository cloning, exploration, and test running
 """
 
 import os
+import sys
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from dotenv import load_dotenv
+
+# Add backend directory to Python path to allow 'repos_runner' imports
+_backend_dir = Path(__file__).resolve().parent.parent
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
 
 from repos_runner.routes import runner
 
