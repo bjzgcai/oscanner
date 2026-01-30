@@ -187,8 +187,11 @@ Repository context:
 
 Generate the markdown content for REPO_OVERVIEW.md:"""
 
-        # Use streaming API
+        # Use streaming API with real-time progress updates
         overview_content = ""
+        last_progress_length = 0
+        progress_interval = 200  # Send update every 200 characters
+
         with client.messages.stream(
             model="claude-sonnet-4-5-20250929",
             max_tokens=4000,
@@ -199,10 +202,12 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
         ) as stream:
             for text in stream.text_stream:
                 overview_content += text
-                # Send progress every ~100 characters
-                if len(overview_content) % 100 < len(text):
+                # Send progress updates at regular intervals
+                current_length = len(overview_content)
+                if current_length - last_progress_length >= progress_interval:
                     if progress_callback:
-                        await progress_callback(f"Generated {len(overview_content)} characters...")
+                        await progress_callback(f"Generated {current_length} characters...")
+                    last_progress_length = current_length
 
         if progress_callback:
             await progress_callback("Writing REPO_OVERVIEW.md...")
@@ -273,6 +278,81 @@ async def _build_repo_context(repo_path: Path, progress_callback=None) -> str:
                 pass
 
     return "\n\n".join(context_parts)
+
+
+async def detect_test_commands(overview_path: str) -> Dict[str, Any]:
+    """
+    Detect test commands from REPO_OVERVIEW.md without running them.
+
+    Args:
+        overview_path: Path to REPO_OVERVIEW.md
+
+    Returns:
+        Dictionary containing test_commands and setup_commands
+    """
+    overview_file = Path(overview_path)
+
+    if not overview_file.exists():
+        raise FileNotFoundError(f"REPO_OVERVIEW.md not found at {overview_path}")
+
+    overview_content = overview_file.read_text()
+
+    try:
+        from anthropic import Anthropic
+
+        api_key = (
+            os.getenv("ANTHROPIC_API_KEY") or
+            os.getenv("OSCANNER_LLM_API_KEY") or
+            os.getenv("OPENAI_API_KEY") or
+            os.getenv("ANTHROPIC_AUTH_TOKEN")
+        )
+        if not api_key:
+            raise ValueError("API key not found. Set one of: ANTHROPIC_API_KEY, OSCANNER_LLM_API_KEY, OPENAI_API_KEY, or ANTHROPIC_AUTH_TOKEN")
+
+        # Get base URL if provided (for custom API endpoints)
+        base_url = os.getenv("ANTHROPIC_BASE_URL")
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+
+        client = Anthropic(**client_kwargs)
+
+        prompt = f"""Based on this REPO_OVERVIEW.md, identify the command(s) to run tests for this repository.
+
+{overview_content}
+
+Return a JSON object with the following structure:
+{{
+  "test_commands": ["command1", "command2"],
+  "setup_commands": ["optional setup command"]
+}}
+
+If no tests are found, return {{"test_commands": [], "setup_commands": []}}
+"""
+
+        message = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=1000,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+
+        # Parse response
+        response_text = message.content[0].text
+        # Extract JSON from response
+        import re
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if json_match:
+            test_info = json.loads(json_match.group())
+        else:
+            test_info = {"test_commands": [], "setup_commands": []}
+
+        return test_info
+
+    except Exception as e:
+        raise Exception(f"Failed to detect test commands: {str(e)}")
 
 
 async def _generate_test_report(
@@ -392,6 +472,176 @@ async def _generate_test_report(
     report_path.write_text(report)
 
 
+def _parse_test_output_with_regex(output: str) -> Optional[Dict[str, int]]:
+    """
+    Try to parse test output using regex patterns for common formats.
+    This is the fast path for well-known test frameworks.
+
+    Returns:
+        Dictionary with 'passed', 'failed', 'total' keys, or None if no match
+    """
+    import re
+
+    # Jest format: "Tests:       9 failed, 9 passed, 18 total"
+    jest_match = re.search(r'Tests:\s+(\d+)\s+failed,\s+(\d+)\s+passed,\s+(\d+)\s+total', output)
+    if jest_match:
+        return {
+            'failed': int(jest_match.group(1)),
+            'passed': int(jest_match.group(2)),
+            'total': int(jest_match.group(3))
+        }
+
+    # Jest format (all passed): "Tests:       9 passed, 18 total"
+    jest_passed_match = re.search(r'Tests:\s+(\d+)\s+passed,\s+(\d+)\s+total', output)
+    if jest_passed_match:
+        passed = int(jest_passed_match.group(1))
+        total = int(jest_passed_match.group(2))
+        return {
+            'passed': passed,
+            'failed': total - passed,
+            'total': total
+        }
+
+    # Jest format (all failed): "Tests:       9 failed, 18 total"
+    jest_failed_match = re.search(r'Tests:\s+(\d+)\s+failed,\s+(\d+)\s+total', output)
+    if jest_failed_match:
+        failed = int(jest_failed_match.group(1))
+        total = int(jest_failed_match.group(2))
+        return {
+            'passed': total - failed,
+            'failed': failed,
+            'total': total
+        }
+
+    # pytest format: "====== 9 failed, 9 passed in 8.51s ======"
+    pytest_match = re.search(r'=+\s*(\d+)\s+failed,\s+(\d+)\s+passed', output)
+    if pytest_match:
+        failed = int(pytest_match.group(1))
+        passed = int(pytest_match.group(2))
+        return {
+            'failed': failed,
+            'passed': passed,
+            'total': failed + passed
+        }
+
+    # pytest format (all passed): "====== 9 passed in 8.51s ======"
+    pytest_passed_match = re.search(r'=+\s*(\d+)\s+passed', output)
+    if pytest_passed_match:
+        passed = int(pytest_passed_match.group(1))
+        return {
+            'passed': passed,
+            'failed': 0,
+            'total': passed
+        }
+
+    # Go test format: "FAIL: 9 PASS: 9"
+    go_match = re.search(r'FAIL:\s*(\d+).*PASS:\s*(\d+)', output)
+    if go_match:
+        failed = int(go_match.group(1))
+        passed = int(go_match.group(2))
+        return {
+            'failed': failed,
+            'passed': passed,
+            'total': failed + passed
+        }
+
+    # No match found
+    return None
+
+
+async def _parse_test_output_with_llm(output: str) -> Optional[Dict[str, int]]:
+    """
+    Parse test output using LLM when regex patterns fail.
+    This is the flexible fallback for unknown test frameworks.
+
+    Returns:
+        Dictionary with 'passed', 'failed', 'total' keys, or None if parsing fails
+    """
+    try:
+        from anthropic import Anthropic
+
+        api_key = (
+            os.getenv("ANTHROPIC_API_KEY") or
+            os.getenv("OSCANNER_LLM_API_KEY") or
+            os.getenv("OPENAI_API_KEY") or
+            os.getenv("ANTHROPIC_AUTH_TOKEN")
+        )
+        if not api_key:
+            return None
+
+        base_url = os.getenv("ANTHROPIC_BASE_URL")
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+
+        client = Anthropic(**client_kwargs)
+
+        # Truncate output to avoid excessive token usage (keep last 2000 chars with summary)
+        truncated_output = output[-2000:] if len(output) > 2000 else output
+
+        prompt = f"""Parse this test output and extract the test results.
+
+Test output (last 2000 characters):
+```
+{truncated_output}
+```
+
+Return ONLY a JSON object with this exact structure (no other text):
+{{
+  "passed": <number of passed tests>,
+  "failed": <number of failed tests>,
+  "total": <total number of tests>
+}}
+
+If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total": 0}}
+"""
+
+        message = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=200,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+
+        # Parse response
+        response_text = message.content[0].text.strip()
+        # Extract JSON from response
+        import re
+        json_match = re.search(r'\{[^}]+\}', response_text)
+        if json_match:
+            result = json.loads(json_match.group())
+            # Validate the result has required keys and reasonable values
+            if all(k in result for k in ['passed', 'failed', 'total']):
+                if result['total'] > 0 and result['passed'] + result['failed'] == result['total']:
+                    return result
+
+        return None
+
+    except Exception as e:
+        # Silently fail and return None - this is a best-effort fallback
+        return None
+
+
+async def _parse_test_output(output: str) -> Optional[Dict[str, int]]:
+    """
+    Parse test output to extract test counts.
+    Uses regex for common formats, falls back to LLM for unknown formats.
+
+    Returns:
+        Dictionary with 'passed', 'failed', 'total' keys, or None if parsing fails
+    """
+    # Fast path: Try regex patterns first
+    result = _parse_test_output_with_regex(output)
+    if result:
+        return result
+
+    # Fallback: Use LLM for unknown formats
+    result = await _parse_test_output_with_llm(output)
+    return result
+
+
 async def run_tests(clone_path: str, overview_path: str, progress_callback=None) -> Dict[str, Any]:
     """
     Identify and run tests based on REPO_OVERVIEW.md.
@@ -509,9 +759,9 @@ If no tests are found, return {{"test_commands": [], "setup_commands": []}}
 
     # Run test commands
     test_results = []
-    total_tests = len(test_info.get("test_commands", []))
+    num_commands = len(test_info.get("test_commands", []))
 
-    if total_tests == 0:
+    if num_commands == 0:
         if progress_callback:
             await progress_callback("No tests found in repository")
         return {
@@ -524,15 +774,17 @@ If no tests are found, return {{"test_commands": [], "setup_commands": []}}
             "message": "No tests found in repository"
         }
 
-    passed = 0
-    failed = 0
+    # Accumulate actual test counts from parsed output
+    total_passed = 0
+    total_failed = 0
+    total_tests = 0
 
     # Get per-repository venv python path for running tests
     venv_python = ensure_repo_venv(clone_path)
 
     for idx, cmd in enumerate(test_info.get("test_commands", [])):
         if progress_callback:
-            await progress_callback(f"Running test {idx + 1}/{total_tests}: {cmd}")
+            await progress_callback(f"Running test {idx + 1}/{num_commands}: {cmd}")
 
         # Modify command to use venv python if it's a python/pytest command
         modified_cmd = cmd
@@ -554,31 +806,52 @@ If no tests are found, return {{"test_commands": [], "setup_commands": []}}
             )
 
             duration = (datetime.now() - start_time).total_seconds()
+            output = result.stdout + result.stderr
 
-            status = "passed" if result.returncode == 0 else "failed"
-            if status == "passed":
-                passed += 1
+            # Try to parse test output to get actual test counts
+            parsed_counts = await _parse_test_output(output)
+
+            if parsed_counts:
+                # Use parsed counts from test framework output
+                cmd_passed = parsed_counts['passed']
+                cmd_failed = parsed_counts['failed']
+                cmd_total = parsed_counts['total']
+                status = "passed" if cmd_failed == 0 else "failed"
             else:
-                failed += 1
+                # Fallback: treat command as single test
+                status = "passed" if result.returncode == 0 else "failed"
+                cmd_passed = 1 if status == "passed" else 0
+                cmd_failed = 1 if status == "failed" else 0
+                cmd_total = 1
+
+            total_passed += cmd_passed
+            total_failed += cmd_failed
+            total_tests += cmd_total
 
             test_results.append({
                 "name": cmd,
                 "status": status,
                 "duration": duration,
-                "output": result.stdout + result.stderr
+                "output": output,
+                "parsed_counts": parsed_counts
             })
 
             if progress_callback:
-                await progress_callback(f"Test {idx + 1} {status}")
+                if parsed_counts:
+                    await progress_callback(f"Test {idx + 1}: {cmd_passed} passed, {cmd_failed} failed")
+                else:
+                    await progress_callback(f"Test {idx + 1} {status}")
 
         except subprocess.TimeoutExpired:
             test_results.append({
                 "name": cmd,
                 "status": "failed",
                 "duration": 300.0,
-                "output": "Test timed out after 5 minutes"
+                "output": "Test timed out after 5 minutes",
+                "parsed_counts": None
             })
-            failed += 1
+            total_failed += 1
+            total_tests += 1
 
             if progress_callback:
                 await progress_callback(f"Test {idx + 1} timed out")
@@ -588,18 +861,20 @@ If no tests are found, return {{"test_commands": [], "setup_commands": []}}
                 "name": cmd,
                 "status": "failed",
                 "duration": 0.0,
-                "output": str(e)
+                "output": str(e),
+                "parsed_counts": None
             })
-            failed += 1
+            total_failed += 1
+            total_tests += 1
 
             if progress_callback:
                 await progress_callback(f"Test {idx + 1} error: {str(e)}")
 
-    # Calculate score
-    score = int((passed / total_tests) * 100) if total_tests > 0 else 0
+    # Calculate score based on actual test counts
+    score = int((total_passed / total_tests) * 100) if total_tests > 0 else 0
 
     if progress_callback:
-        await progress_callback(f"Tests completed. Score: {score}/100")
+        await progress_callback(f"Tests completed. Score: {score}/100 ({total_passed}/{total_tests} passed)")
 
     # Generate TEST_REPORT.md in the repository directory
     test_report_path = clone_dir / "TEST_REPORT.md"
@@ -607,8 +882,8 @@ If no tests are found, return {{"test_commands": [], "setup_commands": []}}
         report_path=test_report_path,
         repo_name=clone_dir.name,
         total=total_tests,
-        passed=passed,
-        failed=failed,
+        passed=total_passed,
+        failed=total_failed,
         score=score,
         test_results=test_results
     )
@@ -618,8 +893,8 @@ If no tests are found, return {{"test_commands": [], "setup_commands": []}}
 
     return {
         "total": total_tests,
-        "passed": passed,
-        "failed": failed,
+        "passed": total_passed,
+        "failed": total_failed,
         "skipped": 0,
         "score": score,
         "details": test_results,

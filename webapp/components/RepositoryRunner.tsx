@@ -42,6 +42,11 @@ interface TestSummary {
   message?: string;
 }
 
+interface DetectedTests {
+  test_commands: string[];
+  setup_commands: string[];
+}
+
 export default function RepositoryRunner() {
   const [repoUrl, setRepoUrl] = useState('https://gitee.com/zgcai/eval_test_1');
   const [currentStep, setCurrentStep] = useState(0);
@@ -50,6 +55,7 @@ export default function RepositoryRunner() {
   const [overviewPath, setOverviewPath] = useState('');
   const [progressMessages, setProgressMessages] = useState<string[]>([]);
   const [testResults, setTestResults] = useState<TestSummary | null>(null);
+  const [detectedTests, setDetectedTests] = useState<DetectedTests | null>(null);
   const [error, setError] = useState('');
 
   // Validate repo URL
@@ -58,6 +64,25 @@ export default function RepositoryRunner() {
     const githubPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/;
     const giteePattern = /^https?:\/\/(www\.)?gitee\.com\/[\w-]+\/[\w.-]+\/?$/;
     return githubPattern.test(url.trim()) || giteePattern.test(url.trim());
+  };
+
+  // Fetch detected tests
+  const fetchDetectedTests = async (overviewPath: string) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8001/api/runner/detect-tests?overview_path=${encodeURIComponent(overviewPath)}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to detect tests');
+      }
+
+      const data = await response.json();
+      setDetectedTests(data);
+    } catch (err: any) {
+      console.error('Failed to detect tests:', err);
+      setDetectedTests({ test_commands: [], setup_commands: [] });
+    }
   };
 
   // Step 1: Clone repository
@@ -145,6 +170,8 @@ export default function RepositoryRunner() {
                   setOverviewPath(data.data.overview_path);
                   setCurrentStep(2);
                   message.success('Repository exploration completed!');
+                  // Fetch detected tests
+                  await fetchDetectedTests(data.data.overview_path);
                 } else if (data.data.status === 'failed') {
                   throw new Error(data.data.error);
                 }
@@ -240,6 +267,7 @@ export default function RepositoryRunner() {
     setOverviewPath('');
     setProgressMessages([]);
     setTestResults(null);
+    setDetectedTests(null);
     setError('');
   };
 
@@ -356,18 +384,49 @@ export default function RepositoryRunner() {
             </Card>
 
             <Card title="Step 3: Run Tests" type="inner">
+              {/* Display detected tests */}
+              {detectedTests && (
+                <Card style={{ marginBottom: '16px', backgroundColor: '#fafafa' }}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    {detectedTests.test_commands.length > 0 ? (
+                      <>
+                        <Text strong>Detected Test Commands:</Text>
+                        {detectedTests.test_commands.map((cmd, idx) => (
+                          <div key={idx} style={{ paddingLeft: '16px' }}>
+                            <Text code>{cmd}</Text>
+                          </div>
+                        ))}
+                        {detectedTests.setup_commands.length > 0 && (
+                          <>
+                            <Text strong style={{ marginTop: '8px' }}>Setup Commands:</Text>
+                            {detectedTests.setup_commands.map((cmd, idx) => (
+                              <div key={idx} style={{ paddingLeft: '16px' }}>
+                                <Text code>{cmd}</Text>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <Text type="warning">No tests detected in this repository</Text>
+                    )}
+                  </Space>
+                </Card>
+              )}
+
               <Button
                 type="primary"
                 size="large"
                 onClick={handleRunTests}
                 loading={loading}
                 icon={<BugOutlined />}
+                disabled={!detectedTests || detectedTests.test_commands.length === 0}
               >
                 Run Tests
               </Button>
 
               {progressMessages.length > 0 && (
-                <Card style={{ marginTop: '16px' }} title="Test Progress">
+                <Card style={{ marginTop: '16px' }} title="Execution Progress">
                   <Space direction="vertical" style={{ width: '100%' }}>
                     {progressMessages.map((msg, idx) => (
                       <Text key={idx}>• {msg}</Text>
