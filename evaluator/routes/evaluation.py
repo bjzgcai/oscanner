@@ -41,6 +41,14 @@ async def evaluate_author(
 ):
     """Evaluate an author with auto-sync and incremental evaluation."""
     try:
+        # Check LLM configuration before analysis
+        api_key = get_llm_api_key()
+        if not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
+            )
+
         plugin_id = resolve_plugin_id(plugin)
 
         # Load plugin
@@ -101,10 +109,7 @@ async def evaluate_author(
                     except Exception as e:
                         print(f"[Aliases] ⚠ Failed to load cached evaluation: {e}")
 
-                # Evaluate
-                api_key = get_llm_api_key()
-                if not api_key:
-                    raise HTTPException(status_code=500, detail="LLM not configured")
+                # Evaluate (api_key already checked at the start)
 
                 def _factory():
                     return scan_mod.create_commit_evaluator(
@@ -183,10 +188,7 @@ async def evaluate_author(
             except Exception as e:
                 print(f"[Evaluation] ⚠ Failed to load previous evaluation: {e}")
 
-        # Evaluate
-        api_key = get_llm_api_key()
-        if not api_key:
-            raise HTTPException(status_code=500, detail="LLM not configured")
+        # Evaluate (api_key already checked at the start)
 
         def _factory():
             return scan_mod.create_commit_evaluator(
@@ -265,15 +267,20 @@ async def evaluate_gitee_contributor(
     platform = "gitee"
 
     try:
+        # Check LLM configuration before analysis
+        api_key = get_llm_api_key()
+        if not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
+            )
+
         # Get commits
         commits = fetch_gitee_commits(owner, repo, 500, is_enterprise)
 
         # Load plugin
         plugin_id = resolve_plugin_id(plugin)
         meta, scan_mod, scan_path = load_scan_module(plugin_id)
-        api_key = get_llm_api_key()
-        if not api_key:
-            raise HTTPException(status_code=500, detail="LLM not configured")
 
         evaluator = scan_mod.create_commit_evaluator(
             data_dir=str(get_repo_data_dir(platform, owner, repo)),

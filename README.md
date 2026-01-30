@@ -135,12 +135,12 @@ uv run oscanner dev --reload --install
 ```
 
 默认地址：
-- **Dashboard（dev）**：`http://localhost:3000/dashboard`
+- **Dashboard（dev）**：`http://localhost:3000/`
 - **API（dev）**：`http://localhost:8000`
 
 > 说明（很重要）：在开发模式下，前端（3000）和后端（8000）是两个不同的 origin。
 > CLI 会自动注入 `NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000`，让前端请求正确打到后端；
-> 而在 **PyPI 发布后的包** 中，Dashboard 静态文件由后端同源挂载在 `http://localhost:8000/dashboard`，此时前端默认同源请求（不设置 `NEXT_PUBLIC_API_SERVER_URL`）才是期望行为。
+> 而在 **PyPI 发布后的包** 中，Dashboard 静态文件由后端同源挂载在 `http://localhost:8000/`，此时前端默认同源请求（不设置 `NEXT_PUBLIC_API_SERVER_URL`）才是期望行为。
 
 如果你是通过 PyPI 安装运行（本地没有 `webapp/` 目录），可以用：
 
@@ -177,6 +177,44 @@ uv run oscanner extract https://github.com/<owner>/<repo> --out /path/to/output 
 ```
 
 > 说明：后端在需要时也会自动触发抽取（见 API 的 `/api/authors/{owner}/{repo}`）。
+
+## 运行测试
+
+项目使用 `pytest` 进行单元测试。推荐使用 `uv run pytest` 来运行测试，以确保使用正确的虚拟环境。
+
+### 运行所有测试
+
+```bash
+uv run pytest
+```
+
+### 运行特定测试文件
+
+```bash
+# 运行 Gitee API 提取相关测试
+uv run pytest tests/gitee_api/test_extraction.py -v
+
+# 运行所有测试并显示详细信息
+uv run pytest -v
+```
+
+### 运行特定测试类或测试方法
+
+```bash
+# 运行特定测试类
+uv run pytest tests/gitee_api/test_extraction.py::TestDNSResolution
+
+# 运行特定测试方法
+uv run pytest tests/gitee_api/test_extraction.py::TestDNSResolution::test_dns_resolution_success
+```
+
+### 运行测试并生成覆盖率报告
+
+```bash
+uv run pytest --cov=evaluator --cov-report=html
+```
+
+更多测试相关信息请参阅 [tests/README.md](tests/README.md)。
 
 ## 数据/缓存落盘位置（默认策略）
 

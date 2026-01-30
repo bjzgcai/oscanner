@@ -850,7 +850,7 @@ The server will start on `http://localhost:8000` with the following endpoints:
 **Infrastructure:**
 ```
 GET /health                              # Health check
-GET /                                    # Root redirect to dashboard
+GET /                                    # Root serves dashboard (if bundled)
 GET /favicon.ico                         # Favicon (no-op)
 ```
 

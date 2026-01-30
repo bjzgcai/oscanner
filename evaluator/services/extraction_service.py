@@ -3,14 +3,63 @@
 import sys
 import subprocess
 import json
+import os
+import socket
 import requests
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple
 from fastapi import HTTPException
 
 from evaluator.paths import get_platform_data_dir
 from evaluator.config import get_github_token, get_gitee_token
 from evaluator.utils import get_author_from_commit
+
+
+def get_requests_session() -> requests.Session:
+    """
+    Create a requests session with proxy support and better error handling.
+    Respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
+    """
+    session = requests.Session()
+    
+    # Configure proxies from environment variables
+    proxies = {}
+    http_proxy = os.getenv('HTTP_PROXY') or os.getenv('http_proxy')
+    https_proxy = os.getenv('HTTPS_PROXY') or os.getenv('https_proxy')
+    
+    if http_proxy:
+        proxies['http'] = http_proxy
+    if https_proxy:
+        proxies['https'] = https_proxy
+    
+    if proxies:
+        session.proxies.update(proxies)
+        print(f"[Network] Using proxies: {proxies}")
+    
+    return session
+
+
+def check_dns_resolution(hostname: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Check DNS resolution for a hostname and detect DNS hijacking.
+    Returns (success, error_message, resolved_ip)
+    """
+    try:
+        ip = socket.gethostbyname(hostname)
+        # Check if the resolved IP looks suspicious (DNS hijacking)
+        # Common hijacked IPs for gitee.com include baiduads.com domains
+        try:
+            reverse_dns = socket.gethostbyaddr(ip)[0]
+            if 'baiduads' in reverse_dns.lower() or 'ads' in reverse_dns.lower():
+                return False, f"DNS hijacking detected: {hostname} resolves to {ip} (reverse DNS: {reverse_dns})", ip
+        except:
+            pass  # Reverse DNS lookup failed, continue
+        
+        return True, None, ip
+    except socket.gaierror as e:
+        return False, str(e), None
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}", None
 
 
 def extract_github_data(owner: str, repo: str) -> bool:
@@ -105,10 +154,23 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
     """
     Extract Gitee repository data into platform-specific directory similar to GitHub extractor.
 
-    This is a minimal extractor used by the multi-repo compare workflow.
+    This function uses Python requests library to call Gitee API directly (not a command-line tool).
     It fetches commit list then fetches per-commit details (which may include files/diffs depending on API support).
+    
+    Note: Unlike GitHub extraction which uses a subprocess command, Gitee extraction uses direct API calls.
     """
     try:
+        print(f"[Gitee Extraction] Starting data extraction for {owner}/{repo}")
+        
+        # Check token configuration first
+        gitee_token = get_gitee_token()
+        if not gitee_token:
+            raise Exception("Gitee token not configured. Please set GITEE_TOKEN environment variable or configure it via oscanner init.")
+        
+        # Log token usage (masked for security)
+        token_preview = f"{gitee_token[:8]}..." if len(gitee_token) > 8 else "***"
+        print(f"[Gitee Extraction] Using Gitee token: {token_preview}")
+        
         data_dir = get_platform_data_dir("gitee", owner, repo)
         data_dir.mkdir(parents=True, exist_ok=True)
         commits_dir = data_dir / "commits"
@@ -118,16 +180,35 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
         commits: List[Dict[str, Any]] = []
         page = 1
         per_page = 100
+        session = get_requests_session()
+        
         while len(commits) < max_commits:
             api_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits"
-            params: Dict[str, Any] = {"per_page": per_page, "page": page}
-            gitee_token = get_gitee_token()
-            if gitee_token:
-                params["access_token"] = gitee_token
-            resp = requests.get(api_url, params=params, timeout=30)
-            if resp.status_code != 200:
-                print(f"✗ Gitee commits list failed: {resp.status_code} {resp.text[:200]}")
-                return False
+            params: Dict[str, Any] = {
+                "per_page": per_page,
+                "page": page,
+                "access_token": gitee_token
+            }
+            
+            try:
+                print(f"[Gitee] Fetching commits from: {api_url} (page {page})")
+                resp = session.get(api_url, params=params, timeout=30, allow_redirects=True)
+                
+                if resp.status_code != 200:
+                    error_detail = resp.text[:200] if resp.text else "Unknown error"
+                    if resp.status_code == 401:
+                        raise Exception(f"Gitee API authentication failed (401). Please check if your Gitee token is valid. Error: {error_detail}")
+                    raise Exception(f"Gitee API error ({resp.status_code}): {error_detail}")
+                
+            except requests.exceptions.RequestException as e:
+                error_msg = str(e)
+                if "Failed to resolve" in error_msg or "NameResolutionError" in error_msg or "nodename nor servname" in error_msg:
+                    raise Exception(f"DNS resolution failed for gitee.com. Please check your network connection and DNS settings. Error: {error_msg}")
+                elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+                    raise Exception(f"Request to gitee.com timed out. Please check your network connection or try again later. Error: {error_msg}")
+                else:
+                    raise Exception(f"Network request failed: {error_msg}")
+            
             batch = resp.json()
             if not isinstance(batch, list) or not batch:
                 break
@@ -147,16 +228,17 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
             if not sha:
                 continue
             detail_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits/{sha}"
-            params = {}
-            gitee_token = get_gitee_token()
-            if gitee_token:
-                params["access_token"] = gitee_token
-            dresp = requests.get(detail_url, params=params, timeout=30)
-            if dresp.status_code != 200:
-                # Fallback to list item
+            params = {"access_token": gitee_token}
+            try:
+                dresp = session.get(detail_url, params=params, timeout=30)
+                if dresp.status_code == 200:
+                    detail = dresp.json()
+                else:
+                    # Fallback to list item if API error
+                    detail = c
+            except requests.exceptions.RequestException:
+                # Fallback to list item if network error
                 detail = c
-            else:
-                detail = dresp.json()
 
             with open(commits_dir / f"{sha}.json", "w", encoding="utf-8") as f:
                 json.dump(detail, f, indent=2, ensure_ascii=False)
@@ -191,8 +273,11 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
 
         return True
     except Exception as e:
-        print(f"✗ Gitee extraction failed: {e}")
-        return False
+        error_msg = str(e)
+        print(f"✗ Gitee extraction failed: {error_msg}")
+        # Always re-raise exceptions so callers can handle them properly
+        # This ensures consistent error handling behavior
+        raise
 
 
 def get_repo_data_dir(platform: str, owner: str, repo: str) -> Path:
