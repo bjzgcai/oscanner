@@ -21,6 +21,7 @@ export default function TrajectoryAnalysis() {
   const [authors, setAuthors] = useState<Array<{ author: string; email: string; commits: number }>>([]);
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [fetchingAuthors, setFetchingAuthors] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { defaultUsername, repoUrls, usernameGroups } = useUserSettings();
   const { model, setModel, pluginId, setPluginId, plugins, useCache, setUseCache, locale, setLocale, setLlmModalOpen } = useAppSettings();
   const { t } = useI18n();
@@ -143,24 +144,74 @@ export default function TrajectoryAnalysis() {
 
   const analyzeTrajectory = async () => {
     if (!isFormValid) {
-      message.error('Please provide valid repo URL and select at least one author');
+      const errorMsg = 'Please provide valid repo URL and select at least one author';
+      setErrorMessage(errorMsg);
+      message.error(errorMsg);
       return;
     }
 
     setLoading(true);
+    setErrorMessage(null); // Clear previous errors
 
     try {
+      const apiBase = getApiBaseUrl();
+      
+      // Check platform token configuration before analysis
+      try {
+        const checkUrl = `${apiBase}/api/config/check-platform-tokens`;
+        const checkResponse = await fetch(checkUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            repo_urls: [repoUrl.trim()],
+          }),
+        });
+
+        if (!checkResponse.ok) {
+          console.warn('[Trajectory] Failed to check platform tokens, proceeding anyway');
+          // Continue with analysis even if check fails (non-blocking)
+        } else {
+          const checkData = await checkResponse.json();
+          
+          if (!checkData.all_configured) {
+            const missing = [];
+            if (checkData.missing_tokens.github) {
+              missing.push('GitHub Token');
+            }
+            if (checkData.missing_tokens.gitee) {
+              missing.push('Gitee Token');
+            }
+            
+            const errorMsg = `Missing required platform tokens: ${missing.join(', ')}. ` +
+              `Please configure them in Settings (LLM Settings) before analyzing. ` +
+              `Without tokens, API rate limits are very low (~60 requests/hour for GitHub, lower for Gitee).`;
+            setErrorMessage(errorMsg);
+            message.error(errorMsg, 8);
+            setLoading(false);
+            // Optionally open settings modal
+            setLlmModalOpen(true);
+            return;
+          }
+        }
+      } catch (checkError) {
+        console.warn('[Trajectory] Error checking platform tokens:', checkError);
+        // Continue with analysis even if check fails (non-blocking)
+      }
+
       // Use selected authors as aliases
       const aliases = selectedAuthors.map(a => a.trim());
       // Create a grouped username from all selected authors (sorted for consistency)
       const groupedUsername = aliases.slice().sort().join(',');
 
-      const apiBase = getApiBaseUrl();
       const url = `${apiBase}/api/trajectory/analyze?plugin=${encodeURIComponent(
         pluginId
       )}&model=${encodeURIComponent(model)}&language=${encodeURIComponent(
         locale
       )}&use_cache=${useCache}`;
+
+      console.log('[Trajectory] Starting analysis:', { url, username: groupedUsername, repoUrl: repoUrl.trim() });
 
       const response = await fetch(url, {
         method: 'POST',
@@ -174,31 +225,78 @@ export default function TrajectoryAnalysis() {
         }),
       });
 
+      console.log('[Trajectory] Response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Analysis failed');
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch (e) {
+          const text = await response.text();
+          if (text) {
+            errorMessage = text.substring(0, 200);
+          }
+        }
+        console.error('[Trajectory] API error:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       const data: TrajectoryResponse = await response.json();
+      console.log('[Trajectory] Response data:', {
+        success: data.success,
+        hasTrajectory: !!data.trajectory,
+        totalCheckpoints: data.trajectory?.total_checkpoints,
+        message: data.message,
+        newCheckpointCreated: data.new_checkpoint_created,
+        commitsPending: data.commits_pending,
+      });
 
-      if (data.success && data.trajectory) {
-        setTrajectory(data.trajectory);
+      // Handle successful response
+      if (data.success) {
+        // Clear any previous errors
+        setErrorMessage(null);
+        
+        // Always set trajectory if it exists (even if empty)
+        if (data.trajectory) {
+          setTrajectory(data.trajectory);
+        } else {
+          // If success but no trajectory, clear existing trajectory
+          setTrajectory(null);
+          console.warn('[Trajectory] Success but no trajectory data returned');
+        }
 
+        // Show appropriate message
         if (data.new_checkpoint_created) {
           message.success(t('trajectory.new_checkpoint'));
-        } else {
+        } else if (data.commits_pending !== undefined && data.commits_pending > 0) {
           message.info(
             t('trajectory.insufficient_commits', {
               pending: data.commits_pending || 0,
             })
           );
+        } else if (data.message) {
+          message.info(data.message);
+        }
+
+        // If trajectory exists but has no checkpoints, show info
+        if (data.trajectory && data.trajectory.total_checkpoints === 0) {
+          console.log('[Trajectory] Trajectory loaded but no checkpoints yet');
         }
       } else {
-        message.error(data.message || t('trajectory.analysis_failed'));
+        // Handle failed response
+        const errorMsg = data.message || t('trajectory.analysis_failed');
+        console.error('[Trajectory] Analysis failed:', errorMsg);
+        setErrorMessage(errorMsg);
+        message.error(errorMsg);
+        setTrajectory(null);
       }
     } catch (error: any) {
-      console.error('Trajectory analysis error:', error);
-      message.error(error.message || t('trajectory.analysis_failed'));
+      console.error('[Trajectory] Analysis error:', error);
+      const errorMsg = error?.message || error?.toString() || t('trajectory.analysis_failed');
+      setErrorMessage(errorMsg);
+      message.error(errorMsg);
+      setTrajectory(null);
     } finally {
       setLoading(false);
     }
@@ -233,7 +331,7 @@ export default function TrajectoryAnalysis() {
     };
 
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         {/* Evaluation Scores */}
         <div>
           <h4 style={{ marginBottom: '12px' }}>Evaluation Scores</h4>
@@ -378,7 +476,7 @@ export default function TrajectoryAnalysis() {
       </div>
 
       <Card>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <div>
             <h2>
               <RiseOutlined /> {t('trajectory.title')}
@@ -387,7 +485,7 @@ export default function TrajectoryAnalysis() {
 
           {/* Input fields */}
           <Card type="inner" title="Analysis Configuration" style={{ marginBottom: '16px' }}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
                   <GithubOutlined /> Repository URL
@@ -502,7 +600,20 @@ export default function TrajectoryAnalysis() {
             </Space>
           </Card>
 
-          {!trajectory && !loading && (
+          {/* Error Message Display */}
+          {errorMessage && (
+            <Alert
+              message="Analysis Failed"
+              description={errorMessage}
+              type="error"
+              showIcon
+              closable
+              onClose={() => setErrorMessage(null)}
+              style={{ marginBottom: '16px' }}
+            />
+          )}
+
+          {!trajectory && !loading && !errorMessage && (
             <Empty
               description={t('trajectory.no_data')}
               image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -526,7 +637,7 @@ export default function TrajectoryAnalysis() {
                   borderRadius: '8px',
                 }}
               >
-                <Space direction="vertical" size="small">
+                <Space orientation="vertical" size="small">
                   <div>
                     <strong>{t('trajectory.username')}:</strong> {trajectory.username}
                   </div>

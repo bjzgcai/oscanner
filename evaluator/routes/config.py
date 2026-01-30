@@ -13,7 +13,10 @@ from evaluator.config import (
     apply_env_to_process,
     mask_secret,
     DEFAULT_LLM_MODEL,
+    get_github_token,
+    get_gitee_token,
 )
+from evaluator.utils import parse_repo_url
 
 router = APIRouter()
 
@@ -160,4 +163,85 @@ async def llm_status():
         "has_openai_api_key": bool(os.getenv("OPENAI_API_KEY")),
         "has_oscanner_llm_api_key": bool(os.getenv("OSCANNER_LLM_API_KEY")),
         "default_model": DEFAULT_LLM_MODEL,
+    }
+
+
+@router.post("/api/config/check-platform-tokens")
+async def check_platform_tokens(payload: Dict[str, Any]):
+    """
+    Check if required platform tokens are configured for given repository URLs.
+    
+    Request body:
+    {
+        "repo_urls": ["https://github.com/owner/repo", "https://gitee.com/owner/repo"]
+    }
+    
+    Returns:
+    {
+        "all_configured": bool,
+        "missing_tokens": {
+            "github": bool,
+            "gitee": bool
+        },
+        "repo_requirements": [
+            {
+                "repo_url": str,
+                "platform": str,
+                "token_configured": bool,
+                "token_required": bool
+            }
+        ]
+    }
+    """
+    repo_urls = payload.get("repo_urls", [])
+    if not isinstance(repo_urls, list) or len(repo_urls) == 0:
+        raise HTTPException(status_code=400, detail="repo_urls must be a non-empty list")
+    
+    github_token = get_github_token()
+    gitee_token = get_gitee_token()
+    
+    repo_requirements = []
+    missing_platforms = set()
+    
+    for repo_url in repo_urls:
+        parsed = parse_repo_url(repo_url)
+        if not parsed:
+            repo_requirements.append({
+                "repo_url": repo_url,
+                "platform": "unknown",
+                "token_configured": False,
+                "token_required": True,
+                "error": "Invalid repository URL format"
+            })
+            continue
+        
+        platform, owner, repo = parsed
+        token_configured = False
+        token_required = True
+        
+        if platform == "github":
+            token_configured = bool(github_token)
+            if not token_configured:
+                missing_platforms.add("github")
+        elif platform == "gitee":
+            token_configured = bool(gitee_token)
+            if not token_configured:
+                missing_platforms.add("gitee")
+        
+        repo_requirements.append({
+            "repo_url": repo_url,
+            "platform": platform,
+            "token_configured": token_configured,
+            "token_required": token_required
+        })
+    
+    all_configured = len(missing_platforms) == 0
+    
+    return {
+        "all_configured": all_configured,
+        "missing_tokens": {
+            "github": "github" in missing_platforms,
+            "gitee": "gitee" in missing_platforms
+        },
+        "repo_requirements": repo_requirements
     }
