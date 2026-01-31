@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Space, Button, Dropdown, Switch, Tooltip } from 'antd';
-import { HomeOutlined, ApiOutlined, CheckCircleOutlined, SettingOutlined, RiseOutlined, CodeOutlined } from '@ant-design/icons';
+import { HomeOutlined, ApiOutlined, CheckCircleOutlined, SettingOutlined, RiseOutlined, CodeOutlined, BarChartOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import { LOCALES } from '../i18n';
@@ -21,6 +21,7 @@ export default function Navigation() {
     // { path: '/validation', label: t('nav.validation'), icon: <CheckCircleOutlined /> },
     { path: '/trajectory', label: t('nav.trajectory'), icon: <RiseOutlined /> },
     { path: '/runner', label: t('runner.title'), icon: <CodeOutlined /> },
+    { path: '/pq', label: t('nav.pq'), icon: <BarChartOutlined /> },
   ];
 
   // Show config controls only on analysis and validation pages
