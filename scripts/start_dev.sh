@@ -4,7 +4,7 @@
 
 set -e  # Exit on error
 
-PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Color output
 GREEN='\033[0;32m'
@@ -76,13 +76,28 @@ trap cleanup SIGINT SIGTERM
 echo -e "${BLUE}Starting evaluator backend (development mode with auto-reload)...${NC}"
 cd "${PROJECT_ROOT}"
 
-if ! command -v uv >/dev/null 2>&1; then
-    echo -e "${RED}✗${NC} Error: uv is not installed."
-    echo "  Install uv first: https://docs.astral.sh/uv/"
+# Detect Python executable (prefer virtual environment)
+if [ -f "${PROJECT_ROOT}/.venv/bin/python" ]; then
+    PYTHON="${PROJECT_ROOT}/.venv/bin/python"
+elif [ -f "${PROJECT_ROOT}/venv/bin/python" ]; then
+    PYTHON="${PROJECT_ROOT}/venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON="python3"
+else
+    echo -e "${RED}✗${NC} Error: Python not found."
     exit 1
 fi
 
-PORT=$EVALUATOR_PORT uv run oscanner serve --reload &
+# Use PYTHONPATH to include project root for backend module imports
+export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}"
+
+# Run the backend server directly via Python module
+PORT=$EVALUATOR_PORT $PYTHON -m uvicorn backend.evaluator.server:app \
+    --host 0.0.0.0 \
+    --port $EVALUATOR_PORT \
+    --reload \
+    --reload-dir "${PROJECT_ROOT}/backend/evaluator" \
+    --reload-dir "${PROJECT_ROOT}/cli" &
 EVALUATOR_PID=$!
 echo -e "${GREEN}✓${NC} Evaluator started (PID: ${EVALUATOR_PID})"
 echo -e "  URL:  http://localhost:${EVALUATOR_PORT}"
@@ -102,19 +117,12 @@ echo ""
 echo -e "${BLUE}Starting repos_runner backend (development mode with auto-reload)...${NC}"
 cd "${PROJECT_ROOT}"
 
-# Check if virtual environment exists
-if [ ! -d "${PROJECT_ROOT}/backend/evaluator/venv" ]; then
-    echo -e "${RED}✗${NC} Error: Virtual environment not found at ${PROJECT_ROOT}/backend/evaluator/venv"
-    echo "  Please create a virtual environment first:"
-    echo "  cd ${PROJECT_ROOT}/backend/evaluator && python3 -m venv venv"
-    exit 1
-fi
-
-# Install repos_runner dependencies if needed
-source "${PROJECT_ROOT}/backend/evaluator/venv/bin/activate"
-pip install -q -r "${PROJECT_ROOT}/backend/repos_runner/requirements.txt"
-
-RUNNER_PORT=$RUNNER_PORT python -m repos_runner.server &
+# Run repos_runner server directly via Python module (it sets up its own sys.path)
+RUNNER_PORT=$RUNNER_PORT $PYTHON -m uvicorn backend.repos_runner.server:app \
+    --host 0.0.0.0 \
+    --port $RUNNER_PORT \
+    --reload \
+    --reload-dir "${PROJECT_ROOT}/backend/repos_runner" &
 RUNNER_PID=$!
 echo -e "${GREEN}✓${NC} Repos Runner started (PID: ${RUNNER_PID})"
 echo -e "  URL:  http://localhost:${RUNNER_PORT}"

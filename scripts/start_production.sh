@@ -5,7 +5,7 @@
 
 set -e  # Exit on error
 
-PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Parse arguments
 REBUILD=false
