@@ -19,13 +19,13 @@ REQUEST_TIMEOUT = 30.0  # seconds
 class Activity(BaseModel):
     activity_name: str
     total_score: float
-    accuracy_rate: float
+    accuracy_rate: float  # Percentage (0-100), e.g., 85.0 means 85%
     total_questions: int
     answered_questions: int
     correct_answers: int
     ranking_position: Optional[int] = None
     total_participants: int
-    ranking_percentile: float
+    ranking_percentile: float  # Percentage (0-100), e.g., 90.0 means 90%
     activity_started_at: str
     activity_ended_at: Optional[str] = None
 
@@ -132,39 +132,39 @@ def _get_mock_pq_data(user_id: str, series: str) -> Optional[UserScoreData]:
         Activity(
             activity_name="Python Basics Challenge",
             total_score=85.5,
-            accuracy_rate=0.85,
+            accuracy_rate=85.0,  # 85% (not 0.85)
             total_questions=20,
             answered_questions=20,
             correct_answers=17,
             ranking_position=15,
             total_participants=150,
-            ranking_percentile=0.90,
+            ranking_percentile=90.0,  # 90% (not 0.90)
             activity_started_at="2026-01-01T09:00:00",
             activity_ended_at="2026-01-01T10:30:00",
         ),
         Activity(
             activity_name="Data Structures & Algorithms",
             total_score=72.0,
-            accuracy_rate=0.72,
+            accuracy_rate=72.0,  # 72% (not 0.72)
             total_questions=25,
             answered_questions=25,
             correct_answers=18,
             ranking_position=42,
             total_participants=180,
-            ranking_percentile=0.77,
+            ranking_percentile=77.0,  # 77% (not 0.77)
             activity_started_at="2026-01-08T09:00:00",
             activity_ended_at="2026-01-08T11:00:00",
         ),
         Activity(
             activity_name="Web Development Fundamentals",
             total_score=91.2,
-            accuracy_rate=0.912,
+            accuracy_rate=91.2,  # 91.2% (not 0.912)
             total_questions=30,
             answered_questions=30,
             correct_answers=27,
             ranking_position=8,
             total_participants=200,
-            ranking_percentile=0.96,
+            ranking_percentile=96.0,  # 96% (not 0.96)
             activity_started_at="2026-01-15T09:00:00",
             activity_ended_at="2026-01-15T11:30:00",
         ),

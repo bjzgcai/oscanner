@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, Spin, Alert, Statistic, Row, Col, Progress, Typography, Divider, Input, Button, Space } from 'antd';
-import { TrophyOutlined, CheckCircleOutlined, BarChartOutlined, SearchOutlined } from '@ant-design/icons';
+import { Card, Spin, Alert, Statistic, Row, Col, Typography, Divider, Input, Button, Space } from 'antd';
+import { CheckCircleOutlined, BarChartOutlined, SearchOutlined } from '@ant-design/icons';
+import ReactECharts from 'echarts-for-react';
 import { useI18n } from './I18nContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 
@@ -11,13 +12,13 @@ const { Title, Text } = Typography;
 interface Activity {
   activity_name: string;
   total_score: number;
-  accuracy_rate: number;
+  accuracy_rate: number;  // Percentage (0-100), e.g., 85.0 means 85%
   total_questions: number;
   answered_questions: number;
   correct_answers: number;
   ranking_position: number | null;
   total_participants: number;
-  ranking_percentile: number;
+  ranking_percentile: number;  // Percentage (0-100), e.g., 90.0 means 90%
   activity_started_at: string;
   activity_ended_at: string | null;
 }
@@ -42,7 +43,7 @@ const API_KEY = 'BbjiZsAwDnLNwqXCFRLztOtZfP-0OrfU7nUsykW4s2Y';
 
 export default function PQAnalysis() {
   const { t } = useI18n();
-  const [userId, setUserId] = useState('Q54XCEY5');
+  const [userId, setUserId] = useState('JUFV4ZFT');
   const [seriesName, setSeriesName] = useState('vibe-coding-2026-3');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +104,7 @@ export default function PQAnalysis() {
                 </Text>
                 <Input
                   size="large"
-                  placeholder="Q54XCEY5"
+                  placeholder="JUFV4ZFT"
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
                   onPressEnter={fetchData}
@@ -220,105 +221,111 @@ export default function PQAnalysis() {
 
           <Divider />
 
-          {/* Activities List */}
+          {/* Activity Performance Chart */}
           <Title level={3} style={{ marginBottom: '24px' }}>
             Activity Performance
           </Title>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {data.activities.map((activity, index) => (
-              <Card
-                key={index}
-                title={
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <TrophyOutlined style={{ color: '#faad14' }} />
-                    <span>{activity.activity_name}</span>
-                  </div>
-                }
-                extra={
-                  <Text type="secondary">
-                    {t('pq.total_score')}: {activity.total_score}
-                  </Text>
-                }
-              >
-                <Row gutter={[16, 16]}>
-                  {/* Accuracy Rate */}
-                  <Col xs={24} md={12}>
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <Text strong>{t('pq.accuracy_rate')}</Text>
-                        <Text>{(activity.accuracy_rate * 100).toFixed(1)}%</Text>
-                      </div>
-                      <Progress
-                        percent={activity.accuracy_rate * 100}
-                        strokeColor={{
-                          '0%': '#108ee9',
-                          '100%': '#87d068',
-                        }}
-                        format={(percent) => `${percent?.toFixed(1)}%`}
-                      />
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {activity.correct_answers} / {activity.total_questions} {t('pq.correct_answers').toLowerCase()}
-                      </Text>
-                    </div>
-                  </Col>
+          <Card>
+            <ReactECharts
+              option={{
+                tooltip: {
+                  trigger: 'axis',
+                  formatter: (params: unknown) => {
+                    const paramsArray = params as Array<{ dataIndex: number; marker: string; seriesName: string; value: number }>;
+                    if (!paramsArray || paramsArray.length === 0) return '';
+                    const dataIndex = paramsArray[0].dataIndex;
+                    const activity = data.activities[dataIndex];
 
-                  {/* Ranking Percentile */}
-                  <Col xs={24} md={12}>
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <Text strong>{t('pq.ranking_percentile')}</Text>
-                        <Text>{(activity.ranking_percentile * 100).toFixed(1)}%</Text>
-                      </div>
-                      <Progress
-                        percent={activity.ranking_percentile * 100}
-                        strokeColor={{
-                          '0%': '#faad14',
-                          '100%': '#f5222d',
-                        }}
-                        format={(percent) => `${percent?.toFixed(1)}%`}
-                      />
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {t('pq.ranking_position')}: {activity.ranking_position !== null ? `#${activity.ranking_position}` : 'N/A'} / {activity.total_participants} {t('pq.total_participants').toLowerCase()}
-                      </Text>
-                    </div>
-                  </Col>
-                </Row>
+                    let tooltip = `<strong>${activity.activity_name}</strong><br/>`;
+                    tooltip += `<br/><strong>Performance Metrics:</strong><br/>`;
+                    paramsArray.forEach((param: { marker: string; seriesName: string; value: number }) => {
+                      tooltip += `${param.marker} ${param.seriesName}: ${param.value.toFixed(1)}%<br/>`;
+                    });
+                    tooltip += `<br/><strong>Details:</strong><br/>`;
+                    tooltip += `Total Score: ${activity.total_score}<br/>`;
+                    tooltip += `Correct: ${activity.correct_answers} / ${activity.total_questions}<br/>`;
+                    tooltip += `Ranking: ${activity.ranking_position !== null ? `#${activity.ranking_position}` : 'N/A'} / ${activity.total_participants}<br/>`;
 
-                {/* Additional Details */}
-                <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
-                  <Col xs={12} sm={6}>
-                    <Statistic
-                      title={t('pq.total_questions')}
-                      value={activity.total_questions}
-                      valueStyle={{ fontSize: '16px' }}
-                    />
-                  </Col>
-                  <Col xs={12} sm={6}>
-                    <Statistic
-                      title={t('pq.correct_answers')}
-                      value={activity.correct_answers}
-                      valueStyle={{ fontSize: '16px', color: '#52c41a' }}
-                    />
-                  </Col>
-                  <Col xs={12} sm={6}>
-                    <Statistic
-                      title={t('pq.ranking_position')}
-                      value={activity.ranking_position !== null ? `#${activity.ranking_position}` : 'N/A'}
-                      valueStyle={{ fontSize: '16px', color: '#faad14' }}
-                    />
-                  </Col>
-                  <Col xs={12} sm={6}>
-                    <Statistic
-                      title={t('pq.total_participants')}
-                      value={activity.total_participants}
-                      valueStyle={{ fontSize: '16px' }}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-            ))}
-          </div>
+                    return tooltip;
+                  }
+                },
+                legend: {
+                  data: [t('pq.accuracy_rate'), t('pq.ranking_percentile')],
+                  bottom: 10,
+                },
+                xAxis: {
+                  type: 'category',
+                  data: data.activities.map((activity) => activity.activity_name),
+                  axisLabel: {
+                    rotate: 30,
+                    interval: 0,
+                  },
+                },
+                yAxis: {
+                  type: 'value',
+                  min: 0,
+                  max: 100,
+                  axisLabel: {
+                    formatter: '{value}%'
+                  },
+                },
+                series: [
+                  {
+                    name: t('pq.accuracy_rate'),
+                    type: 'line',
+                    smooth: true,
+                    data: data.activities.map((activity) => activity.accuracy_rate),
+                    lineStyle: {
+                      width: 3,
+                    },
+                    itemStyle: {
+                      color: '#1890ff',
+                    },
+                    areaStyle: {
+                      color: {
+                        type: 'linear',
+                        x: 0,
+                        y: 0,
+                        x2: 0,
+                        y2: 1,
+                        colorStops: [
+                          { offset: 0, color: 'rgba(24, 144, 255, 0.3)' },
+                          { offset: 1, color: 'rgba(24, 144, 255, 0.05)' }
+                        ]
+                      }
+                    },
+                  },
+                  {
+                    name: t('pq.ranking_percentile'),
+                    type: 'line',
+                    smooth: true,
+                    data: data.activities.map((activity) => activity.ranking_percentile),
+                    lineStyle: {
+                      width: 3,
+                    },
+                    itemStyle: {
+                      color: '#faad14',
+                    },
+                    areaStyle: {
+                      color: {
+                        type: 'linear',
+                        x: 0,
+                        y: 0,
+                        x2: 0,
+                        y2: 1,
+                        colorStops: [
+                          { offset: 0, color: 'rgba(250, 173, 20, 0.3)' },
+                          { offset: 1, color: 'rgba(250, 173, 20, 0.05)' }
+                        ]
+                      }
+                    },
+                  },
+                ],
+              }}
+              style={{ height: '500px' }}
+            />
+          </Card>
         </>
       )}
 
