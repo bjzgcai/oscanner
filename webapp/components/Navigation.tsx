@@ -20,7 +20,7 @@ export default function Navigation() {
     // { path: '/', label: t('nav.analysis'), icon: <HomeOutlined /> },
     // { path: '/validation', label: t('nav.validation'), icon: <CheckCircleOutlined /> },
     { path: '/trajectory', label: t('nav.trajectory'), icon: <RiseOutlined /> },
-    { path: '/runner', label: 'Repository Runner', icon: <CodeOutlined /> },
+    { path: '/runner', label: t('runner.title'), icon: <CodeOutlined /> },
   ];
 
   // Show config controls only on analysis and validation pages
@@ -72,27 +72,44 @@ export default function Navigation() {
           </div>
 
           <Space size="large">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                style={{
-                  color: pathname === item.path ? '#1E40AF' : '#6B7280',
-                  textDecoration: 'none',
-                  fontSize: '14px',
-                  fontWeight: pathname === item.path ? '600' : '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'color 0.2s',
-                  borderBottom: pathname === item.path ? '2px solid #1E40AF' : '2px solid transparent',
-                  paddingBottom: '4px'
-                }}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              // Normalize paths by removing trailing slashes for comparison
+              const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+              const normalizedItemPath = item.path.endsWith('/') && item.path !== '/' ? item.path.slice(0, -1) : item.path;
+              const isActive = normalizedPathname === normalizedItemPath;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  style={{
+                    color: isActive ? '#1890ff' : 'rgba(0, 0, 0, 0.65)',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    fontWeight: isActive ? '600' : '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s',
+                    borderBottom: isActive ? '2px solid #1890ff' : '2px solid transparent',
+                    paddingBottom: '4px',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.color = '#40a9ff';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.color = 'rgba(0, 0, 0, 0.65)';
+                    }
+                  }}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
           </Space>
         </div>
       </nav>

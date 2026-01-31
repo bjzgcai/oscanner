@@ -236,7 +236,7 @@ export default function TrajectoryAnalysis() {
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {/* Evaluation Scores */}
         <div>
-          <h4 style={{ marginBottom: '12px' }}>Evaluation Scores</h4>
+          <h4 style={{ marginBottom: '12px' }}>{t('checkpoint.evaluation_scores')}</h4>
           <Descriptions bordered column={2} size="small">
             {dimensionKeys.map((key) => {
               const score = scores[key as keyof typeof scores] as number;
@@ -257,7 +257,7 @@ export default function TrajectoryAnalysis() {
         {/* Reasoning */}
         {scores.reasoning && (
           <div>
-            <h4 style={{ marginBottom: '12px' }}>Evaluation Reasoning</h4>
+            <h4 style={{ marginBottom: '12px' }}>{t('checkpoint.evaluation_reasoning')}</h4>
             <Card size="small" style={{ background: '#f5f5f5' }}>
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                 {scores.reasoning}
@@ -268,28 +268,28 @@ export default function TrajectoryAnalysis() {
 
         {/* Additional Metadata */}
         <div>
-          <h4 style={{ marginBottom: '12px' }}>Checkpoint Metadata</h4>
+          <h4 style={{ marginBottom: '12px' }}>{t('checkpoint.metadata')}</h4>
           <Descriptions bordered column={1} size="small">
-            <Descriptions.Item label="Checkpoint ID">
+            <Descriptions.Item label={t('checkpoint.id')}>
               #{checkpoint.checkpoint_id}
             </Descriptions.Item>
-            <Descriptions.Item label="Created At">
+            <Descriptions.Item label={t('checkpoint.created_at')}>
               {new Date(checkpoint.created_at).toLocaleString()}
             </Descriptions.Item>
-            <Descriptions.Item label="Commits Analyzed">
-              {checkpoint.commits_range.commit_count} commits
+            <Descriptions.Item label={t('checkpoint.commits_analyzed')}>
+              {checkpoint.commits_range.commit_count} {t('checkpoint.commits')}
             </Descriptions.Item>
-            <Descriptions.Item label="Total Additions">
-              +{evaluation.commits_summary.total_additions} lines
+            <Descriptions.Item label={t('checkpoint.total_additions')}>
+              +{evaluation.commits_summary.total_additions} {t('checkpoint.lines')}
             </Descriptions.Item>
-            <Descriptions.Item label="Total Deletions">
-              -{evaluation.commits_summary.total_deletions} lines
+            <Descriptions.Item label={t('checkpoint.total_deletions')}>
+              -{evaluation.commits_summary.total_deletions} {t('checkpoint.lines')}
             </Descriptions.Item>
-            <Descriptions.Item label="Files Changed">
-              {evaluation.commits_summary.files_changed} files
+            <Descriptions.Item label={t('checkpoint.files_changed')}>
+              {evaluation.commits_summary.files_changed} {t('checkpoint.files')}
             </Descriptions.Item>
             {evaluation.commits_summary.languages.length > 0 && (
-              <Descriptions.Item label="Languages">
+              <Descriptions.Item label={t('checkpoint.languages')}>
                 {evaluation.commits_summary.languages.join(', ')}
               </Descriptions.Item>
             )}
@@ -386,15 +386,15 @@ export default function TrajectoryAnalysis() {
           </div>
 
           {/* Input fields */}
-          <Card type="inner" title="Analysis Configuration" style={{ marginBottom: '16px' }}>
+          <Card type="inner" title={t('analysis.config')} style={{ marginBottom: '16px' }}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-                  <GithubOutlined /> Repository URL
+                  <GithubOutlined /> {t('analysis.repo_url')}
                 </label>
                 <Input
                   size="large"
-                  placeholder="https://github.com/owner/repo or https://gitee.com/owner/repo"
+                  placeholder={t('analysis.repo_url.placeholder')}
                   value={repoUrl}
                   onChange={(e) => setRepoUrl(e.target.value)}
                   status={repoUrl && !isRepoUrlValid ? 'error' : undefined}
@@ -403,7 +403,7 @@ export default function TrajectoryAnalysis() {
                 />
                 {repoUrl && !isRepoUrlValid && (
                   <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}>
-                    Please enter a valid GitHub or Gitee repository URL
+                    {t('analysis.repo_url.error')}
                   </div>
                 )}
               </div>
@@ -412,19 +412,19 @@ export default function TrajectoryAnalysis() {
               {fetchingAuthors && (
                 <div style={{ textAlign: 'center', padding: '20px' }}>
                   <LoadingOutlined style={{ fontSize: 24 }} />
-                  <div style={{ marginTop: '8px' }}>Fetching authors...</div>
+                  <div style={{ marginTop: '8px' }}>{t('analysis.authors.fetching')}</div>
                 </div>
               )}
 
               {!fetchingAuthors && authors.length > 0 && (
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-                    <UserOutlined /> Select Author(s) ({authors.length} found, {selectedAuthors.length} selected)
+                    <UserOutlined /> {t('analysis.authors.select')} ({t('analysis.authors.found', { total: authors.length, selected: selectedAuthors.length })})
                   </label>
                   {selectedAuthors.length > 1 && (
                     <Alert
-                      message={`Grouped as: ${selectedAuthors.slice().sort().join(', ')}`}
-                      description="Selected authors will be treated as one identity for trajectory analysis"
+                      message={`${t('analysis.authors.grouped_as')}: ${selectedAuthors.slice().sort().join(', ')}`}
+                      description={t('analysis.authors.description')}
                       type="info"
                       showIcon
                       style={{ marginBottom: '8px' }}
@@ -457,18 +457,18 @@ export default function TrajectoryAnalysis() {
                     })}
                     columns={[
                       {
-                        title: 'Author',
+                        title: t('analysis.table.author'),
                         dataIndex: 'author',
                         key: 'author',
                         render: (text) => <strong>{text}</strong>,
                       },
                       {
-                        title: 'Email',
+                        title: t('analysis.table.email'),
                         dataIndex: 'email',
                         key: 'email',
                       },
                       {
-                        title: 'Commits',
+                        title: t('analysis.table.commits'),
                         dataIndex: 'commits',
                         key: 'commits',
                         align: 'right',
@@ -481,8 +481,8 @@ export default function TrajectoryAnalysis() {
 
               {!fetchingAuthors && isRepoUrlValid && authors.length === 0 && (
                 <Alert
-                  message="No authors found"
-                  description="No commit data found for this repository. The repository may be empty or the data needs to be extracted first."
+                  message={t('analysis.authors.no_data')}
+                  description={t('analysis.authors.no_data.description')}
                   type="info"
                   showIcon
                 />
@@ -538,10 +538,10 @@ export default function TrajectoryAnalysis() {
                   )}
                   {trajectory.accumulation_state && trajectory.accumulation_state.accumulated_commits.length > 0 && (
                     <div style={{ marginTop: '8px', padding: '8px', background: '#fff3cd', borderRadius: '4px' }}>
-                      <strong>📊 Accumulation Progress:</strong>{' '}
-                      {trajectory.accumulation_state.accumulated_commits.length} commits accumulated
+                      <strong>📊 {t('checkpoint.accumulation_progress')}:</strong>{' '}
+                      {trajectory.accumulation_state.accumulated_commits.length} {t('checkpoint.accumulated')}
                       {' '}
-                      (Need {10 - trajectory.accumulation_state.accumulated_commits.length} more for next checkpoint)
+                      ({t('checkpoint.need_more', { count: 10 - trajectory.accumulation_state.accumulated_commits.length })})
                     </div>
                   )}
                 </Space>
@@ -550,7 +550,7 @@ export default function TrajectoryAnalysis() {
               <TrajectoryCharts trajectory={trajectory} />
 
               {/* Checkpoint Details Collapse */}
-              <Card title={<span><CheckCircleOutlined /> Checkpoint Details</span>}>
+              <Card title={<span><CheckCircleOutlined /> {t('checkpoint.details')}</span>}>
                 <Collapse
                   defaultActiveKey={[trajectory.checkpoints.length - 1]}
                   items={trajectory.checkpoints.map((checkpoint, index) => ({
@@ -558,16 +558,16 @@ export default function TrajectoryAnalysis() {
                     label: (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                         <span>
-                          <strong>Checkpoint #{checkpoint.checkpoint_id}</strong>
+                          <strong>{t('checkpoint.number')} #{checkpoint.checkpoint_id}</strong>
                           {index === trajectory.checkpoints.length - 1 && (
-                            <Tag color="blue" style={{ marginLeft: '8px' }}>Latest</Tag>
+                            <Tag color="blue" style={{ marginLeft: '8px' }}>{t('checkpoint.latest')}</Tag>
                           )}
                         </span>
                         <span style={{ color: '#888', fontSize: '12px' }}>
                           {checkpoint.commits_range.period_end
                             ? new Date(checkpoint.commits_range.period_end).toLocaleDateString()
                             : new Date(checkpoint.created_at).toLocaleDateString()
-                          } - {checkpoint.commits_range.commit_count} commits
+                          } - {checkpoint.commits_range.commit_count} {t('checkpoint.commits')}
                         </span>
                       </div>
                     ),

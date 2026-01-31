@@ -6,6 +6,7 @@ const thisDir = dirname(fileURLToPath(import.meta.url));
 
 const isDev = process.env.NODE_ENV !== "production";
 const backendUrl = process.env.NEXT_PUBLIC_API_SERVER_URL || "http://localhost:8000";
+const runnerUrl = process.env.NEXT_PUBLIC_RUNNER_SERVER_URL || "http://localhost:8001";
 
 const nextConfig: NextConfig = {
   // Export the dashboard as static assets so it can be bundled into the Python package
@@ -30,6 +31,10 @@ const nextConfig: NextConfig = {
     ? {
         async rewrites() {
           return [
+            {
+              source: "/api/runner/:path*",
+              destination: `${runnerUrl}/api/runner/:path*`,
+            },
             {
               source: "/api/:path*",
               destination: `${backendUrl}/api/:path*`,
