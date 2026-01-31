@@ -46,10 +46,10 @@ stages:
         artifacts:
           - name: WEBAPP_DIST
             path:
-              - webapp/.next/
-              - webapp/out/
+              - frontend/webapp/.next/
+              - frontend/webapp/out/
         commands:
-          - cd webapp
+          - cd frontend/webapp
           - npm config set registry https://registry.npmmirror.com
           - npm install
           - npm run build
