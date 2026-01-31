@@ -7,10 +7,16 @@
 
 ## 概览
 
-- **后端**：`evaluator/`（FastAPI + 数据抽取 + LLM 评估 + 缓存）
-- **前端（可选）**：`webapp/`（Next.js Dashboard）
-- **CLI**：`oscanner`（统一命令行入口）
+- **后端服务**：
+  - `backend/evaluator/` - 主评估服务（FastAPI，端口 8000，必需）
+  - `backend/repos_runner/` - 仓库测试服务（FastAPI，端口 8001，可选）
+- **前端应用**：
+  - `frontend/webapp/` - Next.js Dashboard（端口 3000，必需）
+  - `frontend/pages/` - GitHub Pages 静态站点（可选）
+- **CLI**：`cli/`（统一命令行入口）
 - **依赖管理**：推荐使用 `uv`（`pyproject.toml` + `uv.lock`）
+
+> 📖 **详细架构说明**：请查看 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## 评估标准 (Evaluation Standards)
 
@@ -135,14 +141,14 @@ uv run oscanner dev --reload --install
 ```
 
 默认地址：
-- **Dashboard（dev）**：`http://localhost:3000/dashboard`
+- **Dashboard（dev）**：`http://localhost:3000/`
 - **API（dev）**：`http://localhost:8000`
 
 > 说明（很重要）：在开发模式下，前端（3000）和后端（8000）是两个不同的 origin。
 > CLI 会自动注入 `NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000`，让前端请求正确打到后端；
-> 而在 **PyPI 发布后的包** 中，Dashboard 静态文件由后端同源挂载在 `http://localhost:8000/dashboard`，此时前端默认同源请求（不设置 `NEXT_PUBLIC_API_SERVER_URL`）才是期望行为。
+> 而在 **PyPI 发布后的包** 中，Dashboard 静态文件由后端同源挂载在 `http://localhost:8000/`，此时前端默认同源请求（不设置 `NEXT_PUBLIC_API_SERVER_URL`）才是期望行为。
 
-如果你是通过 PyPI 安装运行（本地没有 `webapp/` 目录），可以用：
+如果你是通过 PyPI 安装运行（本地没有 `frontend/webapp/` 目录），可以用：
 
 ```bash
 oscanner dashboard --print
@@ -177,6 +183,44 @@ uv run oscanner extract https://github.com/<owner>/<repo> --out /path/to/output 
 ```
 
 > 说明：后端在需要时也会自动触发抽取（见 API 的 `/api/authors/{owner}/{repo}`）。
+
+## 运行测试
+
+项目使用 `pytest` 进行单元测试。推荐使用 `uv run pytest` 来运行测试，以确保使用正确的虚拟环境。
+
+### 运行所有测试
+
+```bash
+uv run pytest
+```
+
+### 运行特定测试文件
+
+```bash
+# 运行 Gitee API 提取相关测试
+uv run pytest tests/gitee_api/test_extraction.py -v
+
+# 运行所有测试并显示详细信息
+uv run pytest -v
+```
+
+### 运行特定测试类或测试方法
+
+```bash
+# 运行特定测试类
+uv run pytest tests/gitee_api/test_extraction.py::TestDNSResolution
+
+# 运行特定测试方法
+uv run pytest tests/gitee_api/test_extraction.py::TestDNSResolution::test_dns_resolution_success
+```
+
+### 运行测试并生成覆盖率报告
+
+```bash
+uv run pytest --cov=evaluator --cov-report=html
+```
+
+更多测试相关信息请参阅 [tests/README.md](tests/README.md)。
 
 ## 数据/缓存落盘位置（默认策略）
 
@@ -470,15 +514,25 @@ render: (author, record) => {
 3. **跨仓库一致性**：在多仓库分析中使用相同的别名配置，确保 Common Contributors 正确识别
 4. **增量更新**：当某个别名有新 commits 时，只需重新评估该别名，然后重新合并即可
 
-## 项目结构（简版）
+## 项目结构
 
 ```
 .
 ├── pyproject.toml              # uv/packaging 元信息
-├── evaluator/                  # 后端实现
-├── oscanner/                   # CLI（oscanner）
-└── webapp/                     # 可选 Dashboard（Next.js）
+├── backend/                    # 后端服务目录
+│   ├── evaluator/              # 主评估服务（端口 8000，必需）
+│   └── repos_runner/           # 仓库测试服务（端口 8001，可选）
+├── frontend/                   # 前端应用目录
+│   ├── webapp/                 # Next.js Dashboard（端口 3000，必需）
+│   └── pages/                  # GitHub Pages 静态站点（可选）
+├── cli/                        # CLI 工具（可安装包）
+├── plugins/                    # 插件系统
+├── scripts/                    # 工具脚本
+├── tests/                      # 测试目录
+└── docs/                       # 文档目录
 ```
+
+> 📖 **详细架构说明**：请查看 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## 贡献指南
 
