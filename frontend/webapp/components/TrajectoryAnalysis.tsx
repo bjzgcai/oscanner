@@ -9,6 +9,7 @@ import { useI18n } from './I18nContext';
 import TrajectoryCharts from './TrajectoryCharts';
 import GrowthReport from './GrowthReport';
 import LlmConfigModal from './LlmConfigModal';
+import PluginCheckpointRenderer from './PluginCheckpointRenderer';
 import { getApiBaseUrl } from '@/utils/apiBase';
 import { TrajectoryCache, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
 import { LOCALES } from '../i18n';
@@ -23,8 +24,37 @@ export default function TrajectoryAnalysis() {
   const [fetchingAuthors, setFetchingAuthors] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { defaultUsername, repoUrls, usernameGroups } = useUserSettings();
-  const { model, setModel, pluginId, setPluginId, plugins, useCache, setUseCache, locale, setLocale, setLlmModalOpen } = useAppSettings();
+  const { model, setModel, pluginId, setPluginId, plugins, useCache, setUseCache, locale, setLocale, setLlmModalOpen, forcedCheckerId, setForcedCheckerId, checkers, worktreeBase, setWorktreeBase } = useAppSettings();
   const { t } = useI18n();
+
+  // Helper function to format error messages with user-friendly text
+  const formatErrorMessage = (errorMsg: string): string => {
+    const lowerMsg = errorMsg.toLowerCase();
+    
+    // SSL/Connection errors (check first, as they may also mention LLM)
+    if (lowerMsg.includes('ssl') || lowerMsg.includes('sslerror') || lowerMsg.includes('eof occurred') || 
+        lowerMsg.includes('ssl eof') || lowerMsg.includes('violation of protocol')) {
+      return t('trajectory.error.ssl_error');
+    }
+    
+    // LLM connection/API errors (check for connection issues)
+    if (lowerMsg.includes('llm request failed') || (lowerMsg.includes('llm') && lowerMsg.includes('failed'))) {
+      if (lowerMsg.includes('connection') || lowerMsg.includes('timeout') || lowerMsg.includes('max retries') ||
+          lowerMsg.includes('connectionpool') || lowerMsg.includes('host')) {
+        return t('trajectory.error.llm_connection');
+      }
+      return t('trajectory.error.llm_failed');
+    }
+    
+    // Network errors
+    if (lowerMsg.includes('network') || lowerMsg.includes('fetch') || 
+        (lowerMsg.includes('connection') && !lowerMsg.includes('llm'))) {
+      return t('trajectory.error.network_error');
+    }
+    
+    // Return original message if no specific pattern matches
+    return errorMsg;
+  };
 
   // Validate repo URL (GitHub or Gitee format)
   const validateRepoUrl = (url: string): boolean => {
@@ -142,6 +172,16 @@ export default function TrajectoryAnalysis() {
         ];
   const currentPluginLabel = (plugins || []).find((p) => p.id === pluginId)?.name || pluginId || 'zgc_simple';
 
+  const checkerItems = [
+    { key: '', label: t('trajectory.checker.none') || 'None' },
+    ...(checkers || [])
+      .filter((c) => c.enabled !== false)
+      .map((c) => ({ key: c.id, label: c.name || c.id })),
+  ];
+  const currentCheckerLabel = forcedCheckerId
+    ? (checkers || []).find((c) => c.id === forcedCheckerId)?.name || forcedCheckerId
+    : t('trajectory.checker.none') || 'None';
+
   const analyzeTrajectory = async () => {
     if (!isFormValid) {
       const errorMsg = 'Please provide valid repo URL and select at least one author';
@@ -209,7 +249,7 @@ export default function TrajectoryAnalysis() {
         pluginId
       )}&model=${encodeURIComponent(model)}&language=${encodeURIComponent(
         locale
-      )}&use_cache=${useCache}`;
+      )}&use_cache=${useCache}${forcedCheckerId ? `&forced_checker=${encodeURIComponent(forcedCheckerId)}` : ''}&worktree_base=${worktreeBase}`;
 
       console.log('[Trajectory] Starting analysis:', { url, username: groupedUsername, repoUrl: repoUrl.trim() });
 
@@ -285,17 +325,19 @@ export default function TrajectoryAnalysis() {
         }
       } else {
         // Handle failed response
-        const errorMsg = data.message || t('trajectory.analysis_failed');
-        console.error('[Trajectory] Analysis failed:', errorMsg);
+        const rawErrorMsg = data.message || t('trajectory.analysis_failed');
+        const errorMsg = formatErrorMessage(rawErrorMsg);
+        console.error('[Trajectory] Analysis failed:', rawErrorMsg);
         setErrorMessage(errorMsg);
-        message.error(errorMsg);
+        message.error(errorMsg, 8); // Show for 8 seconds
         setTrajectory(null);
       }
     } catch (error: any) {
       console.error('[Trajectory] Analysis error:', error);
-      const errorMsg = error?.message || error?.toString() || t('trajectory.analysis_failed');
+      const rawErrorMsg = error?.message || error?.toString() || t('trajectory.analysis_failed');
+      const errorMsg = formatErrorMessage(rawErrorMsg);
       setErrorMessage(errorMsg);
-      message.error(errorMsg);
+      message.error(errorMsg, 8); // Show for 8 seconds
       setTrajectory(null);
     } finally {
       setLoading(false);
@@ -312,89 +354,24 @@ export default function TrajectoryAnalysis() {
     return translated;
   };
 
-  // Render checkpoint details in collapse panel
-  const renderCheckpointDetails = (checkpoint: TrajectoryCheckpoint) => {
-    const { evaluation } = checkpoint;
-    const scores = evaluation.scores;
-
-    // Get all dimension keys (excluding reasoning)
-    const dimensionKeys = Object.keys(scores).filter(
-      (key) => key !== 'reasoning' && scores[key] !== null && scores[key] !== undefined
-    );
-
-    // Get score color based on value
-    const getScoreColor = (score: number) => {
-      if (score >= 80) return 'green';
-      if (score >= 60) return 'blue';
-      if (score >= 40) return 'orange';
-      return 'red';
-    };
-
+  // Render checkpoint details using plugin view
+  const renderCheckpointDetails = (checkpoint: TrajectoryCheckpoint, index: number) => {
+    const pluginId = checkpoint.evaluation.plugin;
+    const previousCheckpoint = index > 0 ? trajectory?.checkpoints[index - 1] : null;
+    
     return (
-      <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-        {/* Evaluation Scores */}
-        <div>
-          <h4 style={{ marginBottom: '12px' }}>{t('checkpoint.evaluation_scores')}</h4>
-          <Descriptions bordered column={2} size="small">
-            {dimensionKeys.map((key) => {
-              const score = scores[key as keyof typeof scores] as number;
-              return (
-                <Descriptions.Item
-                  key={key}
-                  label={getDimensionLabel(key, evaluation.plugin)}
-                >
-                  <Tag color={getScoreColor(score)} style={{ fontSize: '14px', padding: '4px 12px' }}>
-                    {score}/100
-                  </Tag>
-                </Descriptions.Item>
-              );
-            })}
-          </Descriptions>
-        </div>
-
-        {/* Reasoning */}
-        {scores.reasoning && (
-          <div>
-            <h4 style={{ marginBottom: '12px' }}>{t('checkpoint.evaluation_reasoning')}</h4>
-            <Card size="small" style={{ background: '#f5f5f5' }}>
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                {scores.reasoning}
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {/* Additional Metadata */}
-        <div>
-          <h4 style={{ marginBottom: '12px' }}>{t('checkpoint.metadata')}</h4>
-          <Descriptions bordered column={1} size="small">
-            <Descriptions.Item label={t('checkpoint.id')}>
-              #{checkpoint.checkpoint_id}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('checkpoint.created_at')}>
-              {new Date(checkpoint.created_at).toLocaleString()}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('checkpoint.commits_analyzed')}>
-              {checkpoint.commits_range.commit_count} {t('checkpoint.commits')}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('checkpoint.total_additions')}>
-              +{evaluation.commits_summary.total_additions} {t('checkpoint.lines')}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('checkpoint.total_deletions')}>
-              -{evaluation.commits_summary.total_deletions} {t('checkpoint.lines')}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('checkpoint.files_changed')}>
-              {evaluation.commits_summary.files_changed} {t('checkpoint.files')}
-            </Descriptions.Item>
-            {evaluation.commits_summary.languages.length > 0 && (
-              <Descriptions.Item label={t('checkpoint.languages')}>
-                {evaluation.commits_summary.languages.join(', ')}
-              </Descriptions.Item>
-            )}
-          </Descriptions>
-        </div>
-      </Space>
+      <PluginCheckpointRenderer
+        pluginId={pluginId}
+        checkpoint={checkpoint}
+        previousCheckpoint={previousCheckpoint}
+      />
     );
+  };
+
+  // Get plugin name for display
+  const getPluginName = (pluginId: string): string => {
+    const plugin = plugins.find((p) => p.id === pluginId);
+    return plugin?.name || pluginId;
   };
 
   return (
@@ -459,6 +436,37 @@ export default function TrajectoryAnalysis() {
             </Button>
           </Dropdown>
 
+          <Dropdown
+            menu={{
+              items: checkerItems,
+              selectable: true,
+              selectedKeys: [forcedCheckerId || ''],
+              onClick: ({ key }) => setForcedCheckerId(key ? String(key) : null),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              {t('trajectory.checker.forced') || 'Forced Checker'}: {currentCheckerLabel}
+            </Button>
+          </Dropdown>
+
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'build', label: t('trajectory.worktree.build') || 'Build Directory' },
+                { key: 'temp', label: t('trajectory.worktree.temp') || 'Temporary Directory' },
+              ],
+              selectable: true,
+              selectedKeys: [worktreeBase],
+              onClick: ({ key }) => setWorktreeBase(key === 'build' ? 'build' : 'temp'),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              {t('trajectory.worktree.base') || 'Work Directory'}: {worktreeBase === 'build' ? (t('trajectory.worktree.build') || 'Build Directory') : (t('trajectory.worktree.temp') || 'Temporary Directory')}
+            </Button>
+          </Dropdown>
+
           <Button
             icon={<SettingOutlined />}
             size="middle"
@@ -485,20 +493,32 @@ export default function TrajectoryAnalysis() {
 
           {/* Input fields */}
           <Card type="inner" title={t('analysis.config')} style={{ marginBottom: '16px' }}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
                   <GithubOutlined /> {t('analysis.repo_url')}
                 </label>
-                <Input
-                  size="large"
-                  placeholder={t('analysis.repo_url.placeholder')}
-                  value={repoUrl}
-                  onChange={(e) => setRepoUrl(e.target.value)}
-                  status={repoUrl && !isRepoUrlValid ? 'error' : undefined}
-                  disabled={loading}
-                  autoComplete="url"
-                />
+                <Space.Compact style={{ width: '100%' }}>
+                  <Input
+                    size="large"
+                    placeholder={t('analysis.repo_url.placeholder')}
+                    value={repoUrl}
+                    onChange={(e) => setRepoUrl(e.target.value)}
+                    status={repoUrl && !isRepoUrlValid ? 'error' : undefined}
+                    disabled={loading}
+                    autoComplete="url"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    size="large"
+                    onClick={() => {
+                      setRepoUrl('https://gitee.com/zgcai/oscanner');
+                    }}
+                    disabled={loading}
+                  >
+                    {t('trajectory.use_test_repo') || '使用测试仓库'}
+                  </Button>
+                </Space.Compact>
                 {repoUrl && !isRepoUrlValid && (
                   <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}>
                     {t('analysis.repo_url.error')}
@@ -521,7 +541,7 @@ export default function TrajectoryAnalysis() {
                   </label>
                   {selectedAuthors.length > 1 && (
                     <Alert
-                      message={`${t('analysis.authors.grouped_as')}: ${selectedAuthors.slice().sort().join(', ')}`}
+                      title={`${t('analysis.authors.grouped_as')}: ${selectedAuthors.slice().sort().join(', ')}`}
                       description={t('analysis.authors.description')}
                       type="info"
                       showIcon
@@ -579,7 +599,7 @@ export default function TrajectoryAnalysis() {
 
               {!fetchingAuthors && isRepoUrlValid && authors.length === 0 && (
                 <Alert
-                  message={t('analysis.authors.no_data')}
+                  title={t('analysis.authors.no_data')}
                   description={t('analysis.authors.no_data.description')}
                   type="info"
                   showIcon
@@ -603,13 +623,28 @@ export default function TrajectoryAnalysis() {
           {/* Error Message Display */}
           {errorMessage && (
             <Alert
-              title="Analysis Failed"
-              description={errorMessage}
+              title={t('trajectory.analysis_failed')}
+              description={
+                <div>
+                  <p style={{ marginBottom: '8px' }}>{errorMessage}</p>
+                  <p style={{ marginTop: '8px', fontSize: '12px', color: 'rgba(0, 0, 0, 0.65)' }}>
+                    {t('trajectory.error.retry_suggestion')}
+                  </p>
+                </div>
+              }
               type="error"
               showIcon
               closable
               onClose={() => setErrorMessage(null)}
               style={{ marginBottom: '16px' }}
+              action={
+                <Button
+                  size="small"
+                  onClick={() => setLlmModalOpen(true)}
+                >
+                  {t('nav.llm_settings')}
+                </Button>
+              }
             />
           )}
 
@@ -661,31 +696,43 @@ export default function TrajectoryAnalysis() {
               <TrajectoryCharts trajectory={trajectory} />
 
               {/* Checkpoint Details Collapse */}
-              <Card title={<span><CheckCircleOutlined /> {t('checkpoint.details')}</span>}>
-                <Collapse
-                  defaultActiveKey={[trajectory.checkpoints.length - 1]}
-                  items={trajectory.checkpoints.map((checkpoint, index) => ({
-                    key: index,
-                    label: (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                        <span>
-                          <strong>{t('checkpoint.number')} #{checkpoint.checkpoint_id}</strong>
-                          {index === trajectory.checkpoints.length - 1 && (
-                            <Tag color="blue" style={{ marginLeft: '8px' }}>{t('checkpoint.latest')}</Tag>
-                          )}
-                        </span>
-                        <span style={{ color: '#888', fontSize: '12px' }}>
-                          {checkpoint.commits_range.period_end
-                            ? new Date(checkpoint.commits_range.period_end).toLocaleDateString()
-                            : new Date(checkpoint.created_at).toLocaleDateString()
-                          } - {checkpoint.commits_range.commit_count} {t('checkpoint.commits')}
-                        </span>
-                      </div>
-                    ),
-                    children: renderCheckpointDetails(checkpoint),
-                  }))}
-                />
-              </Card>
+              {trajectory.checkpoints.length > 0 && (
+                <Card 
+                  title={
+                    <span>
+                      <CheckCircleOutlined /> {t('checkpoint.details')}
+                      {' '}
+                      <span style={{ fontSize: '14px', fontWeight: 'normal', color: '#666' }}>
+                        ({getPluginName(trajectory.checkpoints[0].evaluation.plugin)})
+                      </span>
+                    </span>
+                  }
+                >
+                  <Collapse
+                    defaultActiveKey={[trajectory.checkpoints.length - 1]}
+                    items={trajectory.checkpoints.map((checkpoint, index) => ({
+                      key: index,
+                      label: (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                          <span>
+                            <strong>{t('checkpoint.number')} #{checkpoint.checkpoint_id}</strong>
+                            {index === trajectory.checkpoints.length - 1 && (
+                              <Tag color="blue" style={{ marginLeft: '8px' }}>{t('checkpoint.latest')}</Tag>
+                            )}
+                          </span>
+                          <span style={{ color: '#888', fontSize: '12px' }}>
+                            {checkpoint.commits_range.period_end
+                              ? new Date(checkpoint.commits_range.period_end).toLocaleDateString()
+                              : new Date(checkpoint.created_at).toLocaleDateString()}
+                            {' '} - {checkpoint.commits_range.commit_count} {t('checkpoint.commits')}
+                          </span>
+                        </div>
+                      ),
+                      children: renderCheckpointDetails(checkpoint, index),
+                    }))}
+                  />
+                </Card>
+              )}
 
               <GrowthReport trajectory={trajectory} />
             </>

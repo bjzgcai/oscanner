@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Query
+import asyncio
 
 from evaluator.config import DEFAULT_LLM_MODEL, get_llm_api_key, get_github_token, get_gitee_token
 from evaluator.schemas import TrajectoryResponse
@@ -26,7 +27,9 @@ async def analyze_trajectory(
     language: str = Query("en-US"),
     use_cache: bool = Query(True),
     parallel_chunking: bool = Query(True),
-    max_parallel_workers: int = Query(3)
+    max_parallel_workers: int = Query(3),
+    forced_checker: str = Query(""),
+    worktree_base: str = Query("build")  # 'build' or 'temp', default 'build'
 ) -> Dict[str, Any]:
     """
     Analyze user growth trajectory.
@@ -112,16 +115,27 @@ async def analyze_trajectory(
         print(f"[Trajectory API] Aliases: {aliases}")
 
         # Call trajectory analysis service
-        response = analyze_growth_trajectory(
-            username=username,
-            repo_urls=repo_urls,
-            aliases=aliases,
-            plugin_id=plugin_id,
-            model=model,
-            language=language,
-            use_cache=use_cache,
-            parallel_chunking=parallel_chunking,
-            max_parallel_workers=max_parallel_workers
+        # Run synchronous blocking operations in thread pool to avoid blocking event loop
+        forced_checker_id = forced_checker.strip() if forced_checker else None
+        worktree_base_value = worktree_base.strip() if worktree_base else "build"
+        if worktree_base_value not in ("build", "temp"):
+            worktree_base_value = "build"  # Default to build
+        
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            analyze_growth_trajectory,
+            username,
+            repo_urls,
+            aliases,
+            plugin_id,
+            model,
+            language,
+            use_cache,
+            parallel_chunking,
+            max_parallel_workers,
+            forced_checker_id,
+            worktree_base_value
         )
 
         return response.model_dump()

@@ -273,7 +273,9 @@ def create_checkpoint_evaluation(
     repo_start_date: Optional[datetime] = None,
     previous_checkpoint: Optional[TrajectoryCheckpoint] = None,
     parallel_chunking: bool = True,
-    max_parallel_workers: int = 3
+    max_parallel_workers: int = 3,
+    forced_checker_id: Optional[str] = None,
+    worktree_base: str = "build"
 ) -> TrajectoryCheckpoint:
     """
     Create a checkpoint by evaluating commits (10+ commits).
@@ -344,6 +346,8 @@ def create_checkpoint_evaluation(
         parallel_chunking=parallel_chunking,
         max_parallel_workers=max_parallel_workers,
         previous_checkpoint_scores=previous_scores,
+        forced_checker_id=forced_checker_id,
+        worktree_base=worktree_base,
     )
 
     # Evaluate
@@ -786,7 +790,9 @@ def analyze_growth_trajectory(
     language: str,
     use_cache: bool = True,
     parallel_chunking: bool = True,
-    max_parallel_workers: int = 3
+    max_parallel_workers: int = 3,
+    forced_checker_id: Optional[str] = None,
+    worktree_base: str = "build"
 ) -> TrajectoryResponse:
     """
     Main orchestration function for growth trajectory analysis.
@@ -812,9 +818,9 @@ def analyze_growth_trajectory(
         username = ','.join(sorted(authors))
         print(f"[Trajectory] Normalized grouped username: {username}")
 
-    # Load existing trajectory
-    trajectory = load_trajectory_cache(username) if use_cache else None
-
+    # Load existing trajectory (always load to get commit history, but clear checkpoints if use_cache=False)
+    trajectory = load_trajectory_cache(username)
+    
     if trajectory is None:
         print(f"[Trajectory] No cache found for {username}, initializing")
         trajectory = TrajectoryCache(
@@ -828,6 +834,15 @@ def analyze_growth_trajectory(
     else:
         # Update repo URLs
         trajectory.repo_urls = repo_urls
+        
+        # If use_cache=False, clear existing checkpoints to force re-evaluation
+        if not use_cache and trajectory.checkpoints:
+            print(f"[Trajectory] use_cache=False: Clearing {len(trajectory.checkpoints)} existing checkpoints for re-evaluation")
+            trajectory.checkpoints = []
+            trajectory.total_checkpoints = 0
+            # Reset last_synced_sha to force re-evaluation of all commits
+            trajectory.last_synced_sha = None
+            trajectory.last_synced_at = None
 
     # Ensure all repos have data synced
     print(f"[Trajectory] Ensuring data is synced for {len(repo_urls)} repositories")
@@ -848,7 +863,8 @@ def analyze_growth_trajectory(
             else:
                 sync_errors.append(f"Failed to extract data from {repo_url}: {error_msg}")
 
-    # Get new commits
+    # Get commits (all commits if use_cache=False and checkpoints cleared, only new commits if use_cache=True)
+    # When use_cache=False, last_synced_sha is set to None, so get_new_commits_from_repos will return all commits
     new_commits_count, new_commits, repos_analyzed = get_new_commits_from_repos(
         repo_urls=repo_urls,
         username=username,
@@ -856,7 +872,7 @@ def analyze_growth_trajectory(
         last_synced_sha=trajectory.last_synced_sha
     )
 
-    print(f"[Trajectory] Found {new_commits_count} new commits (last_synced_sha: {trajectory.last_synced_sha})")
+    print(f"[Trajectory] Found {new_commits_count} commits to evaluate (last_synced_sha: {trajectory.last_synced_sha}, use_cache={use_cache})")
 
     # Check if we have any data at all
     if new_commits_count == 0 and sync_errors:
@@ -951,8 +967,10 @@ def analyze_growth_trajectory(
                 aliases_used=aliases,
                 repo_start_date=repo_start_date,
                 previous_checkpoint=previous_checkpoint,
+                worktree_base=worktree_base,
                 parallel_chunking=parallel_chunking,
-                max_parallel_workers=max_parallel_workers
+                max_parallel_workers=max_parallel_workers,
+                forced_checker_id=forced_checker_id
             )
 
             # Update trajectory

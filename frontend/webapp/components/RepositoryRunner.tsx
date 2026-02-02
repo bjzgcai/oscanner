@@ -349,7 +349,7 @@ export default function RepositoryRunner() {
 
         {error && (
           <Alert
-            message={t('runner.error')}
+            title={t('runner.error')}
             description={error}
             type="error"
             closable
@@ -361,7 +361,7 @@ export default function RepositoryRunner() {
         {/* Step 1: Input repository URL */}
         {currentStep === 0 && (
           <Card title={t('runner.step1.enter_url')} type="inner">
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
               <Input
                 size="large"
                 placeholder={t('analysis.repo_url.placeholder')}
@@ -407,7 +407,7 @@ export default function RepositoryRunner() {
             {loading && <LoadingOutlined style={{ fontSize: 24, marginRight: 8 }} />}
             {progressMessages.length > 0 && (
               <Card style={{ marginTop: '16px' }} title={t('runner.progress')}>
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                   {progressMessages.map((msg, idx) => (
                     <Text key={idx}>• {msg}</Text>
                   ))}
@@ -428,7 +428,7 @@ export default function RepositoryRunner() {
             </Paragraph>
             <Collapse ghost style={{ marginTop: '8px' }}>
               <Panel header={t('runner.step2.view_messages')} key="1">
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                   {step2Output.messages.map((msg, idx) => (
                     <Text key={idx} type="secondary">• {msg}</Text>
                   ))}
@@ -446,7 +446,7 @@ export default function RepositoryRunner() {
             {/* Display detected tests */}
             {detectedTests && (
               <Card style={{ marginBottom: '16px', backgroundColor: '#fafafa' }}>
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                   {detectedTests.test_commands.length > 0 ? (
                     <>
                       <Text strong>{t('runner.step3.detected_tests')}:</Text>
@@ -475,7 +475,7 @@ export default function RepositoryRunner() {
 
             {progressMessages.length > 0 && (
               <Card style={{ marginTop: '16px' }} title={t('runner.step3.execution_progress')}>
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                   {progressMessages.map((msg, idx) => (
                     <Text key={idx}>• {msg}</Text>
                   ))}
@@ -487,7 +487,7 @@ export default function RepositoryRunner() {
 
         {currentStep >= 3 && step3Output && (
           <Card title={t('runner.step3.completed')} type="inner" style={{ marginBottom: '16px' }}>
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
               <div>
                 <Tag color="success">{t('runner.step4.passed')}: {step3Output.results.passed}</Tag>
                 <Tag color="error">{t('runner.step4.failed')}: {step3Output.results.failed}</Tag>
@@ -498,7 +498,7 @@ export default function RepositoryRunner() {
               </div>
               <Collapse ghost>
                 <Panel header={t('runner.step3.view_messages')} key="1">
-                  <Space direction="vertical" style={{ width: '100%' }}>
+                  <Space orientation="vertical" style={{ width: '100%' }}>
                     {step3Output.messages.map((msg, idx) => (
                       <Text key={idx} type="secondary">• {msg}</Text>
                     ))}
@@ -512,7 +512,7 @@ export default function RepositoryRunner() {
         {/* Step 4: Show full results */}
         {currentStep === 3 && testResults && (
           <Card title={t('runner.step4.title')} type="inner">
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Space orientation="vertical" style={{ width: '100%' }} size="large">
               <div style={{ textAlign: 'center' }}>
                 <Title level={1} style={{ margin: 0, color: testResults.score >= 70 ? '#52c41a' : testResults.score >= 40 ? '#faad14' : '#ff4d4f' }}>
                   {testResults.score}
@@ -533,7 +533,7 @@ export default function RepositoryRunner() {
               </Space>
 
               {testResults.message && (
-                <Alert message={testResults.message} type="info" />
+                <Alert title={testResults.message} type="info" />
               )}
 
               {testResults.details && testResults.details.length > 0 && (

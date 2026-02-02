@@ -40,14 +40,14 @@ function normalizeTsImport(relPathFromPluginsDir) {
 }
 
 const webappDir = path.resolve(process.cwd()); // invoked from webapp/
-const repoRoot = path.resolve(webappDir, '..');
+const repoRoot = path.resolve(webappDir, '../..'); // webapp -> frontend -> oscanner
 const pluginsDir = path.join(repoRoot, 'plugins');
 
 const outDir = path.join(webappDir, 'components', 'generated');
 const outFile = path.join(outDir, 'pluginViewMap.ts');
 // Import paths in the generated TS file are resolved relative to outDir (webapp/components/generated).
-// From there to repoRoot/plugins is ../../../plugins
-const importPluginsPrefix = '../../../plugins';
+// From there to repoRoot/plugins is ../../../../plugins (generated -> components -> webapp -> frontend -> oscanner)
+const importPluginsPrefix = '../../../../plugins';
 
 const plugins = [];
 if (fs.existsSync(pluginsDir) && fs.statSync(pluginsDir).isDirectory()) {
@@ -61,10 +61,12 @@ if (fs.existsSync(pluginsDir) && fs.statSync(pluginsDir).isDirectory()) {
       const pluginId = String(d.id || d.plugin_id || name).trim() || name;
       const viewSingleEntry = String(d.view_single_entry || 'view/single_repo.tsx').trim();
       const viewCompareEntry = String(d.view_compare_entry || 'view/multi_repo_compare.tsx').trim();
+      const viewTrajectoryCheckpointEntry = String(d.view_trajectory_checkpoint_entry || 'view/trajectory_checkpoint.tsx').trim();
       const viewI18nEntry = String(d.view_i18n_entry || 'view/i18n.ts').trim();
 
       const singleAbs = path.join(pluginDir, viewSingleEntry);
       const compareAbs = path.join(pluginDir, viewCompareEntry);
+      const trajectoryCheckpointAbs = path.join(pluginDir, viewTrajectoryCheckpointEntry);
       const i18nAbs = path.join(pluginDir, viewI18nEntry);
 
       plugins.push({
@@ -72,8 +74,10 @@ if (fs.existsSync(pluginsDir) && fs.statSync(pluginsDir).isDirectory()) {
         pluginDirName: name,
         viewSingleEntry,
         viewCompareEntry,
+        viewTrajectoryCheckpointEntry,
         hasSingle: existsFile(singleAbs),
         hasCompare: existsFile(compareAbs),
+        hasTrajectoryCheckpoint: existsFile(trajectoryCheckpointAbs),
         viewI18nEntry,
         hasI18n: existsFile(i18nAbs),
       });
@@ -84,6 +88,11 @@ if (fs.existsSync(pluginsDir) && fs.statSync(pluginsDir).isDirectory()) {
 }
 
 plugins.sort((a, b) => a.pluginId.localeCompare(b.pluginId));
+
+console.log(`[gen-plugin-view-map] Found ${plugins.length} plugins:`);
+for (const p of plugins) {
+  console.log(`  - ${p.pluginId}: hasSingle=${p.hasSingle}, hasCompare=${p.hasCompare}, hasTrajectoryCheckpoint=${p.hasTrajectoryCheckpoint}, hasI18n=${p.hasI18n}`);
+}
 
 ensureDir(outDir);
 
@@ -105,6 +114,11 @@ lines.push('  loading?: boolean;');
 lines.push('  error?: string;');
 lines.push('};');
 lines.push('');
+lines.push('export type TrajectoryCheckpointViewProps = {');
+lines.push('  checkpoint: unknown;');
+lines.push('  previousCheckpoint?: unknown;');
+lines.push('};');
+lines.push('');
 lines.push('export const SINGLE_REPO_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<SingleRepoViewProps> }>> = {');
 for (const p of plugins) {
   if (!p.hasSingle) continue;
@@ -121,6 +135,18 @@ lines.push(
 for (const p of plugins) {
   if (!p.hasCompare) continue;
   const mod = normalizeTsImport(p.viewCompareEntry);
+  lines.push(
+    `  ${JSON.stringify(p.pluginId)}: () => import(${JSON.stringify(`${importPluginsPrefix}/${p.pluginDirName}/${mod}`)}),`
+  );
+}
+lines.push('};');
+lines.push('');
+lines.push(
+  'export const TRAJECTORY_CHECKPOINT_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<TrajectoryCheckpointViewProps> }>> = {'
+);
+for (const p of plugins) {
+  if (!p.hasTrajectoryCheckpoint) continue;
+  const mod = normalizeTsImport(p.viewTrajectoryCheckpointEntry);
   lines.push(
     `  ${JSON.stringify(p.pluginId)}: () => import(${JSON.stringify(`${importPluginsPrefix}/${p.pluginDirName}/${mod}`)}),`
   );
