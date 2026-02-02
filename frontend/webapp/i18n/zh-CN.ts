@@ -341,6 +341,12 @@ export const zhCN: Messages = {
   'trajectory.report.current': '当前',
   'trajectory.report.no_recommendations': '太棒了！所有维度分数都达到 60 分以上。',
   'trajectory.report.generated_at': '生成时间',
+  'trajectory.checker.forced': '强制检查器',
+  'trajectory.checker.none': '无',
+  'trajectory.worktree.base': '工作目录',
+  'trajectory.worktree.build': '服务build子目录',
+  'trajectory.worktree.temp': '临时目录',
+  'trajectory.use_test_repo': '使用测试仓库',
 
   // Checkpoint Details
   'checkpoint.details': '检查点详情',

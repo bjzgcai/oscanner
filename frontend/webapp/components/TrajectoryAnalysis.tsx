@@ -24,7 +24,7 @@ export default function TrajectoryAnalysis() {
   const [fetchingAuthors, setFetchingAuthors] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { defaultUsername, repoUrls, usernameGroups } = useUserSettings();
-  const { model, setModel, pluginId, setPluginId, plugins, useCache, setUseCache, locale, setLocale, setLlmModalOpen } = useAppSettings();
+  const { model, setModel, pluginId, setPluginId, plugins, useCache, setUseCache, locale, setLocale, setLlmModalOpen, forcedCheckerId, setForcedCheckerId, checkers, worktreeBase, setWorktreeBase } = useAppSettings();
   const { t } = useI18n();
 
   // Helper function to format error messages with user-friendly text
@@ -172,6 +172,16 @@ export default function TrajectoryAnalysis() {
         ];
   const currentPluginLabel = (plugins || []).find((p) => p.id === pluginId)?.name || pluginId || 'zgc_simple';
 
+  const checkerItems = [
+    { key: '', label: t('trajectory.checker.none') || 'None' },
+    ...(checkers || [])
+      .filter((c) => c.enabled !== false)
+      .map((c) => ({ key: c.id, label: c.name || c.id })),
+  ];
+  const currentCheckerLabel = forcedCheckerId
+    ? (checkers || []).find((c) => c.id === forcedCheckerId)?.name || forcedCheckerId
+    : t('trajectory.checker.none') || 'None';
+
   const analyzeTrajectory = async () => {
     if (!isFormValid) {
       const errorMsg = 'Please provide valid repo URL and select at least one author';
@@ -239,7 +249,7 @@ export default function TrajectoryAnalysis() {
         pluginId
       )}&model=${encodeURIComponent(model)}&language=${encodeURIComponent(
         locale
-      )}&use_cache=${useCache}`;
+      )}&use_cache=${useCache}${forcedCheckerId ? `&forced_checker=${encodeURIComponent(forcedCheckerId)}` : ''}&worktree_base=${worktreeBase}`;
 
       console.log('[Trajectory] Starting analysis:', { url, username: groupedUsername, repoUrl: repoUrl.trim() });
 
@@ -426,6 +436,37 @@ export default function TrajectoryAnalysis() {
             </Button>
           </Dropdown>
 
+          <Dropdown
+            menu={{
+              items: checkerItems,
+              selectable: true,
+              selectedKeys: [forcedCheckerId || ''],
+              onClick: ({ key }) => setForcedCheckerId(key ? String(key) : null),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              {t('trajectory.checker.forced') || 'Forced Checker'}: {currentCheckerLabel}
+            </Button>
+          </Dropdown>
+
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'build', label: t('trajectory.worktree.build') || 'Build Directory' },
+                { key: 'temp', label: t('trajectory.worktree.temp') || 'Temporary Directory' },
+              ],
+              selectable: true,
+              selectedKeys: [worktreeBase],
+              onClick: ({ key }) => setWorktreeBase(key === 'build' ? 'build' : 'temp'),
+            }}
+            trigger={['click']}
+          >
+            <Button size="middle">
+              {t('trajectory.worktree.base') || 'Work Directory'}: {worktreeBase === 'build' ? (t('trajectory.worktree.build') || 'Build Directory') : (t('trajectory.worktree.temp') || 'Temporary Directory')}
+            </Button>
+          </Dropdown>
+
           <Button
             icon={<SettingOutlined />}
             size="middle"
@@ -457,15 +498,27 @@ export default function TrajectoryAnalysis() {
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
                   <GithubOutlined /> {t('analysis.repo_url')}
                 </label>
-                <Input
-                  size="large"
-                  placeholder={t('analysis.repo_url.placeholder')}
-                  value={repoUrl}
-                  onChange={(e) => setRepoUrl(e.target.value)}
-                  status={repoUrl && !isRepoUrlValid ? 'error' : undefined}
-                  disabled={loading}
-                  autoComplete="url"
-                />
+                <Space.Compact style={{ width: '100%' }}>
+                  <Input
+                    size="large"
+                    placeholder={t('analysis.repo_url.placeholder')}
+                    value={repoUrl}
+                    onChange={(e) => setRepoUrl(e.target.value)}
+                    status={repoUrl && !isRepoUrlValid ? 'error' : undefined}
+                    disabled={loading}
+                    autoComplete="url"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    size="large"
+                    onClick={() => {
+                      setRepoUrl('https://gitee.com/zgcai/oscanner');
+                    }}
+                    disabled={loading}
+                  >
+                    {t('trajectory.use_test_repo') || '使用测试仓库'}
+                  </Button>
+                </Space.Compact>
                 {repoUrl && !isRepoUrlValid && (
                   <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '4px' }}>
                     {t('analysis.repo_url.error')}

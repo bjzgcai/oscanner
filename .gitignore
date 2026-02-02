@@ -76,3 +76,4 @@ vendor/cache/
 vendor/gems/
 vendor/ruby/
 Gemfile.lock
+build

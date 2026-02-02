@@ -345,6 +345,12 @@ export const enUS: Messages = {
   'trajectory.report.current': 'Current',
   'trajectory.report.no_recommendations': 'Excellent! All dimensions scored above 60.',
   'trajectory.report.generated_at': 'Generated at',
+  'trajectory.checker.forced': 'Forced Checker',
+  'trajectory.checker.none': 'None',
+  'trajectory.worktree.base': 'Work Directory',
+  'trajectory.worktree.build': 'Build Directory',
+  'trajectory.worktree.temp': 'Temporary Directory',
+  'trajectory.use_test_repo': 'Use Test Repo',
 
   // Checkpoint Details
   'checkpoint.details': 'Checkpoint Details',
