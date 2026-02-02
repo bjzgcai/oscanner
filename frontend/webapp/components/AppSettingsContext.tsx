@@ -19,14 +19,23 @@ type AppSettings = {
   refreshPlugins: () => Promise<void>;
   llmModalOpen: boolean;
   setLlmModalOpen: (v: boolean) => void;
+  forcedCheckerId: string | null;
+  setForcedCheckerId: (v: string | null) => void;
+  checkers: Array<{ id: string; name: string; keyword: string; description?: string; enabled?: boolean }>;
+  refreshCheckers: () => Promise<void>;
+  worktreeBase: 'build' | 'temp';
+  setWorktreeBase: (v: 'build' | 'temp') => void;
 };
 
 const STORAGE_KEY_USE_CACHE = 'oscanner_use_cache';
 const STORAGE_KEY_MODEL = 'oscanner_llm_model';
 const STORAGE_KEY_PLUGIN = 'oscanner_plugin_id';
 const STORAGE_KEY_LOCALE = 'oscanner_locale';
+const STORAGE_KEY_FORCED_CHECKER = 'oscanner_forced_checker_id';
+const STORAGE_KEY_WORKTREE_BASE = 'oscanner_worktree_base';
 const DEFAULT_MODEL = 'qwen/qwen3-coder-flash';
 const DEFAULT_PLUGIN = 'zgc_simple';
+const DEFAULT_WORKTREE_BASE: 'build' | 'temp' = 'build';
 
 const AppSettingsContext = createContext<AppSettings | null>(null);
 
@@ -38,6 +47,9 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [useCache, setUseCacheState] = useState(true);
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
   const [llmModalOpen, setLlmModalOpen] = useState(false);
+  const [forcedCheckerId, setForcedCheckerIdState] = useState<string | null>(null);
+  const [checkers, setCheckers] = useState<AppSettings['checkers']>([]);
+  const [worktreeBase, setWorktreeBaseState] = useState<'build' | 'temp'>(DEFAULT_WORKTREE_BASE);
 
   // Load from localStorage after hydration is complete
   useEffect(() => {
@@ -92,7 +104,50 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     } catch {
       // ignore
     }
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY_FORCED_CHECKER);
+      if (raw) {
+        const trimmed = raw.trim();
+        if (trimmed) {
+          setForcedCheckerIdState(trimmed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY_WORKTREE_BASE);
+      if (raw === 'build' || raw === 'temp') {
+        setWorktreeBaseState(raw);
+      }
+    } catch {
+      // ignore
+    }
   }, []);
+
+  const setForcedCheckerId = (v: string | null) => {
+    const next = v ? v.trim() || null : null;
+    setForcedCheckerIdState(next);
+    try {
+      if (next) {
+        localStorage.setItem(STORAGE_KEY_FORCED_CHECKER, next);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_FORCED_CHECKER);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const setWorktreeBase = (v: 'build' | 'temp') => {
+    const next = v === 'build' || v === 'temp' ? v : DEFAULT_WORKTREE_BASE;
+    setWorktreeBaseState(next);
+    try {
+      localStorage.setItem(STORAGE_KEY_WORKTREE_BASE, next);
+    } catch {
+      // ignore
+    }
+  };
 
   const setModel = (v: string) => {
     const next = (v || '').trim() || DEFAULT_MODEL;
@@ -152,14 +207,30 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const refreshCheckers = useCallback(async () => {
+    try {
+      console.log('[Info] Refreshing checker list from backend');
+      const resp = await fetch(`${API_SERVER_URL}/api/checkers/list`);
+      console.log(`[Info] /api/checkers/list response: ${resp.status} ${resp.statusText}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const list = Array.isArray(data.checkers) ? data.checkers : [];
+      setCheckers(list);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshPlugins();
-  }, [refreshPlugins]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshCheckers();
+  }, [refreshPlugins, refreshCheckers]);
 
   const value = useMemo(
-    () => ({ useCache, setUseCache, model, setModel, pluginId, setPluginId, locale, setLocale, plugins, refreshPlugins, llmModalOpen, setLlmModalOpen }),
-    [useCache, model, pluginId, locale, plugins, refreshPlugins, llmModalOpen]
+    () => ({ useCache, setUseCache, model, setModel, pluginId, setPluginId, locale, setLocale, plugins, refreshPlugins, llmModalOpen, setLlmModalOpen, forcedCheckerId, setForcedCheckerId, checkers, refreshCheckers, worktreeBase, setWorktreeBase }),
+    [useCache, model, pluginId, locale, plugins, refreshPlugins, llmModalOpen, forcedCheckerId, checkers, refreshCheckers, worktreeBase]
   );
 
   return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;

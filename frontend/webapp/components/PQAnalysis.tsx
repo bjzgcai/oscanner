@@ -95,7 +95,7 @@ export default function PQAnalysis() {
 
       {/* Query Form */}
       <Card style={{ marginBottom: '24px' }}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
           <Row gutter={[16, 16]}>
             <Col xs={24} md={8}>
               <div>
@@ -146,7 +146,7 @@ export default function PQAnalysis() {
       {/* Error Display */}
       {error && (
         <Alert
-          message={t('pq.error')}
+          title={t('pq.error')}
           description={error}
           type="error"
           showIcon
@@ -167,7 +167,7 @@ export default function PQAnalysis() {
       {/* No Data Yet */}
       {!loading && !error && !data && (
         <Alert
-          message={t('pq.enter_params')}
+          title={t('pq.enter_params')}
           type="info"
           showIcon
           style={{ marginBottom: '24px' }}
@@ -334,7 +334,7 @@ export default function PQAnalysis() {
 
       {/* No Data After Query */}
       {!loading && data && (!data.activities || data.activities.length === 0) && (
-        <Alert message={t('pq.no_data')} type="info" showIcon />
+        <Alert title={t('pq.no_data')} type="info" showIcon />
       )}
     </div>
   );

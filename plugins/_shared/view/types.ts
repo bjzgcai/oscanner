@@ -86,4 +86,50 @@ export type PluginMultiRepoCompareViewProps = {
   t?: (key: string, params?: Record<string, string | number>) => string;
 };
 
+// -----------------------------
+// Trajectory checkpoint (view/trajectory_checkpoint.tsx)
+// -----------------------------
+
+export type TrajectoryCheckpointData = {
+  checkpoint_id: number;
+  created_at: string;
+  commits_range: {
+    start_sha: string;
+    end_sha: string;
+    commit_count: number;
+    period_start?: string | null;
+    period_end?: string | null;
+    accumulated_from_periods?: number;
+  };
+  evaluation: {
+    scores: Record<string, number | string>;
+    commits_summary: {
+      total_additions: number;
+      total_deletions: number;
+      files_changed: number;
+      languages: string[];
+    };
+    plugin: string;
+    plugin_version: string;
+    total_commits_analyzed: number;
+  };
+  repos_analyzed?: string[] | null;
+  aliases_used?: string[] | null;
+  previous_checkpoint_id?: number | null;
+  growth_comparison?: {
+    dimension_changes: Record<string, number>;
+    overall_trend: 'increasing' | 'stable' | 'decreasing';
+    improved_dimensions: string[];
+    regressed_dimensions: string[];
+  } | null;
+};
+
+export type PluginTrajectoryCheckpointViewProps = {
+  checkpoint: TrajectoryCheckpointData;
+  previousCheckpoint?: TrajectoryCheckpointData | null;
+  // i18n support (optional): webapp may pass locale + t() for plugin views to localize labels.
+  locale?: string;
+  t?: (key: string, params?: Record<string, string | number>) => string;
+};
+
 

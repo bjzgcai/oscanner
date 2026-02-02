@@ -5,7 +5,7 @@
 
 ## 设计
 
-1. 每个开发任务一个子目录，命名规范 task_{no}_{feat_name}，例如： agent_dev/task_01_scan_plugin
+1. 每个开发任务一个子目录，命名规范 task_{no}_{feat_name}，例如： task/task_01_scan_plugin
   * {no} 表示任务编号
   * {feat_name} 表示任务名字
 2. 每个开发任务子目录规格：
@@ -32,7 +32,7 @@
       * 所以应该在任务完成后，删除已经完成的TODO_LIST，只留一条完成任务的记录+更新日期即可，不必保留历史已经完成的TODO
 3. LLM在完成 task.md 的过程中
   * 如果有需要产生任务相关的中间文档（如果没必要就不要创建），请在任务目录下创建任务的 task_records/log 子目录存放，这样的目录不会被提交到 git 仓库
-  * 例如 agent_dev/task_01_scan_plugin/task_records
+  * 例如 task/task_01_scan_plugin/task_records
   * task_records/log 的数据永远可以删除，在 TODO_LIST 完成清空的时候，也要同步清空task_records/log这个目录下的文件，但是保留空目录
 
 # 实施
