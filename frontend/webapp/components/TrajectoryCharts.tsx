@@ -135,7 +135,13 @@ export default function TrajectoryCharts({ trajectory }: TrajectoryChartsProps) 
       <h3 style={{ marginBottom: '24px' }}>{t('trajectory.visualizations')}</h3>
 
       <Card>
-        <ReactECharts option={lineOption} style={{ height: '400px' }} />
+        <ReactECharts
+          option={lineOption}
+          style={{ height: '400px' }}
+          opts={{ renderer: 'canvas' }}
+          notMerge={true}
+          lazyUpdate={true}
+        />
       </Card>
     </div>
   );

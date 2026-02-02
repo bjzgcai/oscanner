@@ -269,7 +269,7 @@ export default function TrajectoryAnalysis() {
         // Show appropriate message
         if (data.new_checkpoint_created) {
           message.success(t('trajectory.new_checkpoint'));
-        } else if (data.commits_pending !== undefined && data.commits_pending > 0) {
+        } else if (data.commits_pending !== undefined && data.commits_pending !== null && data.commits_pending > 0) {
           message.info(
             t('trajectory.insufficient_commits', {
               pending: data.commits_pending || 0,
@@ -319,7 +319,7 @@ export default function TrajectoryAnalysis() {
 
     // Get all dimension keys (excluding reasoning)
     const dimensionKeys = Object.keys(scores).filter(
-      (key) => key !== 'reasoning' && scores[key] !== null && scores[key] !== undefined
+      (key) => key !== 'reasoning' && (scores as any)[key] !== null && (scores as any)[key] !== undefined
     );
 
     // Get score color based on value

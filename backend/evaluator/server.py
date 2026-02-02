@@ -42,7 +42,7 @@ from evaluator.services import (
     get_or_create_evaluator, evaluate_author_incremental, get_empty_evaluation,
     merge_evaluations_logic
 )
-from evaluator.routes import plugins, config, data, evaluation, batch, benchmark, trajectory, external
+from evaluator.routes import plugins, config, data, evaluation, batch, benchmark, trajectory, external, runner_proxy
 
 # Load environment variables
 #
@@ -91,6 +91,7 @@ app.include_router(batch.router, tags=["batch"])
 app.include_router(benchmark.router, tags=["benchmark"])
 app.include_router(trajectory.router, tags=["trajectory"])
 app.include_router(external.router, tags=["external"])
+app.include_router(runner_proxy.router, tags=["runner"])
 
 
 # Optional: serve bundled dashboard static files (exported Next.js build) if present.

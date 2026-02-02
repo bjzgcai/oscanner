@@ -394,7 +394,7 @@ export async function exportHomePagePDF(
     // Clamp score to 0-100 range
     score = Math.max(0, Math.min(100, score));
 
-    await addTextWithChineseSupport(pdf, dim.name, margin, yPos, {
+    await addTextWithChineseSupport(pdf, dim.name!, margin, yPos, {
       fontSize: 10,
       fontWeight: 'bold',
       color: [255, 255, 255],

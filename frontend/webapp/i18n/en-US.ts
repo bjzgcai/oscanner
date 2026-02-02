@@ -429,13 +429,42 @@ export const enUS: Messages = {
   'runner.step3.no_tests': 'No tests detected in this repository',
   'runner.step3.execution_progress': 'Execution Progress',
   'runner.step3.view_messages': 'View Test Execution Messages',
-  'runner.step4.title': 'Step 4: Complete Analysis Results',
   'runner.step4.score': 'Score (out of 100)',
   'runner.step4.passed': 'Passed',
   'runner.step4.failed': 'Failed',
   'runner.step4.total': 'Total',
   'runner.step4.run_another': 'Run Another Repository',
   'runner.progress': 'Progress',
+
+  // Compare Students
+  'nav.compare_students': 'Compare Students',
+  'compare_students.title': 'Compare Students',
+  'compare_students.description': 'Enter student information to compare multiple students across trajectory, tests, and PQ activities.',
+  'compare_students.input_label': 'Student Information (JSON format)',
+  'compare_students.input_placeholder': `{
+  "students": [
+    {
+      "id": "student_1",
+      "username": "lexicalmathical",
+      "url": ["https://github.com/user1/repo1"],
+      "pq_id": "JUFV4ZFT"
+    },
+    {
+      "id": "student_2",
+      "name": "Bob",
+      "url": ["https://github.com/user2/repo2"],
+      "pq_id": "ABC12345"
+    }
+  ]
+}`,
+  'compare_students.compare_button': 'Compare',
+  'compare_students.comparing': 'Comparing...',
+  'compare_students.error': 'Error',
+  'compare_students.loading': 'Fetching student data, please wait...',
+  'compare_students.comparison_complete': 'Comparison complete!',
+  'compare_students.results_title': 'Comparison Results',
+  'compare_students.chart_title': 'Student Combined Score Trend Comparison',
+  'compare_students.xaxis': 'Checkpoint',
+  'compare_students.yaxis': 'Combined Score (Trajectory + Tests + PQ)',
+  'compare_students.checkpoint': 'Checkpoint',
 };
-
-
