@@ -161,7 +161,7 @@ export default function ValidationResults({ runId, onBackToHistory }: Validation
         </Row>
 
         <Alert
-          message={
+          title={
             result.overall_passed
               ? t('validation.results.all_passed')
               : t('validation.results.some_failed')

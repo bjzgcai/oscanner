@@ -116,7 +116,7 @@ export default function TestResultCard({ result, defaultExpanded = false }: Test
           {result.errors.map((error, idx) => (
             <Alert
               key={`error-${idx}`}
-              message={error}
+              title={error}
               type="error"
               showIcon
               style={{ marginBottom: 8 }}
@@ -125,7 +125,7 @@ export default function TestResultCard({ result, defaultExpanded = false }: Test
           {result.warnings.map((warning, idx) => (
             <Alert
               key={`warning-${idx}`}
-              message={warning}
+              title={warning}
               type="warning"
               showIcon
               style={{ marginBottom: 8 }}
