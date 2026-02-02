@@ -228,6 +228,9 @@ export default function PQAnalysis() {
 
           <Card>
             <ReactECharts
+              opts={{ renderer: 'canvas' }}
+              notMerge={true}
+              lazyUpdate={true}
               option={{
                 tooltip: {
                   trigger: 'axis',

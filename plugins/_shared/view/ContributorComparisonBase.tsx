@@ -162,7 +162,13 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
       </Card>
 
       <Card style={{ marginBottom: 16 }}>
-        <ReactECharts option={chartType === 'radar' ? getRadarOptions() : getBarOptions()} style={{ height: 520, width: '100%' }} notMerge={true} lazyUpdate={true} />
+        <ReactECharts
+          option={chartType === 'radar' ? getRadarOptions() : getBarOptions()}
+          style={{ height: 520, width: '100%' }}
+          opts={{ renderer: 'canvas' }}
+          notMerge={true}
+          lazyUpdate={true}
+        />
       </Card>
 
       <Card>

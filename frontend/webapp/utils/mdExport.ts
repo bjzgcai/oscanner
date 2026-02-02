@@ -302,7 +302,7 @@ export async function exportHomePageMD(
       }
       // Clamp score to 0-100 range
       score = Math.max(0, Math.min(100, score));
-      return { name: dim.name, score };
+      return { name: dim.name!, score };
     });
 
   md += createRadarTable(dimensions);

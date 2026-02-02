@@ -425,13 +425,44 @@ export const zhCN: Messages = {
   'runner.step3.no_tests': '此仓库未检测到测试',
   'runner.step3.execution_progress': '执行进度',
   'runner.step3.view_messages': '查看测试执行消息',
-  'runner.step4.title': '步骤 4：完整分析结果',
   'runner.step4.score': '分数（满分 100）',
   'runner.step4.passed': '通过',
   'runner.step4.failed': '失败',
   'runner.step4.total': '总数',
   'runner.step4.run_another': '运行另一个仓库',
   'runner.progress': '进度',
+
+  // Compare Students
+  'nav.compare_students': '千帆竞发',
+  'compare_students.title': '比较学生',
+  'compare_students.description': '输入学生信息，比较多个学生在轨迹、测试和 PQ 活动中的表现。',
+  'compare_students.input_label': '学生信息（JSON 格式）',
+  'compare_students.input_placeholder': `{
+  "students": [
+    {
+      "id": "student_1",
+      "name": "张三",
+      "url": ["https://github.com/user1/repo1"],
+      "pq_id": "JUFV4ZFT"
+    },
+    {
+      "id": "student_2",
+      "name": "李四",
+      "url": ["https://github.com/user2/repo2"],
+      "pq_id": "ABC12345"
+    }
+  ]
+}`,
+  'compare_students.compare_button': '比较',
+  'compare_students.comparing': '比较中...',
+  'compare_students.error': '错误',
+  'compare_students.loading': '正在获取学生数据，请稍候...',
+  'compare_students.comparison_complete': '比较完成！',
+  'compare_students.results_title': '比较结果',
+  'compare_students.chart_title': '学生综合得分趋势对比',
+  'compare_students.xaxis': '检查点',
+  'compare_students.yaxis': '综合得分（轨迹 + 测试 + PQ）',
+  'compare_students.checkpoint': '检查点',
 };
 
 
