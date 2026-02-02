@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query
+import asyncio
 
 from evaluator.paths import get_platform_data_dir, get_platform_eval_dir
 from evaluator.plugin_registry import load_scan_module, PluginLoadError
@@ -122,18 +123,22 @@ async def evaluate_author(
                         max_parallel_workers=max_parallel_workers,
                     )
 
-                evaluation = evaluate_author_incremental(
-                    commits=commits,
-                    author=alias,
-                    previous_evaluation=previous_evaluation,
-                    data_dir=data_dir,
-                    model=model,
-                    use_chunking=use_chunking,
-                    api_key=api_key,
-                    aliases=[alias],
-                    evaluator_factory=_factory,
-                    parallel_chunking=parallel_chunking,
-                    max_parallel_workers=max_parallel_workers,
+                # Run synchronous blocking operations in thread pool to avoid blocking event loop
+                loop = asyncio.get_event_loop()
+                evaluation = await loop.run_in_executor(
+                    None,
+                    evaluate_author_incremental,
+                    commits,
+                    alias,
+                    previous_evaluation,
+                    data_dir,
+                    model,
+                    use_chunking,
+                    api_key,
+                    [alias],
+                    _factory,
+                    parallel_chunking,
+                    max_parallel_workers,
                 )
                 evaluation["plugin"] = plugin_id
                 if meta:
@@ -201,18 +206,22 @@ async def evaluate_author(
                 max_parallel_workers=max_parallel_workers,
             )
 
-        evaluation = evaluate_author_incremental(
-            commits=commits,
-            author=author,
-            previous_evaluation=previous_evaluation,
-            data_dir=data_dir,
-            model=model,
-            use_chunking=use_chunking,
-            api_key=api_key,
-            aliases=aliases,
-            evaluator_factory=_factory,
-            parallel_chunking=parallel_chunking,
-            max_parallel_workers=max_parallel_workers,
+        # Run synchronous blocking operations in thread pool to avoid blocking event loop
+        loop = asyncio.get_event_loop()
+        evaluation = await loop.run_in_executor(
+            None,
+            evaluate_author_incremental,
+            commits,
+            author,
+            previous_evaluation,
+            data_dir,
+            model,
+            use_chunking,
+            api_key,
+            aliases,
+            _factory,
+            parallel_chunking,
+            max_parallel_workers,
         )
         evaluation["plugin"] = plugin_id
         if meta:

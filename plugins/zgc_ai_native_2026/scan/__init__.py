@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import requests
+import httpx
 
 
 _RUBRIC_SUMMARY = """
@@ -65,6 +65,8 @@ def create_commit_evaluator(
     parallel_chunking: bool = False,
     max_parallel_workers: int = 3,
     previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
+    forced_checker_id: Optional[str] = None,
+    worktree_base: str = "build",
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -76,6 +78,8 @@ def create_commit_evaluator(
         parallel_chunking=parallel_chunking,
         max_parallel_workers=max_parallel_workers,
         previous_checkpoint_scores=previous_checkpoint_scores,
+        forced_checker_id=forced_checker_id,
+        worktree_base=worktree_base,
     )
 
 
@@ -102,6 +106,8 @@ class CommitEvaluatorModerate:
         parallel_chunking: bool = False,
         max_parallel_workers: int = 3,
         previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
+        forced_checker_id: Optional[str] = None,
+        worktree_base: str = "build",
     ):
         self.api_key = (
             api_key
@@ -130,7 +136,17 @@ class CommitEvaluatorModerate:
         self.parallel_chunking = parallel_chunking
         self.max_parallel_workers = max_parallel_workers
         self.previous_checkpoint_scores = previous_checkpoint_scores
+        self.forced_checker_id = forced_checker_id
+        self.worktree_base = worktree_base  # 'build' or 'temp'
 
+        # Checker API base URL (default to localhost, can be overridden via env)
+        self.checker_api_base = os.getenv("OSCANNER_CHECKER_API_BASE", "http://localhost:8000")
+        self._checker_cache: Dict[str, Any] = {}  # Cache checker results
+        
+        # Create HTTP client with connection pooling for better performance
+        # httpx.Client is more efficient than requests for concurrent operations
+        self._http_client = httpx.Client(timeout=httpx.Timeout(90.0, connect=10.0))
+        
         self.dimensions = {
             "spec_quality": "Specification & Built-in Quality",
             "cloud_architecture": "Cloud-Native & Architecture Evolution",
@@ -146,6 +162,14 @@ class CommitEvaluatorModerate:
 
         self._file_cache: Dict[str, str] = {}
         self._repo_structure: Optional[Dict[str, Any]] = None
+
+    def __del__(self):
+        """Clean up HTTP client on object destruction."""
+        if hasattr(self, '_http_client'):
+            try:
+                self._http_client.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
 
     def evaluate_engineer(
         self,
@@ -183,8 +207,25 @@ class CommitEvaluatorModerate:
         if self.mode == "moderate" and load_files and self.data_dir:
             file_contents = self._load_relevant_files(commits)
             repo_structure = self._load_repo_structure()
-        context = self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure)
-        scores = self._evaluate_with_llm(context, username)
+        
+        # Use multi-stage evaluation: split context into parts and evaluate separately
+        context_parts, checker_raw_analysis = self._build_context_parts(commits, username, file_contents=file_contents, repo_structure=repo_structure)
+        
+        # Evaluate each part separately
+        partial_results: List[Dict[str, Any]] = []
+        for part_name, part_context in context_parts.items():
+            if part_context:  # Only evaluate non-empty parts
+                part_result = self._evaluate_part_with_llm(part_name, part_context, username, chunk_idx=None)
+                partial_results.append(part_result)
+        
+        # Merge all partial results
+        if partial_results:
+            scores = self._merge_partial_evaluations(partial_results, username, checker_raw_analysis=checker_raw_analysis)
+        else:
+            # Fallback to single-stage if no parts
+            context = self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure)
+            scores = self._evaluate_with_llm(context, username)
+        
         return {
             "username": username,
             "total_commits_analyzed": len(commits),
@@ -380,6 +421,326 @@ Return the same JSON format as before."""
 
         return merged
 
+    def _extract_checker_keywords(self, commit_message: str) -> List[str]:
+        """
+        Extract checker keywords from commit message.
+        Supports formats: /checker:xxx, /check:xxx
+        """
+        keywords = []
+        import re
+        # Match /checker:xxx or /check:xxx
+        patterns = [
+            r'/checker:(\w+)',
+            r'/check:(\w+)',
+        ]
+        for pattern in patterns:
+            matches = re.findall(pattern, commit_message, re.IGNORECASE)
+            keywords.extend(matches)
+        return list(set(keywords))  # Remove duplicates
+
+    def _get_checker_list(self) -> List[Dict[str, Any]]:
+        """Query checker list from backend API."""
+        import time
+        start_time = time.time()
+        print(f"[Checker] [Plugin] _get_checker_list() called at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}")
+        print(f"[Checker] [Plugin] API base: {self.checker_api_base}")
+        
+        try:
+            url = f"{self.checker_api_base}/api/checkers/list"
+            print(f"[Checker] [Plugin] Requesting: {url}")
+            print(f"[Checker] [Plugin] Timeout: 2s")
+            
+            # Short timeout for localhost - should respond quickly if service is running
+            request_start = time.time()
+            resp = self._http_client.get(url, timeout=2.0)
+            request_elapsed = time.time() - request_start
+            print(f"[Checker] [Plugin] HTTP request completed in {request_elapsed:.3f}s, status: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                parse_start = time.time()
+                data = resp.json()
+                parse_elapsed = time.time() - parse_start
+                checkers = data.get("checkers", [])
+                total_elapsed = time.time() - start_time
+                print(f"[Checker] [Plugin] JSON parsing took {parse_elapsed:.3f}s")
+                print(f"[Checker] [Plugin] Successfully fetched {len(checkers)} checkers in {total_elapsed:.3f}s")
+                return checkers
+            else:
+                total_elapsed = time.time() - start_time
+                print(f"[Checker] [Plugin] Warning: Failed to fetch checker list: HTTP {resp.status_code} - {resp.text[:200]} (took {total_elapsed:.3f}s)")
+        except httpx.TimeoutException as e:
+            total_elapsed = time.time() - start_time
+            print(f"[Checker] [Plugin] ERROR: Checker API timeout after {total_elapsed:.3f}s (timeout=2s)")
+            print(f"[Checker] [Plugin] Timeout exception: {type(e).__name__}: {e}")
+            print(f"[Checker] [Plugin] NOTE: This timeout occurs because:")
+            print(f"[Checker] [Plugin]   1. Plugin code calls checker API synchronously during evaluation")
+            print(f"[Checker] [Plugin]   2. Backend service functions (evaluate_author_incremental, etc.) are synchronous")
+            print(f"[Checker] [Plugin]   3. Even with httpx.Client, sync calls in async context can block if not in thread pool")
+            print(f"[Checker] [Plugin]   4. Backend should run sync blocking operations in thread pool executor")
+        except httpx.ConnectError as e:
+            total_elapsed = time.time() - start_time
+            print(f"[Checker] [Plugin] ERROR: Connection error after {total_elapsed:.3f}s")
+            print(f"[Checker] [Plugin] Connection error: {type(e).__name__}: {e}")
+            print(f"[Checker] [Plugin] Checker service not available at {self.checker_api_base}")
+        except Exception as e:
+            total_elapsed = time.time() - start_time
+            print(f"[Checker] [Plugin] ERROR: Unexpected error after {total_elapsed:.3f}s")
+            print(f"[Checker] [Plugin] Error: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+        return []
+
+    def _run_checker(
+        self,
+        checker_id: str,
+        platform: str,
+        owner: str,
+        repo: str,
+        commit_sha: str,
+        files: Optional[List[str]] = None,
+        worktree_base: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Run a checker via backend API."""
+        cache_key = f"{checker_id}:{commit_sha}"
+        if cache_key in self._checker_cache:
+            return self._checker_cache[cache_key]
+
+        try:
+            url = f"{self.checker_api_base}/api/checkers/run"
+            payload = {
+                "checker_id": checker_id,
+                "platform": platform,
+                "owner": owner,
+                "repo": repo,
+                "commit_sha": commit_sha,
+                "files": files,
+            }
+            if worktree_base:
+                payload["worktree_base"] = worktree_base
+            resp = self._http_client.post(url, json=payload, timeout=120.0)  # Increased to 120s for git clone operations
+            if resp.status_code == 200:
+                result = resp.json()
+                self._checker_cache[cache_key] = result
+                return result
+            else:
+                error_msg = f"Checker API returned HTTP {resp.status_code}: {resp.text[:200]}"
+                print(f"[Checker] Warning: Checker {checker_id} failed: {error_msg}")
+                return {
+                    "success": False,
+                    "score": 0.0,
+                    "message": error_msg,
+                    "analysis": error_msg,
+                    "error": error_msg,
+                }
+        except httpx.TimeoutException:
+            error_msg = f"Checker {checker_id} timeout after 120s - service may not be responding"
+            print(f"[Checker] Info: {error_msg}")
+            return {
+                "success": False,
+                "score": 0.0,
+                "message": error_msg,
+                "analysis": error_msg,
+                "error": "timeout",
+            }
+        except httpx.ConnectError:
+            error_msg = f"Checker service not available for {checker_id}"
+            print(f"[Checker] Info: {error_msg}")
+            return {
+                "success": False,
+                "score": 0.0,
+                "message": error_msg,
+                "analysis": error_msg,
+                "error": "connection_error",
+            }
+        except Exception as e:
+            error_msg = f"Failed to run checker {checker_id}: {type(e).__name__}: {e}"
+            print(f"[Checker] Warning: {error_msg}")
+            return {
+                "success": False,
+                "score": 0.0,
+                "message": error_msg,
+                "analysis": error_msg,
+                "error": str(e),
+            }
+
+    def _get_platform_owner_repo_from_data_dir(self) -> Optional[tuple]:
+        """Extract platform, owner, repo from data_dir path."""
+        if not self.data_dir:
+            return None
+        # data_dir format: .../data/<platform>/<owner>/<repo>
+        parts = Path(self.data_dir).parts
+        try:
+            data_idx = parts.index("data")
+            if len(parts) > data_idx + 3:
+                return (parts[data_idx + 1], parts[data_idx + 2], parts[data_idx + 3])
+        except ValueError:
+            pass
+        return None
+
+    def _build_context_parts(
+        self,
+        commits: List[Dict[str, Any]],
+        username: str,
+        *,
+        file_contents: Dict[str, str],
+        repo_structure: Optional[Dict[str, Any]],
+    ) -> tuple:
+        """
+        Build context as separate parts for multi-stage LLM evaluation.
+        Returns: (context_parts_dict, checker_raw_analysis)
+        """
+        """Build context as separate parts for multi-stage LLM evaluation."""
+        parts: Dict[str, str] = {}
+        
+        # Extract checker keywords and run checkers
+        import time
+        checker_start = time.time()
+        print(f"[Checker] [Plugin] Starting checker processing in _build_context_parts() at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(checker_start))}")
+        
+        checker_results_summary = []
+        platform_owner_repo = self._get_platform_owner_repo_from_data_dir()
+        
+        if platform_owner_repo:
+            platform, owner, repo = platform_owner_repo
+            print(f"[Checker] [Plugin] Platform: {platform}, Owner: {owner}, Repo: {repo}")
+            
+            list_start = time.time()
+            checker_list = self._get_checker_list()
+            list_elapsed = time.time() - list_start
+            print(f"[Checker] [Plugin] _get_checker_list() returned {len(checker_list)} checkers in {list_elapsed:.3f}s")
+            
+            checker_keyword_map = {c.get("keyword"): c.get("id") for c in checker_list if c.get("enabled")}
+            print(f"[Checker] [Plugin] Enabled checkers: {list(checker_keyword_map.keys())}")
+            
+            # Process commits: check for /checker:xxx keywords
+            for c in commits[:50]:
+                sha = c.get("sha") or c.get("hash") or ""
+                msg = c.get("message") or c.get("commit", {}).get("message") or ""
+                keywords = self._extract_checker_keywords(msg)
+                
+                for keyword in keywords:
+                    checker_id = checker_keyword_map.get(keyword)
+                    if checker_id:
+                        result = self._run_checker(checker_id, platform, owner, repo, sha, worktree_base=self.worktree_base)
+                        if result:  # Include result even if success=False
+                            checker_results_summary.append({
+                                "checker": checker_id,
+                                "commit": sha[:8],
+                                "score": result.get("score", 0),
+                                "message": result.get("message", ""),
+                                "analysis": result.get("analysis", "") or result.get("error", ""),  # Include error if analysis is empty
+                                "details": result.get("details", []),
+                                "success": result.get("success", False),  # Include success status
+                            })
+            
+            # Force checker on checkpoint (check all commits' Python files, not just last commit)
+            if self.forced_checker_id and commits:
+                # Collect all Python files from all commits in this checkpoint
+                all_python_files = set()
+                for commit in commits:
+                    commit_files = commit.get("files", [])
+                    if isinstance(commit_files, list):
+                        for f in commit_files:
+                            if isinstance(f, dict):
+                                filename = f.get("filename", "")
+                            else:
+                                filename = str(f)
+                            if filename.endswith('.py'):
+                                all_python_files.add(filename)
+                
+                # Use the last commit SHA as the commit_sha (for API compatibility)
+                # Pass all Python files from checkpoint, or None to let checker scan entire repo
+                last_commit = commits[-1]
+                last_sha = last_commit.get("sha") or last_commit.get("hash") or ""
+                if last_sha:
+                    # Pass all Python files from checkpoint to checker
+                    # If no Python files found in commits, pass None to let checker scan entire repository
+                    python_files_list = list(all_python_files) if all_python_files else None
+                    result = self._run_checker(
+                        self.forced_checker_id, 
+                        platform, 
+                        owner, 
+                        repo, 
+                        last_sha,
+                        files=python_files_list,  # Pass all Python files from checkpoint, or None for full repo scan
+                        worktree_base=self.worktree_base
+                    )
+                    if result:  # Include result even if success=False, so frontend can display error info
+                        # Update message to indicate checkpoint scope
+                        message = result.get("message", "")
+                        if all_python_files:
+                            message = f"Checked {len(all_python_files)} Python files across {len(commits)} commits in checkpoint. {message}"
+                        else:
+                            message = f"Checked entire repository (no Python files in {len(commits)} commits). {message}"
+                        checker_results_summary.append({
+                            "checker": self.forced_checker_id,
+                            "commit": last_sha[:8],
+                            "score": result.get("score", 0),
+                            "message": message,
+                            "analysis": result.get("analysis", "") or result.get("error", ""),  # Include error if analysis is empty
+                            "details": result.get("details", []),
+                            "forced": True,
+                            "success": result.get("success", False),  # Include success status
+                        })
+        
+        checker_elapsed = time.time() - checker_start
+        print(f"[Checker] [Plugin] Checker processing completed in {checker_elapsed:.3f}s, found {len(checker_results_summary)} results")
+        
+        # Extract checker raw analysis for final result
+        checker_raw_analysis_parts: List[str] = []
+        
+        # Build checker results part
+        if checker_results_summary:
+            checker_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
+            checker_parts.append("## Code Quality Checker Results")
+            for cr in checker_results_summary:
+                forced_label = " [FORCED]" if cr.get("forced") else ""
+                success_label = " [FAILED]" if not cr.get("success", True) else ""
+                checker_parts.append(f"### {cr['checker']}{forced_label}{success_label} (commit {cr['commit']})")
+                checker_parts.append(f"Score: {cr['score']}/100")
+                checker_parts.append(f"Summary: {cr['message']}")
+                if cr.get("analysis"):
+                    checker_parts.append("")
+                    checker_parts.append("Detailed Analysis:")
+                    checker_parts.append(cr["analysis"])
+                    # Also collect raw analysis for final result
+                    checker_raw_analysis_parts.append(f"**{cr['checker']}{forced_label}{success_label}** (commit {cr['commit']}):\n{cr['analysis']}")
+                checker_parts.append("")
+            parts["checker_results"] = "\n".join(checker_parts)
+        
+        checker_raw_analysis = "\n\n".join(checker_raw_analysis_parts) if checker_raw_analysis_parts else None
+        
+        # Build commits part
+        commits_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
+        commits_parts.append("COMMITS:")
+        for c in commits[:50]:
+            sha = c.get("sha") or c.get("hash") or ""
+            msg = (c.get("message") or c.get("commit", {}).get("message") or "").split("\n")[0][:160]
+            commits_parts.append(f"\n- {sha} {msg}")
+            for f in (c.get("files") or [])[:30]:
+                if isinstance(f, dict):
+                    fn = f.get("filename") or ""
+                    patch = f.get("patch") or ""
+                    commits_parts.append(f"  * {fn}\n{patch[:4000]}")
+        parts["commits"] = "\n".join(commits_parts)
+        
+        # Build file contents part
+        if file_contents:
+            files_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
+            files_parts.append("RELEVANT FILE CONTENTS:")
+            for p, content in list(file_contents.items())[:25]:
+                files_parts.append(f"\n--- FILE: {p} ---\n{content[:12000]}")
+            parts["file_contents"] = "\n".join(files_parts)
+        
+        # Build repo structure part
+        if repo_structure:
+            repo_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
+            repo_parts.append("REPO STRUCTURE (truncated):")
+            repo_parts.append(json.dumps(repo_structure, ensure_ascii=False)[:8000])
+            parts["repo_structure"] = "\n".join(repo_parts)
+        
+        return parts, checker_raw_analysis
+
     def _build_commit_context(
         self,
         commits: List[Dict[str, Any]],
@@ -389,6 +750,88 @@ Return the same JSON format as before."""
         repo_structure: Optional[Dict[str, Any]],
     ) -> str:
         parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
+        
+        # Extract checker keywords and run checkers FIRST (before other content)
+        # This ensures checker results are not truncated when context is too long
+        import time
+        checker_start = time.time()
+        print(f"[Checker] [Plugin] Starting checker processing in _build_commit_context() at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(checker_start))}")
+        
+        checker_results_summary = []
+        platform_owner_repo = self._get_platform_owner_repo_from_data_dir()
+        
+        if platform_owner_repo:
+            platform, owner, repo = platform_owner_repo
+            print(f"[Checker] [Plugin] Platform: {platform}, Owner: {owner}, Repo: {repo}")
+            
+            list_start = time.time()
+            checker_list = self._get_checker_list()
+            list_elapsed = time.time() - list_start
+            print(f"[Checker] [Plugin] _get_checker_list() returned {len(checker_list)} checkers in {list_elapsed:.3f}s")
+            
+            checker_keyword_map = {c.get("keyword"): c.get("id") for c in checker_list if c.get("enabled")}
+            print(f"[Checker] [Plugin] Enabled checkers: {list(checker_keyword_map.keys())}")
+            
+            # Process commits: check for /checker:xxx keywords
+            for c in commits[:50]:
+                sha = c.get("sha") or c.get("hash") or ""
+                msg = c.get("message") or c.get("commit", {}).get("message") or ""
+                keywords = self._extract_checker_keywords(msg)
+                
+                for keyword in keywords:
+                    checker_id = checker_keyword_map.get(keyword)
+                    if checker_id:
+                        result = self._run_checker(checker_id, platform, owner, repo, sha, worktree_base=self.worktree_base)
+                        if result:  # Include result even if success=False
+                            checker_results_summary.append({
+                                "checker": checker_id,
+                                "commit": sha[:8],
+                                "score": result.get("score", 0),
+                                "message": result.get("message", ""),
+                                "analysis": result.get("analysis", "") or result.get("error", ""),  # Include error if analysis is empty
+                                "details": result.get("details", []),  # Function-level details
+                                "success": result.get("success", False),  # Include success status
+                            })
+            
+            # Force checker on last commit if forced_checker_id is set
+            if self.forced_checker_id and commits:
+                last_commit = commits[-1]  # Last commit in the checkpoint
+                last_sha = last_commit.get("sha") or last_commit.get("hash") or ""
+                if last_sha:
+                    result = self._run_checker(self.forced_checker_id, platform, owner, repo, last_sha, worktree_base=self.worktree_base)
+                    if result:  # Include result even if success=False
+                        checker_results_summary.append({
+                            "checker": self.forced_checker_id,
+                            "commit": last_sha[:8],
+                            "score": result.get("score", 0),
+                            "message": result.get("message", ""),
+                            "analysis": result.get("analysis", "") or result.get("error", ""),  # Include error if analysis is empty
+                            "details": result.get("details", []),  # Function-level details
+                            "success": result.get("success", False),  # Include success status
+                            "forced": True,  # Mark as forced
+                        })
+        
+        checker_elapsed = time.time() - checker_start
+        print(f"[Checker] [Plugin] Checker processing completed in {checker_elapsed:.3f}s, found {len(checker_results_summary)} results")
+        
+        # Append checker results FIRST (before other content) to prevent truncation
+        if checker_results_summary:
+            parts.append("")
+            parts.append("## Code Quality Checker Results")
+            for cr in checker_results_summary:
+                forced_label = " [FORCED]" if cr.get("forced") else ""
+                parts.append(f"### {cr['checker']}{forced_label} (commit {cr['commit']})")
+                parts.append(f"Score: {cr['score']}/100")
+                parts.append(f"Summary: {cr['message']}")
+                
+                # Include detailed analysis if available
+                if cr.get("analysis"):
+                    parts.append("")
+                    parts.append("Detailed Analysis:")
+                    parts.append(cr["analysis"])
+                
+                parts.append("")  # Empty line between checkers
+        
         if repo_structure:
             parts.append("REPO STRUCTURE (truncated):")
             parts.append(json.dumps(repo_structure, ensure_ascii=False)[:8000])
@@ -398,6 +841,7 @@ Return the same JSON format as before."""
             for p, content in list(file_contents.items())[:25]:
                 parts.append(f"\n--- FILE: {p} ---\n{content[:12000]}")
             parts.append("")
+        
         parts.append("COMMITS:")
         for c in commits[:50]:
             sha = c.get("sha") or c.get("hash") or ""
@@ -408,6 +852,7 @@ Return the same JSON format as before."""
                     fn = f.get("filename") or ""
                     patch = f.get("patch") or ""
                     parts.append(f"  * {fn}\n{patch[:4000]}")
+        
         return "\n".join(parts)
 
     def _build_chunked_context(
@@ -473,6 +918,200 @@ Return the same JSON format as before."""
             return None
         return None
 
+    def _evaluate_part_with_llm(self, part_name: str, part_context: str, username: str, chunk_idx: Optional[int] = None) -> Dict[str, Any]:
+        """Evaluate a single context part with LLM."""
+        is_chinese = self.language == "zh-CN"
+        part_label = {
+            "checker_results": "代码质量检查器结果" if is_chinese else "Code Quality Checker Results",
+            "commits": "提交记录" if is_chinese else "Commits",
+            "file_contents": "文件内容" if is_chinese else "File Contents",
+            "repo_structure": "仓库结构" if is_chinese else "Repository Structure",
+        }.get(part_name, part_name)
+        
+        print(f"[Multi-Stage] Evaluating part: {part_name} ({part_label})")
+        
+        # Build prompt for this part
+        prompt_template_tokens = 900
+        max_context_tokens = self.max_input_tokens - prompt_template_tokens
+        part_context = self._truncate_context(part_context, max_context_tokens)
+        
+        # Build previous checkpoint context if available
+        previous_scores_block = ""
+        if self.previous_checkpoint_scores:
+            prev_scores = {k: v for k, v in self.previous_checkpoint_scores.items() if k != 'reasoning'}
+            if is_chinese:
+                previous_scores_block = f"\n\n上一个评估节点的分数（基线参考）:\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\n注意：当前评估应该基于上一个节点的分数，除非有明确的负面证据，否则分数应该保持稳定或略有增长。"
+            else:
+                previous_scores_block = f"\n\nPREVIOUS CHECKPOINT SCORES (baseline reference):\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\nNOTE: Current evaluation should build on previous scores. Maintain or gradually increase scores unless clear negative evidence exists."
+        
+        # Language-specific instructions
+        if is_chinese:
+            base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的{part_label}数据，并对每个维度评分（0-100分）。'
+            mode_note = "\n注意：这是多阶段评估的一部分，请基于这部分数据给出初步评分。" if self.mode == "moderate" else ""
+            chunked_instruction = ""
+            if chunk_idx:
+                chunked_instruction = "\n分块评估：基于之前的评分和新证据更新分数。"
+            data_label = "数据"
+            dimensions_label = "评估维度"
+            return_json_instruction = "重要：必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON，格式如下："
+        else:
+            base_instruction = f'You are an expert engineering evaluator. Analyze {part_label} data from user "{username}" and score each dimension 0-100.'
+            mode_note = "\nNOTE: This is part of a multi-stage evaluation. Provide preliminary scores based on this part of the data." if self.mode == "moderate" else ""
+            chunked_instruction = ""
+            if chunk_idx:
+                chunked_instruction = "\nCHUNKED: Revise the previous assessment by incorporating new evidence."
+            data_label = "DATA"
+            dimensions_label = "DIMENSIONS"
+            return_json_instruction = "IMPORTANT: Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly in this format:"
+        
+        rubric_block = ""
+        if self.rubric_text:
+            snippet = self.rubric_text
+            if len(snippet) > 6000:
+                snippet = snippet[:6000] + "\n...[rubric truncated]..."
+            rubric_label = "评分标准" if is_chinese else "RUBRIC / STANDARD"
+            rubric_block = f"\n\n{rubric_label}:\n{snippet}\n"
+        
+        dim_lines: List[str] = []
+        i = 1
+        for k, title in self.dimensions.items():
+            guide = (self.dimension_instructions.get(k) or "").strip()
+            dim_lines.append(f"{i}. **{title} ({k})**: {guide}" if guide else f"{i}. **{title} ({k})**")
+            i += 1
+        dims_text = "\n".join(dim_lines)
+        
+        if is_chinese:
+            reasoning_example = f"基于{part_label}数据，提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。"
+            format_note = "每个维度评分范围：0-100"
+        else:
+            reasoning_example = f"Based on {part_label} data, provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**."
+            format_note = "Each dimension: score 0-100"
+        
+        fmt_example = {k: 0 for k in self.dimensions.keys()}
+        fmt_example["reasoning"] = reasoning_example
+        fmt_text = json.dumps(fmt_example, ensure_ascii=False, indent=2)
+        fmt_text_with_note = f"{format_note}\n\n{fmt_text}"
+        
+        prompt = (
+            f'{base_instruction}'
+            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}\n\n{data_label}:\n{part_context}\n\n{dimensions_label}:\n{dims_text}\n\n"
+            f"{return_json_instruction}\n{fmt_text_with_note}"
+        )
+        
+        # Call LLM
+        models_to_try = [self.model] + (self.fallback_models or [])
+        for m in models_to_try:
+            try:
+                resp = self._http_client.post(
+                    self.api_url,
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": m,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.3,
+                        "max_tokens": 4000,
+                    },
+                )
+                
+                if not resp.is_success:
+                    continue
+                
+                data = resp.json()
+                if "choices" not in data or not data["choices"]:
+                    continue
+                
+                content = data["choices"][0]["message"]["content"]
+                print(f"[Multi-Stage] Part {part_name} response received ({len(content)} chars)")
+                result = self._parse_llm_response_with_retry(content, prompt, m)
+                result["_part_name"] = part_name  # Mark which part this result came from
+                return result
+            except Exception as e:
+                print(f"[Multi-Stage] Error evaluating part {part_name}: {e}")
+                continue
+        
+        # Fallback if all models fail
+        fallback = self._get_fallback_evaluation()
+        fallback["_part_name"] = part_name
+        return fallback
+    
+    def _merge_partial_evaluations(self, partial_results: List[Dict[str, Any]], username: str, checker_raw_analysis: Optional[str] = None) -> Dict[str, Any]:
+        """Merge multiple partial evaluation results into final scores using weighted average."""
+        if not partial_results:
+            return self._get_fallback_evaluation()
+        
+        is_chinese = self.language == "zh-CN"
+        
+        # Weight different parts differently (checker results are more important)
+        part_weights = {
+            "checker_results": 2.0,  # Checker results are most important
+            "commits": 1.5,           # Commits are important
+            "file_contents": 1.0,     # File contents provide context
+            "repo_structure": 0.5,    # Repo structure is less important
+        }
+        
+        # Collect all scores with weights
+        weighted_scores: Dict[str, List[tuple]] = {}  # List of (score, weight) tuples
+        all_reasonings: List[str] = []
+        part_names: List[str] = []  # Track which parts contributed
+        
+        for idx, result in enumerate(partial_results):
+            # Try to identify which part this result came from (if available)
+            part_name = "unknown"
+            if hasattr(result, 'get') and isinstance(result, dict):
+                part_name = result.get("_part_name", "unknown")
+            
+            weight = part_weights.get(part_name, 1.0)
+            
+            for dim in self.dimensions.keys():
+                if dim not in weighted_scores:
+                    weighted_scores[dim] = []
+                score = result.get(dim, 0)
+                if isinstance(score, (int, float)) and score > 0:
+                    weighted_scores[dim].append((int(score), weight))
+            
+            if "reasoning" in result:
+                part_label = {
+                    "checker_results": "代码质量检查器" if is_chinese else "Code Quality Checker",
+                    "commits": "提交记录" if is_chinese else "Commits",
+                    "file_contents": "文件内容" if is_chinese else "File Contents",
+                    "repo_structure": "仓库结构" if is_chinese else "Repository Structure",
+                }.get(part_name, part_name)
+                all_reasonings.append(f"**{part_label}**: {result['reasoning']}")
+        
+        # Calculate weighted average scores
+        final_scores: Dict[str, Any] = {}
+        for dim in self.dimensions.keys():
+            if dim in weighted_scores and weighted_scores[dim]:
+                total_weighted_score = sum(score * weight for score, weight in weighted_scores[dim])
+                total_weight = sum(weight for _, weight in weighted_scores[dim])
+                if total_weight > 0:
+                    final_scores[dim] = int(total_weighted_score / total_weight)
+                else:
+                    final_scores[dim] = 0
+            else:
+                final_scores[dim] = 0
+        
+        # Merge reasoning with clear sections
+        reasoning_parts: List[str] = []
+        
+        # Add checker raw analysis first if available (this is the actual checker output)
+        if checker_raw_analysis:
+            checker_label = "代码质量检查器原始分析" if is_chinese else "Code Quality Checker Raw Analysis"
+            reasoning_parts.append(f"**{checker_label}**:\n\n{checker_raw_analysis}")
+        
+        # Add LLM evaluations from each part
+        if all_reasonings:
+            reasoning_parts.extend(all_reasonings)
+        
+        if reasoning_parts:
+            merged_reasoning = "\n\n".join(reasoning_parts)
+            final_scores["reasoning"] = merged_reasoning
+        else:
+            final_scores["reasoning"] = "Multi-stage evaluation completed." if not is_chinese else "多阶段评估完成。"
+        
+        print(f"[Multi-Stage] Merged {len(partial_results)} partial evaluations into final scores")
+        return final_scores
+    
     def _evaluate_with_llm(self, context: str, username: str, chunk_idx: Optional[int] = None) -> Dict[str, Any]:
         allow_fallback = str(os.getenv("OSCANNER_ALLOW_FALLBACK") or "").strip().lower() in ("1", "true", "yes", "y")
         if not self.api_key:
@@ -489,22 +1128,22 @@ Return the same JSON format as before."""
         for m in models_to_try:
             try:
                 print(f"[LLM] Calling {m} at {self.api_url}")
-                print(f"[DEBUG] Request config: temperature=0.3, max_tokens=1500")
+                print(f"[DEBUG] Request config: temperature=0.3, max_tokens=4000")
 
-                resp = requests.post(
+                resp = self._http_client.post(
                     self.api_url,
                     headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
                     json={
                         "model": m,
                         "messages": [{"role": "user", "content": prompt}],
                         "temperature": 0.3,
-                        "max_tokens": 1500,
+                        "max_tokens": 4000,
                     },
-                    timeout=90,
                 )
                 print(f"[DEBUG] API response status: {resp.status_code}")
 
-                if not resp.ok:
+                # httpx uses is_success instead of ok
+                if not resp.is_success:
                     last_err = f"{resp.status_code} {resp.text[:200]}"
                     print(f"[ERROR] LLM API returned error: {last_err}")
                     continue
@@ -519,7 +1158,7 @@ Return the same JSON format as before."""
 
                 content = data["choices"][0]["message"]["content"]
                 print(f"[LLM] Response received ({len(content)} chars), parsing...")
-                return self._parse_llm_response(content)
+                return self._parse_llm_response_with_retry(content, prompt, m)
 
             except KeyError as e:
                 last_err = f"KeyError accessing response structure: {e}"
@@ -608,9 +1247,11 @@ Return the same JSON format as before."""
         if is_chinese:
             reasoning_example = "使用评分标准。提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。"
             format_note = "每个维度评分范围：0-100"
+            json_instruction = "重要：必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON，格式如下："
         else:
             reasoning_example = "Use the rubric. Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**."
             format_note = "Each dimension: score 0-100"
+            json_instruction = "IMPORTANT: Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly in this format:"
 
         # Create proper valid JSON example
         fmt_example = {k: 0 for k in self.dimensions.keys()}
@@ -621,8 +1262,81 @@ Return the same JSON format as before."""
         return (
             f'{base_instruction}'
             f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
-            f"{return_json_instruction}:\n{fmt_text_with_note}"
+            f"{json_instruction}\n{fmt_text_with_note}"
         )
+
+    def _parse_llm_response_with_retry(self, content: str, original_prompt: str, model: str, retry_count: int = 0) -> Dict[str, Any]:
+        """Parse LLM response with retry mechanism if parsing fails."""
+        max_retries = 1  # Only retry once to avoid infinite loops
+        
+        try:
+            return self._parse_llm_response(content)
+        except Exception as parse_error:
+            error_msg = str(parse_error)
+            print(f"[ERROR] Failed to parse LLM response: {error_msg}")
+            
+            if retry_count >= max_retries:
+                print(f"[ERROR] Max retries ({max_retries}) reached, using fallback")
+                return self._get_fallback_evaluation()
+            
+            # Build retry prompt with original prompt and error information
+            is_chinese = self.language == "zh-CN"
+            # Show more content for better debugging (up to 1000 chars)
+            content_preview = content[:1000] + ("..." if len(content) > 1000 else "")
+            
+            if is_chinese:
+                retry_instruction = f"""\n\n[重要] 你之前的回复格式不正确，无法解析为JSON。
+
+错误信息：{error_msg}
+
+你之前的回复（前1000字符）：
+{content_preview}
+
+请重新返回正确的JSON格式。必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON。"""
+            else:
+                retry_instruction = f"""\n\n[IMPORTANT] Your previous response format was incorrect and could not be parsed as JSON.
+
+Error: {error_msg}
+
+Your previous response (first 1000 chars):
+{content_preview}
+
+Please return the correct JSON format again. Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly."""
+            
+            retry_prompt = original_prompt + retry_instruction
+            
+            print(f"[RETRY] Attempting to retry LLM call (attempt {retry_count + 1}/{max_retries + 1})")
+            print(f"[DEBUG] Retry prompt length: {len(retry_prompt)} chars")
+            
+            try:
+                resp = self._http_client.post(
+                    self.api_url,
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": model,
+                        "messages": [{"role": "user", "content": retry_prompt}],
+                        "temperature": 0.3,
+                        "max_tokens": 4000,
+                    },
+                )
+                
+                # httpx uses is_success instead of ok
+                if not resp.is_success:
+                    print(f"[ERROR] Retry LLM API returned error: {resp.status_code} {resp.text[:200]}")
+                    return self._get_fallback_evaluation()
+                
+                retry_data = resp.json()
+                if "choices" not in retry_data or not retry_data["choices"]:
+                    print(f"[ERROR] No choices in retry API response")
+                    return self._get_fallback_evaluation()
+                
+                retry_content = retry_data["choices"][0]["message"]["content"]
+                print(f"[LLM] Retry response received ({len(retry_content)} chars), parsing...")
+                return self._parse_llm_response_with_retry(retry_content, original_prompt, model, retry_count + 1)
+                
+            except Exception as retry_error:
+                print(f"[ERROR] Retry LLM call failed: {retry_error}")
+                return self._get_fallback_evaluation()
 
     def _parse_llm_response(self, content: str) -> Dict[str, Any]:
         try:
@@ -631,18 +1345,52 @@ Return the same JSON format as before."""
             print(f"[DEBUG] Response start: {content[:200]}")
             print(f"[DEBUG] Response end: {content[-200:]}")
 
-            start = content.find("{")
-            end = content.rfind("}") + 1
+            # Try to extract JSON from markdown code blocks first
+            import re
+            json_str = None
+            
+            # Check for markdown code blocks (```json ... ``` or ``` ... ```)
+            code_block_pattern = r'```(?:json)?\s*\n?(.*?)```'
+            code_block_matches = re.findall(code_block_pattern, content, re.DOTALL)
+            if code_block_matches:
+                # Try each code block match
+                for match in code_block_matches:
+                    stripped = match.strip()
+                    if stripped.startswith('{') and stripped.endswith('}'):
+                        try:
+                            json.loads(stripped)  # Validate it's valid JSON
+                            json_str = stripped
+                            print(f"[DEBUG] Found JSON in markdown code block")
+                            break
+                        except json.JSONDecodeError:
+                            continue
+            
+            # If no code block found, try to extract JSON directly
+            if not json_str:
+                start = content.find("{")
+                if start < 0:
+                    print("[ERROR] No opening brace '{' found in LLM response")
+                    raise ValueError("No JSON object found in response")
+                
+                # Find the matching closing brace by counting braces
+                brace_count = 0
+                end = start
+                for i in range(start, len(content)):
+                    if content[i] == '{':
+                        brace_count += 1
+                    elif content[i] == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end = i + 1
+                            break
+                
+                if brace_count != 0:
+                    print(f"[ERROR] Unmatched braces: found opening at {start} but no matching closing brace")
+                    raise ValueError("Invalid JSON object boundaries - unmatched braces")
+                
+                json_str = content[start:end]
+                print(f"[DEBUG] Extracted JSON from position {start} to {end}")
 
-            # Debug JSON extraction
-            if start < 0:
-                print("[ERROR] No opening brace '{' found in LLM response")
-                raise ValueError("No JSON object found in response")
-            if end <= start:
-                print(f"[ERROR] Invalid JSON boundaries: start={start}, end={end}")
-                raise ValueError("Invalid JSON object boundaries")
-
-            json_str = content[start:end]
             print(f"[DEBUG] Extracted JSON length: {len(json_str)} chars")
             print(f"[DEBUG] Extracted JSON: {json_str[:300]}...")
 
@@ -667,12 +1415,18 @@ Return the same JSON format as before."""
             return out
         except json.JSONDecodeError as e:
             print(f"[ERROR] JSON parsing failed: {e}")
-            print(f"[ERROR] JSON string attempted: {content[start:end][:1000]}")
+            if 'json_str' in locals():
+                print(f"[ERROR] JSON string attempted: {json_str[:1000]}")
+            # Re-raise to trigger retry mechanism
+            raise ValueError(f"JSON parsing failed: {e}")
         except Exception as e:
             print(f"[ERROR] Failed to parse LLM response: {e}")
             print(f"[ERROR] LLM response content: {content[:1000]}")
+            # Re-raise to trigger retry mechanism
+            raise
 
-        # Fallback with reasoning
+    def _get_fallback_evaluation(self) -> Dict[str, Any]:
+        """Get fallback evaluation with default scores."""
         print("[FALLBACK] Using default scores due to parsing failure")
         fallback = {k: 50 for k in self.dimensions.keys()}
         fallback["reasoning"] = "**Error:** LLM response parsing failed. Using default scores."

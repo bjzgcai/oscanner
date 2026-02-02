@@ -88,7 +88,7 @@ export default function ValidationRunner({
     <div>
       <Card title={t('validation.run.title')} style={{ marginBottom: 16 }}>
         <Alert
-          message={t('validation.run.info')}
+          title={t('validation.run.info')}
           description={t('validation.run.info_desc')}
           type="info"
           showIcon

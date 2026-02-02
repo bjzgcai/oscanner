@@ -285,7 +285,7 @@ export default function SingleRepoAnalysis() {
 
       {repoError && (
         <Alert
-          message={t('single.error.title')}
+          title={t('single.error.title')}
           description={repoError}
           type="error"
           closable
