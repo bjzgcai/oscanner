@@ -1,0 +1,11 @@
+# Checker List Configuration
+# This file defines all available checkers that can be invoked via /checker:xxx in commit messages
+
+checkers:
+  - id: ccn
+    name: Cyclomatic Complexity Checker
+    keyword: ccn
+    description: Check cyclomatic complexity of functions (threshold: 20)
+    entry: checker.py
+    version: 1.0.0
+    enabled: true
