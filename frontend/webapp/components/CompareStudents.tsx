@@ -192,11 +192,142 @@ export default function CompareStudents() {
     }
   };
 
-  // Mock runner data - returns 100 for testing
+  // Parse SSE stream and extract final score
+  const parseSSEStream = async (response: Response): Promise<number> => {
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const eventData = JSON.parse(line.slice(6));
+              if (eventData.event === 'status' && eventData.data?.status === 'completed') {
+                return eventData.data.results?.score || 0;
+              }
+              if (eventData.event === 'progress') {
+                console.log(`[Runner Progress] ${eventData.data.message}`);
+              }
+            } catch (e) {
+              // Skip malformed JSON
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    return 0; // No score found
+  };
+
+  // Fetch runner data - runs repository tests and returns score
   const fetchRunnerData = async (repoUrl: string): Promise<number> => {
-    const score = 100;
-    console.log(`[Runner] ${repoUrl} score:`, score);
-    return score;
+    try {
+      const apiBase = getApiBaseUrl();
+      console.log(`[Runner] Starting test execution for ${repoUrl}`);
+
+      // Step 1: Clone repository
+      console.log('[Runner] Step 1/3: Cloning repository...');
+      const cloneResponse = await fetch(`${apiBase}/api/runner/clone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo_url: repoUrl })
+      });
+
+      if (!cloneResponse.ok) {
+        console.error(`[Runner] Clone failed: ${cloneResponse.statusText}`);
+        return 0;
+      }
+
+      const cloneData = await cloneResponse.json();
+      const { clone_path } = cloneData;
+      console.log(`[Runner] Cloned to: ${clone_path}`);
+
+      // Step 2: Explore repository (generates REPO_OVERVIEW.md)
+      console.log('[Runner] Step 2/3: Exploring repository...');
+      const exploreResponse = await fetch(`${apiBase}/api/runner/explore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clone_path })
+      });
+
+      if (!exploreResponse.ok) {
+        console.error(`[Runner] Explore failed: ${exploreResponse.statusText}`);
+        return 0;
+      }
+
+      // Wait for exploration to complete (SSE stream)
+      let overviewPath = '';
+      const exploreReader = exploreResponse.body?.getReader();
+      if (exploreReader) {
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        try {
+          while (true) {
+            const { done, value } = await exploreReader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const eventData = JSON.parse(line.slice(6));
+                  if (eventData.event === 'status' && eventData.data?.status === 'completed') {
+                    overviewPath = eventData.data.overview_path;
+                  }
+                } catch (e) {
+                  // Skip malformed JSON
+                }
+              }
+            }
+          }
+        } finally {
+          exploreReader.releaseLock();
+        }
+      }
+
+      console.log(`[Runner] Overview generated: ${overviewPath}`);
+
+      // Step 3: Run tests (SSE stream with final score)
+      console.log('[Runner] Step 3/3: Running tests...');
+      const runTestsResponse = await fetch(`${apiBase}/api/runner/run-tests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clone_path, overview_path: overviewPath })
+      });
+
+      if (!runTestsResponse.ok) {
+        console.error(`[Runner] Run tests failed: ${runTestsResponse.statusText}`);
+        return 0;
+      }
+
+      // Parse SSE stream to get final score
+      const score = await parseSSEStream(runTestsResponse);
+      console.log(`[Runner] ${repoUrl} final score: ${score}`);
+      return score;
+
+    } catch (err) {
+      console.error(`[Runner] Failed to fetch runner data for ${repoUrl}:`, err);
+      return 0;
+    }
   };
 
   // Fetch PQ data
