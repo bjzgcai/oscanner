@@ -16,7 +16,7 @@
 - **CLI**：`cli/`（统一命令行入口）
 - **依赖管理**：推荐使用 `uv`（`pyproject.toml` + `uv.lock`）
 
-> 📖 **详细架构说明**：请查看 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+> 📖 **详细架构说明**：请查看 [docs/01_architecture.md](docs/01_architecture.md)
 
 ## 评估标准 (Evaluation Standards)
 
@@ -532,7 +532,7 @@ render: (author, record) => {
 └── docs/                       # 文档目录
 ```
 
-> 📖 **详细架构说明**：请查看 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+> 📖 **详细架构说明**：请查看 [docs/01_architecture.md](docs/01_architecture.md)
 
 ## 贡献指南
 

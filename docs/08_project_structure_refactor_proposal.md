@@ -223,12 +223,12 @@ mv *.md docs/  # 除了 README.md
 #### 5. 更新文档
 
 - `README.md` - 更新项目结构说明
-- `docs/ARCHITECTURE.md` - 新增架构文档
+- `docs/01_architecture.md` - 新增架构文档
 - 各服务的 `README.md` - 更新路径说明
 
 ## 目录结构说明文档模板
 
-### ARCHITECTURE.md
+### 01_architecture.md
 
 ```markdown
 # 项目架构说明
@@ -321,7 +321,7 @@ cli/oscanner
 ## 实施建议
 
 ### 阶段 1：文档先行（1-2 天）
-1. 创建 `docs/ARCHITECTURE.md`
+1. 创建 `docs/01_architecture.md`
 2. 更新各服务的 `README.md`
 3. 在主 `README.md` 中添加结构说明
 
