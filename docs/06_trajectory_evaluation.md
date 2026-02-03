@@ -97,7 +97,7 @@ The LLM is guided to:
    - Significant increases require clear evidence of new capabilities
 
 ### Evaluation Node Requirements
-According to `docs/refactor_eval.md`:
+According to `docs/03_evaluation_architecture.md`:
 - **Period**: 2-week cycles starting from repository start date
 - **Minimum commits**: 10 commits per evaluation node
 - **Accumulation**: If a period has < 10 commits, accumulate to next period

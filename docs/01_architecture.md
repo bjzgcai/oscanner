@@ -59,7 +59,8 @@ oscanner/
 │   └── ...
 │
 └── docs/                       # 文档目录
-    ├── ARCHITECTURE.md        # 本文件
+    ├── 01_architecture.md     # 本文件
+    ├── 02_directory_structure.md  # 目录结构设计指南
     └── ...
 ```
 
@@ -289,6 +290,8 @@ A:
 ## 相关文档
 
 - [README.md](../README.md) - 项目主文档
+- [02_directory_structure.md](02_directory_structure.md) - 项目目录结构设计指南
+- [03_evaluation_architecture.md](03_evaluation_architecture.md) - 评估功能架构
 - [backend/evaluator/README.md](../backend/evaluator/README.md) - 评估服务文档
 - [backend/repos_runner/README.md](../backend/repos_runner/README.md) - 仓库测试服务文档
 - [frontend/webapp/README.md](../frontend/webapp/README.md) - 前端应用文档
