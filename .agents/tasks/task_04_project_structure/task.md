@@ -44,7 +44,7 @@
 
 #### 4. 文档更新（资源说明）
 - 更新主 `README.md` 中的目录结构说明
-- 创建 `docs/ARCHITECTURE.md` 详细架构文档
+- 创建 `docs/01_architecture.md` 详细架构文档
 - 更新各服务的 `README.md` 路径说明
 - 更新 `pyproject.toml` 中的包路径
 
@@ -112,7 +112,7 @@ oscanner/
 │   └── ...
 │
 └── docs/                       # 文档目录
-    ├── ARCHITECTURE.md         # 架构说明
+    ├── 01_architecture.md      # 架构说明
     ├── API.md                  # API 文档
     └── ...
 ```

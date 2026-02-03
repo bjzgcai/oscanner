@@ -51,7 +51,7 @@
 
 **文档**：
 - ✅ `README.md` - 更新目录结构说明
-- ✅ `docs/ARCHITECTURE.md` - 创建详细的架构文档
+- ✅ `docs/01_architecture.md` - 创建详细的架构文档
 
 ## 新的目录结构
 
@@ -174,6 +174,6 @@ cd frontend/webapp && npm run dev
 
 ## 相关文档
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - 详细架构说明
+- [01_architecture.md](01_architecture.md) - 详细架构说明
 - [README.md](../README.md) - 项目主文档
-- [.ai/task/task_04_project_structure/task.md](../.ai/task/task_04_project_structure/task.md) - 重构任务文档
+- [.agents/tasks/task_04_project_structure/task.md](../.agents/tasks/task_04_project_structure/task.md) - 重构任务文档
