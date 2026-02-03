@@ -113,7 +113,7 @@ For repositories with many commits (100+), parallel mode provides significant sp
 
 ## Files Created
 
-1. `docs/parallel_chunking.md` - Complete documentation
+1. `docs/04_parallel_chunking.md` - Complete documentation
 2. ~~`examples/parallel_chunking_demo.py`~~ - Demo script (已移除)
 
 ## Monitoring Output
