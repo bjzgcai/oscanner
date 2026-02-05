@@ -446,20 +446,18 @@ export const zhCN: Messages = {
   // Compare Students
   'nav.compare_students': '千帆竞发',
   'compare_students.title': '比较学生',
-  'compare_students.description': '输入学生信息，比较多个学生在轨迹、测试和 PQ 活动中的表现。',
+  'compare_students.description': '输入学生信息，比较多个学生在轨迹、测试和 PQ 活动中的表现。URL 可以为空数组以跳过轨迹和测试分析。',
   'compare_students.input_label': '学生信息（JSON 格式）',
   'compare_students.input_placeholder': `{
   "students": [
     {
-      "id": "student_1",
-      "name": "张三",
+      "username": "张三",
       "url": ["https://github.com/user1/repo1"],
       "pq_id": "JUFV4ZFT"
     },
     {
-      "id": "student_2",
-      "name": "李四",
-      "url": ["https://github.com/user2/repo2"],
+      "username": "李四",
+      "url": [],
       "pq_id": "ABC12345"
     }
   ]
@@ -474,6 +472,7 @@ export const zhCN: Messages = {
   'compare_students.xaxis': '检查点',
   'compare_students.yaxis': '综合得分（轨迹 + 测试 + PQ）',
   'compare_students.checkpoint': '检查点',
+  'compare_students.display_checkpoints': '显示检查点数',
 };
 
 

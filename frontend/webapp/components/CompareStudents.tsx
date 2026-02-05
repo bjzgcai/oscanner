@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, Input, Button, Space, Alert, Spin, Typography, message } from 'antd';
+import { Card, Input, Button, Space, Alert, Spin, Typography, message, InputNumber } from 'antd';
 import { LineChartOutlined, LoadingOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { useI18n } from './I18nContext';
@@ -11,10 +11,9 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 interface Student {
-  id: string;
   username: string;
   url: string[];
-  pq_id: string;
+  pq_id?: string;
 }
 
 interface StudentsInput {
@@ -44,7 +43,6 @@ interface PQActivity {
 }
 
 interface StudentData {
-  id: string;
   name: string;
   trajectoryScores: number[];
   runnerScores: number[];
@@ -60,10 +58,13 @@ export default function CompareStudents() {
   const [jsonInput, setJsonInput] = useState(`{
   "students": [
     {
-      "id": "student_1",
       "username": "lexicalmathical",
       "url": ["https://github.com/shuxueshuxue/ink-and-memory"],
       "pq_id": "JUFV4ZFT"
+    },
+    {
+      "username": "example_student",
+      "url": []
     }
   ]
 }`);
@@ -71,6 +72,7 @@ export default function CompareStudents() {
   const [error, setError] = useState<string | null>(null);
   const [studentsData, setStudentsData] = useState<StudentData[]>([]);
   const [maxCheckpoints, setMaxCheckpoints] = useState(0);
+  const [displayCheckpoints, setDisplayCheckpoints] = useState<number | null>(null);
 
   // Validate JSON input
   const validateJSON = (input: string): StudentsInput | null => {
@@ -82,17 +84,14 @@ export default function CompareStudents() {
       }
 
       for (const student of parsed.students) {
-        if (!student.id || typeof student.id !== 'string') {
-          throw new Error('Each student must have a valid "id" string');
-        }
         if (!student.username || typeof student.username !== 'string') {
           throw new Error('Each student must have a valid "username" string');
         }
-        if (!student.url || !Array.isArray(student.url) || student.url.length === 0) {
-          throw new Error('Each student must have a "url" array with at least one URL');
+        if (!student.url || !Array.isArray(student.url)) {
+          throw new Error('Each student must have a "url" array (can be empty)');
         }
-        if (!student.pq_id || typeof student.pq_id !== 'string') {
-          throw new Error('Each student must have a valid "pq_id" string');
+        if (student.pq_id !== undefined && typeof student.pq_id !== 'string') {
+          throw new Error('If provided, "pq_id" must be a valid string');
         }
       }
 
@@ -152,7 +151,7 @@ export default function CompareStudents() {
   const fetchTrajectoryData = async (repoUrl: string, author: string): Promise<number[]> => {
     try {
       const apiBase = getApiBaseUrl();
-      const url = `${apiBase}/api/trajectory/analyze?plugin=zgc_simple&model=anthropic/claude-sonnet-4.5&use_cache=true`;
+      const url = `${apiBase}/api/trajectory/analyze?plugin=zgc_simple&model=anthropic/claude-sonnet-4.5&use_cache=true&checkpoint_strategy=none`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -184,8 +183,11 @@ export default function CompareStudents() {
         );
         return scores.length > 0 ? calculateAverage(scores) : 0;
       });
-      console.log(`[Trajectory] ${author} scores:`, trajectoryScores);
-      return trajectoryScores;
+
+      // Insert starting point [0] at the beginning
+      const scoresWithStartPoint = [0, ...trajectoryScores];
+      console.log(`[Trajectory] ${author} scores (with start point):`, scoresWithStartPoint);
+      return scoresWithStartPoint;
     } catch (err) {
       console.error(`Failed to fetch trajectory for ${author}:`, err);
       return [];
@@ -236,6 +238,11 @@ export default function CompareStudents() {
 
   // Fetch runner data - runs repository tests and returns score
   const fetchRunnerData = async (repoUrl: string): Promise<number> => {
+    // TEMPORARY: Skip runner API calls and return hardcoded value
+    console.log(`[Runner] Skipping API calls for ${repoUrl}, returning hardcoded score: 0`);
+    return 0;
+
+    /* COMMENTED OUT - Original implementation
     try {
       const apiBase = getApiBaseUrl();
       console.log(`[Runner] Starting test execution for ${repoUrl}`);
@@ -328,6 +335,7 @@ export default function CompareStudents() {
       console.error(`[Runner] Failed to fetch runner data for ${repoUrl}:`, err);
       return 0;
     }
+    */
   };
 
   // Fetch PQ data
@@ -356,10 +364,20 @@ export default function CompareStudents() {
       }
 
       const activities: PQActivity[] = result.data.activities;
-      const pqScores = activities.map(activity =>
-        calculatePQScore(activity.ranking_position, activity.total_participants)
-      );
-      console.log(`[PQ] ${pqId} scores:`, pqScores);
+
+      // Start with [0] point and skip activities[0], use activities[1] onwards
+      const pqScores = [0]; // Starting point with score 0
+
+      // Skip first activity (activities[0]) and use activities[1] onwards
+      if (activities.length > 1) {
+        for (let i = 1; i < activities.length; i++) {
+          pqScores.push(
+            calculatePQScore(activities[i].ranking_position, activities[i].total_participants)
+          );
+        }
+      }
+
+      console.log(`[PQ] ${pqId} scores (with start point):`, pqScores);
       return pqScores;
     } catch (err) {
       console.error(`Failed to fetch PQ data for ${pqId}:`, err);
@@ -384,26 +402,39 @@ export default function CompareStudents() {
       for (const student of validated.students) {
         message.info(`Fetching data for ${student.username}...`);
 
-        // For simplicity, use first URL
-        const repoUrl = student.url[0];
-
-        // Extract author name from repo or use student username
+        // Check if URL array is empty
+        const hasUrl = student.url && student.url.length > 0;
+        const repoUrl = hasUrl ? student.url[0] : '';
         const author = student.username;
 
-        // Fetch all three data sources (runner is mocked)
-        const [trajectoryScores, runnerScore, pqScores] = await Promise.all([
-          fetchTrajectoryData(repoUrl, author),
-          fetchRunnerData(repoUrl),
-          fetchPQData(student.pq_id)
-        ]);
+        // Skip trajectory and runner API calls if URL is empty
+        let trajectoryScores: number[] = [];
+        let runnerScore: number = 0;
+
+        if (hasUrl) {
+          // Fetch trajectory and runner data only if URL exists
+          [trajectoryScores, runnerScore] = await Promise.all([
+            fetchTrajectoryData(repoUrl, author),
+            fetchRunnerData(repoUrl)
+          ]);
+        } else {
+          console.log(`[Compare] Skipping trajectory and runner for ${student.username} (no URL)`);
+        }
+
+        // Fetch PQ data only if pq_id is provided
+        let pqScores: number[] = [];
+        if (student.pq_id) {
+          pqScores = await fetchPQData(student.pq_id);
+        } else {
+          console.log(`[Compare] Skipping PQ data for ${student.username} (no pq_id)`);
+        }
 
         maxLen = Math.max(maxLen, trajectoryScores.length, pqScores.length, 1);
 
         allStudentsData.push({
-          id: student.id,
           name: student.username,
           trajectoryScores,
-          runnerScores: [runnerScore],
+          runnerScores: [0, runnerScore], // Start with 0
           pqScores,
           combinedScores: []
         });
@@ -464,7 +495,11 @@ export default function CompareStudents() {
   const getChartOption = () => {
     if (studentsData.length === 0) return {};
 
-    const xAxisData = Array.from({ length: maxCheckpoints }, (_, i) => `${i + 1}`);
+    // displayCheckpoints represents number of data points (excluding start point)
+    // Total points to show = displayCheckpoints + 1 (including start point)
+    const dataPointsToShow = displayCheckpoints ?? (maxCheckpoints > 0 ? maxCheckpoints - 1 : 0);
+    const totalPoints = dataPointsToShow + 1;
+    const xAxisData = Array.from({ length: totalPoints }, (_, i) => `${i + 1}`);
 
     return {
       title: {
@@ -504,7 +539,7 @@ export default function CompareStudents() {
         name: student.name,
         type: 'line',
         smooth: true,
-        data: student.combinedScores,
+        data: student.combinedScores.slice(0, totalPoints),
         emphasis: {
           focus: 'series'
         }
@@ -516,6 +551,23 @@ export default function CompareStudents() {
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       <Title level={2}>{t('compare_students.title')}</Title>
       <Text type="secondary">{t('compare_students.description')}</Text>
+
+      {/* Display Checkpoints Control */}
+
+        <Card style={{ marginTop: '24px', marginBottom: '24px' }}>
+          <Space>
+            <Text strong>{t('compare_students.display_checkpoints')}:</Text>
+            <InputNumber
+              min={1}
+              max={Math.max(1, maxCheckpoints - 1)}
+              value={displayCheckpoints ?? Math.max(1, maxCheckpoints - 1)}
+              onChange={(value) => setDisplayCheckpoints(value)}
+              placeholder={`Max: ${Math.max(1, maxCheckpoints - 1)}`}
+              style={{ width: 120 }}
+            />
+            <Text type="secondary">(Total points: {(displayCheckpoints ?? Math.max(1, maxCheckpoints - 1)) + 1})</Text>
+          </Space>
+        </Card>
 
       {/* Input Form */}
       <Card style={{ marginTop: '24px', marginBottom: '24px' }}>
