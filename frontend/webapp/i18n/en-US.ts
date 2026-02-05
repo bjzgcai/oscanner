@@ -450,20 +450,18 @@ export const enUS: Messages = {
   // Compare Students
   'nav.compare_students': 'Compare Students',
   'compare_students.title': 'Compare Students',
-  'compare_students.description': 'Enter student information to compare multiple students across trajectory, tests, and PQ activities.',
+  'compare_students.description': 'Enter student information to compare multiple students across trajectory, tests, and PQ activities. URLs can be empty to skip trajectory and test analysis.',
   'compare_students.input_label': 'Student Information (JSON format)',
   'compare_students.input_placeholder': `{
   "students": [
     {
-      "id": "student_1",
       "username": "lexicalmathical",
       "url": ["https://github.com/user1/repo1"],
       "pq_id": "JUFV4ZFT"
     },
     {
-      "id": "student_2",
-      "name": "Bob",
-      "url": ["https://github.com/user2/repo2"],
+      "username": "Bob",
+      "url": [],
       "pq_id": "ABC12345"
     }
   ]
@@ -478,4 +476,5 @@ export const enUS: Messages = {
   'compare_students.xaxis': 'Checkpoint',
   'compare_students.yaxis': 'Combined Score (Trajectory + Tests + PQ)',
   'compare_students.checkpoint': 'Checkpoint',
+  'compare_students.display_checkpoints': 'Display Checkpoints',
 };

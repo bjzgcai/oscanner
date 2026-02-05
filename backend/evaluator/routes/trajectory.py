@@ -29,7 +29,8 @@ async def analyze_trajectory(
     parallel_chunking: bool = Query(True),
     max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
-    worktree_base: str = Query("build")  # 'build' or 'temp', default 'build'
+    worktree_base: str = Query("build"),  # 'build' or 'temp', default 'build'
+    checkpoint_strategy: str = Query("period")  # 'period' or 'none', default 'period'
 ) -> Dict[str, Any]:
     """
     Analyze user growth trajectory.
@@ -60,8 +61,25 @@ async def analyze_trajectory(
         if not username:
             raise HTTPException(status_code=400, detail="Missing required field: username")
 
-        if not repo_urls or not isinstance(repo_urls, list):
-            raise HTTPException(status_code=400, detail="repo_urls must be a non-empty list")
+        if not isinstance(repo_urls, list):
+            raise HTTPException(status_code=400, detail="repo_urls must be a list (can be empty)")
+
+        # If repo_urls is empty, return empty trajectory
+        if not repo_urls:
+            return {
+                "success": True,
+                "trajectory": {
+                    "username": username,
+                    "repo_urls": [],
+                    "checkpoints": [],
+                    "total_checkpoints": 0,
+                    "created_at": None,
+                    "updated_at": None
+                },
+                "new_checkpoint_created": False,
+                "message": "No repositories to analyze",
+                "commits_pending": 0
+            }
 
         # Ensure aliases includes username
         if username not in aliases:
@@ -120,7 +138,11 @@ async def analyze_trajectory(
         worktree_base_value = worktree_base.strip() if worktree_base else "build"
         if worktree_base_value not in ("build", "temp"):
             worktree_base_value = "build"  # Default to build
-        
+
+        checkpoint_strategy_value = checkpoint_strategy.strip() if checkpoint_strategy else "period"
+        if checkpoint_strategy_value not in ("period", "none"):
+            checkpoint_strategy_value = "period"  # Default to period
+
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
@@ -135,7 +157,8 @@ async def analyze_trajectory(
             parallel_chunking,
             max_parallel_workers,
             forced_checker_id,
-            worktree_base_value
+            worktree_base_value,
+            checkpoint_strategy_value
         )
 
         return response.model_dump()

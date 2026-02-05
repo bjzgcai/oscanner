@@ -917,6 +917,7 @@ def create_commit_evaluator(
     max_parallel_workers: int = 3,
     previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
     forced_checker_id: Optional[str] = None,
+    worktree_base: str = "build",
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,

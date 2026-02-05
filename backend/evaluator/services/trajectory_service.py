@@ -275,13 +275,14 @@ def create_checkpoint_evaluation(
     parallel_chunking: bool = True,
     max_parallel_workers: int = 3,
     forced_checker_id: Optional[str] = None,
-    worktree_base: str = "build"
+    worktree_base: str = "build",
+    checkpoint_strategy: str = "period"
 ) -> TrajectoryCheckpoint:
     """
-    Create a checkpoint by evaluating commits (10+ commits).
+    Create a checkpoint by evaluating commits.
 
     Args:
-        commits: List of commits (10+ commits, ordered newest first)
+        commits: List of commits (10+ commits for 'period' strategy, any count for 'none' strategy)
         username: Username being evaluated
         checkpoint_id: Sequential checkpoint ID
         plugin_id: Plugin to use for evaluation
@@ -293,11 +294,13 @@ def create_checkpoint_evaluation(
         previous_checkpoint: Previous checkpoint for comparison
         parallel_chunking: Enable parallel chunking
         max_parallel_workers: Max parallel workers
+        checkpoint_strategy: Strategy for grouping commits ('period' or 'none')
 
     Returns:
         TrajectoryCheckpoint with evaluation result
     """
-    if len(commits) < 10:
+    # Only enforce 10-commit minimum for period-based strategy
+    if checkpoint_strategy == "period" and len(commits) < 10:
         raise ValueError(f"Need at least 10 commits for checkpoint, got {len(commits)}")
 
     # Sort commits oldest to newest for analysis
@@ -792,7 +795,8 @@ def analyze_growth_trajectory(
     parallel_chunking: bool = True,
     max_parallel_workers: int = 3,
     forced_checker_id: Optional[str] = None,
-    worktree_base: str = "build"
+    worktree_base: str = "build",
+    checkpoint_strategy: str = "period"
 ) -> TrajectoryResponse:
     """
     Main orchestration function for growth trajectory analysis.
@@ -808,6 +812,9 @@ def analyze_growth_trajectory(
         use_cache: Whether to use cached trajectory
         parallel_chunking: Enable parallel chunking
         max_parallel_workers: Max parallel workers
+        checkpoint_strategy: Strategy for grouping commits ('period' or 'none')
+                           'period': Group commits by 2-week periods (default)
+                           'none': Group all commits into a single checkpoint
 
     Returns:
         TrajectoryResponse with analysis results
@@ -913,11 +920,26 @@ def analyze_growth_trajectory(
 
     # Group commits by period with accumulation logic
     accumulated_shas = trajectory.accumulation_state.accumulated_commits if trajectory.accumulation_state else []
-    checkpoint_groups, remaining_shas, _ = group_commits_by_period(
-        commits=new_commits,
-        repo_start_date=repo_start_date,
-        accumulated_shas=accumulated_shas
-    )
+
+    if checkpoint_strategy == "none":
+        # Group all commits into a single checkpoint (no minimum requirement)
+        print(f"[Trajectory] checkpoint_strategy='none': Grouping all {new_commits_count} commits into single checkpoint")
+
+        if new_commits_count > 0:
+            # All commits form a single checkpoint, regardless of count
+            checkpoint_groups = [new_commits]
+            remaining_shas = []
+        else:
+            # No commits to evaluate
+            checkpoint_groups = []
+            remaining_shas = []
+    else:
+        # Use period-based grouping (default behavior)
+        checkpoint_groups, remaining_shas, _ = group_commits_by_period(
+            commits=new_commits,
+            repo_start_date=repo_start_date,
+            accumulated_shas=accumulated_shas
+        )
 
     print(f"[Trajectory] Grouped into {len(checkpoint_groups)} checkpoint groups, {len(remaining_shas)} commits remaining")
 
@@ -939,11 +961,17 @@ def analyze_growth_trajectory(
         # Save state
         save_trajectory_cache(trajectory)
 
+        # Message depends on checkpoint strategy
+        if checkpoint_strategy == "none":
+            message = f"Found {len(remaining_shas)} commits. Waiting for new commits to analyze."
+        else:
+            message = f"Accumulated {len(remaining_shas)} commits. Need 10 commits to create checkpoint."
+
         return TrajectoryResponse(
             success=True,
             trajectory=trajectory,
             new_checkpoint_created=False,
-            message=f"Accumulated {len(remaining_shas)} commits. Need 10 commits to create checkpoint.",
+            message=message,
             commits_pending=len(remaining_shas)
         )
 
@@ -970,7 +998,8 @@ def analyze_growth_trajectory(
                 worktree_base=worktree_base,
                 parallel_chunking=parallel_chunking,
                 max_parallel_workers=max_parallel_workers,
-                forced_checker_id=forced_checker_id
+                forced_checker_id=forced_checker_id,
+                checkpoint_strategy=checkpoint_strategy
             )
 
             # Update trajectory
