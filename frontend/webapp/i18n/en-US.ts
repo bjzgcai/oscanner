@@ -446,35 +446,4 @@ export const enUS: Messages = {
   'runner.step4.total': 'Total',
   'runner.step4.run_another': 'Run Another Repository',
   'runner.progress': 'Progress',
-
-  // Compare Students
-  'nav.compare_students': 'Compare Students',
-  'compare_students.title': 'Compare Students',
-  'compare_students.description': 'Enter student information to compare multiple students across trajectory, tests, and PQ activities. URLs can be empty to skip trajectory and test analysis.',
-  'compare_students.input_label': 'Student Information (JSON format)',
-  'compare_students.input_placeholder': `{
-  "students": [
-    {
-      "username": "lexicalmathical",
-      "url": ["https://github.com/user1/repo1"],
-      "pq_id": "JUFV4ZFT"
-    },
-    {
-      "username": "Bob",
-      "url": [],
-      "pq_id": "ABC12345"
-    }
-  ]
-}`,
-  'compare_students.compare_button': 'Compare',
-  'compare_students.comparing': 'Comparing...',
-  'compare_students.error': 'Error',
-  'compare_students.loading': 'Fetching student data, please wait...',
-  'compare_students.comparison_complete': 'Comparison complete!',
-  'compare_students.results_title': 'Comparison Results',
-  'compare_students.chart_title': 'Student Combined Score Trend Comparison',
-  'compare_students.xaxis': 'Checkpoint',
-  'compare_students.yaxis': 'Combined Score (Trajectory + Tests + PQ)',
-  'compare_students.checkpoint': 'Checkpoint',
-  'compare_students.display_checkpoints': 'Display Checkpoints',
 };

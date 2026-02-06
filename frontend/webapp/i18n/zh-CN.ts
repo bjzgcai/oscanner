@@ -442,37 +442,6 @@ export const zhCN: Messages = {
   'runner.step4.total': '总数',
   'runner.step4.run_another': '运行另一个仓库',
   'runner.progress': '进度',
-
-  // Compare Students
-  'nav.compare_students': '千帆竞发',
-  'compare_students.title': '比较学生',
-  'compare_students.description': '输入学生信息，比较多个学生在轨迹、测试和 PQ 活动中的表现。URL 可以为空数组以跳过轨迹和测试分析。',
-  'compare_students.input_label': '学生信息（JSON 格式）',
-  'compare_students.input_placeholder': `{
-  "students": [
-    {
-      "username": "张三",
-      "url": ["https://github.com/user1/repo1"],
-      "pq_id": "JUFV4ZFT"
-    },
-    {
-      "username": "李四",
-      "url": [],
-      "pq_id": "ABC12345"
-    }
-  ]
-}`,
-  'compare_students.compare_button': '比较',
-  'compare_students.comparing': '比较中...',
-  'compare_students.error': '错误',
-  'compare_students.loading': '正在获取学生数据，请稍候...',
-  'compare_students.comparison_complete': '比较完成！',
-  'compare_students.results_title': '比较结果',
-  'compare_students.chart_title': '学生综合得分趋势对比',
-  'compare_students.xaxis': '检查点',
-  'compare_students.yaxis': '综合得分（轨迹 + 测试 + PQ）',
-  'compare_students.checkpoint': '检查点',
-  'compare_students.display_checkpoints': '显示检查点数',
 };
 
 
