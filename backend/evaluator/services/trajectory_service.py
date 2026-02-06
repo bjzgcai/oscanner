@@ -784,6 +784,76 @@ def build_period_metadata(
     return period_start.isoformat(), period_end_latest.isoformat(), periods_spanned
 
 
+def filter_commits_by_range(
+    commits: List[Dict[str, Any]],
+    last_commit: Optional[str] = None,
+    to_commit: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Filter commits by range (last_commit, to_commit].
+
+    Args:
+        commits: List of commits (ordered newest first)
+        last_commit: Commit hash to start from (NOT included). If None, start from first commit.
+        to_commit: Commit hash to end at (INCLUDED). If None, use latest commit.
+
+    Returns:
+        Filtered list of commits
+    """
+    if not commits:
+        return []
+
+    # If no filtering needed, return all commits
+    if not last_commit and not to_commit:
+        return commits
+
+    # Find indices of last_commit and to_commit
+    last_commit_idx = None
+    to_commit_idx = None
+
+    for idx, commit in enumerate(commits):
+        commit_sha = commit.get('sha') or commit.get('hash')
+
+        if last_commit and commit_sha == last_commit:
+            last_commit_idx = idx
+        if to_commit and commit_sha == to_commit:
+            to_commit_idx = idx
+
+    # Validate that commits were found
+    if last_commit and last_commit_idx is None:
+        print(f"[Trajectory] Warning: last_commit {last_commit} not found in commits")
+    if to_commit and to_commit_idx is None:
+        print(f"[Trajectory] Warning: to_commit {to_commit} not found in commits")
+
+    # Determine the range to extract
+    # commits are ordered newest first, so we need to slice accordingly
+    # to_commit should be at a lower index (newer)
+    # last_commit should be at a higher index (older)
+
+    # Start index (inclusive)
+    if to_commit_idx is not None:
+        start_idx = to_commit_idx
+    else:
+        start_idx = 0  # Start from newest
+
+    # End index (exclusive)
+    if last_commit_idx is not None:
+        # Exclude last_commit, so end at its index
+        end_idx = last_commit_idx
+    else:
+        end_idx = len(commits)  # Include all to the oldest
+
+    # Validate range
+    if start_idx >= end_idx:
+        print(f"[Trajectory] Warning: Invalid commit range - to_commit {to_commit} is older than last_commit {last_commit}")
+        return []
+
+    filtered = commits[start_idx:end_idx]
+    print(f"[Trajectory] Filtered commits from {len(commits)} to {len(filtered)} (last_commit={last_commit}, to_commit={to_commit})")
+
+    return filtered
+
+
 def analyze_growth_trajectory(
     username: str,
     repo_urls: List[str],
@@ -796,7 +866,10 @@ def analyze_growth_trajectory(
     max_parallel_workers: int = 3,
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
-    checkpoint_strategy: str = "period"
+    checkpoint_strategy: str = "period",
+    last_commit: Optional[str] = None,
+    to_commit: Optional[str] = None,
+    save_to_cache: bool = True
 ) -> TrajectoryResponse:
     """
     Main orchestration function for growth trajectory analysis.
@@ -815,6 +888,11 @@ def analyze_growth_trajectory(
         checkpoint_strategy: Strategy for grouping commits ('period' or 'none')
                            'period': Group commits by 2-week periods (default)
                            'none': Group all commits into a single checkpoint
+        last_commit: Optional commit hash to start from (NOT included in range)
+                    Only used when checkpoint_strategy='none'
+        to_commit: Optional commit hash to end at (INCLUDED in range)
+                  Only used when checkpoint_strategy='none'
+        save_to_cache: Whether to save trajectory to cache (default True)
 
     Returns:
         TrajectoryResponse with analysis results
@@ -880,6 +958,13 @@ def analyze_growth_trajectory(
     )
 
     print(f"[Trajectory] Found {new_commits_count} commits to evaluate (last_synced_sha: {trajectory.last_synced_sha}, use_cache={use_cache})")
+
+    # Apply commit range filtering when checkpoint_strategy is 'none'
+    if checkpoint_strategy == "none" and (last_commit or to_commit):
+        print(f"[Trajectory] Applying commit range filter (last_commit={last_commit}, to_commit={to_commit})")
+        new_commits = filter_commits_by_range(new_commits, last_commit, to_commit)
+        new_commits_count = len(new_commits)
+        print(f"[Trajectory] After filtering: {new_commits_count} commits")
 
     # Check if we have any data at all
     if new_commits_count == 0 and sync_errors:
@@ -959,7 +1044,8 @@ def analyze_growth_trajectory(
         )
 
         # Save state
-        save_trajectory_cache(trajectory)
+        if save_to_cache:
+            save_trajectory_cache(trajectory)
 
         # Message depends on checkpoint strategy
         if checkpoint_strategy == "none":
@@ -1027,7 +1113,8 @@ def analyze_growth_trajectory(
         )
 
         # Save to cache after all checkpoints created
-        save_trajectory_cache(trajectory)
+        if save_to_cache:
+            save_trajectory_cache(trajectory)
 
         pending_count = len(remaining_shas)
         if checkpoints_created == 1:
@@ -1052,7 +1139,7 @@ def analyze_growth_trajectory(
         traceback.print_exc()
 
         # Save any checkpoints that were successfully created
-        if checkpoints_created > 0:
+        if checkpoints_created > 0 and save_to_cache:
             try:
                 # Update accumulation state before saving
                 current_period_start = repo_start_date

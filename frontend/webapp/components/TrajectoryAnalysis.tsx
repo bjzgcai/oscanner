@@ -195,7 +195,7 @@ export default function TrajectoryAnalysis() {
 
     try {
       const apiBase = getApiBaseUrl();
-      
+
       // Check platform token configuration before analysis
       try {
         const checkUrl = `${apiBase}/api/config/check-platform-tokens`;
@@ -214,7 +214,7 @@ export default function TrajectoryAnalysis() {
           // Continue with analysis even if check fails (non-blocking)
         } else {
           const checkData = await checkResponse.json();
-          
+
           if (!checkData.all_configured) {
             const missing = [];
             if (checkData.missing_tokens.github) {
@@ -223,7 +223,7 @@ export default function TrajectoryAnalysis() {
             if (checkData.missing_tokens.gitee) {
               missing.push('Gitee Token');
             }
-            
+
             const errorMsg = `Missing required platform tokens: ${missing.join(', ')}. ` +
               `Please configure them in Settings (LLM Settings) before analyzing. ` +
               `Without tokens, API rate limits are very low (~60 requests/hour for GitHub, lower for Gitee).`;

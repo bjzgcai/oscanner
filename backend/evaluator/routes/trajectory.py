@@ -55,7 +55,13 @@ async def analyze_trajectory(
             raise HTTPException(status_code=400, detail="Request body must be a JSON object")
 
         username = request_body.get("username")
+
+        # Handle both repo_url (singular) and repo_urls (plural) for backwards compatibility
         repo_urls = request_body.get("repo_urls", [])
+        if not repo_urls and request_body.get("repo_url"):
+            # If repo_urls is empty but repo_url exists, use it
+            repo_urls = [request_body.get("repo_url")]
+
         aliases = request_body.get("aliases", [])
 
         if not username:
@@ -158,7 +164,10 @@ async def analyze_trajectory(
             max_parallel_workers,
             forced_checker_id,
             worktree_base_value,
-            checkpoint_strategy_value
+            checkpoint_strategy_value,
+            None,  # last_commit (not used in regular endpoint)
+            None,  # to_commit (not used in regular endpoint)
+            True  # save_to_cache=True
         )
 
         return response.model_dump()
@@ -167,6 +176,190 @@ async def analyze_trajectory(
         raise
     except Exception as e:
         print(f"[Trajectory API] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Trajectory analysis failed: {str(e)}")
+
+
+@router.post("/api/trajectory/analyze_one-off")
+async def analyze_trajectory_one_off(
+    request_body: Dict[str, Any],
+    plugin: str = Query(""),
+    model: str = Query(DEFAULT_LLM_MODEL),
+    language: str = Query("en-US"),
+    use_cache: bool = Query(False),
+    parallel_chunking: bool = Query(True),
+    max_parallel_workers: int = Query(3),
+    forced_checker: str = Query(""),
+    worktree_base: str = Query("build"),  # 'build' or 'temp', default 'build'
+    checkpoint_strategy: str = Query("none"),  # 'period' or 'none', default 'none' for one-off
+    last_commit: str = Query(""),  # Optional: commit hash to start from (not included)
+    to_commit: str = Query("")  # Optional: commit hash to end at (included)
+) -> Dict[str, Any]:
+    """
+    Analyze user growth trajectory (one-off, doesn't save to cache).
+
+    This endpoint is for external parties to call. It performs analysis for a specific
+    commit range and returns a SINGLE checkpoint (not saved to cache).
+
+    Request body format:
+    {
+        "username": "CarterWu",
+        "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+        "aliases": ["CarterWu", "wu-yanbiao"]
+    }
+
+    Query parameters:
+    - checkpoint_strategy: 'none' (default) or 'period'. Use 'none' for analyzing any commit range.
+    - last_commit: Optional commit hash to start from (NOT included in range)
+    - to_commit: Optional commit hash to end at (INCLUDED in range)
+
+    When checkpoint_strategy=none:
+    - If last_commit not provided: start from first commit (included)
+    - If to_commit not provided: use latest commit (included)
+    - No minimum commit requirement
+
+    Returns:
+    - success: bool
+    - checkpoint: TrajectoryCheckpoint (single checkpoint object, if successful)
+    - message: str
+    - commits_analyzed: int (number of commits included in the checkpoint)
+    """
+    try:
+        # Validate request body
+        if not isinstance(request_body, dict):
+            raise HTTPException(status_code=400, detail="Request body must be a JSON object")
+
+        username = request_body.get("username")
+
+        # Handle both repo_url (singular) and repo_urls (plural) for backwards compatibility
+        repo_urls = request_body.get("repo_urls", [])
+        if not repo_urls and request_body.get("repo_url"):
+            # If repo_urls is empty but repo_url exists, use it
+            repo_urls = [request_body.get("repo_url")]
+
+        aliases = request_body.get("aliases", [])
+
+        if not username:
+            raise HTTPException(status_code=400, detail="Missing required field: username")
+
+        if not isinstance(repo_urls, list):
+            raise HTTPException(status_code=400, detail="repo_urls must be a list (can be empty)")
+
+        # If repo_urls is empty, return error
+        if not repo_urls:
+            return {
+                "success": False,
+                "checkpoint": None,
+                "message": "No repositories to analyze",
+                "commits_analyzed": 0
+            }
+
+        # Ensure aliases includes username
+        if username not in aliases:
+            aliases = [username] + aliases
+
+        # Check LLM configuration before analysis
+        api_key = get_llm_api_key()
+        if not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
+            )
+
+        # Check platform token configuration before analysis
+        github_token = get_github_token()
+        gitee_token = get_gitee_token()
+        missing_platforms = []
+
+        for repo_url in repo_urls:
+            parsed = parse_repo_url(repo_url)
+            if not parsed:
+                continue  # Skip invalid URLs, they'll be handled later
+
+            platform, owner, repo = parsed
+            if platform == "github" and not github_token:
+                if "github" not in missing_platforms:
+                    missing_platforms.append("github")
+            elif platform == "gitee" and not gitee_token:
+                if "gitee" not in missing_platforms:
+                    missing_platforms.append("gitee")
+
+        if missing_platforms:
+            missing_tokens = []
+            if "github" in missing_platforms:
+                missing_tokens.append("GitHub Token (GITHUB_TOKEN)")
+            if "gitee" in missing_platforms:
+                missing_tokens.append("Gitee Token (GITEE_TOKEN)")
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required platform tokens: {', '.join(missing_tokens)}. "
+                       f"Please configure them in Settings (LLM Settings) before analyzing. "
+                       f"Without tokens, API rate limits are very low (~60 requests/hour for GitHub, lower for Gitee)."
+            )
+
+        # Resolve plugin ID
+        plugin_id = resolve_plugin_id(plugin)
+
+        print(f"[Trajectory API One-Off] Analyzing trajectory for {username}")
+        print(f"[Trajectory API One-Off] Repos: {repo_urls}")
+        print(f"[Trajectory API One-Off] Aliases: {aliases}")
+
+        # Call trajectory analysis service with save_to_cache=False
+        # Run synchronous blocking operations in thread pool to avoid blocking event loop
+        forced_checker_id = forced_checker.strip() if forced_checker else None
+        worktree_base_value = worktree_base.strip() if worktree_base else "build"
+        if worktree_base_value not in ("build", "temp"):
+            worktree_base_value = "build"  # Default to build
+
+        checkpoint_strategy_value = checkpoint_strategy.strip() if checkpoint_strategy else "none"
+        if checkpoint_strategy_value not in ("period", "none"):
+            checkpoint_strategy_value = "none"  # Default to none for one-off
+
+        last_commit_value = last_commit.strip() if last_commit else None
+        to_commit_value = to_commit.strip() if to_commit else None
+
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            analyze_growth_trajectory,
+            username,
+            repo_urls,
+            aliases,
+            plugin_id,
+            model,
+            language,
+            use_cache,
+            parallel_chunking,
+            max_parallel_workers,
+            forced_checker_id,
+            worktree_base_value,
+            checkpoint_strategy_value,
+            last_commit_value,
+            to_commit_value,
+            False  # save_to_cache=False
+        )
+
+        # Extract single checkpoint from trajectory response
+        if response.success and response.trajectory and response.trajectory.checkpoints:
+            checkpoint = response.trajectory.checkpoints[-1]  # Get the latest (or only) checkpoint
+            return {
+                "success": True,
+                "checkpoint": checkpoint.model_dump(),
+                "message": response.message,
+                "commits_analyzed": checkpoint.commits_range.commit_count
+            }
+        else:
+            return {
+                "success": False,
+                "checkpoint": None,
+                "message": response.message,
+                "commits_analyzed": 0
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Trajectory API One-Off] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Trajectory analysis failed: {str(e)}")
 
 

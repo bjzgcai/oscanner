@@ -47,6 +47,60 @@ API documentation available at: `http://localhost:8001/docs`
 
 ## API Endpoints
 
+### Quick Start: Run All Steps (Recommended)
+
+**POST** `/api/runner/run-all`
+
+This is the **simplest way** to analyze a repository. It runs all four steps (clone, explore, test) in a single API call.
+
+**Request:**
+```json
+{
+  "repo_url": "https://github.com/owner/repo"
+}
+```
+
+**Response:**
+```json
+{
+  "passed": 8,
+  "failed": 2,
+  "total": 10,
+  "score": 80,
+  "repo_name": "repo",
+  "report_path": "/home/user/.local/share/oscanner/repos/repo/TEST_REPORT.md"
+}
+```
+
+**Error Handling:**
+- Returns HTTP 503 if repos_runner service is unavailable
+- Returns HTTP 500 with detailed error message if any step fails
+- Includes which step failed (clone/explore/test) in error details
+
+**Example Usage:**
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/api/runner/run-all",
+    json={"repo_url": "https://gitee.com/zgcai/eval_test_1"},
+    timeout=600
+)
+
+if response.status_code == 200:
+    result = response.json()
+    print(f"Tests: {result['passed']}/{result['total']} passed")
+    print(f"Score: {result['score']}/100")
+```
+
+See [example_run_all_tests.py](../evaluator/example_run_all_tests.py) for a complete working example.
+
+---
+
+### Individual Steps (Advanced)
+
+For more control or real-time progress updates, use the individual endpoints:
+
 ### 1. Clone Repository
 
 **POST** `/api/runner/clone`
