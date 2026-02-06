@@ -259,7 +259,7 @@ export const zhCN: Messages = {
   'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner\nhttps://github.com/owner/repo',
   'settings.repo_urls.help': '在开始分析时将自动填充',
   'settings.username_groups.label': '作者别名（逗号分隔）',
-  'settings.username_groups.placeholder': '例如：CarterWu, wu-yanbiao, 吴炎标',
+  'settings.username_groups.placeholder': '例如：CarterWu, wu-yanbiao, 吴衍标',
   'settings.username_groups.help': '属于同一贡献者的多个名字',
   'settings.save': '保存',
   'settings.reset': '重置为默认值',

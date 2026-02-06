@@ -35,7 +35,7 @@ GitHub
 - Weighted merge with previous evaluation by commit count
 
 ### 3. Author Alias (Multi-Identity Aggregation)
-Same engineer, multiple names (e.g., "CarterWu", "wu-yanbiao", "吴炎标"):
+Same engineer, multiple names (e.g., "CarterWu", "wu-yanbiao", "吴衍标"):
 - Evaluate each alias separately → cached results (reuse existing caches)
 - Weighted average of scores by commit count
 - LLM synthesis for unified analysis text

@@ -241,7 +241,7 @@ uv run pytest --cov=evaluator --cov-report=html
 
 ### 功能说明
 
-同一个工程师可能在不同的 commit 中使用不同的名称（如 "CarterWu"、"wu-yanbiao"、"吴炎标"等）。**Author Aliases** 功能可以将这些不同名称的贡献聚合到一起进行统一评估。
+同一个工程师可能在不同的 commit 中使用不同的名称（如 "CarterWu"、"wu-yanbiao"、"吴衍标"等）。**Author Aliases** 功能可以将这些不同名称的贡献聚合到一起进行统一评估。
 
 > **注意**：评估缓存文件名采用小写规范化（如 `CarterWu` / `carterwu` / `CARTERWU` 均使用 `carterwu.json`），确保不同大小写请求都能复用缓存。
 
@@ -252,7 +252,7 @@ uv run pytest --cov=evaluator --cov-report=html
 在 Dashboard 的 "Author Aliases" 输入框中填入多个名称（逗号分隔）：
 
 ```
-CarterWu, wu-yanbiao, 吴炎标
+CarterWu, wu-yanbiao, 吴衍标
 ```
 
 然后点击任意一个匹配的作者头像，系统会：
@@ -260,7 +260,7 @@ CarterWu, wu-yanbiao, 吴炎标
 1. **分别评估每个名称**：
    - CarterWu (42 commits) → 评估结果 1
    - wu-yanbiao (3 commits) → 评估结果 2
-   - 吴炎标 (5 commits) → 评估结果 3
+   - 吴衍标 (5 commits) → 评估结果 3
 
 2. **使用 LLM 合并分析**：
    - 根据 commit 数量计算权重：[42, 3, 5]
@@ -268,7 +268,7 @@ CarterWu, wu-yanbiao, 吴炎标
    - 调用 `/api/merge-evaluations` 接口，使用 LLM 综合生成统一的分析总结
 
 3. **展示合并结果**：
-   - `.eval-header` 显示所有别名："CarterWu, wu-yanbiao, 吴炎标"
+   - `.eval-header` 显示所有别名："CarterWu, wu-yanbiao, 吴衍标"
    - `.chart-container` 显示加权平均后的六维分数
    - `.reasoning-section` 显示 LLM 生成的综合分析
 
@@ -296,7 +296,7 @@ CarterWu, wu-yanbiao, 吴炎标
 - 优化方式：
   - CarterWu (42 commits，已缓存) = 0 tokens
   - wu-yanbiao (3 commits，已缓存) = 0 tokens
-  - 吴炎标 (5 commits，新评估) = 10,000 tokens
+  - 吴衍标 (5 commits，新评估) = 10,000 tokens
   - 合并摘要 (LLM) = 1,500 tokens
   - **总计：11,500 tokens（节省 88.5%）**
 
@@ -308,7 +308,7 @@ CarterWu, wu-yanbiao, 吴炎标
 
 ```json
 {
-  "aliases": ["CarterWu", "wu-yanbiao", "吴炎标"]
+  "aliases": ["CarterWu", "wu-yanbiao", "吴衍标"]
 }
 ```
 
@@ -362,7 +362,7 @@ CarterWu, wu-yanbiao, 吴炎标
    {
      "success": true,
      "merged_evaluation": {
-       "username": "CarterWu + wu-yanbiao + 吴炎标",
+       "username": "CarterWu + wu-yanbiao + 吴衍标",
        "mode": "merged",
        "total_commits_analyzed": 50,
        "scores": { /* 加权平均后的六维分数 */ },
@@ -481,7 +481,7 @@ body: JSON.stringify({
     if (authorAliases.trim()) {
       const aliases = authorAliases.split(',').map(a => a.trim()).filter(a => a);
       if (aliases.some(a => a.toLowerCase() === currentAuthor?.toLowerCase())) {
-        return aliases.join(', ');  // "CarterWu, wu-yanbiao, 吴炎标"
+        return aliases.join(', ');  // "CarterWu, wu-yanbiao, 吴衍标"
       }
     }
     return currentAuthor;

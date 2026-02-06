@@ -263,7 +263,7 @@ export const enUS: Messages = {
   'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner\nhttps://github.com/owner/repo',
   'settings.repo_urls.help': 'Will be auto-filled when starting analysis',
   'settings.username_groups.label': 'Author Aliases (comma-separated)',
-  'settings.username_groups.placeholder': 'e.g., CarterWu, wu-yanbiao, 吴炎标',
+  'settings.username_groups.placeholder': 'e.g., CarterWu, wu-yanbiao, 吴衍标',
   'settings.username_groups.help': 'Multiple names belonging to same contributor',
   'settings.save': 'Save',
   'settings.reset': 'Reset to Defaults',
