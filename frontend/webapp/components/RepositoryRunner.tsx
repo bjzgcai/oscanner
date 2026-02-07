@@ -80,7 +80,7 @@ export default function RepositoryRunner() {
   const fetchDetectedTests = async (overviewPath: string) => {
     try {
       const response = await fetch(
-        `/api/runner/detect-tests?overview_path=${encodeURIComponent(overviewPath)}`
+        `/api/runner/detect-tests/?overview_path=${encodeURIComponent(overviewPath)}`
       );
 
       if (!response.ok) {
@@ -101,7 +101,7 @@ export default function RepositoryRunner() {
     setCurrentStep(0);
 
     try {
-      const response = await fetch('/api/runner/clone', {
+      const response = await fetch('/api/runner/clone/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repo_url: repoUrl })
@@ -130,7 +130,7 @@ export default function RepositoryRunner() {
 
     try {
       const response = await fetch(
-        `/api/runner/explore?clone_path=${encodeURIComponent(metadata.clone_path)}`,
+        `/api/runner/explore/?clone_path=${encodeURIComponent(metadata.clone_path)}`,
         { method: 'POST' }
       );
 
@@ -197,7 +197,7 @@ export default function RepositoryRunner() {
 
     try {
       const response = await fetch(
-        `/api/runner/run-tests?clone_path=${encodeURIComponent(metadata.clone_path)}&overview_path=${encodeURIComponent(overviewPath)}`,
+        `/api/runner/run-tests/?clone_path=${encodeURIComponent(metadata.clone_path)}&overview_path=${encodeURIComponent(overviewPath)}`,
         { method: 'POST' }
       );
 

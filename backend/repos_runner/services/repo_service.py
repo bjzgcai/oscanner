@@ -94,32 +94,39 @@ async def clone_repository(repo_url: str) -> Dict[str, Any]:
     repos_dir = get_repos_dir()
     clone_path = repos_dir / repo_name
 
-    # Remove existing directory if it exists
+    # Remove existing directory if it exists (run in thread pool to avoid blocking)
     if clone_path.exists():
-        shutil.rmtree(clone_path)
+        await asyncio.to_thread(shutil.rmtree, clone_path)
 
     # Clone the repository (shallow clone)
+    # Run blocking git operation in thread pool to avoid blocking event loop
     try:
-        repo = git.Repo.clone_from(
-            repo_url,
-            clone_path,
-            depth=1,
-            single_branch=True
-        )
+        def _clone_sync():
+            """Synchronous clone operation to run in thread pool"""
+            repo = git.Repo.clone_from(
+                repo_url,
+                clone_path,
+                depth=1,
+                single_branch=True
+            )
 
-        # Get repository metadata
-        default_branch = repo.active_branch.name
-        latest_commit = repo.head.commit
-        latest_commit_id = latest_commit.hexsha
+            # Get repository metadata
+            default_branch = repo.active_branch.name
+            latest_commit = repo.head.commit
+            latest_commit_id = latest_commit.hexsha
 
-        return {
-            "repo_name": repo_name,
-            "default_branch": default_branch,
-            "latest_commit_id": latest_commit_id,
-            "clone_path": str(clone_path),
-            "platform": platform,
-            "owner": owner
-        }
+            return {
+                "repo_name": repo_name,
+                "default_branch": default_branch,
+                "latest_commit_id": latest_commit_id,
+                "clone_path": str(clone_path),
+                "platform": platform,
+                "owner": owner
+            }
+
+        # Run the blocking operation in a thread pool
+        result = await asyncio.to_thread(_clone_sync)
+        return result
 
     except Exception as e:
         raise Exception(f"Failed to clone repository: {str(e)}")
