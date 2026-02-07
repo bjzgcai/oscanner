@@ -4,18 +4,20 @@
 Engineer capability assessment system using multi-dimensional evaluation framework and automated repository testing.
 
 ## Structure
-- **evaluator/** - FastAPI backend (evaluation engine, data extraction, API endpoints)
-- **webapp/** - Next.js frontend (dashboard with charts, PDF export, plugin UI)
-- **oscanner/** - CLI wrapper (commands: init, serve, dev, dashboard, extract)
-- **repos_runner/** - Repository testing service (clone, explore, run tests)
+- **backend/evaluator/** - FastAPI evaluation service (port 8000, data extraction, LLM evaluation)
+- **backend/repos_runner/** - FastAPI repository testing service (port 8001, clone, explore, test)
+- **frontend/webapp/** - Next.js dashboard (port 3000, charts, PDF export, plugin UI)
+- **frontend/pages/** - GitHub Pages static site (optional)
+- **cli/** - CLI wrapper (commands: init, serve, dev, dashboard)
 - **plugins/** - Plugin system (zgc_simple, zgc_ai_native_2026, _shared)
+- **checkers/** - Code quality checker system (CCN, etc.)
 
-## Core Logic
+## Core Features
 
 ### 1. Plugin System
-Modular evaluation framework supporting different assessment standards:
-- **zgc_simple** - Six-dimensional evaluation (default)
-- **zgc_ai_native_2026** - AI-Native 2026 four-dimensional rubric
+Modular evaluation framework with two assessment standards:
+- **zgc_simple** - Six-dimensional traditional software engineering evaluation
+- **zgc_ai_native_2026** - Four-dimensional AI-Native 2026 rubric (L1-L5)
 - Plugin discovery via `index.yaml` (scan_entry, view_entry)
 - Each plugin provides: `create_commit_evaluator()` + React components
 
@@ -25,42 +27,51 @@ API Fetch → Local Cache → Plugin Evaluation → Result Cache
    ↓            ↓               ↓                 ↓
 commits    commits/        LLM scores        evaluations/
 from       {sha}.json      + reasoning       {author}_{plugin}.json
-GitHub
+Platform
 ```
+**Incremental sync:** Track last sync in `sync_state.json`, fetch only new commits, merge into `commits_index.json`
 
-**Incremental sync:**
-- Track last sync: `sync_state.json` (last_commit_sha, last_commit_date)
-- Fetch only new commits since last checkpoint
-- Merge new data into `commits_index.json`
-- Weighted merge with previous evaluation by commit count
+### 3. Multi-Platform Support
+- GitHub + Gitee (public + enterprise)
+- Auto-detect platform from URL
+- Rate limits: GitHub 5000/hr with token (60 without)
 
-### 3. Author Alias (Multi-Identity Aggregation)
-Same engineer, multiple names (e.g., "CarterWu", "wu-yanbiao", "吴衍标"):
-- Evaluate each alias separately → cached results (reuse existing caches)
-- Weighted average of scores by commit count
-- LLM synthesis for unified analysis text
-- **Token savings: ~88%** (only merge summary needed, not re-evaluation)
+### 4. Author Alias Aggregation
+Multiple identities → one evaluation:
+- Evaluate each alias separately (reuse caches)
+- Weighted average by commit count
+- LLM synthesis for unified analysis (~88% token savings)
 
-### 4. Multi-Platform Support
-- GitHub API + Gitee API (public + enterprise)
-- Unified data structure across platforms
-- Auto-detect platform from repo URL
-- Rate limits: GitHub 5000/hr with token (60 without), Gitee similar
+### 5. Trajectory Analysis
+Growth tracking with checkpoint strategy:
+- **period** - Time-based checkpoints (default)
+- **none** - Single analysis for all commits
+- Git worktree for commit-specific checks
+- Incremental updates with previous checkpoint comparison
 
-### 5. Repos Runner (Automated Testing)
-Independent service for unknown repository analysis:
-- **Clone** - Shallow clone (depth=1) from GitHub/Gitee (standard REST response)
-- **Explore** - Generate `REPO_OVERVIEW.md` via Claude Sonnet 4.5 with **Server-Sent Events (SSE)** streaming
-  - Real-time progress updates: "Analyzing repository...", "Generating overview...", character count, etc.
-  - Frontend receives and displays progress messages as they happen
-  - Events: `{"event": "progress", "data": {"message": "..."}}` and `{"event": "status", "data": {...}}`
-- **Run Tests** - Auto-detect test commands, create isolated `.venv`, execute tests via **SSE streaming**
-  - Real-time test execution progress: "Running test 1/5: pytest", "Test 1 passed", etc.
-  - Completion event includes full results with pass/fail metrics
+### 6. Batch Operations
+Multi-repo processing:
+- `/api/batch/extract` - Extract multiple repos in parallel
+- `/api/batch/evaluate` - Evaluate multiple repos
+
+### 7. Repos Runner (SSE Streaming)
+Unknown repository analysis:
+- **Clone** - Shallow clone (depth=1)
+- **Explore** - Generate `REPO_OVERVIEW.md` via Claude Sonnet 4.5 (SSE streaming)
+- **Run Tests** - Auto-detect test commands, isolated `.venv`, execute tests (SSE streaming)
+- **Run All** - Combined clone + explore + test pipeline
 - Output: `TEST_REPORT.md` with pass/fail metrics (0-100 score)
-- Isolated environments per repo to prevent dependency conflicts
 
-### 6. Data Directory
+### 8. Checker System
+Code quality checkers invoked via `/checker:keyword` in commits:
+- **CCN** - Cyclomatic complexity checker (threshold: 20)
+- Git worktree for commit checkout
+- JSON results cached per commit
+
+### 9. Benchmark Validation
+Validation framework for testing evaluation accuracy (optional module)
+
+## Data Directory
 ```
 ~/.local/share/oscanner/
 ├── data/{platform}/{owner}/{repo}/
@@ -69,9 +80,12 @@ Independent service for unknown repository analysis:
 │   ├── repo_info.json              # Repository metadata
 │   └── sync_state.json             # Last sync checkpoint
 ├── evaluations/{platform}/{owner}/{repo}/
-│   └── {author}_{plugin_id}.json   # Cached evaluation results
+│   └── {author}_{plugin}.json      # Cached evaluation results
 ├── track/
-│   └── {author1,author2,...}.json  # Trajectory tracking cache
+│   └── {author1,author2,...}.json  # Trajectory analysis cache
+├── checkers/
+│   └── {platform}/{owner}/{repo}/commits/{sha}/
+│       └── {checker_id}.json       # Checker results
 └── repos/
     └── {repo_name}/                # Cloned repos for testing
         ├── REPO_OVERVIEW.md
@@ -84,4 +98,4 @@ Priority: `OSCANNER_HOME` > `XDG_DATA_HOME` > `~/.local/share`
 - Develop on main branch directly
 - Commit message: `fix #issue_number` to link PR to issue
 - Push triggers auto-PR generation via Gitee workflow
-- Remove temporary files (.md, scratch files) after task completion
+- Clean up temporary files after task completion
