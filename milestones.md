@@ -101,9 +101,9 @@
         "evaluated_at": "2026-02-05T09:30:45.123456"
      }
      ```
-### 未完成部分🔴 未完成
-`/api/runner/run-all` 接口需要补充参数:
-    - sha (可选,  默认最新commit的sha),  **状态**
+### ✅ 已完成
+`/api/runner/run-all` 接口已补充参数:
+    - sha (可选,  默认最新commit的sha),  **已完成**
 可以指定某个commit去运行测试
 
 ### 待优化部分:

@@ -28,13 +28,13 @@ async def clone_repo(request: RepoCloneRequest):
     Clone a repository and return metadata.
 
     Args:
-        request: Repository clone request with URL
+        request: Repository clone request with URL and optional SHA
 
     Returns:
         Repository metadata including name, branch, and commit info
     """
     try:
-        metadata = await clone_repository(request.repo_url)
+        metadata = await clone_repository(request.repo_url, request.sha)
         return metadata
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
