@@ -78,12 +78,13 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
         raise ValueError(f"Unsupported repository URL: {repo_url}")
 
 
-async def clone_repository(repo_url: str) -> Dict[str, Any]:
+async def clone_repository(repo_url: str, sha: Optional[str] = None) -> Dict[str, Any]:
     """
-    Clone a repository with depth 1 (shallow clone).
+    Clone a repository with depth 1 (shallow clone) or checkout specific SHA.
 
     Args:
         repo_url: URL of the repository to clone
+        sha: Optional SHA to checkout (if None, uses latest commit)
 
     Returns:
         Dictionary containing repo metadata
@@ -103,22 +104,33 @@ async def clone_repository(repo_url: str) -> Dict[str, Any]:
     try:
         def _clone_sync():
             """Synchronous clone operation to run in thread pool"""
-            repo = git.Repo.clone_from(
-                repo_url,
-                clone_path,
-                depth=1,
-                single_branch=True
-            )
+            if sha:
+                # Full clone needed to checkout specific SHA
+                repo = git.Repo.clone_from(
+                    repo_url,
+                    clone_path
+                )
+                # Checkout the specific SHA
+                repo.git.checkout(sha)
+                checked_out_commit = repo.head.commit
+                checked_out_sha = checked_out_commit.hexsha
+            else:
+                # Shallow clone for latest commit
+                repo = git.Repo.clone_from(
+                    repo_url,
+                    clone_path,
+                    depth=1,
+                    single_branch=True
+                )
+                checked_out_sha = repo.head.commit.hexsha
 
             # Get repository metadata
-            default_branch = repo.active_branch.name
-            latest_commit = repo.head.commit
-            latest_commit_id = latest_commit.hexsha
+            default_branch = repo.active_branch.name if repo.head.is_detached is False else "detached"
 
             return {
                 "repo_name": repo_name,
                 "default_branch": default_branch,
-                "latest_commit_id": latest_commit_id,
+                "latest_commit_id": checked_out_sha,
                 "clone_path": str(clone_path),
                 "platform": platform,
                 "owner": owner

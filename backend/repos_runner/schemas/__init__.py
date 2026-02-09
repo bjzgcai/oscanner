@@ -18,6 +18,7 @@ class TaskStatus(str, Enum):
 class RepoCloneRequest(BaseModel):
     """Request model for cloning a repository"""
     repo_url: str
+    sha: Optional[str] = None  # Optional SHA to checkout after clone
 
 
 class RepoMetadata(BaseModel):

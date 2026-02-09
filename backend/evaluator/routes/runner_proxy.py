@@ -19,6 +19,7 @@ RUNNER_SERVICE_URL = os.getenv("RUNNER_SERVICE_URL", "http://localhost:8001")
 class RunAllRequest(BaseModel):
     """Request model for running all repo analysis steps"""
     repo_url: str
+    sha: str | None = None  # Optional SHA to checkout and test
 
 
 class RunAllResponse(BaseModel):
@@ -81,13 +82,13 @@ async def run_all_steps(request: RunAllRequest):
     Execute all repository analysis steps in one call.
 
     Workflow:
-    1. Clone repository
+    1. Clone repository (optionally checkout specific SHA)
     2. Explore and generate REPO_OVERVIEW.md
     3. Run tests
     4. Return test results (passed/failed counts)
 
     Args:
-        request: Repository URL to analyze
+        request: Repository URL to analyze and optional SHA to checkout
 
     Returns:
         Test results with passed/failed counts
@@ -98,9 +99,13 @@ async def run_all_steps(request: RunAllRequest):
     async with httpx.AsyncClient(timeout=600.0) as client:
         try:
             # Step 1: Clone repository
+            clone_payload = {"repo_url": request.repo_url}
+            if request.sha:
+                clone_payload["sha"] = request.sha
+
             clone_response = await client.post(
                 f"{RUNNER_SERVICE_URL}/api/runner/clone",
-                json={"repo_url": request.repo_url},
+                json=clone_payload,
                 headers={"Content-Type": "application/json"}
             )
 

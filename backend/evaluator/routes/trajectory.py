@@ -165,8 +165,8 @@ async def analyze_trajectory(
             forced_checker_id,
             worktree_base_value,
             checkpoint_strategy_value,
-            None,  # last_commit (not used in regular endpoint)
-            None,  # to_commit (not used in regular endpoint)
+            None,  # start_sha (not used in regular endpoint)
+            None,  # end_sha (not used in regular endpoint)
             True  # save_to_cache=True
         )
 
@@ -191,8 +191,8 @@ async def analyze_trajectory_one_off(
     forced_checker: str = Query(""),
     worktree_base: str = Query("build"),  # 'build' or 'temp', default 'build'
     checkpoint_strategy: str = Query("none"),  # 'period' or 'none', default 'none' for one-off
-    last_commit: str = Query(""),  # Optional: commit hash to start from (not included)
-    to_commit: str = Query("")  # Optional: commit hash to end at (included)
+    start_sha: str = Query(""),  # Optional: commit hash to start from (INCLUDED)
+    end_sha: str = Query("")  # Optional: commit hash to end at (INCLUDED)
 ) -> Dict[str, Any]:
     """
     Analyze user growth trajectory (one-off, doesn't save to cache).
@@ -209,13 +209,21 @@ async def analyze_trajectory_one_off(
 
     Query parameters:
     - checkpoint_strategy: 'none' (default) or 'period'. Use 'none' for analyzing any commit range.
-    - last_commit: Optional commit hash to start from (NOT included in range)
-    - to_commit: Optional commit hash to end at (INCLUDED in range)
+    - start_sha: Optional commit hash to start from (INCLUDED in range)
+    - end_sha: Optional commit hash to end at (INCLUDED in range)
 
     When checkpoint_strategy=none:
-    - If last_commit not provided: start from first commit (included)
-    - If to_commit not provided: use latest commit (included)
+    - If start_sha not provided: start from first commit (included)
+    - If end_sha not provided: use latest commit (included)
     - No minimum commit requirement
+
+    Corner cases:
+    - Both None: evaluate all commits
+    - Only start_sha: evaluate from start_sha to latest
+    - Only end_sha: evaluate from first to end_sha
+    - start_sha == end_sha: single commit evaluation
+    - start_sha newer than end_sha: error (invalid range)
+    - SHA not found: error with clear message
 
     Returns:
     - success: bool
@@ -315,8 +323,8 @@ async def analyze_trajectory_one_off(
         if checkpoint_strategy_value not in ("period", "none"):
             checkpoint_strategy_value = "none"  # Default to none for one-off
 
-        last_commit_value = last_commit.strip() if last_commit else None
-        to_commit_value = to_commit.strip() if to_commit else None
+        start_sha_value = start_sha.strip() if start_sha else None
+        end_sha_value = end_sha.strip() if end_sha else None
 
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
@@ -334,8 +342,8 @@ async def analyze_trajectory_one_off(
             forced_checker_id,
             worktree_base_value,
             checkpoint_strategy_value,
-            last_commit_value,
-            to_commit_value,
+            start_sha_value,
+            end_sha_value,
             False  # save_to_cache=False
         )
 

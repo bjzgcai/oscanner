@@ -786,70 +786,98 @@ def build_period_metadata(
 
 def filter_commits_by_range(
     commits: List[Dict[str, Any]],
-    last_commit: Optional[str] = None,
-    to_commit: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    start_sha: Optional[str] = None,
+    end_sha: Optional[str] = None
+):
     """
-    Filter commits by range (last_commit, to_commit].
+    Filter commits by range [start_sha, end_sha] (both INCLUDED).
 
     Args:
         commits: List of commits (ordered newest first)
-        last_commit: Commit hash to start from (NOT included). If None, start from first commit.
-        to_commit: Commit hash to end at (INCLUDED). If None, use latest commit.
+        start_sha: Commit hash to start from (INCLUDED). If None, start from first commit.
+        end_sha: Commit hash to end at (INCLUDED). If None, use latest commit.
 
     Returns:
-        Filtered list of commits
+        Filtered list of commits, OR dict with error if validation fails
+
+    Corner cases handled:
+    1. Both None: return all commits
+    2. Only start_sha: from start_sha to latest (newest)
+    3. Only end_sha: from first (oldest) to end_sha
+    4. Both provided: from start_sha to end_sha (both included)
+    5. start_sha not found: return error
+    6. end_sha not found: return error
+    7. start_sha newer than end_sha: return error
+    8. start_sha == end_sha: return single commit
+    9. Empty commit list: return empty list
     """
+    # Corner case 9: Empty commit list
     if not commits:
         return []
 
-    # If no filtering needed, return all commits
-    if not last_commit and not to_commit:
+    # Corner case 1: Both None - return all commits
+    if not start_sha and not end_sha:
         return commits
 
-    # Find indices of last_commit and to_commit
-    last_commit_idx = None
-    to_commit_idx = None
+    # Find indices of start_sha and end_sha
+    start_sha_idx = None
+    end_sha_idx = None
 
     for idx, commit in enumerate(commits):
         commit_sha = commit.get('sha') or commit.get('hash')
 
-        if last_commit and commit_sha == last_commit:
-            last_commit_idx = idx
-        if to_commit and commit_sha == to_commit:
-            to_commit_idx = idx
+        if start_sha and commit_sha == start_sha:
+            start_sha_idx = idx
+        if end_sha and commit_sha == end_sha:
+            end_sha_idx = idx
 
-    # Validate that commits were found
-    if last_commit and last_commit_idx is None:
-        print(f"[Trajectory] Warning: last_commit {last_commit} not found in commits")
-    if to_commit and to_commit_idx is None:
-        print(f"[Trajectory] Warning: to_commit {to_commit} not found in commits")
+    # Corner case 5: start_sha not found
+    if start_sha and start_sha_idx is None:
+        return {
+            "success": False,
+            "message": f"start_sha '{start_sha}' not found in commits. Please verify the commit hash exists in the repository and is authored by the specified user."
+        }
+
+    # Corner case 6: end_sha not found
+    if end_sha and end_sha_idx is None:
+        return {
+            "success": False,
+            "message": f"end_sha '{end_sha}' not found in commits. Please verify the commit hash exists in the repository and is authored by the specified user."
+        }
 
     # Determine the range to extract
-    # commits are ordered newest first, so we need to slice accordingly
-    # to_commit should be at a lower index (newer)
-    # last_commit should be at a higher index (older)
+    # Commits are ordered newest first, so:
+    # - end_sha should be at a lower index (newer)
+    # - start_sha should be at a higher index (older)
 
-    # Start index (inclusive)
-    if to_commit_idx is not None:
-        start_idx = to_commit_idx
+    # Corner case 2: Only start_sha provided - from start_sha to latest (index 0)
+    if start_sha_idx is not None and end_sha_idx is None:
+        start_idx = 0  # Latest commit (newest)
+        end_idx = start_sha_idx + 1  # Include start_sha (exclusive end)
+
+    # Corner case 3: Only end_sha provided - from first to end_sha
+    elif start_sha_idx is None and end_sha_idx is not None:
+        start_idx = end_sha_idx  # Include end_sha
+        end_idx = len(commits)  # Include all to oldest
+
+    # Corner case 4: Both provided
     else:
-        start_idx = 0  # Start from newest
+        # end_sha should be newer (lower index) than start_sha (higher index)
+        # Corner case 7: start_sha newer than end_sha (invalid)
+        if start_sha_idx < end_sha_idx:
+            return {
+                "success": False,
+                "message": f"Invalid commit range: start_sha '{start_sha}' is newer than end_sha '{end_sha}'. Please ensure start_sha is chronologically before or equal to end_sha."
+            }
 
-    # End index (exclusive)
-    if last_commit_idx is not None:
-        # Exclude last_commit, so end at its index
-        end_idx = last_commit_idx
-    else:
-        end_idx = len(commits)  # Include all to the oldest
+        # Corner case 8: start_sha == end_sha (single commit)
+        # This is valid, will result in a slice of 1 commit
 
-    # Validate range
-    if start_idx >= end_idx:
-        print(f"[Trajectory] Warning: Invalid commit range - to_commit {to_commit} is older than last_commit {last_commit}")
-        return []
+        start_idx = end_sha_idx  # Include end_sha (newer)
+        end_idx = start_sha_idx + 1  # Include start_sha (older)
 
     filtered = commits[start_idx:end_idx]
-    print(f"[Trajectory] Filtered commits from {len(commits)} to {len(filtered)} (last_commit={last_commit}, to_commit={to_commit})")
+    print(f"[Trajectory] Filtered commits from {len(commits)} to {len(filtered)} (start_sha={start_sha}, end_sha={end_sha})")
 
     return filtered
 
@@ -867,8 +895,8 @@ def analyze_growth_trajectory(
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
     checkpoint_strategy: str = "period",
-    last_commit: Optional[str] = None,
-    to_commit: Optional[str] = None,
+    start_sha: Optional[str] = None,
+    end_sha: Optional[str] = None,
     save_to_cache: bool = True
 ) -> TrajectoryResponse:
     """
@@ -888,10 +916,10 @@ def analyze_growth_trajectory(
         checkpoint_strategy: Strategy for grouping commits ('period' or 'none')
                            'period': Group commits by 2-week periods (default)
                            'none': Group all commits into a single checkpoint
-        last_commit: Optional commit hash to start from (NOT included in range)
-                    Only used when checkpoint_strategy='none'
-        to_commit: Optional commit hash to end at (INCLUDED in range)
+        start_sha: Optional commit hash to start from (INCLUDED in range)
                   Only used when checkpoint_strategy='none'
+        end_sha: Optional commit hash to end at (INCLUDED in range)
+                Only used when checkpoint_strategy='none'
         save_to_cache: Whether to save trajectory to cache (default True)
 
     Returns:
@@ -960,9 +988,22 @@ def analyze_growth_trajectory(
     print(f"[Trajectory] Found {new_commits_count} commits to evaluate (last_synced_sha: {trajectory.last_synced_sha}, use_cache={use_cache})")
 
     # Apply commit range filtering when checkpoint_strategy is 'none'
-    if checkpoint_strategy == "none" and (last_commit or to_commit):
-        print(f"[Trajectory] Applying commit range filter (last_commit={last_commit}, to_commit={to_commit})")
-        new_commits = filter_commits_by_range(new_commits, last_commit, to_commit)
+    if checkpoint_strategy == "none" and (start_sha or end_sha):
+        print(f"[Trajectory] Applying commit range filter (start_sha={start_sha}, end_sha={end_sha})")
+        filtered_result = filter_commits_by_range(new_commits, start_sha, end_sha)
+
+        # Check if filtering resulted in an error
+        if isinstance(filtered_result, dict) and not filtered_result.get("success", True):
+            # Return error response
+            return TrajectoryResponse(
+                success=False,
+                trajectory=trajectory,
+                new_checkpoint_created=False,
+                message=filtered_result["message"],
+                commits_pending=0
+            )
+
+        new_commits = filtered_result
         new_commits_count = len(new_commits)
         print(f"[Trajectory] After filtering: {new_commits_count} commits")
 
