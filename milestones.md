@@ -73,11 +73,6 @@
         }
     ```
 
-### 未完成部分🔴 未完成
-/api/trajectory/analyze_one-off 接口需要补充参数:
-   - start_sha (可选) **状态**: 🔴 未完成 
-   - end_sha (可选) **状态**: 🔴 未完成 
-
 ### 待优化部分:
       1. 使用不同的代码质量检查器(如: PEP8, Google Style Guide)去检测代码质量
 
