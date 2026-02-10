@@ -24,7 +24,7 @@ async def analyze_trajectory(
     request_body: Dict[str, Any],
     plugin: str = Query(""),
     model: str = Query(DEFAULT_LLM_MODEL),
-    language: str = Query("en-US"),
+    language: str = Query("zh-CN"),
     use_cache: bool = Query(True),
     parallel_chunking: bool = Query(True),
     max_parallel_workers: int = Query(3),
@@ -182,9 +182,9 @@ async def analyze_trajectory(
 @router.post("/api/trajectory/analyze_one-off")
 async def analyze_trajectory_one_off(
     request_body: Dict[str, Any],
-    plugin: str = Query(""),
+    plugin: str = Query("zgc_ai_native_2026"),
     model: str = Query(DEFAULT_LLM_MODEL),
-    language: str = Query("en-US"),
+    language: str = Query("zh-CN"),
     use_cache: bool = Query(False),
     parallel_chunking: bool = Query(True),
     max_parallel_workers: int = Query(3),
