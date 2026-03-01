@@ -21,6 +21,22 @@ class RepoCloneRequest(BaseModel):
     sha: Optional[str] = None  # Optional SHA to checkout after clone
 
 
+class RunAllRequest(BaseModel):
+    """Request model for the combined clone → explore → test pipeline"""
+    repo_url: str
+    sha: Optional[str] = None
+    skip_clone: bool = False    # Reuse existing clone
+    skip_explore: bool = False  # Reuse existing REPO_OVERVIEW.md
+    setup_timeout: int = 120    # Seconds per setup command
+    test_timeout: int = 300     # Seconds per test command
+
+
+class BatchRunRequest(BaseModel):
+    """Request model for running multiple repos concurrently (max 3 at a time)"""
+    repos: List[RunAllRequest]
+    max_concurrency: int = 3    # Max parallel pipelines (capped at 3)
+
+
 class RepoMetadata(BaseModel):
     """Repository metadata"""
     repo_name: str
