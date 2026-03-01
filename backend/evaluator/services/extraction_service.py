@@ -5,6 +5,7 @@ import subprocess
 import json
 import os
 import socket
+import base64
 import requests
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
@@ -223,6 +224,8 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
 
         # 2) Fetch per-commit details
         commits_index = []
+        files_context: Dict[str, int] = {}  # Track unique files mentioned in commits
+
         for c in commits:
             sha = c.get("sha")
             if not sha:
@@ -252,6 +255,11 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
             if isinstance(detail, dict):
                 file_list = [fi.get("filename") for fi in (detail.get("files") or []) if isinstance(fi, dict) and fi.get("filename")]
 
+                # Track files for context extraction
+                for filename in file_list:
+                    if filename:
+                        files_context[filename] = files_context.get(filename, 0) + 1
+
             commits_index.append(
                 {
                     "sha": sha,
@@ -266,10 +274,73 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
         with open(data_dir / "commits_index.json", "w", encoding="utf-8") as f:
             json.dump(commits_index, f, indent=2, ensure_ascii=False)
 
-        # 3) repo_info.json
+        # 3) Fetch current file contents for files mentioned in diffs
+        print(f"\n[Gitee] Fetching file context for {len(files_context)} unique files...")
+        files_dir = data_dir / "files"
+        files_dir.mkdir(parents=True, exist_ok=True)
+
+        files_fetched = 0
+        # Sort by mention count (most changed files first) and take top 100
+        sorted_files = sorted(files_context.items(), key=lambda x: -x[1])[:100]
+
+        for i, (filepath, mention_count) in enumerate(sorted_files):
+            print(f"  [{i+1}/{len(sorted_files)}] {filepath}... ", end='', flush=True)
+
+            # Fetch current file content from Gitee API
+            file_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/contents/{filepath}"
+            params = {"access_token": gitee_token}
+
+            try:
+                file_resp = session.get(file_url, params=params, timeout=30)
+
+                if file_resp.status_code != 200:
+                    print("✗ API error")
+                    continue
+
+                file_obj = file_resp.json()
+
+                # Create directory structure for the file
+                file_path = files_dir / filepath
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Gitee API returns base64-encoded content
+                content_b64 = file_obj.get('content', '')
+                if content_b64:
+                    try:
+                        # Decode base64 content
+                        content_bytes = base64.b64decode(content_b64)
+                        # Try to decode as UTF-8, ignore errors for binary files
+                        content_str = content_bytes.decode('utf-8', errors='ignore')
+
+                        # Save file content
+                        with open(file_path, 'w', encoding='utf-8', errors='ignore') as f:
+                            f.write(content_str)
+
+                        files_fetched += 1
+                        print(f"✓ ({file_obj.get('size', 0)} bytes)")
+                    except Exception as e:
+                        print(f"✗ decode error: {e}")
+                else:
+                    print("✗ no content")
+
+            except requests.exceptions.RequestException as e:
+                print(f"✗ network error")
+                continue
+            except Exception as e:
+                print(f"✗ error: {e}")
+                continue
+
+        print(f"\n  ✓ Fetched {files_fetched} file contents")
+
+        # 4) repo_info.json
         repo_info = {"name": f"{owner}/{repo}", "full_name": f"{owner}/{repo}", "owner": owner, "platform": "gitee"}
         with open(data_dir / "repo_info.json", "w", encoding="utf-8") as f:
             json.dump(repo_info, f, indent=2, ensure_ascii=False)
+
+        print(f"\n✓ Gitee extraction complete:")
+        print(f"  - {len(commits_index)} commits")
+        print(f"  - {len(files_context)} unique files mentioned")
+        print(f"  - {files_fetched} file contents fetched")
 
         return True
     except Exception as e:
