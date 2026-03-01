@@ -3,55 +3,31 @@ Repository services for cloning, exploring, and testing
 """
 
 import os
+import re
 import subprocess
 import shutil
-from pathlib import Path
-from typing import Tuple, Optional, Dict, Any
-import git
+import hashlib
 import json
 import asyncio
+import venv as venv_mod
+from pathlib import Path
+from typing import Tuple, Optional, Dict, Any, List
 from datetime import datetime
 
+import git
+
+from repos_runner.services.sandbox import ResourceLimits, run_sandboxed
+
+
+# ---------------------------------------------------------------------------
+# Path helpers
+# ---------------------------------------------------------------------------
 
 def get_repos_dir() -> Path:
     """Get the directory for storing cloned repositories"""
     base_dir = Path.home() / ".local" / "share" / "oscanner" / "repos"
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
-
-
-def get_repo_venv_dir(clone_path: str) -> Path:
-    """Get the virtual environment directory for a specific repository"""
-    clone_dir = Path(clone_path)
-    venv_dir = clone_dir / ".venv"
-    return venv_dir
-
-
-def ensure_repo_venv(clone_path: str) -> Path:
-    """
-    Ensure per-repository virtual environment exists for running tests.
-    Each repository gets its own isolated environment for dependency isolation.
-
-    Args:
-        clone_path: Path to the cloned repository
-
-    Returns:
-        Path to the virtual environment's python executable
-    """
-    venv_dir = get_repo_venv_dir(clone_path)
-
-    if not venv_dir.exists():
-        # Create virtual environment
-        import venv
-        venv.create(venv_dir, with_pip=True)
-
-    # Return path to python executable
-    if os.name == 'nt':  # Windows
-        python_path = venv_dir / "Scripts" / "python.exe"
-    else:  # Unix/Linux/Mac
-        python_path = venv_dir / "bin" / "python"
-
-    return python_path
 
 
 def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
@@ -61,71 +37,77 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
     Returns:
         Tuple of (platform, owner, repo_name)
     """
-    # Remove trailing .git if present
     repo_url = repo_url.rstrip("/").replace(".git", "")
 
-    # Handle GitHub URLs
     if "github.com" in repo_url:
         parts = repo_url.split("github.com/")[-1].split("/")
         return "github", parts[0], parts[1]
-
-    # Handle Gitee URLs
     elif "gitee.com" in repo_url:
         parts = repo_url.split("gitee.com/")[-1].split("/")
         return "gitee", parts[0], parts[1]
-
     else:
         raise ValueError(f"Unsupported repository URL: {repo_url}")
 
 
+def _get_api_client():
+    """Return a configured Anthropic client, or raise if no key found."""
+    from anthropic import Anthropic
+
+    api_key = (
+        os.getenv("ANTHROPIC_API_KEY") or
+        os.getenv("OSCANNER_LLM_API_KEY") or
+        os.getenv("OPENAI_API_KEY") or
+        os.getenv("ANTHROPIC_AUTH_TOKEN")
+    )
+    if not api_key:
+        raise ValueError(
+            "API key not found. Set one of: ANTHROPIC_API_KEY, OSCANNER_LLM_API_KEY, "
+            "OPENAI_API_KEY, or ANTHROPIC_AUTH_TOKEN"
+        )
+
+    kwargs: Dict[str, Any] = {"api_key": api_key}
+    base_url = os.getenv("ANTHROPIC_BASE_URL")
+    if base_url:
+        kwargs["base_url"] = base_url
+    return Anthropic(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Clone
+# ---------------------------------------------------------------------------
+
 async def clone_repository(repo_url: str, sha: Optional[str] = None) -> Dict[str, Any]:
     """
-    Clone a repository with depth 1 (shallow clone) or checkout specific SHA.
-
-    Args:
-        repo_url: URL of the repository to clone
-        sha: Optional SHA to checkout (if None, uses latest commit)
+    Clone a repository (shallow when no SHA, full clone + checkout when SHA given).
 
     Returns:
         Dictionary containing repo metadata
     """
     platform, owner, repo_name = parse_repo_url(repo_url)
 
-    # Determine clone path
     repos_dir = get_repos_dir()
     clone_path = repos_dir / repo_name
 
-    # Remove existing directory if it exists (run in thread pool to avoid blocking)
     if clone_path.exists():
         await asyncio.to_thread(shutil.rmtree, clone_path)
 
-    # Clone the repository (shallow clone)
-    # Run blocking git operation in thread pool to avoid blocking event loop
     try:
         def _clone_sync():
-            """Synchronous clone operation to run in thread pool"""
             if sha:
-                # Full clone needed to checkout specific SHA
-                repo = git.Repo.clone_from(
-                    repo_url,
-                    clone_path
-                )
-                # Checkout the specific SHA
+                repo = git.Repo.clone_from(repo_url, clone_path)
                 repo.git.checkout(sha)
-                checked_out_commit = repo.head.commit
-                checked_out_sha = checked_out_commit.hexsha
+                checked_out_sha = repo.head.commit.hexsha
             else:
-                # Shallow clone for latest commit
                 repo = git.Repo.clone_from(
-                    repo_url,
-                    clone_path,
-                    depth=1,
-                    single_branch=True
+                    repo_url, clone_path, depth=1, single_branch=True
                 )
                 checked_out_sha = repo.head.commit.hexsha
 
-            # Get repository metadata
-            default_branch = repo.active_branch.name if repo.head.is_detached is False else "detached"
+            default_branch = (
+                repo.active_branch.name
+                if not repo.head.is_detached
+                else "detached"
+            )
 
             return {
                 "repo_name": repo_name,
@@ -133,24 +115,270 @@ async def clone_repository(repo_url: str, sha: Optional[str] = None) -> Dict[str
                 "latest_commit_id": checked_out_sha,
                 "clone_path": str(clone_path),
                 "platform": platform,
-                "owner": owner
+                "owner": owner,
             }
 
-        # Run the blocking operation in a thread pool
-        result = await asyncio.to_thread(_clone_sync)
-        return result
+        return await asyncio.to_thread(_clone_sync)
 
     except Exception as e:
         raise Exception(f"Failed to clone repository: {str(e)}")
 
 
+# ---------------------------------------------------------------------------
+# Virtual-environment with hash-based dependency caching
+# ---------------------------------------------------------------------------
+
+def _dep_hash(clone_dir: Path) -> str:
+    """
+    Compute a hash over all known dependency manifests found in clone_dir.
+    Changing any manifest invalidates the venv cache.
+    """
+    manifests = [
+        "requirements.txt", "requirements-dev.txt", "requirements-test.txt",
+        "setup.py", "setup.cfg", "pyproject.toml",
+        "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+        "Cargo.toml", "Cargo.lock",
+        "go.mod", "go.sum",
+        "Gemfile", "Gemfile.lock",
+        "pom.xml", "build.gradle",
+    ]
+    h = hashlib.sha256()
+    for name in manifests:
+        p = clone_dir / name
+        if p.exists():
+            try:
+                h.update(p.read_bytes())
+            except Exception:
+                pass
+    return h.hexdigest()[:16]
+
+
+def ensure_repo_venv(clone_path: str) -> Path:
+    """
+    Return path to the venv Python executable for this repo.
+
+    Uses hash-based caching: the venv is named `.venv_{hash}` so it is
+    reused if dependency manifests have not changed.  Stale venvs from
+    previous hashes are removed automatically.
+    """
+    clone_dir = Path(clone_path)
+    dep_hash = _dep_hash(clone_dir)
+    venv_dir = clone_dir / f".venv_{dep_hash}"
+
+    # Remove any stale venvs (different hash)
+    for old_venv in clone_dir.glob(".venv_*"):
+        if old_venv != venv_dir and old_venv.is_dir():
+            shutil.rmtree(old_venv, ignore_errors=True)
+
+    if not venv_dir.exists():
+        venv_mod.create(venv_dir, with_pip=True)
+
+    if os.name == "nt":
+        return venv_dir / "Scripts" / "python.exe"
+    return venv_dir / "bin" / "python"
+
+
+def get_repo_venv_dir(clone_path: str) -> Path:
+    """Return the venv directory path (for listing/cleanup purposes)."""
+    clone_dir = Path(clone_path)
+    dep_hash = _dep_hash(clone_dir)
+    return clone_dir / f".venv_{dep_hash}"
+
+
+# ---------------------------------------------------------------------------
+# Smarter test-framework detection (static, no LLM needed)
+# ---------------------------------------------------------------------------
+
+# Maps a config-file key to (setup_commands, test_commands)
+_FRAMEWORK_MAP: List[Dict[str, Any]] = [
+    # Python
+    {
+        "files": ["pytest.ini", "setup.cfg", "pyproject.toml", "conftest.py"],
+        "content_hints": {"pyproject.toml": ["pytest"], "setup.cfg": ["pytest"]},
+        "setup": ["pip install -e .[test] || pip install -r requirements.txt || true",
+                  "pip install pytest pytest-json-report"],
+        "test": ["pytest --json-report --json-report-file=.test_report.json -v || true"],
+        "language": "python",
+    },
+    {
+        "files": ["requirements-test.txt", "requirements_test.txt"],
+        "content_hints": {},
+        "setup": ["pip install -r requirements-test.txt"],
+        "test": ["pytest --json-report --json-report-file=.test_report.json -v || true"],
+        "language": "python",
+    },
+    # Node / Jest
+    {
+        "files": ["jest.config.js", "jest.config.ts", "jest.config.mjs"],
+        "content_hints": {},
+        "setup": ["npm install"],
+        "test": ["npx jest --json --outputFile=.test_report.json || true"],
+        "language": "node",
+    },
+    {
+        "files": ["package.json"],
+        "content_hints": {"package.json": ["jest"]},
+        "setup": ["npm install"],
+        "test": ["npx jest --json --outputFile=.test_report.json || true"],
+        "language": "node",
+    },
+    # Node / Vitest
+    {
+        "files": ["vitest.config.ts", "vitest.config.js"],
+        "content_hints": {},
+        "setup": ["npm install"],
+        "test": ["npx vitest run --reporter=json > .test_report.json || true"],
+        "language": "node",
+    },
+    {
+        "files": ["package.json"],
+        "content_hints": {"package.json": ["vitest"]},
+        "setup": ["npm install"],
+        "test": ["npx vitest run --reporter=json > .test_report.json || true"],
+        "language": "node",
+    },
+    # Node / Mocha
+    {
+        "files": [".mocharc.js", ".mocharc.yml", ".mocharc.json"],
+        "content_hints": {},
+        "setup": ["npm install"],
+        "test": ["npx mocha --reporter json > .test_report.json || true"],
+        "language": "node",
+    },
+    # Go
+    {
+        "files": ["go.mod"],
+        "content_hints": {},
+        "setup": ["go mod download"],
+        "test": ["go test ./... -v -json > .test_report.json || true"],
+        "language": "go",
+    },
+    # Rust
+    {
+        "files": ["Cargo.toml"],
+        "content_hints": {},
+        "setup": [],
+        "test": ["cargo test -- --format json 2>&1 > .test_report.json || cargo test 2>&1 | tee .test_report.txt || true"],
+        "language": "rust",
+    },
+    # Maven (Java)
+    {
+        "files": ["pom.xml"],
+        "content_hints": {},
+        "setup": [],
+        "test": ["mvn test -q 2>&1 | tee .test_report.txt || true"],
+        "language": "java",
+    },
+    # Gradle (Java/Kotlin)
+    {
+        "files": ["build.gradle", "build.gradle.kts"],
+        "content_hints": {},
+        "setup": [],
+        "test": ["./gradlew test 2>&1 | tee .test_report.txt || true"],
+        "language": "java",
+    },
+    # Ruby
+    {
+        "files": ["Gemfile"],
+        "content_hints": {},
+        "setup": ["bundle install"],
+        "test": ["bundle exec rspec --format json --out .test_report.json || bundle exec rake test 2>&1 | tee .test_report.txt || true"],
+        "language": "ruby",
+    },
+    # Dotnet
+    {
+        "files": [],
+        "glob": "**/*.csproj",
+        "content_hints": {},
+        "setup": ["dotnet restore"],
+        "test": ["dotnet test --logger trx 2>&1 | tee .test_report.txt || true"],
+        "language": "dotnet",
+    },
+    # Elixir
+    {
+        "files": ["mix.exs"],
+        "content_hints": {},
+        "setup": ["mix deps.get"],
+        "test": ["mix test --formatter ExUnit.CLIFormatter 2>&1 | tee .test_report.txt || true"],
+        "language": "elixir",
+    },
+]
+
+
+def _detect_frameworks_statically(clone_dir: Path) -> Optional[Dict[str, Any]]:
+    """
+    Detect test framework from project files without calling an LLM.
+
+    Returns a dict with 'setup_commands', 'test_commands', 'language',
+    or None if nothing is detected.
+    """
+    for entry in _FRAMEWORK_MAP:
+        # Check explicit files
+        matched = any((clone_dir / f).exists() for f in entry.get("files", []))
+
+        # Check glob patterns (e.g. *.csproj)
+        if not matched and entry.get("glob"):
+            matched = any(True for _ in clone_dir.glob(entry["glob"]))
+
+        if not matched:
+            continue
+
+        # Check content hints if any
+        hints = entry.get("content_hints", {})
+        if hints:
+            hint_ok = False
+            for fname, keywords in hints.items():
+                fpath = clone_dir / fname
+                if fpath.exists():
+                    try:
+                        content = fpath.read_text(encoding="utf-8", errors="ignore").lower()
+                        if any(kw.lower() in content for kw in keywords):
+                            hint_ok = True
+                            break
+                    except Exception:
+                        pass
+            if not hint_ok:
+                continue
+
+        return {
+            "setup_commands": entry["setup"],
+            "test_commands": entry["test"],
+            "language": entry["language"],
+        }
+
+    return None
+
+
+def _load_test_config(clone_dir: Path) -> Optional[Dict[str, Any]]:
+    """Load cached test_config.json if it exists."""
+    config_path = clone_dir / "test_config.json"
+    if config_path.exists():
+        try:
+            return json.loads(config_path.read_text())
+        except Exception:
+            pass
+    return None
+
+
+def _save_test_config(clone_dir: Path, config: Dict[str, Any]) -> None:
+    """Atomically write test_config.json."""
+    config_path = clone_dir / "test_config.json"
+    tmp_path = config_path.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(config, indent=2))
+    tmp_path.rename(config_path)
+
+
+# ---------------------------------------------------------------------------
+# Explore (Claude Code SDK agentic approach)
+# ---------------------------------------------------------------------------
+
 async def explore_repository(clone_path: str, progress_callback=None) -> str:
     """
-    Explore repository and generate REPO_OVERVIEW.md using Claude Code SDK.
+    Explore repository and generate REPO_OVERVIEW.md using the Claude Code SDK.
 
-    Args:
-        clone_path: Path to the cloned repository
-        progress_callback: Optional callback for progress updates
+    The SDK runs Claude as an agentic loop with shell-tool access so it can
+    actually read files, list directories, and understand the project structure
+    rather than just receiving a pre-built context string.
 
     Returns:
         Path to generated REPO_OVERVIEW.md
@@ -159,42 +387,100 @@ async def explore_repository(clone_path: str, progress_callback=None) -> str:
     overview_path = clone_dir / "REPO_OVERVIEW.md"
 
     if progress_callback:
-        await progress_callback("Starting repository exploration...")
+        await progress_callback("Starting repository exploration with Claude Code SDK...")
 
     try:
-        # Import Claude Agent SDK
-        from anthropic import Anthropic
+        from claude_code_sdk import query, ClaudeCodeOptions, AssistantMessage, TextBlock
 
-        # Get API key from environment (check multiple possible variable names)
-        api_key = (
-            os.getenv("ANTHROPIC_API_KEY") or
-            os.getenv("OSCANNER_LLM_API_KEY") or
-            os.getenv("OPENAI_API_KEY") or
-            os.getenv("ANTHROPIC_AUTH_TOKEN")
+        if progress_callback:
+            await progress_callback("Claude is exploring the repository structure...")
+
+        prompt = (
+            "You are analyzing a software repository to understand how to run its tests. "
+            "Explore the repository files, read the README, config files (package.json, "
+            "pyproject.toml, Cargo.toml, go.mod, etc.), and any existing test files. "
+            "Then produce a file called REPO_OVERVIEW.md in the current directory with "
+            "this exact structure:\n\n"
+            "# {repo_name}\n\n"
+            "## Project Type\n"
+            "<1-2 sentences: language, framework, purpose>\n\n"
+            "## Test Framework\n"
+            "<name of test framework(s) found, or 'None detected'>\n\n"
+            "## Setup Commands\n"
+            "```\n"
+            "<commands to install dependencies, one per line>\n"
+            "```\n\n"
+            "## Test Commands\n"
+            "```\n"
+            "<commands to run tests, one per line>\n"
+            "```\n\n"
+            "Be concise. Only include what is needed to run tests. "
+            "Write the file when done."
         )
-        if not api_key:
-            raise ValueError("API key not found. Set one of: ANTHROPIC_API_KEY, OSCANNER_LLM_API_KEY, OPENAI_API_KEY, or ANTHROPIC_AUTH_TOKEN")
 
-        # Get base URL if provided (for custom API endpoints)
-        base_url = os.getenv("ANTHROPIC_BASE_URL")
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["base_url"] = base_url
+        char_count = 0
+        async for message in query(
+            prompt=prompt,
+            options=ClaudeCodeOptions(
+                cwd=str(clone_dir),
+                # Allow file reads and writes but no network calls
+                allowed_tools=["Read", "Write", "Glob", "Bash"],
+            ),
+        ):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        char_count += len(block.text)
+                        if progress_callback and char_count % 200 < 20:
+                            await progress_callback(
+                                f"Claude exploring... ({char_count} chars processed)"
+                            )
 
-        client = Anthropic(**client_kwargs)
+        # If Claude wrote the file, great. Otherwise fall back to context-based approach.
+        if not overview_path.exists():
+            if progress_callback:
+                await progress_callback(
+                    "SDK did not write the file directly; using context fallback..."
+                )
+            overview_path = Path(
+                await _explore_via_messages_api(clone_path, progress_callback)
+            )
 
         if progress_callback:
-            await progress_callback("Analyzing repository structure...")
+            await progress_callback("Repository exploration completed!")
 
-        # Build context from repository
-        context = await _build_repo_context(clone_dir, progress_callback)
+        return str(overview_path)
 
+    except ImportError:
+        # claude-code-sdk not installed, fall back to messages API
         if progress_callback:
-            await progress_callback("Generating overview with Claude...")
+            await progress_callback(
+                "claude-code-sdk not available; falling back to messages API..."
+            )
+        return await _explore_via_messages_api(clone_path, progress_callback)
 
-        # Generate overview using Claude with streaming
-        # Focus only on test-related information for efficiency
-        prompt = f"""Analyze this repository and generate a concise REPO_OVERVIEW.md focused on testing:
+    except Exception as e:
+        if progress_callback:
+            await progress_callback(f"SDK error ({e}); falling back to messages API...")
+        return await _explore_via_messages_api(clone_path, progress_callback)
+
+
+async def _explore_via_messages_api(clone_path: str, progress_callback=None) -> str:
+    """Fallback: build context manually and call the Anthropic messages API."""
+    clone_dir = Path(clone_path)
+    overview_path = clone_dir / "REPO_OVERVIEW.md"
+
+    client = _get_api_client()
+
+    if progress_callback:
+        await progress_callback("Analyzing repository structure...")
+
+    context = await _build_repo_context(clone_dir)
+
+    if progress_callback:
+        await progress_callback("Generating overview with Claude...")
+
+    prompt = f"""Analyze this repository and generate a concise REPO_OVERVIEW.md focused on testing:
 
 1. Project name and type (1-2 sentences)
 2. Test framework(s) used (if any)
@@ -208,52 +494,34 @@ Repository context:
 
 Generate the markdown content for REPO_OVERVIEW.md:"""
 
-        # Use streaming API with real-time progress updates
-        overview_content = ""
-        last_progress_length = 0
-        progress_interval = 200  # Send update every 200 characters
+    overview_content = ""
+    last_progress_length = 0
 
-        with client.messages.stream(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=1500,  # Reduced for concise test-focused overview
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
-        ) as stream:
-            for text in stream.text_stream:
-                overview_content += text
-                # Send progress updates at regular intervals
-                current_length = len(overview_content)
-                if current_length - last_progress_length >= progress_interval:
-                    if progress_callback:
-                        await progress_callback(f"Generated {current_length} characters...")
-                    last_progress_length = current_length
+    with client.messages.stream(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=1500,
+        messages=[{"role": "user", "content": prompt}],
+    ) as stream:
+        for text in stream.text_stream:
+            overview_content += text
+            current_length = len(overview_content)
+            if current_length - last_progress_length >= 200:
+                if progress_callback:
+                    await progress_callback(f"Generated {current_length} characters...")
+                last_progress_length = current_length
 
-        if progress_callback:
-            await progress_callback("Writing REPO_OVERVIEW.md...")
+    if progress_callback:
+        await progress_callback("Writing REPO_OVERVIEW.md...")
 
-        # Write to file
-        overview_path.write_text(overview_content)
-
-        if progress_callback:
-            await progress_callback("Repository exploration completed!")
-
-        return str(overview_path)
-
-    except Exception as e:
-        if progress_callback:
-            await progress_callback(f"Error: {str(e)}")
-        raise Exception(f"Failed to explore repository: {str(e)}")
+    overview_path.write_text(overview_content)
+    return str(overview_path)
 
 
-async def _build_repo_context(repo_path: Path, progress_callback=None) -> str:
-    """Build context about the repository for Claude to analyze"""
+async def _build_repo_context(repo_path: Path) -> str:
+    """Build a text summary of the repository for the messages-API fallback."""
     context_parts = []
 
-    # Get README if exists
-    readme_files = ["README.md", "README.txt", "README"]
-    for readme in readme_files:
+    for readme in ["README.md", "README.txt", "README"]:
         readme_path = repo_path / readme
         if readme_path.exists():
             try:
@@ -263,32 +531,35 @@ async def _build_repo_context(repo_path: Path, progress_callback=None) -> str:
             except Exception:
                 pass
 
-    # Get directory structure
     try:
         tree_output = subprocess.run(
-            ["tree", "-L", "3", "-I", "node_modules|venv|.git|__pycache__|*.pyc", str(repo_path)],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["tree", "-L", "3", "-I",
+             "node_modules|venv|.git|__pycache__|*.pyc|.venv_*",
+             str(repo_path)],
+            capture_output=True, text=True, timeout=10,
         )
         if tree_output.returncode == 0:
             context_parts.append(f"## Directory Structure:\n{tree_output.stdout[:3000]}")
     except Exception:
-        # Fallback to simple listing
         try:
             files = []
             for item in repo_path.rglob("*"):
-                if any(skip in str(item) for skip in [".git", "node_modules", "venv", "__pycache__"]):
+                if any(
+                    skip in str(item)
+                    for skip in [".git", "node_modules", "venv", "__pycache__", ".venv_"]
+                ):
                     continue
                 rel_path = item.relative_to(repo_path)
                 if len(files) < 100:
                     files.append(str(rel_path))
-            context_parts.append(f"## Files:\n" + "\n".join(files))
+            context_parts.append("## Files:\n" + "\n".join(files))
         except Exception:
             pass
 
-    # Get package.json or requirements.txt or similar
-    config_files = ["package.json", "requirements.txt", "setup.py", "pyproject.toml", "Cargo.toml", "go.mod"]
+    config_files = [
+        "package.json", "requirements.txt", "setup.py",
+        "pyproject.toml", "Cargo.toml", "go.mod",
+    ]
     for config_file in config_files:
         config_path = repo_path / config_file
         if config_path.exists():
@@ -301,80 +572,291 @@ async def _build_repo_context(repo_path: Path, progress_callback=None) -> str:
     return "\n\n".join(context_parts)
 
 
+# ---------------------------------------------------------------------------
+# Test command detection (static-first, LLM fallback, cached)
+# ---------------------------------------------------------------------------
+
 async def detect_test_commands(overview_path: str) -> Dict[str, Any]:
     """
-    Detect test commands from REPO_OVERVIEW.md without running them.
+    Detect test commands from REPO_OVERVIEW.md.
 
-    Args:
-        overview_path: Path to REPO_OVERVIEW.md
+    Strategy:
+      1. Static detection from project files (no LLM cost)
+      2. If nothing found, fall back to LLM parsing of REPO_OVERVIEW.md
+      3. Cache result in test_config.json
 
     Returns:
-        Dictionary containing test_commands and setup_commands
+        Dictionary containing test_commands, setup_commands, and language
     """
     overview_file = Path(overview_path)
-
     if not overview_file.exists():
         raise FileNotFoundError(f"REPO_OVERVIEW.md not found at {overview_path}")
 
-    overview_content = overview_file.read_text()
+    clone_dir = overview_file.parent
 
-    try:
-        from anthropic import Anthropic
+    # Check cache
+    cached = _load_test_config(clone_dir)
+    if cached:
+        return cached
 
-        api_key = (
-            os.getenv("ANTHROPIC_API_KEY") or
-            os.getenv("OSCANNER_LLM_API_KEY") or
-            os.getenv("OPENAI_API_KEY") or
-            os.getenv("ANTHROPIC_AUTH_TOKEN")
-        )
-        if not api_key:
-            raise ValueError("API key not found. Set one of: ANTHROPIC_API_KEY, OSCANNER_LLM_API_KEY, OPENAI_API_KEY, or ANTHROPIC_AUTH_TOKEN")
+    # Static detection
+    static = _detect_frameworks_statically(clone_dir)
+    if static:
+        _save_test_config(clone_dir, static)
+        return static
 
-        # Get base URL if provided (for custom API endpoints)
-        base_url = os.getenv("ANTHROPIC_BASE_URL")
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["base_url"] = base_url
+    # LLM fallback
+    result = await _detect_commands_via_llm(overview_file.read_text())
+    _save_test_config(clone_dir, result)
+    return result
 
-        client = Anthropic(**client_kwargs)
 
-        prompt = f"""Based on this REPO_OVERVIEW.md, identify the command(s) to run tests for this repository.
+async def _detect_commands_via_llm(overview_content: str) -> Dict[str, Any]:
+    """Parse REPO_OVERVIEW.md with Claude to extract commands."""
+    client = _get_api_client()
+
+    prompt = f"""Based on this REPO_OVERVIEW.md, identify the commands to run tests.
 
 {overview_content}
 
-Return a JSON object with the following structure:
+Return a JSON object with this exact structure:
 {{
   "test_commands": ["command1", "command2"],
-  "setup_commands": ["optional setup command"]
+  "setup_commands": ["optional setup command"],
+  "language": "python|node|go|rust|java|ruby|dotnet|other"
 }}
 
-If no tests are found, return {{"test_commands": [], "setup_commands": []}}
+If no tests are found, return {{"test_commands": [], "setup_commands": [], "language": "unknown"}}
 """
 
+    message = client.messages.create(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=500,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    response_text = message.content[0].text
+    json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
+    if json_match:
+        try:
+            return json.loads(json_match.group())
+        except json.JSONDecodeError:
+            pass
+    return {"test_commands": [], "setup_commands": [], "language": "unknown"}
+
+
+# ---------------------------------------------------------------------------
+# Structured test-output parsing
+# ---------------------------------------------------------------------------
+
+def _parse_json_report(clone_dir: Path) -> Optional[Dict[str, Any]]:
+    """
+    Parse .test_report.json written by pytest-json-report or jest --json.
+    Returns a dict with 'passed', 'failed', 'total', 'test_cases' or None.
+    """
+    report_path = clone_dir / ".test_report.json"
+    if not report_path.exists():
+        return None
+
+    try:
+        data = json.loads(report_path.read_text())
+    except Exception:
+        return None
+
+    # pytest-json-report format
+    if "summary" in data and "tests" in data:
+        summary = data["summary"]
+        passed = summary.get("passed", 0)
+        failed = summary.get("failed", 0) + summary.get("error", 0)
+        total = summary.get("total", passed + failed)
+
+        test_cases = []
+        for t in data.get("tests", []):
+            outcome = t.get("outcome", "unknown")
+            test_cases.append({
+                "name": t.get("nodeid", t.get("name", "unknown")),
+                "status": "passed" if outcome == "passed" else "failed",
+                "duration": t.get("duration", 0),
+                "output": t.get("call", {}).get("longrepr", "") if outcome != "passed" else "",
+            })
+        return {"passed": passed, "failed": failed, "total": total, "test_cases": test_cases}
+
+    # jest --json format
+    if "numPassedTests" in data:
+        passed = data.get("numPassedTests", 0)
+        failed = data.get("numFailedTests", 0)
+        total = data.get("numTotalTests", passed + failed)
+
+        test_cases = []
+        for suite in data.get("testResults", []):
+            for t in suite.get("testResults", []):
+                status_raw = t.get("status", "unknown")
+                test_cases.append({
+                    "name": " > ".join(t.get("ancestorTitles", [])) + " > " + t.get("title", ""),
+                    "status": "passed" if status_raw == "passed" else "failed",
+                    "duration": t.get("duration", 0) / 1000.0,  # ms → s
+                    "output": "\n".join(t.get("failureMessages", [])),
+                })
+        return {"passed": passed, "failed": failed, "total": total, "test_cases": test_cases}
+
+    # Go test JSON format (one JSON object per line)
+    if "Action" in data:
+        # Single line parsed as object; re-read the file line by line
+        report_path = clone_dir / ".test_report.json"
+        return _parse_go_json_report(report_path)
+
+    return None
+
+
+def _parse_go_json_report(report_path: Path) -> Optional[Dict[str, Any]]:
+    """Parse Go test JSON output (one JSON object per line)."""
+    try:
+        lines = report_path.read_text().splitlines()
+        passed = 0
+        failed = 0
+        test_cases = []
+        test_durations: Dict[str, float] = {}
+
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            action = obj.get("Action", "")
+            test = obj.get("Test", "")
+            if not test:
+                continue
+            if action == "pass":
+                passed += 1
+                test_cases.append({
+                    "name": test,
+                    "status": "passed",
+                    "duration": obj.get("Elapsed", 0),
+                    "output": "",
+                })
+            elif action == "fail":
+                failed += 1
+                test_cases.append({
+                    "name": test,
+                    "status": "failed",
+                    "duration": obj.get("Elapsed", 0),
+                    "output": "",
+                })
+
+        total = passed + failed
+        if total == 0:
+            return None
+        return {"passed": passed, "failed": failed, "total": total, "test_cases": test_cases}
+    except Exception:
+        return None
+
+
+def _parse_test_output_with_regex(output: str) -> Optional[Dict[str, int]]:
+    """Fast-path regex parsing for common test framework stdout."""
+
+    # pytest: "9 failed, 9 passed"
+    m = re.search(r"=+\s*(\d+)\s+failed,\s+(\d+)\s+passed", output)
+    if m:
+        failed, passed = int(m.group(1)), int(m.group(2))
+        return {"passed": passed, "failed": failed, "total": passed + failed}
+
+    # pytest: "9 passed"
+    m = re.search(r"=+\s*(\d+)\s+passed", output)
+    if m:
+        passed = int(m.group(1))
+        return {"passed": passed, "failed": 0, "total": passed}
+
+    # Jest: "Tests:  9 failed, 9 passed, 18 total"
+    m = re.search(r"Tests:\s+(\d+)\s+failed,\s+(\d+)\s+passed,\s+(\d+)\s+total", output)
+    if m:
+        return {"failed": int(m.group(1)), "passed": int(m.group(2)), "total": int(m.group(3))}
+
+    # Jest all-passed: "Tests:  9 passed, 9 total"
+    m = re.search(r"Tests:\s+(\d+)\s+passed,\s+(\d+)\s+total", output)
+    if m:
+        passed, total = int(m.group(1)), int(m.group(2))
+        return {"passed": passed, "failed": total - passed, "total": total}
+
+    # Go: "ok" / "FAIL" summary lines → "FAIL: N PASS: N" is non-standard; use basic ok/fail
+    ok_count = len(re.findall(r"^ok\s+", output, re.MULTILINE))
+    fail_count = len(re.findall(r"^FAIL\s+", output, re.MULTILINE))
+    if ok_count + fail_count > 0:
+        return {"passed": ok_count, "failed": fail_count, "total": ok_count + fail_count}
+
+    # cargo test: "test result: ok. N passed; N failed"
+    m = re.search(r"test result:.*?(\d+)\s+passed;\s+(\d+)\s+failed", output)
+    if m:
+        passed, failed = int(m.group(1)), int(m.group(2))
+        return {"passed": passed, "failed": failed, "total": passed + failed}
+
+    # Maven surefire: "Tests run: N, Failures: N, Errors: N"
+    m = re.search(r"Tests run:\s*(\d+),\s*Failures:\s*(\d+),\s*Errors:\s*(\d+)", output)
+    if m:
+        total, failures, errors = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        failed = failures + errors
+        return {"passed": total - failed, "failed": failed, "total": total}
+
+    # RSpec: "N examples, N failures"
+    m = re.search(r"(\d+)\s+examples?,\s*(\d+)\s+failures?", output)
+    if m:
+        total, failed = int(m.group(1)), int(m.group(2))
+        return {"passed": total - failed, "failed": failed, "total": total}
+
+    return None
+
+
+async def _parse_test_output_with_llm(output: str) -> Optional[Dict[str, int]]:
+    """LLM fallback for unknown test frameworks."""
+    try:
+        client = _get_api_client()
+        truncated = output[-2000:] if len(output) > 2000 else output
+
+        prompt = f"""Parse this test output and extract the test results.
+
+Test output:
+```
+{truncated}
+```
+
+Return ONLY a JSON object (no other text):
+{{
+  "passed": <number>,
+  "failed": <number>,
+  "total": <number>
+}}
+
+If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total": 0}}
+"""
         message = client.messages.create(
             model="claude-sonnet-4-5-20250929",
-            max_tokens=1000,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}],
         )
 
-        # Parse response
-        response_text = message.content[0].text
-        # Extract JSON from response
-        import re
-        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        response_text = message.content[0].text.strip()
+        json_match = re.search(r"\{[^}]+\}", response_text)
         if json_match:
-            test_info = json.loads(json_match.group())
-        else:
-            test_info = {"test_commands": [], "setup_commands": []}
+            result = json.loads(json_match.group())
+            if all(k in result for k in ["passed", "failed", "total"]):
+                if result["total"] > 0 and result["passed"] + result["failed"] == result["total"]:
+                    return result
+    except Exception:
+        pass
+    return None
 
-        return test_info
 
-    except Exception as e:
-        raise Exception(f"Failed to detect test commands: {str(e)}")
+async def _parse_test_output(output: str) -> Optional[Dict[str, int]]:
+    result = _parse_test_output_with_regex(output)
+    if result:
+        return result
+    return await _parse_test_output_with_llm(output)
 
+
+# ---------------------------------------------------------------------------
+# Report generation
+# ---------------------------------------------------------------------------
 
 async def _generate_test_report(
     report_path: Path,
@@ -383,16 +865,12 @@ async def _generate_test_report(
     passed: int,
     failed: int,
     score: int,
-    test_results: list
+    test_results: list,
 ) -> None:
-    """Generate TEST_REPORT.md for analyzed repository"""
-    from datetime import datetime
-
-    # Calculate percentages
+    """Generate TEST_REPORT.md for analyzed repository."""
     pass_rate = (passed / total * 100) if total > 0 else 0
     fail_rate = (failed / total * 100) if total > 0 else 0
 
-    # Determine grade
     if score >= 90:
         grade = "Excellent ⭐⭐⭐⭐⭐"
     elif score >= 70:
@@ -402,7 +880,6 @@ async def _generate_test_report(
     else:
         grade = "Poor ⭐"
 
-    # Build report content
     report = f"""# Test Report: {repo_name}
 
 **Generated**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -419,47 +896,34 @@ async def _generate_test_report(
 
 """
 
-    # Special message for repositories with no tests
     if total == 0:
         report += """⚠️ **No tests detected in this repository**
 
-This repository does not appear to have any automated tests configured. Consider adding tests to improve code quality and reliability.
-
-### Why Testing Matters
-- Catches bugs early in development
-- Ensures code works as expected
-- Makes refactoring safer
-- Documents expected behavior
-- Improves code confidence
+This repository does not appear to have any automated tests configured.
 
 """
 
-    # Group results by status
     passed_tests = [t for t in test_results if t["status"] == "passed"]
     failed_tests = [t for t in test_results if t["status"] == "failed"]
 
-    # Passed tests
     if passed_tests:
         report += f"### ✅ Passed Tests ({len(passed_tests)})\n\n"
-        for test in passed_tests:
-            duration = test.get("duration", 0)
-            report += f"- `{test['name']}` ({duration:.2f}s)\n"
+        for t in passed_tests:
+            duration = t.get("duration", 0)
+            report += f"- `{t['name']}` ({duration:.2f}s)\n"
         report += "\n"
 
-    # Failed tests
     if failed_tests:
         report += f"### ❌ Failed Tests ({len(failed_tests)})\n\n"
-        for test in failed_tests:
-            duration = test.get("duration", 0)
-            report += f"- `{test['name']}` ({duration:.2f}s)\n"
-            # Include error output (truncated)
-            output = test.get("output", "")
+        for t in failed_tests:
+            duration = t.get("duration", 0)
+            report += f"- `{t['name']}` ({duration:.2f}s)\n"
+            output = t.get("output", "")
             if output:
                 truncated_output = output[-500:] if len(output) > 500 else output
                 report += f"  ```\n  {truncated_output}\n  ```\n"
         report += "\n"
 
-    # Score breakdown
     report += f"""## Score Breakdown
 
 - **Pass Rate**: {pass_rate:.1f}% ({passed}/{total})
@@ -475,14 +939,12 @@ This repository does not appear to have any automated tests configured. Consider
 
 """
 
-    # Different recommendations based on whether tests exist
     if total == 0:
         report += """### Get Started with Testing
 1. Choose a testing framework appropriate for your language/stack
 2. Write tests for critical functionality first
 3. Aim for at least 70% code coverage
 4. Set up continuous integration to run tests automatically
-5. Consider test-driven development (TDD) for new features
 
 """
     elif score < 70:
@@ -496,8 +958,8 @@ This repository does not appear to have any automated tests configured. Consider
 
     if failed_tests:
         report += "### Failed Tests to Fix\n"
-        for idx, test in enumerate(failed_tests[:5], 1):
-            report += f"{idx}. `{test['name']}`\n"
+        for idx, t in enumerate(failed_tests[:5], 1):
+            report += f"{idx}. `{t['name']}`\n"
         if len(failed_tests) > 5:
             report += f"\n...and {len(failed_tests) - 5} more\n"
         report += "\n"
@@ -505,12 +967,10 @@ This repository does not appear to have any automated tests configured. Consider
     report += """## Next Steps
 
 """
-
     if total == 0:
         report += """1. Set up a testing framework for your project
 2. Write initial tests for core functionality
 3. Run analysis again: `/api/runner/run-tests`
-4. Gradually increase test coverage over time
 
 """
     else:
@@ -521,194 +981,31 @@ This repository does not appear to have any automated tests configured. Consider
 
 """
 
-    report += """---
+    report += "---\n\n*Generated by repos_runner - Automated repository testing service*\n"
 
-*Generated by [repos_runner](https://github.com/your-org/oscanner) - Automated repository testing service*
-"""
-
-    # Write report to file
     report_path.write_text(report)
 
 
-def _parse_test_output_with_regex(output: str) -> Optional[Dict[str, int]]:
-    """
-    Try to parse test output using regex patterns for common formats.
-    This is the fast path for well-known test frameworks.
+# ---------------------------------------------------------------------------
+# Run tests (main entry point)
+# ---------------------------------------------------------------------------
 
-    Returns:
-        Dictionary with 'passed', 'failed', 'total' keys, or None if no match
-    """
-    import re
-
-    # Jest format: "Tests:       9 failed, 9 passed, 18 total"
-    jest_match = re.search(r'Tests:\s+(\d+)\s+failed,\s+(\d+)\s+passed,\s+(\d+)\s+total', output)
-    if jest_match:
-        return {
-            'failed': int(jest_match.group(1)),
-            'passed': int(jest_match.group(2)),
-            'total': int(jest_match.group(3))
-        }
-
-    # Jest format (all passed): "Tests:       9 passed, 18 total"
-    jest_passed_match = re.search(r'Tests:\s+(\d+)\s+passed,\s+(\d+)\s+total', output)
-    if jest_passed_match:
-        passed = int(jest_passed_match.group(1))
-        total = int(jest_passed_match.group(2))
-        return {
-            'passed': passed,
-            'failed': total - passed,
-            'total': total
-        }
-
-    # Jest format (all failed): "Tests:       9 failed, 18 total"
-    jest_failed_match = re.search(r'Tests:\s+(\d+)\s+failed,\s+(\d+)\s+total', output)
-    if jest_failed_match:
-        failed = int(jest_failed_match.group(1))
-        total = int(jest_failed_match.group(2))
-        return {
-            'passed': total - failed,
-            'failed': failed,
-            'total': total
-        }
-
-    # pytest format: "====== 9 failed, 9 passed in 8.51s ======"
-    pytest_match = re.search(r'=+\s*(\d+)\s+failed,\s+(\d+)\s+passed', output)
-    if pytest_match:
-        failed = int(pytest_match.group(1))
-        passed = int(pytest_match.group(2))
-        return {
-            'failed': failed,
-            'passed': passed,
-            'total': failed + passed
-        }
-
-    # pytest format (all passed): "====== 9 passed in 8.51s ======"
-    pytest_passed_match = re.search(r'=+\s*(\d+)\s+passed', output)
-    if pytest_passed_match:
-        passed = int(pytest_passed_match.group(1))
-        return {
-            'passed': passed,
-            'failed': 0,
-            'total': passed
-        }
-
-    # Go test format: "FAIL: 9 PASS: 9"
-    go_match = re.search(r'FAIL:\s*(\d+).*PASS:\s*(\d+)', output)
-    if go_match:
-        failed = int(go_match.group(1))
-        passed = int(go_match.group(2))
-        return {
-            'failed': failed,
-            'passed': passed,
-            'total': failed + passed
-        }
-
-    # No match found
-    return None
-
-
-async def _parse_test_output_with_llm(output: str) -> Optional[Dict[str, int]]:
-    """
-    Parse test output using LLM when regex patterns fail.
-    This is the flexible fallback for unknown test frameworks.
-
-    Returns:
-        Dictionary with 'passed', 'failed', 'total' keys, or None if parsing fails
-    """
-    try:
-        from anthropic import Anthropic
-
-        api_key = (
-            os.getenv("ANTHROPIC_API_KEY") or
-            os.getenv("OSCANNER_LLM_API_KEY") or
-            os.getenv("OPENAI_API_KEY") or
-            os.getenv("ANTHROPIC_AUTH_TOKEN")
-        )
-        if not api_key:
-            return None
-
-        base_url = os.getenv("ANTHROPIC_BASE_URL")
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["base_url"] = base_url
-
-        client = Anthropic(**client_kwargs)
-
-        # Truncate output to avoid excessive token usage (keep last 2000 chars with summary)
-        truncated_output = output[-2000:] if len(output) > 2000 else output
-
-        prompt = f"""Parse this test output and extract the test results.
-
-Test output (last 2000 characters):
-```
-{truncated_output}
-```
-
-Return ONLY a JSON object with this exact structure (no other text):
-{{
-  "passed": <number of passed tests>,
-  "failed": <number of failed tests>,
-  "total": <total number of tests>
-}}
-
-If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total": 0}}
-"""
-
-        message = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=200,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
-        )
-
-        # Parse response
-        response_text = message.content[0].text.strip()
-        # Extract JSON from response
-        import re
-        json_match = re.search(r'\{[^}]+\}', response_text)
-        if json_match:
-            result = json.loads(json_match.group())
-            # Validate the result has required keys and reasonable values
-            if all(k in result for k in ['passed', 'failed', 'total']):
-                if result['total'] > 0 and result['passed'] + result['failed'] == result['total']:
-                    return result
-
-        return None
-
-    except Exception as e:
-        # Silently fail and return None - this is a best-effort fallback
-        return None
-
-
-async def _parse_test_output(output: str) -> Optional[Dict[str, int]]:
-    """
-    Parse test output to extract test counts.
-    Uses regex for common formats, falls back to LLM for unknown formats.
-
-    Returns:
-        Dictionary with 'passed', 'failed', 'total' keys, or None if parsing fails
-    """
-    # Fast path: Try regex patterns first
-    result = _parse_test_output_with_regex(output)
-    if result:
-        return result
-
-    # Fallback: Use LLM for unknown formats
-    result = await _parse_test_output_with_llm(output)
-    return result
-
-
-async def run_tests(clone_path: str, overview_path: str, progress_callback=None) -> Dict[str, Any]:
+async def run_tests(
+    clone_path: str,
+    overview_path: str,
+    progress_callback=None,
+    setup_timeout: int = 120,
+    test_timeout: int = 300,
+) -> Dict[str, Any]:
     """
     Identify and run tests based on REPO_OVERVIEW.md.
-    Generates TEST_REPORT.md in the repository directory.
 
     Args:
         clone_path: Path to the cloned repository
         overview_path: Path to REPO_OVERVIEW.md
-        progress_callback: Optional callback for progress updates
+        progress_callback: Optional async callback for progress updates
+        setup_timeout: Seconds allowed per setup command (default 120)
+        test_timeout: Seconds allowed per test command (default 300)
 
     Returns:
         Dictionary containing test results and score
@@ -727,231 +1024,200 @@ async def run_tests(clone_path: str, overview_path: str, progress_callback=None)
     if progress_callback:
         await progress_callback("Identifying test commands...")
 
-    # Use Claude to identify test commands
-    try:
-        from anthropic import Anthropic
-
-        api_key = (
-            os.getenv("ANTHROPIC_API_KEY") or
-            os.getenv("OSCANNER_LLM_API_KEY") or
-            os.getenv("OPENAI_API_KEY") or
-            os.getenv("ANTHROPIC_AUTH_TOKEN")
-        )
-        if not api_key:
-            raise ValueError("API key not found. Set one of: ANTHROPIC_API_KEY, OSCANNER_LLM_API_KEY, OPENAI_API_KEY, or ANTHROPIC_AUTH_TOKEN")
-
-        # Get base URL if provided (for custom API endpoints)
-        base_url = os.getenv("ANTHROPIC_BASE_URL")
-        client_kwargs = {"api_key": api_key}
-        if base_url:
-            client_kwargs["base_url"] = base_url
-
-        client = Anthropic(**client_kwargs)
-
-        prompt = f"""Based on this REPO_OVERVIEW.md, identify the command(s) to run tests for this repository.
-
-{overview_content}
-
-Return a JSON object with the following structure:
-{{
-  "test_commands": ["command1", "command2"],
-  "setup_commands": ["optional setup command"]
-}}
-
-If no tests are found, return {{"test_commands": [], "setup_commands": []}}
-"""
-
-        message = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=1000,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
-        )
-
-        # Parse response
-        response_text = message.content[0].text
-        # Extract JSON from response
-        import re
-        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-        if json_match:
-            test_info = json.loads(json_match.group())
-        else:
-            test_info = {"test_commands": [], "setup_commands": []}
-
-    except Exception as e:
+    # Try static detection first (cheap), then LLM
+    test_info = _detect_frameworks_statically(clone_dir)
+    if test_info:
         if progress_callback:
-            await progress_callback(f"Warning: Could not identify tests: {str(e)}")
-        test_info = {"test_commands": [], "setup_commands": []}
+            await progress_callback(
+                f"Detected {test_info.get('language', 'unknown')} project via static analysis"
+            )
+        # Cache it
+        _save_test_config(clone_dir, test_info)
+    else:
+        # Check cache before calling LLM
+        test_info = _load_test_config(clone_dir)
+        if test_info:
+            if progress_callback:
+                await progress_callback("Using cached test configuration")
+        else:
+            if progress_callback:
+                await progress_callback("Using LLM to identify test commands...")
+            test_info = await _detect_commands_via_llm(overview_content)
+            _save_test_config(clone_dir, test_info)
 
-    # Run setup commands if any
+    # Run setup commands with hash-based venv caching for Python
     if test_info.get("setup_commands"):
-        # Ensure per-repository virtual environment exists
         venv_python = ensure_repo_venv(clone_path)
+        language = test_info.get("language", "")
 
         for cmd in test_info["setup_commands"]:
             if progress_callback:
                 await progress_callback(f"Running setup: {cmd}")
 
-            # Modify command to use venv python for pip installs
-            if cmd.startswith("pip install") or cmd.startswith("pip3 install"):
-                # Replace pip with venv pip
+            # Route pip installs through the per-repo venv
+            if language == "python" and (
+                cmd.startswith("pip install") or cmd.startswith("pip3 install")
+            ):
                 cmd = cmd.replace("pip install", f"{venv_python} -m pip install")
                 cmd = cmd.replace("pip3 install", f"{venv_python} -m pip install")
 
             try:
-                result = subprocess.run(
+                result = run_sandboxed(
                     cmd,
-                    shell=True,
                     cwd=clone_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=300
+                    timeout=setup_timeout,
+                    limits=ResourceLimits(
+                        cpu_seconds=setup_timeout,
+                        fsize_mb=1024,   # setup may download/unpack large deps
+                        as_mb=2048,
+                        max_files=512,
+                        max_procs=128,
+                    ),
                 )
                 if progress_callback and result.returncode != 0:
                     await progress_callback(f"Setup warning: {result.stderr[:200]}")
+            except subprocess.TimeoutExpired:
+                if progress_callback:
+                    await progress_callback(
+                        f"Setup command timed out after {setup_timeout}s: {cmd}"
+                    )
             except Exception as e:
                 if progress_callback:
                     await progress_callback(f"Setup failed: {str(e)}")
 
     # Run test commands
-    test_results = []
-    num_commands = len(test_info.get("test_commands", []))
+    test_commands = test_info.get("test_commands", [])
+    num_commands = len(test_commands)
 
     if num_commands == 0:
         if progress_callback:
             await progress_callback("No tests found in repository")
 
-        # Generate TEST_REPORT.md even when no tests are found
         test_report_path = clone_dir / "TEST_REPORT.md"
         await _generate_test_report(
             report_path=test_report_path,
             repo_name=clone_dir.name,
-            total=0,
-            passed=0,
-            failed=0,
-            score=0,
-            test_results=[]
+            total=0, passed=0, failed=0, score=0,
+            test_results=[],
         )
-
-        if progress_callback:
-            await progress_callback(f"Test report saved to {test_report_path}")
-
         return {
-            "total": 0,
-            "passed": 0,
-            "failed": 0,
-            "skipped": 0,
-            "score": 0,
-            "details": [],
+            "total": 0, "passed": 0, "failed": 0, "skipped": 0,
+            "score": 0, "details": [],
             "message": "No tests found in repository",
-            "report_path": str(test_report_path)
+            "report_path": str(test_report_path),
         }
 
-    # Accumulate actual test counts from parsed output
     total_passed = 0
     total_failed = 0
     total_tests = 0
+    all_test_cases: List[Dict[str, Any]] = []
+    command_results = []
 
-    # Get per-repository venv python path for running tests
     venv_python = ensure_repo_venv(clone_path)
+    language = test_info.get("language", "")
 
-    for idx, cmd in enumerate(test_info.get("test_commands", [])):
+    for idx, cmd in enumerate(test_commands):
         if progress_callback:
             await progress_callback(f"Running test {idx + 1}/{num_commands}: {cmd}")
 
-        # Modify command to use venv python if it's a python/pytest command
+        # Route Python commands through per-repo venv
         modified_cmd = cmd
-        if cmd.startswith("python ") or cmd.startswith("python3 "):
-            modified_cmd = cmd.replace("python ", f"{venv_python} ", 1)
-            modified_cmd = modified_cmd.replace("python3 ", f"{venv_python} ", 1)
-        elif cmd.startswith("pytest"):
-            modified_cmd = f"{venv_python} -m pytest" + cmd[6:]
+        if language == "python":
+            if cmd.startswith("python ") or cmd.startswith("python3 "):
+                modified_cmd = f"{venv_python} " + cmd.split(" ", 1)[1]
+            elif cmd.startswith("pytest"):
+                modified_cmd = f"{venv_python} -m pytest" + cmd[6:]
 
         start_time = datetime.now()
         try:
-            result = subprocess.run(
+            result = run_sandboxed(
                 modified_cmd,
-                shell=True,
                 cwd=clone_dir,
-                capture_output=True,
-                text=True,
-                timeout=300
+                timeout=test_timeout,
+                limits=ResourceLimits(
+                    cpu_seconds=test_timeout,
+                    fsize_mb=512,
+                    as_mb=2048,
+                    max_files=256,
+                    max_procs=128,
+                ),
             )
 
             duration = (datetime.now() - start_time).total_seconds()
             output = result.stdout + result.stderr
 
-            # Try to parse test output to get actual test counts
-            parsed_counts = await _parse_test_output(output)
-
-            if parsed_counts:
-                # Use parsed counts from test framework output
-                cmd_passed = parsed_counts['passed']
-                cmd_failed = parsed_counts['failed']
-                cmd_total = parsed_counts['total']
+            # Try structured JSON report first
+            structured = _parse_json_report(clone_dir)
+            if structured:
+                cmd_passed = structured["passed"]
+                cmd_failed = structured["failed"]
+                cmd_total = structured["total"]
                 status = "passed" if cmd_failed == 0 else "failed"
+                all_test_cases.extend(structured.get("test_cases", []))
             else:
-                # Fallback: treat command as single test
-                status = "passed" if result.returncode == 0 else "failed"
-                cmd_passed = 1 if status == "passed" else 0
-                cmd_failed = 1 if status == "failed" else 0
-                cmd_total = 1
+                # Fall back to regex / LLM parsing of stdout
+                parsed_counts = await _parse_test_output(output)
+                if parsed_counts:
+                    cmd_passed = parsed_counts["passed"]
+                    cmd_failed = parsed_counts["failed"]
+                    cmd_total = parsed_counts["total"]
+                    status = "passed" if cmd_failed == 0 else "failed"
+                else:
+                    status = "passed" if result.returncode == 0 else "failed"
+                    cmd_passed = 1 if status == "passed" else 0
+                    cmd_failed = 1 if status == "failed" else 0
+                    cmd_total = 1
 
             total_passed += cmd_passed
             total_failed += cmd_failed
             total_tests += cmd_total
 
-            test_results.append({
+            command_results.append({
                 "name": cmd,
                 "status": status,
                 "duration": duration,
                 "output": output,
-                "parsed_counts": parsed_counts
             })
 
             if progress_callback:
-                if parsed_counts:
-                    await progress_callback(f"Test {idx + 1}: {cmd_passed} passed, {cmd_failed} failed")
-                else:
-                    await progress_callback(f"Test {idx + 1} {status}")
+                await progress_callback(
+                    f"Test {idx + 1}: {cmd_passed} passed, {cmd_failed} failed"
+                )
 
         except subprocess.TimeoutExpired:
-            test_results.append({
+            command_results.append({
                 "name": cmd,
                 "status": "failed",
-                "duration": 300.0,
-                "output": "Test timed out after 5 minutes",
-                "parsed_counts": None
+                "duration": float(test_timeout),
+                "output": f"Test timed out after {test_timeout}s",
             })
             total_failed += 1
             total_tests += 1
-
             if progress_callback:
-                await progress_callback(f"Test {idx + 1} timed out")
+                await progress_callback(f"Test {idx + 1} timed out after {test_timeout}s")
 
         except Exception as e:
-            test_results.append({
+            command_results.append({
                 "name": cmd,
                 "status": "failed",
                 "duration": 0.0,
                 "output": str(e),
-                "parsed_counts": None
             })
             total_failed += 1
             total_tests += 1
-
             if progress_callback:
                 await progress_callback(f"Test {idx + 1} error: {str(e)}")
 
-    # Calculate score based on actual test counts
     score = int((total_passed / total_tests) * 100) if total_tests > 0 else 0
 
     if progress_callback:
-        await progress_callback(f"Tests completed. Score: {score}/100 ({total_passed}/{total_tests} passed)")
+        await progress_callback(
+            f"Tests completed. Score: {score}/100 ({total_passed}/{total_tests} passed)"
+        )
 
-    # Generate TEST_REPORT.md in the repository directory
+    # Merge command-level and individual test-case results for the report
+    report_items = all_test_cases if all_test_cases else command_results
+
     test_report_path = clone_dir / "TEST_REPORT.md"
     await _generate_test_report(
         report_path=test_report_path,
@@ -960,7 +1226,7 @@ If no tests are found, return {{"test_commands": [], "setup_commands": []}}
         passed=total_passed,
         failed=total_failed,
         score=score,
-        test_results=test_results
+        test_results=report_items,
     )
 
     if progress_callback:
@@ -972,6 +1238,80 @@ If no tests are found, return {{"test_commands": [], "setup_commands": []}}
         "failed": total_failed,
         "skipped": 0,
         "score": score,
-        "details": test_results,
-        "report_path": str(test_report_path)
+        "details": command_results,
+        "test_cases": all_test_cases,
+        "report_path": str(test_report_path),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Resource lifecycle
+# ---------------------------------------------------------------------------
+
+def list_repos() -> List[Dict[str, Any]]:
+    """
+    List all cloned repositories with disk usage and last-modified time.
+
+    Returns:
+        List of dicts with repo_name, clone_path, size_mb, last_accessed, has_report
+    """
+    repos_dir = get_repos_dir()
+    repos = []
+
+    for repo_dir in sorted(repos_dir.iterdir()):
+        if not repo_dir.is_dir():
+            continue
+
+        # Calculate total directory size
+        total_bytes = sum(
+            f.stat().st_size
+            for f in repo_dir.rglob("*")
+            if f.is_file()
+        )
+
+        # Get last modification time
+        try:
+            mtime = repo_dir.stat().st_mtime
+            last_accessed = datetime.fromtimestamp(mtime).isoformat()
+        except Exception:
+            last_accessed = None
+
+        repos.append({
+            "repo_name": repo_dir.name,
+            "clone_path": str(repo_dir),
+            "size_mb": round(total_bytes / (1024 * 1024), 2),
+            "last_accessed": last_accessed,
+            "has_overview": (repo_dir / "REPO_OVERVIEW.md").exists(),
+            "has_report": (repo_dir / "TEST_REPORT.md").exists(),
+            "has_test_config": (repo_dir / "test_config.json").exists(),
+        })
+
+    return repos
+
+
+def delete_repo(repo_name: str) -> Dict[str, Any]:
+    """
+    Delete a cloned repository and all associated files.
+
+    Returns:
+        Dict with status and freed_mb
+    """
+    repos_dir = get_repos_dir()
+    repo_dir = repos_dir / repo_name
+
+    if not repo_dir.exists():
+        raise FileNotFoundError(f"Repository '{repo_name}' not found")
+
+    # Measure size before deleting
+    total_bytes = sum(
+        f.stat().st_size for f in repo_dir.rglob("*") if f.is_file()
+    )
+    freed_mb = round(total_bytes / (1024 * 1024), 2)
+
+    shutil.rmtree(repo_dir)
+
+    return {
+        "status": "deleted",
+        "repo_name": repo_name,
+        "freed_mb": freed_mb,
     }
