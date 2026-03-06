@@ -119,7 +119,8 @@ lines.push('  checkpoint: unknown;');
 lines.push('  previousCheckpoint?: unknown;');
 lines.push('};');
 lines.push('');
-lines.push('export const SINGLE_REPO_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<SingleRepoViewProps> }>> = {');
+lines.push('// eslint-disable-next-line @typescript-eslint/no-explicit-any');
+lines.push('export const SINGLE_REPO_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {');
 for (const p of plugins) {
   if (!p.hasSingle) continue;
   const mod = normalizeTsImport(p.viewSingleEntry);
@@ -129,8 +130,9 @@ for (const p of plugins) {
 }
 lines.push('};');
 lines.push('');
+lines.push('// eslint-disable-next-line @typescript-eslint/no-explicit-any');
 lines.push(
-  'export const MULTI_REPO_COMPARE_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<MultiRepoCompareViewProps> }>> = {'
+  'export const MULTI_REPO_COMPARE_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {'
 );
 for (const p of plugins) {
   if (!p.hasCompare) continue;
@@ -141,8 +143,9 @@ for (const p of plugins) {
 }
 lines.push('};');
 lines.push('');
+lines.push('// eslint-disable-next-line @typescript-eslint/no-explicit-any');
 lines.push(
-  'export const TRAJECTORY_CHECKPOINT_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<TrajectoryCheckpointViewProps> }>> = {'
+  'export const TRAJECTORY_CHECKPOINT_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {'
 );
 for (const p of plugins) {
   if (!p.hasTrajectoryCheckpoint) continue;

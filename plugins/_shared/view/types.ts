@@ -86,6 +86,10 @@ export type PluginMultiRepoCompareViewProps = {
   t?: (key: string, params?: Record<string, string | number>) => string;
 };
 
+export type ContributorComparisonBaseProps = PluginMultiRepoCompareViewProps & {
+  theme?: 'simple' | 'rubric';
+};
+
 // -----------------------------
 // Trajectory checkpoint (view/trajectory_checkpoint.tsx)
 // -----------------------------
