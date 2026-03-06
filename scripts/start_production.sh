@@ -75,9 +75,9 @@ if pgrep -f "oscanner serve" > /dev/null; then
 fi
 
 # Kill webapp processes
-if pgrep -f "next start" > /dev/null; then
+if pgrep -f "npx serve" > /dev/null; then
     echo -e "${YELLOW}Stopping existing webapp processes...${NC}"
-    pkill -f "next start" || true
+    pkill -f "npx serve" || true
     KILLED=true
 fi
 
@@ -121,7 +121,7 @@ else
 fi
 
 # Build webapp
-if [ ! -d ".next" ] || [ "$REBUILD" = true ]; then
+if [ ! -d "out" ] || [ "$REBUILD" = true ]; then
     echo -e "${YELLOW}Building webapp...${NC}"
     npm run build
     echo -e "${GREEN}✓${NC} Webapp built successfully"
@@ -133,7 +133,7 @@ fi
 cleanup() {
     echo -e "\n${YELLOW}Shutting down services...${NC}"
     pkill -f "oscanner serve" 2>/dev/null || true
-    pkill -f "next start" 2>/dev/null || true
+    pkill -f "npx serve" 2>/dev/null || true
     exit 0
 }
 
@@ -172,9 +172,9 @@ echo -e "${BLUE}Starting webapp frontend...${NC}"
 cd "${PROJECT_ROOT}/frontend/webapp"
 
 if [ "$DAEMON" = true ]; then
-    nohup bash -c "PORT=$WEBAPP_PORT npm start" > ../webapp.log 2>&1 &
+    nohup bash -c "npx serve out -l $WEBAPP_PORT -s" > ../webapp.log 2>&1 &
 else
-    PORT=$WEBAPP_PORT npm start > ../webapp.log 2>&1 &
+    npx serve out -l $WEBAPP_PORT -s > ../webapp.log 2>&1 &
 fi
 WEBAPP_PID=$!
 echo -e "${GREEN}✓${NC} Webapp started (PID: ${WEBAPP_PID})"
@@ -189,7 +189,7 @@ echo -e "${BLUE}======================================${NC}"
 if [ "$DAEMON" = true ]; then
     echo -e "\n${GREEN}Services are running in daemon mode${NC}"
     echo -e "View logs: tail -f ${PROJECT_ROOT}/evaluator.log ${PROJECT_ROOT}/webapp.log"
-    echo -e "Stop services: pkill -f 'oscanner serve|next start'\n"
+    echo -e "Stop services: pkill -f 'oscanner serve'; pkill -f 'npx serve'\n"
 else
     echo -e "\nPress Ctrl+C to stop all services\n"
     # Wait for processes
