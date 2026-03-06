@@ -89,7 +89,7 @@ export default function PluginCheckpointRenderer(props: Props) {
       accumulated_from_periods: checkpoint.commits_range.accumulated_from_periods,
     },
     evaluation: {
-      scores: checkpoint.evaluation.scores as Record<string, number | string>,
+      scores: checkpoint.evaluation.scores as unknown as Record<string, number | string>,
       commits_summary: checkpoint.evaluation.commits_summary,
       plugin: checkpoint.evaluation.plugin,
       plugin_version: checkpoint.evaluation.plugin_version,
@@ -113,7 +113,7 @@ export default function PluginCheckpointRenderer(props: Props) {
       accumulated_from_periods: previousCheckpoint.commits_range.accumulated_from_periods,
     },
     evaluation: {
-      scores: previousCheckpoint.evaluation.scores as Record<string, number | string>,
+      scores: previousCheckpoint.evaluation.scores as unknown as Record<string, number | string>,
       commits_summary: previousCheckpoint.evaluation.commits_summary,
       plugin: previousCheckpoint.evaluation.plugin,
       plugin_version: previousCheckpoint.evaluation.plugin_version,

@@ -23,6 +23,11 @@ export ANTHROPIC_API_KEY="your-api-key"
 # OR
 export OSCANNER_LLM_API_KEY="your-api-key"
 
+# Optional fallback: OpenRouter
+export OPEN_ROUTER_KEY="sk-or-v1-..."
+# Optional override (default is https://openrouter.ai/api)
+export OPEN_ROUTER_BASE_URL="https://openrouter.ai/api"
+
 # Optional: Custom port (default: 8001)
 export RUNNER_PORT=8001
 ```
@@ -371,6 +376,7 @@ Use the `/test-explore` Claude Code skill to automatically:
 
 ### API Key Not Found
 Ensure `ANTHROPIC_API_KEY` or `OSCANNER_LLM_API_KEY` is set in your environment.
+You can also set `OPEN_ROUTER_KEY` as a fallback provider.
 
 ### Port Already in Use
 Change the port:

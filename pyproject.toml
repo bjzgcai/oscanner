@@ -45,7 +45,7 @@ cli = ["dashboard_dist/**"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["cli*", "evaluator*", "repos_runner*"]
+include = ["cli*", "backend*"]
 exclude = ["tests*", "backend.tests*"]
 
 
