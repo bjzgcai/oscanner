@@ -42,6 +42,17 @@ fi
 EVALUATOR_PORT=${PORT:-8000}
 export EVALUATOR_PORT
 
+# Load repos_runner environment variables
+REPOS_RUNNER_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.local"
+if [ -f "$REPOS_RUNNER_ENV" ]; then
+    echo -e "${GREEN}✓${NC} Loading repos_runner configuration from .env.local"
+    REPOS_RUNNER_PORT=$(grep "^PORT=" "$REPOS_RUNNER_ENV" | cut -d '=' -f2)
+    REPOS_RUNNER_PORT=${REPOS_RUNNER_PORT:-8001}
+else
+    REPOS_RUNNER_PORT=8001
+fi
+export REPOS_RUNNER_PORT
+
 # Load webapp environment variables
 WEBAPP_ENV="${PROJECT_ROOT}/frontend/webapp/.env.local"
 if [ -f "$WEBAPP_ENV" ]; then
@@ -57,10 +68,11 @@ export PORT=$WEBAPP_PORT
 
 echo ""
 echo -e "${BLUE}Configuration:${NC}"
-echo -e "  Evaluator Port: ${GREEN}${EVALUATOR_PORT}${NC}"
-echo -e "  Webapp Port:    ${GREEN}${WEBAPP_PORT}${NC}"
-echo -e "  Rebuild:        ${REBUILD}"
-echo -e "  Daemon Mode:    ${DAEMON}"
+echo -e "  Evaluator Port:    ${GREEN}${EVALUATOR_PORT}${NC}"
+echo -e "  Repos Runner Port: ${GREEN}${REPOS_RUNNER_PORT}${NC}"
+echo -e "  Webapp Port:       ${GREEN}${WEBAPP_PORT}${NC}"
+echo -e "  Rebuild:           ${REBUILD}"
+echo -e "  Daemon Mode:       ${DAEMON}"
 echo ""
 
 # Kill existing processes
@@ -68,16 +80,23 @@ echo -e "${BLUE}Checking for existing processes...${NC}"
 KILLED=false
 
 # Kill evaluator processes
-if pgrep -f "oscanner serve" > /dev/null; then
+if pgrep -f "oscanner serve|backend.evaluator.server" > /dev/null; then
     echo -e "${YELLOW}Stopping existing evaluator processes...${NC}"
-    pkill -f "oscanner serve" || true
+    pkill -f "oscanner serve|backend.evaluator.server" || true
+    KILLED=true
+fi
+
+# Kill repos_runner processes
+if pgrep -f "repos_runner.server" > /dev/null; then
+    echo -e "${YELLOW}Stopping existing repos_runner processes...${NC}"
+    pkill -f "repos_runner.server" || true
     KILLED=true
 fi
 
 # Kill webapp processes
-if pgrep -f "next start" > /dev/null; then
+if pgrep -f "npx serve|serve out -l ${WEBAPP_PORT} -s" > /dev/null; then
     echo -e "${YELLOW}Stopping existing webapp processes...${NC}"
-    pkill -f "next start" || true
+    pkill -f "npx serve|serve out -l ${WEBAPP_PORT} -s" || true
     KILLED=true
 fi
 
@@ -96,10 +115,10 @@ cd "${PROJECT_ROOT}"
 if ! command -v uv >/dev/null 2>&1; then
     echo -e "${YELLOW}Installing uv...${NC}"
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    # Add uv to PATH for current session
-    export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
+# Ensure uv is discoverable in non-interactive SSH shells.
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 echo -e "${GREEN}✓${NC} uv is available"
 
 # Sync Python dependencies (uv handles this automatically)
@@ -121,7 +140,7 @@ else
 fi
 
 # Build webapp
-if [ ! -d ".next" ] || [ "$REBUILD" = true ]; then
+if [ ! -d "out" ] || [ "$REBUILD" = true ]; then
     echo -e "${YELLOW}Building webapp...${NC}"
     npm run build
     echo -e "${GREEN}✓${NC} Webapp built successfully"
@@ -132,8 +151,9 @@ fi
 # Function to cleanup on exit
 cleanup() {
     echo -e "\n${YELLOW}Shutting down services...${NC}"
-    pkill -f "oscanner serve" 2>/dev/null || true
-    pkill -f "next start" 2>/dev/null || true
+    pkill -f "oscanner serve|backend.evaluator.server" 2>/dev/null || true
+    pkill -f "repos_runner.server" 2>/dev/null || true
+    pkill -f "npx serve|serve out -l ${WEBAPP_PORT} -s" 2>/dev/null || true
     exit 0
 }
 
@@ -147,9 +167,9 @@ echo -e "${BLUE}Starting evaluator backend...${NC}"
 cd "${PROJECT_ROOT}"
 
 if [ "$DAEMON" = true ]; then
-    nohup bash -c "PORT=$EVALUATOR_PORT uv run oscanner serve" > "${PROJECT_ROOT}/evaluator.log" 2>&1 &
+    nohup bash -c "uv run uvicorn backend.evaluator.server:app --host 0.0.0.0 --port $EVALUATOR_PORT" > "${PROJECT_ROOT}/evaluator.log" 2>&1 &
 else
-    PORT=$EVALUATOR_PORT uv run oscanner serve > "${PROJECT_ROOT}/evaluator.log" 2>&1 &
+    uv run uvicorn backend.evaluator.server:app --host 0.0.0.0 --port $EVALUATOR_PORT > "${PROJECT_ROOT}/evaluator.log" 2>&1 &
 fi
 EVALUATOR_PID=$!
 echo -e "${GREEN}✓${NC} Evaluator started (PID: ${EVALUATOR_PID})"
@@ -166,20 +186,51 @@ if ! kill -0 $EVALUATOR_PID 2>/dev/null; then
     exit 1
 fi
 
+# Start repos_runner backend
+echo ""
+echo -e "${BLUE}Starting repos_runner backend...${NC}"
+cd "${PROJECT_ROOT}"
+
+if [ "$DAEMON" = true ]; then
+    nohup bash -c "uv run uvicorn backend.repos_runner.server:app --host 0.0.0.0 --port $REPOS_RUNNER_PORT" > "${PROJECT_ROOT}/repos_runner.log" 2>&1 &
+else
+    uv run uvicorn backend.repos_runner.server:app --host 0.0.0.0 --port $REPOS_RUNNER_PORT > "${PROJECT_ROOT}/repos_runner.log" 2>&1 &
+fi
+REPOS_RUNNER_PID=$!
+echo -e "${GREEN}✓${NC} Repos Runner started (PID: ${REPOS_RUNNER_PID})"
+echo -e "  Logs: ${PROJECT_ROOT}/repos_runner.log"
+echo -e "  URL:  http://localhost:${REPOS_RUNNER_PORT}"
+
+sleep 2
+
+if ! kill -0 $REPOS_RUNNER_PID 2>/dev/null; then
+    echo -e "${RED}✗${NC} Error: Repos Runner failed to start. Check repos_runner.log for details."
+    tail -n 20 "${PROJECT_ROOT}/repos_runner.log"
+    exit 1
+fi
+
 # Start webapp frontend
 echo ""
 echo -e "${BLUE}Starting webapp frontend...${NC}"
 cd "${PROJECT_ROOT}/frontend/webapp"
 
 if [ "$DAEMON" = true ]; then
-    nohup bash -c "PORT=$WEBAPP_PORT npm start" > ../webapp.log 2>&1 &
+    nohup bash -c "npx serve out -l $WEBAPP_PORT -s" > ../webapp.log 2>&1 &
 else
-    PORT=$WEBAPP_PORT npm start > ../webapp.log 2>&1 &
+    npx serve out -l $WEBAPP_PORT -s > ../webapp.log 2>&1 &
 fi
 WEBAPP_PID=$!
 echo -e "${GREEN}✓${NC} Webapp started (PID: ${WEBAPP_PID})"
-echo -e "  Logs: ${PROJECT_ROOT}/webapp.log"
+echo -e "  Logs: ${PROJECT_ROOT}/frontend/webapp.log"
 echo -e "  URL:  http://localhost:${WEBAPP_PORT}"
+
+sleep 2
+
+if ! kill -0 $WEBAPP_PID 2>/dev/null; then
+    echo -e "${RED}✗${NC} Error: Webapp failed to start. Check frontend/webapp.log for details."
+    tail -n 20 "${PROJECT_ROOT}/frontend/webapp.log"
+    exit 1
+fi
 
 echo ""
 echo -e "${BLUE}======================================${NC}"
@@ -188,10 +239,10 @@ echo -e "${BLUE}======================================${NC}"
 
 if [ "$DAEMON" = true ]; then
     echo -e "\n${GREEN}Services are running in daemon mode${NC}"
-    echo -e "View logs: tail -f ${PROJECT_ROOT}/evaluator.log ${PROJECT_ROOT}/webapp.log"
-    echo -e "Stop services: pkill -f 'oscanner serve|next start'\n"
+    echo -e "View logs: tail -f ${PROJECT_ROOT}/evaluator.log ${PROJECT_ROOT}/repos_runner.log ${PROJECT_ROOT}/frontend/webapp.log"
+    echo -e "Stop services: pkill -f 'oscanner serve|backend.evaluator.server'; pkill -f 'repos_runner.server'; pkill -f 'npx serve|serve out -l ${WEBAPP_PORT} -s'\n"
 else
     echo -e "\nPress Ctrl+C to stop all services\n"
     # Wait for processes
-    wait $EVALUATOR_PID $WEBAPP_PID
+    wait $EVALUATOR_PID $REPOS_RUNNER_PID $WEBAPP_PID
 fi

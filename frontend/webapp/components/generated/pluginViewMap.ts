@@ -20,17 +20,20 @@ export type TrajectoryCheckpointViewProps = {
   previousCheckpoint?: unknown;
 };
 
-export const SINGLE_REPO_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<SingleRepoViewProps> }>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const SINGLE_REPO_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/single_repo"),
   "zgc_simple": () => import("../../../../plugins/zgc_simple/view/single_repo"),
 };
 
-export const MULTI_REPO_COMPARE_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<MultiRepoCompareViewProps> }>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const MULTI_REPO_COMPARE_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/multi_repo_compare"),
   "zgc_simple": () => import("../../../../plugins/zgc_simple/view/multi_repo_compare"),
 };
 
-export const TRAJECTORY_CHECKPOINT_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<TrajectoryCheckpointViewProps> }>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const TRAJECTORY_CHECKPOINT_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/trajectory_checkpoint"),
   "zgc_simple": () => import("../../../../plugins/zgc_simple/view/trajectory_checkpoint"),
 };
