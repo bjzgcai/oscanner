@@ -19,6 +19,9 @@ import git
 from repos_runner.services.sandbox import ResourceLimits, run_sandboxed
 
 
+OPENROUTER_ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
+
+
 # ---------------------------------------------------------------------------
 # Path helpers
 # ---------------------------------------------------------------------------
@@ -49,20 +52,34 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
         raise ValueError(f"Unsupported repository URL: {repo_url}")
 
 
-def _get_api_client():
-    """Return a configured Anthropic client, or raise if no key found."""
+def _get_api_client(use_openrouter: bool = False):
+    """Return a configured Anthropic client."""
     from anthropic import Anthropic
 
+    if use_openrouter:
+        openrouter_key = os.getenv("OPEN_ROUTER_KEY")
+        if not openrouter_key:
+            raise ValueError("OPEN_ROUTER_KEY is not set")
+        openrouter_base_url = (
+            os.getenv("OPEN_ROUTER_BASE_URL")
+            or os.getenv("OPENROUTER_BASE_URL")
+            or OPENROUTER_ANTHROPIC_BASE_URL
+        )
+        return Anthropic(api_key=openrouter_key, base_url=openrouter_base_url)
+
     api_key = (
-        os.getenv("ANTHROPIC_API_KEY") or
-        os.getenv("OSCANNER_LLM_API_KEY") or
-        os.getenv("OPENAI_API_KEY") or
-        os.getenv("ANTHROPIC_AUTH_TOKEN")
+        os.getenv("ANTHROPIC_API_KEY")
+        or os.getenv("OSCANNER_LLM_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+        or os.getenv("ANTHROPIC_AUTH_TOKEN")
     )
+    if not api_key and os.getenv("OPEN_ROUTER_KEY"):
+        return _get_api_client(use_openrouter=True)
+
     if not api_key:
         raise ValueError(
             "API key not found. Set one of: ANTHROPIC_API_KEY, OSCANNER_LLM_API_KEY, "
-            "OPENAI_API_KEY, or ANTHROPIC_AUTH_TOKEN"
+            "OPENAI_API_KEY, ANTHROPIC_AUTH_TOKEN, or OPEN_ROUTER_KEY"
         )
 
     kwargs: Dict[str, Any] = {"api_key": api_key}
@@ -70,6 +87,25 @@ def _get_api_client():
     if base_url:
         kwargs["base_url"] = base_url
     return Anthropic(**kwargs)
+
+
+def _messages_create_with_fallback(**kwargs):
+    """
+    Create a messages response, retrying once via OpenRouter if primary config fails.
+    """
+    client = _get_api_client()
+    try:
+        return client.messages.create(**kwargs)
+    except Exception as primary_error:
+        if not os.getenv("OPEN_ROUTER_KEY"):
+            raise
+        try:
+            return _get_api_client(use_openrouter=True).messages.create(**kwargs)
+        except Exception as fallback_error:
+            raise RuntimeError(
+                f"Primary LLM request failed ({primary_error}); "
+                f"OpenRouter fallback also failed ({fallback_error})"
+            ) from fallback_error
 
 
 # ---------------------------------------------------------------------------
@@ -470,8 +506,6 @@ async def _explore_via_messages_api(clone_path: str, progress_callback=None) -> 
     clone_dir = Path(clone_path)
     overview_path = clone_dir / "REPO_OVERVIEW.md"
 
-    client = _get_api_client()
-
     if progress_callback:
         await progress_callback("Analyzing repository structure...")
 
@@ -494,21 +528,41 @@ Repository context:
 
 Generate the markdown content for REPO_OVERVIEW.md:"""
 
-    overview_content = ""
-    last_progress_length = 0
-
-    with client.messages.stream(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=1500,
-        messages=[{"role": "user", "content": prompt}],
-    ) as stream:
-        for text in stream.text_stream:
-            overview_content += text
-            current_length = len(overview_content)
-            if current_length - last_progress_length >= 200:
-                if progress_callback:
+    async def _stream_once(client) -> str:
+        content = ""
+        last_progress_length = 0
+        with client.messages.stream(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            for text in stream.text_stream:
+                content += text
+                current_length = len(content)
+                if (
+                    progress_callback
+                    and current_length - last_progress_length >= 200
+                ):
                     await progress_callback(f"Generated {current_length} characters...")
-                last_progress_length = current_length
+                    last_progress_length = current_length
+        return content
+
+    try:
+        overview_content = await _stream_once(_get_api_client())
+    except Exception as primary_error:
+        if not os.getenv("OPEN_ROUTER_KEY"):
+            raise
+        if progress_callback:
+            await progress_callback(
+                "Primary LLM request failed, retrying with OPEN_ROUTER_KEY..."
+            )
+        try:
+            overview_content = await _stream_once(_get_api_client(use_openrouter=True))
+        except Exception as fallback_error:
+            raise RuntimeError(
+                f"Primary LLM request failed ({primary_error}); "
+                f"OpenRouter fallback also failed ({fallback_error})"
+            ) from fallback_error
 
     if progress_callback:
         await progress_callback("Writing REPO_OVERVIEW.md...")
@@ -613,8 +667,6 @@ async def detect_test_commands(overview_path: str) -> Dict[str, Any]:
 
 async def _detect_commands_via_llm(overview_content: str) -> Dict[str, Any]:
     """Parse REPO_OVERVIEW.md with Claude to extract commands."""
-    client = _get_api_client()
-
     prompt = f"""Based on this REPO_OVERVIEW.md, identify the commands to run tests.
 
 {overview_content}
@@ -629,7 +681,7 @@ Return a JSON object with this exact structure:
 If no tests are found, return {{"test_commands": [], "setup_commands": [], "language": "unknown"}}
 """
 
-    message = client.messages.create(
+    message = _messages_create_with_fallback(
         model="claude-sonnet-4-5-20250929",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}],
@@ -810,7 +862,6 @@ def _parse_test_output_with_regex(output: str) -> Optional[Dict[str, int]]:
 async def _parse_test_output_with_llm(output: str) -> Optional[Dict[str, int]]:
     """LLM fallback for unknown test frameworks."""
     try:
-        client = _get_api_client()
         truncated = output[-2000:] if len(output) > 2000 else output
 
         prompt = f"""Parse this test output and extract the test results.
@@ -829,7 +880,7 @@ Return ONLY a JSON object (no other text):
 
 If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total": 0}}
 """
-        message = client.messages.create(
+        message = _messages_create_with_fallback(
             model="claude-sonnet-4-5-20250929",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
