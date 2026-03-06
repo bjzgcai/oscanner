@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { dirname, join } from "path";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const thisDir = dirname(fileURLToPath(import.meta.url));
@@ -14,9 +14,10 @@ const nextConfig: NextConfig = {
   // Only use static export for production builds; dev mode needs rewrites for API proxy.
   ...(isDev ? {} : { output: "export" }),
   trailingSlash: true,
-  // Avoid turbopack "inferred workspace root" warnings when multiple lockfiles exist on disk.
+  // Set turbopack root to the repo root so it can resolve plugin imports from `../../../../plugins/`.
+  // Using thisDir (webapp dir) would block resolution of paths outside the webapp directory.
   turbopack: {
-    root: thisDir,
+    root: resolve(thisDir, '../..'),
   },
   images: {
     unoptimized: true,
