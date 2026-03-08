@@ -34,7 +34,7 @@ router = APIRouter(prefix="/api/runner")
 async def clone_repo(request: RepoCloneRequest):
     """Clone a repository and return metadata."""
     try:
-        metadata = await clone_repository(request.repo_url, request.sha)
+        metadata = await clone_repository(request.repo_url, request.sha, request.tag)
         return metadata
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -195,7 +195,7 @@ async def run_all_stream(request: RunAllRequest):
                 else:
                     await progress_callback("Cloning repository...")
                     clone_metadata = await clone_repository(
-                        request.repo_url, request.sha
+                        request.repo_url, request.sha, request.tag
                     )
 
                 clone_path = clone_metadata["clone_path"]
@@ -291,7 +291,7 @@ async def batch_run_stream(request: BatchRunRequest):
                         clone_metadata = {"clone_path": clone_path, "repo_name": repo_name}
                     else:
                         await cb("Cloning repository...")
-                        clone_metadata = await clone_repository(repo_url, repo_req.sha)
+                        clone_metadata = await clone_repository(repo_url, repo_req.sha, repo_req.tag)
 
                     clone_path = clone_metadata["clone_path"]
                     overview_path = str(Path(clone_path) / "REPO_OVERVIEW.md")

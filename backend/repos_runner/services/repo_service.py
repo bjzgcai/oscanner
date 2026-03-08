@@ -52,34 +52,29 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
         raise ValueError(f"Unsupported repository URL: {repo_url}")
 
 
-def _get_api_client(use_openrouter: bool = False):
-    """Return a configured Anthropic client."""
+def _get_api_client(use_fallback: bool = False):
+    """Return a configured Anthropic client.
+
+    Primary: OPEN_ROUTER_KEY via OpenRouter
+    Fallback: ANTHROPIC_API_KEY (+ optional ANTHROPIC_BASE_URL)
+    """
     from anthropic import Anthropic
 
-    if use_openrouter:
+    if not use_fallback:
         openrouter_key = os.getenv("OPEN_ROUTER_KEY")
-        if not openrouter_key:
-            raise ValueError("OPEN_ROUTER_KEY is not set")
-        openrouter_base_url = (
-            os.getenv("OPEN_ROUTER_BASE_URL")
-            or os.getenv("OPENROUTER_BASE_URL")
-            or OPENROUTER_ANTHROPIC_BASE_URL
-        )
-        return Anthropic(api_key=openrouter_key, base_url=openrouter_base_url)
+        if openrouter_key:
+            openrouter_base_url = (
+                os.getenv("OPEN_ROUTER_BASE_URL")
+                or os.getenv("OPENROUTER_BASE_URL")
+                or OPENROUTER_ANTHROPIC_BASE_URL
+            )
+            return Anthropic(api_key=openrouter_key, base_url=openrouter_base_url)
 
-    api_key = (
-        os.getenv("ANTHROPIC_API_KEY")
-        or os.getenv("OSCANNER_LLM_API_KEY")
-        or os.getenv("OPENAI_API_KEY")
-        or os.getenv("ANTHROPIC_AUTH_TOKEN")
-    )
-    if not api_key and os.getenv("OPEN_ROUTER_KEY"):
-        return _get_api_client(use_openrouter=True)
-
+    # Fallback: ANTHROPIC_API_KEY + optional ANTHROPIC_BASE_URL
+    api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError(
-            "API key not found. Set one of: ANTHROPIC_API_KEY, OSCANNER_LLM_API_KEY, "
-            "OPENAI_API_KEY, ANTHROPIC_AUTH_TOKEN, or OPEN_ROUTER_KEY"
+            "No API key available. Set OPEN_ROUTER_KEY (primary) or ANTHROPIC_API_KEY (fallback)"
         )
 
     kwargs: Dict[str, Any] = {"api_key": api_key}
@@ -91,20 +86,20 @@ def _get_api_client(use_openrouter: bool = False):
 
 def _messages_create_with_fallback(**kwargs):
     """
-    Create a messages response, retrying once via OpenRouter if primary config fails.
+    Create a messages response, trying OpenRouter first, then ANTHROPIC_API_KEY fallback.
     """
     client = _get_api_client()
     try:
         return client.messages.create(**kwargs)
     except Exception as primary_error:
-        if not os.getenv("OPEN_ROUTER_KEY"):
+        if not os.getenv("ANTHROPIC_API_KEY"):
             raise
         try:
-            return _get_api_client(use_openrouter=True).messages.create(**kwargs)
+            return _get_api_client(use_fallback=True).messages.create(**kwargs)
         except Exception as fallback_error:
             raise RuntimeError(
                 f"Primary LLM request failed ({primary_error}); "
-                f"OpenRouter fallback also failed ({fallback_error})"
+                f"ANTHROPIC_API_KEY fallback also failed ({fallback_error})"
             ) from fallback_error
 
 
@@ -112,9 +107,14 @@ def _messages_create_with_fallback(**kwargs):
 # Clone
 # ---------------------------------------------------------------------------
 
-async def clone_repository(repo_url: str, sha: Optional[str] = None) -> Dict[str, Any]:
+async def clone_repository(repo_url: str, sha: Optional[str] = None, tag: Optional[str] = None) -> Dict[str, Any]:
     """
-    Clone a repository (shallow when no SHA, full clone + checkout when SHA given).
+    Clone a repository (shallow when no SHA/tag, full clone + checkout when SHA or tag given).
+
+    Args:
+        repo_url: Repository URL to clone
+        sha: Optional commit SHA to checkout (takes priority over tag)
+        tag: Optional tag to checkout (used only when sha is not provided)
 
     Returns:
         Dictionary containing repo metadata
@@ -132,6 +132,10 @@ async def clone_repository(repo_url: str, sha: Optional[str] = None) -> Dict[str
             if sha:
                 repo = git.Repo.clone_from(repo_url, clone_path)
                 repo.git.checkout(sha)
+                checked_out_sha = repo.head.commit.hexsha
+            elif tag:
+                repo = git.Repo.clone_from(repo_url, clone_path)
+                repo.git.checkout(f"tags/{tag}")
                 checked_out_sha = repo.head.commit.hexsha
             else:
                 repo = git.Repo.clone_from(
@@ -219,6 +223,39 @@ def get_repo_venv_dir(clone_path: str) -> Path:
     clone_dir = Path(clone_path)
     dep_hash = _dep_hash(clone_dir)
     return clone_dir / f".venv_{dep_hash}"
+
+
+# ---------------------------------------------------------------------------
+# Per-language sandbox resource limits
+# ---------------------------------------------------------------------------
+
+# (as_mb, max_files, max_procs) tuned per runtime:
+#   as_mb    – virtual address space cap; JVM/.NET/Go/Rust need 8 GB+
+#   max_procs– RLIMIT_NPROC (user-wide); npm install + Jest workers need 512;
+#              Rust cargo build also spawns many parallel rustc processes
+_LANG_LIMITS: Dict[str, Dict[str, int]] = {
+    "python":  {"as_mb": 4096, "max_files": 256, "max_procs": 128},
+    "node":    {"as_mb": 4096, "max_files": 512, "max_procs": 512},
+    "go":      {"as_mb": 8192, "max_files": 512, "max_procs": 256},
+    "rust":    {"as_mb": 8192, "max_files": 512, "max_procs": 512},
+    "java":    {"as_mb": 8192, "max_files": 512, "max_procs": 256},
+    "ruby":    {"as_mb": 2048, "max_files": 256, "max_procs": 128},
+    "dotnet":  {"as_mb": 8192, "max_files": 512, "max_procs": 256},
+    "elixir":  {"as_mb": 4096, "max_files": 256, "max_procs": 256},
+}
+_LANG_LIMITS_DEFAULT = {"as_mb": 4096, "max_files": 512, "max_procs": 512}
+
+
+def _resource_limits(language: str, cpu_seconds: int, fsize_mb: int) -> ResourceLimits:
+    """Build ResourceLimits for the given language."""
+    lim = _LANG_LIMITS.get(language, _LANG_LIMITS_DEFAULT)
+    return ResourceLimits(
+        cpu_seconds=cpu_seconds,
+        fsize_mb=fsize_mb,
+        as_mb=lim["as_mb"],
+        max_files=lim["max_files"],
+        max_procs=lim["max_procs"],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -532,7 +569,7 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
         content = ""
         last_progress_length = 0
         with client.messages.stream(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-sonnet-4-6",
             max_tokens=1500,
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
@@ -550,18 +587,18 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
     try:
         overview_content = await _stream_once(_get_api_client())
     except Exception as primary_error:
-        if not os.getenv("OPEN_ROUTER_KEY"):
+        if not os.getenv("ANTHROPIC_API_KEY"):
             raise
         if progress_callback:
             await progress_callback(
-                "Primary LLM request failed, retrying with OPEN_ROUTER_KEY..."
+                "Primary LLM request failed, retrying with ANTHROPIC_API_KEY fallback..."
             )
         try:
-            overview_content = await _stream_once(_get_api_client(use_openrouter=True))
+            overview_content = await _stream_once(_get_api_client(use_fallback=True))
         except Exception as fallback_error:
             raise RuntimeError(
                 f"Primary LLM request failed ({primary_error}); "
-                f"OpenRouter fallback also failed ({fallback_error})"
+                f"ANTHROPIC_API_KEY fallback also failed ({fallback_error})"
             ) from fallback_error
 
     if progress_callback:
@@ -682,7 +719,7 @@ If no tests are found, return {{"test_commands": [], "setup_commands": [], "lang
 """
 
     message = _messages_create_with_fallback(
-        model="claude-sonnet-4-5-20250929",
+        model="claude-sonnet-4-6",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -881,7 +918,7 @@ Return ONLY a JSON object (no other text):
 If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total": 0}}
 """
         message = _messages_create_with_fallback(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-sonnet-4-6",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -1117,12 +1154,8 @@ async def run_tests(
                     cmd,
                     cwd=clone_dir,
                     timeout=setup_timeout,
-                    limits=ResourceLimits(
-                        cpu_seconds=setup_timeout,
-                        fsize_mb=1024,   # setup may download/unpack large deps
-                        as_mb=2048,
-                        max_files=512,
-                        max_procs=128,
+                    limits=_resource_limits(
+                        language, cpu_seconds=setup_timeout, fsize_mb=1024,
                     ),
                 )
                 if progress_callback and result.returncode != 0:
@@ -1185,12 +1218,8 @@ async def run_tests(
                 modified_cmd,
                 cwd=clone_dir,
                 timeout=test_timeout,
-                limits=ResourceLimits(
-                    cpu_seconds=test_timeout,
-                    fsize_mb=512,
-                    as_mb=2048,
-                    max_files=256,
-                    max_procs=128,
+                limits=_resource_limits(
+                    language, cpu_seconds=test_timeout, fsize_mb=512,
                 ),
             )
 

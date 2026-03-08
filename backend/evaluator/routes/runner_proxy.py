@@ -20,6 +20,7 @@ class RunAllRequest(BaseModel):
     """Request model for running all repo analysis steps"""
     repo_url: str
     sha: str | None = None  # Optional SHA to checkout and test
+    tag: str | None = None  # Optional tag to checkout (ignored if sha is set)
 
 
 class RunAllResponse(BaseModel):
@@ -102,6 +103,8 @@ async def run_all_steps(request: RunAllRequest):
             clone_payload = {"repo_url": request.repo_url}
             if request.sha:
                 clone_payload["sha"] = request.sha
+            elif request.tag:
+                clone_payload["tag"] = request.tag
 
             clone_response = await client.post(
                 f"{RUNNER_SERVICE_URL}/api/runner/clone",

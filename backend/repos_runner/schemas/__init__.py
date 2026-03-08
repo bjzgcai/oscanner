@@ -19,12 +19,14 @@ class RepoCloneRequest(BaseModel):
     """Request model for cloning a repository"""
     repo_url: str
     sha: Optional[str] = None  # Optional SHA to checkout after clone
+    tag: Optional[str] = None  # Optional tag to checkout after clone (ignored if sha is set)
 
 
 class RunAllRequest(BaseModel):
     """Request model for the combined clone → explore → test pipeline"""
     repo_url: str
     sha: Optional[str] = None
+    tag: Optional[str] = None  # Optional tag to checkout (ignored if sha is set)
     skip_clone: bool = False    # Reuse existing clone
     skip_explore: bool = False  # Reuse existing REPO_OVERVIEW.md
     setup_timeout: int = 120    # Seconds per setup command
