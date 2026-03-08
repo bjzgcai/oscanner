@@ -227,6 +227,39 @@ def get_repo_venv_dir(clone_path: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# Per-language sandbox resource limits
+# ---------------------------------------------------------------------------
+
+# (as_mb, max_files, max_procs) tuned per runtime:
+#   as_mb    – virtual address space cap; JVM/.NET/Go/Rust need 8 GB+
+#   max_procs– RLIMIT_NPROC (user-wide); npm install + Jest workers need 512;
+#              Rust cargo build also spawns many parallel rustc processes
+_LANG_LIMITS: Dict[str, Dict[str, int]] = {
+    "python":  {"as_mb": 4096, "max_files": 256, "max_procs": 128},
+    "node":    {"as_mb": 4096, "max_files": 512, "max_procs": 512},
+    "go":      {"as_mb": 8192, "max_files": 512, "max_procs": 256},
+    "rust":    {"as_mb": 8192, "max_files": 512, "max_procs": 512},
+    "java":    {"as_mb": 8192, "max_files": 512, "max_procs": 256},
+    "ruby":    {"as_mb": 2048, "max_files": 256, "max_procs": 128},
+    "dotnet":  {"as_mb": 8192, "max_files": 512, "max_procs": 256},
+    "elixir":  {"as_mb": 4096, "max_files": 256, "max_procs": 256},
+}
+_LANG_LIMITS_DEFAULT = {"as_mb": 4096, "max_files": 512, "max_procs": 512}
+
+
+def _resource_limits(language: str, cpu_seconds: int, fsize_mb: int) -> ResourceLimits:
+    """Build ResourceLimits for the given language."""
+    lim = _LANG_LIMITS.get(language, _LANG_LIMITS_DEFAULT)
+    return ResourceLimits(
+        cpu_seconds=cpu_seconds,
+        fsize_mb=fsize_mb,
+        as_mb=lim["as_mb"],
+        max_files=lim["max_files"],
+        max_procs=lim["max_procs"],
+    )
+
+
+# ---------------------------------------------------------------------------
 # Smarter test-framework detection (static, no LLM needed)
 # ---------------------------------------------------------------------------
 
