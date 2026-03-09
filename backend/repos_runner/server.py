@@ -21,7 +21,12 @@ if str(_backend_dir) not in sys.path:
 from repos_runner.routes import runner
 
 # Load environment variables
-if Path(".env.local").exists():
+# Check server file directory first (repos_runner/.env.local), then CWD
+_server_dir = Path(__file__).resolve().parent
+_server_env = _server_dir / ".env.local"
+if _server_env.exists():
+    load_dotenv(_server_env, override=False)
+elif Path(".env.local").exists():
     load_dotenv(".env.local", override=False)
 load_dotenv(override=False)
 

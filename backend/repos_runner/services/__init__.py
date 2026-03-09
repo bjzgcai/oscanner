@@ -12,8 +12,6 @@ from repos_runner.services.repo_service import (
     get_repos_dir,
     parse_repo_url,
 )
-from repos_runner.services.sandbox import ResourceLimits
-
 __all__ = [
     "clone_repository",
     "explore_repository",
@@ -23,5 +21,4 @@ __all__ = [
     "delete_repo",
     "get_repos_dir",
     "parse_repo_url",
-    "ResourceLimits",
 ]
