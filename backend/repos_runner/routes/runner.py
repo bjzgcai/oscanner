@@ -4,8 +4,11 @@ API routes for Repository Runner
 
 import asyncio
 import json
+import logging
 from typing import AsyncGenerator, Optional
 from fastapi import APIRouter, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
 from repos_runner.schemas import (
     RepoCloneRequest,
@@ -176,6 +179,9 @@ async def run_all_stream(request: RunAllRequest):
     - skip_clone:   reuse existing clone (skip re-cloning)
     - skip_explore: reuse existing REPO_OVERVIEW.md (skip exploration)
     """
+    logger.info("run-all request: repo_url=%s tag=%s sha=%s", request.repo_url, request.tag, request.sha)
+    print(f"[run-all] repo_url={request.repo_url} tag={request.tag} sha={request.sha}", flush=True)
+
     async def event_generator() -> AsyncGenerator[str, None]:
         progress_queue: asyncio.Queue = asyncio.Queue()
 
@@ -202,15 +208,6 @@ async def run_all_stream(request: RunAllRequest):
                 clone_path = clone_metadata["clone_path"]
                 overview_path = str(Path(clone_path) / "REPO_OVERVIEW.md")
 
-                # -- Explore step --
-                if request.skip_explore and Path(overview_path).exists():
-                    await progress_callback(
-                        "Skipping exploration, reusing existing REPO_OVERVIEW.md"
-                    )
-                else:
-                    await progress_callback("Exploring repository...")
-                    overview_path = await explore_repository(clone_path, progress_callback)
-
                 # -- Fetch tag message (Gitee only) --
                 tag_message = None
                 if request.tag:
@@ -224,6 +221,15 @@ async def run_all_stream(request: RunAllRequest):
                         await progress_callback(
                             "No tag annotation message found; running standard scoring."
                         )
+
+                # -- Explore step --
+                if request.skip_explore and Path(overview_path).exists():
+                    await progress_callback(
+                        "Skipping exploration, reusing existing REPO_OVERVIEW.md"
+                    )
+                else:
+                    await progress_callback("Exploring repository...")
+                    overview_path = await explore_repository(clone_path, progress_callback, tag_message)
 
                 # -- Test step --
                 await progress_callback("Running tests...")
@@ -312,12 +318,6 @@ async def batch_run_stream(request: BatchRunRequest):
                     clone_path = clone_metadata["clone_path"]
                     overview_path = str(Path(clone_path) / "REPO_OVERVIEW.md")
 
-                    if repo_req.skip_explore and Path(overview_path).exists():
-                        await cb("Skipping exploration, reusing existing REPO_OVERVIEW.md")
-                    else:
-                        await cb("Exploring repository...")
-                        overview_path = await explore_repository(clone_path, cb)
-
                     # -- Fetch tag message (Gitee only) --
                     tag_message = None
                     if repo_req.tag:
@@ -329,6 +329,12 @@ async def batch_run_stream(request: BatchRunRequest):
                             await cb(
                                 "No tag annotation message found; running standard scoring."
                             )
+
+                    if repo_req.skip_explore and Path(overview_path).exists():
+                        await cb("Skipping exploration, reusing existing REPO_OVERVIEW.md")
+                    else:
+                        await cb("Exploring repository...")
+                        overview_path = await explore_repository(clone_path, cb, tag_message)
 
                     await cb("Running tests...")
                     result = await run_tests(

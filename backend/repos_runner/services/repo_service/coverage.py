@@ -1,0 +1,141 @@
+"""
+Tag-based feature analysis and test coverage checking.
+"""
+
+import json
+import re
+from pathlib import Path
+from typing import Dict, Any, List
+
+from .llm import _messages_create_with_fallback
+
+
+async def _extract_features_from_tag_message(message: str) -> List[str]:
+    """Use LLM to extract a list of distinct testable features from a tag annotation message."""
+    try:
+        prompt = f"""Extract the list of specific testable features from this tag annotation message.
+
+Tag message: "{message}"
+
+Return ONLY a JSON array of feature names (strings), e.g.:
+["Create", "Read", "Update", "Delete"]
+
+Rules:
+- Each feature should be a distinct, testable capability mentioned in the message.
+- If the message mentions "CRUD", expand it to ["Create", "Read", "Update", "Delete"].
+- Keep feature names concise (1-4 words).
+- Only include features explicitly mentioned or clearly implied by the message.
+"""
+        result = _messages_create_with_fallback(
+            model="claude-sonnet-4-6",
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = result.content[0].text.strip()
+        json_match = re.search(r'\[.*\]', text, re.DOTALL)
+        if json_match:
+            features = json.loads(json_match.group())
+            if isinstance(features, list) and features:
+                return [str(f) for f in features]
+    except Exception:
+        pass
+    return []
+
+
+async def _check_feature_coverage(clone_dir: Path, features: List[str]) -> Dict[str, Any]:
+    """
+    Analyze test files in the repo to determine which required features are covered.
+
+    Returns:
+        {
+            "covered": [...],          # features with tests
+            "not_covered": [...],      # features missing tests
+            "coverage_ratio": float,   # covered / total
+            "test_files_found": [...], # relative paths of test files scanned
+        }
+    """
+    # Collect test files
+    test_patterns = [
+        "test_*.py", "*_test.py",
+        "*.test.js", "*.spec.js",
+        "*.test.ts", "*.spec.ts",
+        "*_test.go", "test_*.go",
+        "*_test.rs",
+    ]
+    test_files: List[Path] = []
+    for pattern in test_patterns:
+        test_files.extend(clone_dir.rglob(pattern))
+
+    if not test_files:
+        for test_dir_name in ["tests", "test", "__tests__", "spec"]:
+            test_dir = clone_dir / test_dir_name
+            if test_dir.exists():
+                for f in test_dir.rglob("*"):
+                    if f.is_file() and f.suffix in {".py", ".js", ".ts", ".go", ".rs", ".java", ".rb"}:
+                        test_files.append(f)
+
+    if not test_files:
+        return {
+            "covered": [],
+            "not_covered": list(features),
+            "coverage_ratio": 0.0,
+            "test_files_found": [],
+        }
+
+    # Read test file contents (cap per-file + total to keep prompt manageable)
+    test_content_parts = []
+    for f in test_files[:15]:
+        try:
+            content = f.read_text(errors="ignore")
+            test_content_parts.append(f"--- {f.name} ---\n{content[:1500]}")
+        except Exception:
+            pass
+    test_content = "\n\n".join(test_content_parts)[:10000]
+
+    prompt = f"""You are analyzing test files to check which features are actually tested.
+
+Required features: {json.dumps(features)}
+
+Test file contents:
+{test_content}
+
+Determine which of the required features have dedicated test cases in the test files above.
+A feature is "covered" only if there are tests that specifically exercise that functionality.
+
+Return ONLY a JSON object:
+{{
+  "covered": ["feature1", "feature2"],
+  "not_covered": ["feature3"]
+}}
+
+Use only feature names from the required features list.
+"""
+    try:
+        result = _messages_create_with_fallback(
+            model="claude-sonnet-4-6",
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = result.content[0].text.strip()
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        if json_match:
+            coverage = json.loads(json_match.group())
+            covered = coverage.get("covered", [])
+            not_covered = coverage.get("not_covered", [])
+            coverage_ratio = len(covered) / len(features) if features else 1.0
+            return {
+                "covered": covered,
+                "not_covered": not_covered,
+                "coverage_ratio": coverage_ratio,
+                "test_files_found": [str(f.relative_to(clone_dir)) for f in test_files],
+            }
+    except Exception:
+        pass
+
+    # LLM failed — assume all covered to avoid false penalty
+    return {
+        "covered": list(features),
+        "not_covered": [],
+        "coverage_ratio": 1.0,
+        "test_files_found": [str(f.relative_to(clone_dir)) for f in test_files],
+    }

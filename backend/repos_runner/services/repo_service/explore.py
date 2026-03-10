@@ -1,0 +1,267 @@
+"""
+Repository exploration using Claude Code SDK (with messages API fallback).
+"""
+
+import asyncio
+import subprocess
+from pathlib import Path
+from typing import Optional
+
+from .llm import _get_api_client
+
+
+async def explore_repository(
+    clone_path: str,
+    progress_callback=None,
+    tag_message: Optional[str] = None,
+) -> str:
+    """
+    Explore repository and generate REPO_OVERVIEW.md using the Claude Code SDK.
+
+    The SDK runs Claude as an agentic loop with shell-tool access so it can
+    actually read files, list directories, and understand the project structure
+    rather than just receiving a pre-built context string.
+
+    Args:
+        tag_message: Optional annotation describing target features to focus on.
+
+    Returns:
+        Path to generated REPO_OVERVIEW.md
+    """
+    clone_dir = Path(clone_path)
+    overview_path = clone_dir / "REPO_OVERVIEW.md"
+
+    if progress_callback:
+        await progress_callback("Starting repository exploration with Claude Code SDK...")
+
+    try:
+        from claude_code_sdk import query, ClaudeCodeOptions, AssistantMessage, TextBlock
+
+        if progress_callback:
+            await progress_callback("Claude is exploring the repository structure...")
+
+        tag_section = (
+            f"\n\nThe repository is tagged with the following target features/requirements:\n"
+            f"{tag_message}\n"
+            f"Pay attention to these when identifying test coverage and setup."
+            if tag_message else ""
+        )
+
+        prompt = (
+            "You are analyzing a software repository to understand how to run its tests. "
+            "Explore the repository files, read the README, config files (package.json, "
+            "pyproject.toml, Cargo.toml, go.mod, etc.), and any existing test files. "
+            f"{tag_section}"
+            "\n\nThen produce a file called REPO_OVERVIEW.md in the current directory with "
+            "this exact structure:\n\n"
+            "# {repo_name}\n\n"
+            + (
+                "## Tag Message\n"
+                f"{tag_message}\n\n"
+                if tag_message else ""
+            )
+            + "## Project Type\n"
+            "<1-2 sentences: language, framework, purpose>\n\n"
+            "## Test Framework\n"
+            "<name of test framework(s) found, or 'None detected'>\n\n"
+            "## Setup Commands\n"
+            "```\n"
+            "<commands to install dependencies, one per line>\n"
+            "```\n\n"
+            "## Test Commands\n"
+            "```\n"
+            "<commands to run tests, one per line>\n"
+            "```\n\n"
+            "Be concise. Only include what is needed to run tests. "
+            "Write the file when done."
+        )
+
+        char_count = 0
+        async for message in query(
+            prompt=prompt,
+            options=ClaudeCodeOptions(
+                cwd=str(clone_dir),
+                # Allow file reads and writes but no network calls
+                allowed_tools=["Read", "Write", "Glob", "Bash"],
+            ),
+        ):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        char_count += len(block.text)
+                        if progress_callback and char_count % 200 < 20:
+                            await progress_callback(
+                                f"Claude exploring... ({char_count} chars processed)"
+                            )
+
+        # If Claude wrote the file, great. Otherwise fall back to context-based approach.
+        if not overview_path.exists():
+            if progress_callback:
+                await progress_callback(
+                    "SDK did not write the file directly; using context fallback..."
+                )
+            overview_path = Path(
+                await _explore_via_messages_api(clone_path, progress_callback, tag_message)
+            )
+
+        if progress_callback:
+            await progress_callback("Repository exploration completed!")
+
+        return str(overview_path)
+
+    except ImportError:
+        # claude-code-sdk not installed, fall back to messages API
+        if progress_callback:
+            await progress_callback(
+                "claude-code-sdk not available; falling back to messages API..."
+            )
+        return await _explore_via_messages_api(clone_path, progress_callback, tag_message)
+
+    except Exception as e:
+        if progress_callback:
+            await progress_callback(f"SDK error ({e}); falling back to messages API...")
+        return await _explore_via_messages_api(clone_path, progress_callback, tag_message)
+
+
+async def _explore_via_messages_api(
+    clone_path: str,
+    progress_callback=None,
+    tag_message: Optional[str] = None,
+) -> str:
+    """Fallback: build context manually and call the Anthropic messages API."""
+    clone_dir = Path(clone_path)
+    overview_path = clone_dir / "REPO_OVERVIEW.md"
+
+    if progress_callback:
+        await progress_callback("Analyzing repository structure...")
+
+    context = await _build_repo_context(clone_dir)
+
+    if progress_callback:
+        await progress_callback("Generating overview with Claude...")
+
+    tag_section = (
+        f"\nThe repository is tagged with the following target features/requirements:\n{tag_message}\n"
+        if tag_message else ""
+    )
+
+    prompt = f"""Analyze this repository and generate a concise REPO_OVERVIEW.md focused on testing:
+
+1. Project name and type (1-2 sentences)
+2. Test framework(s) used (if any)
+3. Setup/installation commands needed to run tests
+4. Test commands to execute
+{tag_section}
+Be extremely concise. Skip examples, features, and detailed documentation.
+
+The generated REPO_OVERVIEW.md must start with:
+# <repo_name>
+{f'''
+## Tag Message
+{tag_message}
+''' if tag_message else ''}
+## Project Type
+...
+
+Repository context:
+{context}
+
+Generate the markdown content for REPO_OVERVIEW.md:"""
+
+    async def _stream_once(client) -> str:
+        content = ""
+        last_progress_length = 0
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            for text in stream.text_stream:
+                content += text
+                current_length = len(content)
+                if (
+                    progress_callback
+                    and current_length - last_progress_length >= 200
+                ):
+                    await progress_callback(f"Generated {current_length} characters...")
+                    last_progress_length = current_length
+        return content
+
+    try:
+        overview_content = await _stream_once(_get_api_client())
+    except Exception as primary_error:
+        import os
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            raise
+        if progress_callback:
+            await progress_callback(
+                "Primary LLM request failed, retrying with ANTHROPIC_API_KEY fallback..."
+            )
+        try:
+            overview_content = await _stream_once(_get_api_client(use_fallback=True))
+        except Exception as fallback_error:
+            raise RuntimeError(
+                f"Primary LLM request failed ({primary_error}); "
+                f"ANTHROPIC_API_KEY fallback also failed ({fallback_error})"
+            ) from fallback_error
+
+    if progress_callback:
+        await progress_callback("Writing REPO_OVERVIEW.md...")
+
+    overview_path.write_text(overview_content)
+    return str(overview_path)
+
+
+async def _build_repo_context(repo_path: Path) -> str:
+    """Build a text summary of the repository for the messages-API fallback."""
+    context_parts = []
+
+    for readme in ["README.md", "README.txt", "README"]:
+        readme_path = repo_path / readme
+        if readme_path.exists():
+            try:
+                content = readme_path.read_text(encoding="utf-8", errors="ignore")
+                context_parts.append(f"## README:\n{content[:5000]}")
+                break
+            except Exception:
+                pass
+
+    try:
+        tree_output = subprocess.run(
+            ["tree", "-L", "3", "-I",
+             "node_modules|venv|.git|__pycache__|*.pyc|.venv_*",
+             str(repo_path)],
+            capture_output=True, text=True, timeout=10,
+        )
+        if tree_output.returncode == 0:
+            context_parts.append(f"## Directory Structure:\n{tree_output.stdout[:3000]}")
+    except Exception:
+        try:
+            files = []
+            for item in repo_path.rglob("*"):
+                if any(
+                    skip in str(item)
+                    for skip in [".git", "node_modules", "venv", "__pycache__", ".venv_"]
+                ):
+                    continue
+                rel_path = item.relative_to(repo_path)
+                if len(files) < 100:
+                    files.append(str(rel_path))
+            context_parts.append("## Files:\n" + "\n".join(files))
+        except Exception:
+            pass
+
+    config_files = [
+        "package.json", "requirements.txt", "setup.py",
+        "pyproject.toml", "Cargo.toml", "go.mod",
+    ]
+    for config_file in config_files:
+        config_path = repo_path / config_file
+        if config_path.exists():
+            try:
+                content = config_path.read_text(encoding="utf-8", errors="ignore")
+                context_parts.append(f"## {config_file}:\n{content[:2000]}")
+            except Exception:
+                pass
+
+    return "\n\n".join(context_parts)
