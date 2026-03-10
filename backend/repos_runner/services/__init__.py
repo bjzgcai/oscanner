@@ -11,6 +11,7 @@ from repos_runner.services.repo_service import (
     delete_repo,
     get_repos_dir,
     parse_repo_url,
+    fetch_gitee_tag_message,
 )
 __all__ = [
     "clone_repository",
@@ -21,4 +22,5 @@ __all__ = [
     "delete_repo",
     "get_repos_dir",
     "parse_repo_url",
+    "fetch_gitee_tag_message",
 ]

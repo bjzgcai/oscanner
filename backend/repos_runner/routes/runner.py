@@ -22,6 +22,7 @@ from repos_runner.services import (
     list_repos,
     delete_repo,
 )
+from repos_runner.services.repo_service import fetch_gitee_tag_message
 
 router = APIRouter(prefix="/api/runner")
 
@@ -210,6 +211,20 @@ async def run_all_stream(request: RunAllRequest):
                     await progress_callback("Exploring repository...")
                     overview_path = await explore_repository(clone_path, progress_callback)
 
+                # -- Fetch tag message (Gitee only) --
+                tag_message = None
+                if request.tag:
+                    await progress_callback(
+                        f"Fetching tag annotation for '{request.tag}' from Gitee..."
+                    )
+                    tag_message = await fetch_gitee_tag_message(request.repo_url, request.tag)
+                    if tag_message:
+                        await progress_callback(f"Tag message: {tag_message}")
+                    else:
+                        await progress_callback(
+                            "No tag annotation message found; running standard scoring."
+                        )
+
                 # -- Test step --
                 await progress_callback("Running tests...")
                 result = await run_tests(
@@ -218,6 +233,7 @@ async def run_all_stream(request: RunAllRequest):
                     progress_callback,
                     setup_timeout=request.setup_timeout,
                     test_timeout=request.test_timeout,
+                    tag_message=tag_message,
                 )
 
                 await progress_queue.put({
@@ -302,6 +318,18 @@ async def batch_run_stream(request: BatchRunRequest):
                         await cb("Exploring repository...")
                         overview_path = await explore_repository(clone_path, cb)
 
+                    # -- Fetch tag message (Gitee only) --
+                    tag_message = None
+                    if repo_req.tag:
+                        await cb(f"Fetching tag annotation for '{repo_req.tag}' from Gitee...")
+                        tag_message = await fetch_gitee_tag_message(repo_url, repo_req.tag)
+                        if tag_message:
+                            await cb(f"Tag message: {tag_message}")
+                        else:
+                            await cb(
+                                "No tag annotation message found; running standard scoring."
+                            )
+
                     await cb("Running tests...")
                     result = await run_tests(
                         clone_path,
@@ -309,6 +337,7 @@ async def batch_run_stream(request: BatchRunRequest):
                         cb,
                         setup_timeout=repo_req.setup_timeout,
                         test_timeout=repo_req.test_timeout,
+                        tag_message=tag_message,
                     )
 
                     await event_queue.put({

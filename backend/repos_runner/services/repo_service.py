@@ -15,6 +15,8 @@ from typing import Tuple, Optional, Dict, Any, List
 from datetime import datetime
 
 import git
+import urllib.request
+import urllib.parse
 
 from repos_runner.services.sandbox import run_sandboxed
 
@@ -50,6 +52,36 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
         return "gitee", parts[0], parts[1]
     else:
         raise ValueError(f"Unsupported repository URL: {repo_url}")
+
+
+async def fetch_gitee_tag_message(repo_url: str, tag: str) -> Optional[str]:
+    """
+    Fetch the annotation message for a specific tag from the Gitee API.
+
+    Returns the tag message string, or None if not found / not a Gitee repo.
+    """
+    if "gitee.com" not in repo_url:
+        return None
+    try:
+        _, owner, repo_name = parse_repo_url(repo_url)
+        params = urllib.parse.urlencode({"per_page": 100, "page": 1})
+        url = f"https://gitee.com/api/v5/repos/{owner}/{repo_name}/tags?{params}"
+
+        headers: Dict[str, str] = {"Accept": "application/json"}
+        gitee_token = os.getenv("GITEE_TOKEN") or os.getenv("GITEE_ENTERPRISE_TOKEN")
+        if gitee_token:
+            headers["Authorization"] = f"token {gitee_token}"
+
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            tags_data = json.loads(resp.read().decode())
+
+        for t in tags_data:
+            if t.get("name") == tag:
+                return t.get("message") or ""
+    except Exception:
+        pass
+    return None
 
 
 def _get_api_client(use_fallback: bool = False):
@@ -911,6 +943,141 @@ async def _parse_test_output(output: str) -> Optional[Dict[str, int]]:
 
 
 # ---------------------------------------------------------------------------
+# Tag-based feature analysis
+# ---------------------------------------------------------------------------
+
+async def _extract_features_from_tag_message(message: str) -> List[str]:
+    """Use LLM to extract a list of distinct testable features from a tag annotation message."""
+    try:
+        prompt = f"""Extract the list of specific testable features from this tag annotation message.
+
+Tag message: "{message}"
+
+Return ONLY a JSON array of feature names (strings), e.g.:
+["Create", "Read", "Update", "Delete"]
+
+Rules:
+- Each feature should be a distinct, testable capability mentioned in the message.
+- If the message mentions "CRUD", expand it to ["Create", "Read", "Update", "Delete"].
+- Keep feature names concise (1-4 words).
+- Only include features explicitly mentioned or clearly implied by the message.
+"""
+        result = _messages_create_with_fallback(
+            model="claude-sonnet-4-6",
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = result.content[0].text.strip()
+        json_match = re.search(r'\[.*\]', text, re.DOTALL)
+        if json_match:
+            features = json.loads(json_match.group())
+            if isinstance(features, list) and features:
+                return [str(f) for f in features]
+    except Exception:
+        pass
+    return []
+
+
+async def _check_feature_coverage(clone_dir: Path, features: List[str]) -> Dict[str, Any]:
+    """
+    Analyze test files in the repo to determine which required features are covered.
+
+    Returns:
+        {
+            "covered": [...],          # features with tests
+            "not_covered": [...],      # features missing tests
+            "coverage_ratio": float,   # covered / total
+            "test_files_found": [...], # relative paths of test files scanned
+        }
+    """
+    # Collect test files
+    test_patterns = [
+        "test_*.py", "*_test.py",
+        "*.test.js", "*.spec.js",
+        "*.test.ts", "*.spec.ts",
+        "*_test.go", "test_*.go",
+        "*_test.rs",
+    ]
+    test_files: List[Path] = []
+    for pattern in test_patterns:
+        test_files.extend(clone_dir.rglob(pattern))
+
+    if not test_files:
+        for test_dir_name in ["tests", "test", "__tests__", "spec"]:
+            test_dir = clone_dir / test_dir_name
+            if test_dir.exists():
+                for f in test_dir.rglob("*"):
+                    if f.is_file() and f.suffix in {".py", ".js", ".ts", ".go", ".rs", ".java", ".rb"}:
+                        test_files.append(f)
+
+    if not test_files:
+        return {
+            "covered": [],
+            "not_covered": list(features),
+            "coverage_ratio": 0.0,
+            "test_files_found": [],
+        }
+
+    # Read test file contents (cap per-file + total to keep prompt manageable)
+    test_content_parts = []
+    for f in test_files[:15]:
+        try:
+            content = f.read_text(errors="ignore")
+            test_content_parts.append(f"--- {f.name} ---\n{content[:1500]}")
+        except Exception:
+            pass
+    test_content = "\n\n".join(test_content_parts)[:10000]
+
+    prompt = f"""You are analyzing test files to check which features are actually tested.
+
+Required features: {json.dumps(features)}
+
+Test file contents:
+{test_content}
+
+Determine which of the required features have dedicated test cases in the test files above.
+A feature is "covered" only if there are tests that specifically exercise that functionality.
+
+Return ONLY a JSON object:
+{{
+  "covered": ["feature1", "feature2"],
+  "not_covered": ["feature3"]
+}}
+
+Use only feature names from the required features list.
+"""
+    try:
+        result = _messages_create_with_fallback(
+            model="claude-sonnet-4-6",
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = result.content[0].text.strip()
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        if json_match:
+            coverage = json.loads(json_match.group())
+            covered = coverage.get("covered", [])
+            not_covered = coverage.get("not_covered", [])
+            coverage_ratio = len(covered) / len(features) if features else 1.0
+            return {
+                "covered": covered,
+                "not_covered": not_covered,
+                "coverage_ratio": coverage_ratio,
+                "test_files_found": [str(f.relative_to(clone_dir)) for f in test_files],
+            }
+    except Exception:
+        pass
+
+    # LLM failed — assume all covered to avoid false penalty
+    return {
+        "covered": list(features),
+        "not_covered": [],
+        "coverage_ratio": 1.0,
+        "test_files_found": [str(f.relative_to(clone_dir)) for f in test_files],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Report generation
 # ---------------------------------------------------------------------------
 
@@ -922,6 +1089,8 @@ async def _generate_test_report(
     failed: int,
     score: int,
     test_results: list,
+    feature_coverage: Optional[Dict[str, Any]] = None,
+    tag_message: Optional[str] = None,
 ) -> None:
     """Generate TEST_REPORT.md for analyzed repository."""
     pass_rate = (passed / total * 100) if total > 0 else 0
@@ -983,9 +1152,29 @@ This repository does not appear to have any automated tests configured.
     report += f"""## Score Breakdown
 
 - **Pass Rate**: {pass_rate:.1f}% ({passed}/{total})
-- **Base Score**: {score}/100
+- **Final Score**: {score}/100
+"""
 
-### Grade Scale
+    if feature_coverage:
+        covered = feature_coverage.get("covered", [])
+        not_covered = feature_coverage.get("not_covered", [])
+        total_features = len(covered) + len(not_covered)
+        coverage_pct = feature_coverage.get("coverage_ratio", 1.0) * 100
+        raw_pass_rate = (passed / total * 100) if total > 0 else 0
+        report += f"""- **Feature Coverage**: {len(covered)}/{total_features} features ({coverage_pct:.0f}%)
+- **Score Formula**: pass_rate ({raw_pass_rate:.1f}%) × feature_coverage ({coverage_pct:.0f}%) = {score}/100
+"""
+        if tag_message:
+            report += f"\n**Tag Message**: {tag_message}\n"
+        if covered:
+            report += f"\n**Covered Features** ✅: {', '.join(covered)}\n"
+        if not_covered:
+            report += f"\n**Missing Features** ❌: {', '.join(not_covered)}\n"
+        report += "\n"
+    else:
+        report += "\n"
+
+    report += """### Grade Scale
 - 90-100: Excellent ⭐⭐⭐⭐⭐ (Production ready)
 - 70-89: Good ⭐⭐⭐⭐ (Minor gaps acceptable)
 - 50-69: Fair ⭐⭐⭐ (Needs improvement)
@@ -1052,6 +1241,7 @@ async def run_tests(
     progress_callback=None,
     setup_timeout: int = 120,
     test_timeout: int = 300,
+    tag_message: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Identify and run tests based on REPO_OVERVIEW.md.
@@ -1062,6 +1252,9 @@ async def run_tests(
         progress_callback: Optional async callback for progress updates
         setup_timeout: Seconds allowed per setup command (default 120)
         test_timeout: Seconds allowed per test command (default 300)
+        tag_message: Optional tag annotation message; when provided the score is
+                     weighted by feature coverage (features described in the message
+                     that are not exercised by the test suite reduce the max score).
 
     Returns:
         Dictionary containing test results and score
@@ -1250,12 +1443,48 @@ async def run_tests(
             if progress_callback:
                 await progress_callback(f"Test {idx + 1} error: {str(e)}")
 
-    score = int((total_passed / total_tests) * 100) if total_tests > 0 else 0
+    raw_pass_rate = (total_passed / total_tests) if total_tests > 0 else 0
+
+    # -- Feature coverage adjustment (when tag_message is provided) --
+    feature_coverage: Optional[Dict[str, Any]] = None
+    coverage_ratio = 1.0
+
+    if tag_message and tag_message.strip():
+        if progress_callback:
+            await progress_callback("Analyzing tag message for required features...")
+        features = await _extract_features_from_tag_message(tag_message)
+        if features:
+            if progress_callback:
+                await progress_callback(
+                    f"Required features ({len(features)}): {', '.join(features)}"
+                )
+            if progress_callback:
+                await progress_callback("Checking feature coverage in test files...")
+            feature_coverage = await _check_feature_coverage(clone_dir, features)
+            coverage_ratio = feature_coverage["coverage_ratio"]
+            covered = feature_coverage["covered"]
+            not_covered = feature_coverage["not_covered"]
+            if progress_callback:
+                await progress_callback(
+                    f"Feature coverage: {len(covered)}/{len(features)} features covered "
+                    f"({coverage_ratio * 100:.0f}%)"
+                )
+            if not_covered and progress_callback:
+                await progress_callback(f"Missing feature tests: {', '.join(not_covered)}")
+
+    score = int(raw_pass_rate * coverage_ratio * 100)
 
     if progress_callback:
-        await progress_callback(
-            f"Tests completed. Score: {score}/100 ({total_passed}/{total_tests} passed)"
-        )
+        if feature_coverage:
+            await progress_callback(
+                f"Tests completed. Score: {score}/100 "
+                f"(pass_rate={raw_pass_rate * 100:.1f}% × "
+                f"feature_coverage={coverage_ratio * 100:.0f}%)"
+            )
+        else:
+            await progress_callback(
+                f"Tests completed. Score: {score}/100 ({total_passed}/{total_tests} passed)"
+            )
 
     # Merge command-level and individual test-case results for the report
     report_items = all_test_cases if all_test_cases else command_results
@@ -1269,12 +1498,14 @@ async def run_tests(
         failed=total_failed,
         score=score,
         test_results=report_items,
+        feature_coverage=feature_coverage,
+        tag_message=tag_message,
     )
 
     if progress_callback:
         await progress_callback(f"Test report saved to {test_report_path}")
 
-    return {
+    result: Dict[str, Any] = {
         "total": total_tests,
         "passed": total_passed,
         "failed": total_failed,
@@ -1284,6 +1515,10 @@ async def run_tests(
         "test_cases": all_test_cases,
         "report_path": str(test_report_path),
     }
+    if feature_coverage:
+        result["feature_coverage"] = feature_coverage
+        result["tag_message"] = tag_message
+    return result
 
 
 # ---------------------------------------------------------------------------
