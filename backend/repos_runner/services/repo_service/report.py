@@ -81,25 +81,58 @@ This repository does not appear to have any automated tests configured.
 - **Final Score**: {score}/100
 """
 
-    if tag_message:
-        report += f"\n**Tag Message**: {tag_message}\n"
+    if feature_coverage:
+        covered = feature_coverage.get("covered", [])
+        not_covered = feature_coverage.get("not_covered", [])
+        total_features = len(covered) + len(not_covered)
+        coverage_pct = feature_coverage.get("coverage_ratio", 1.0) * 100
+        report += f"""- **Feature Coverage**: {len(covered)}/{total_features} features ({coverage_pct:.0f}%)
+- **Score Formula**: pass_rate ({pass_rate:.1f}%) × feature_coverage ({coverage_pct:.0f}%) = {score}/100
+"""
+    report += "\n"
 
     if feature_coverage:
         covered = feature_coverage.get("covered", [])
         not_covered = feature_coverage.get("not_covered", [])
         total_features = len(covered) + len(not_covered)
         coverage_pct = feature_coverage.get("coverage_ratio", 1.0) * 100
-        raw_pass_rate = (passed / total * 100) if total > 0 else 0
-        report += f"""- **Feature Coverage**: {len(covered)}/{total_features} features ({coverage_pct:.0f}%)
-- **Score Formula**: pass_rate ({raw_pass_rate:.1f}%) × feature_coverage ({coverage_pct:.0f}%) = {score}/100
-"""
+        test_files_found = feature_coverage.get("test_files_found", [])
+
+        report += f"## Feature Coverage ({len(covered)}/{total_features} — {coverage_pct:.0f}%)\n\n"
+
+        if tag_message:
+            report += f"> **Tag annotation**: {tag_message}\n\n"
+
+        report += (
+            "Features are extracted from the tag annotation message and cross-checked "
+            "against the test files in the repository. Each uncovered feature reduces "
+            "the maximum achievable score proportionally.\n\n"
+        )
+
         if covered:
-            report += f"\n**Covered Features** ✅: {', '.join(covered)}\n"
+            report += f"### ✅ Covered ({len(covered)})\n\n"
+            for f in covered:
+                report += f"- {f}\n"
+            report += "\n"
+
         if not_covered:
-            report += f"\n**Missing Features** ❌: {', '.join(not_covered)}\n"
-        report += "\n"
-    else:
-        report += "\n"
+            report += f"### ❌ Not Covered ({len(not_covered)})\n\n"
+            for f in not_covered:
+                report += f"- {f}\n"
+            report += "\n"
+
+        if test_files_found:
+            report += f"### Test Files Scanned ({len(test_files_found)})\n\n"
+            for tf in test_files_found:
+                report += f"- `{tf}`\n"
+            report += "\n"
+        else:
+            report += "> ⚠️ No test files were found — all features counted as not covered.\n\n"
+
+    elif tag_message:
+        # tag_message present but no feature_coverage (extraction returned nothing)
+        report += f"## Feature Coverage\n\n> **Tag annotation**: {tag_message}\n\n"
+        report += "> ⚠️ No testable features could be extracted from the tag message.\n\n"
 
     report += """### Grade Scale
 - 90-100: Excellent ⭐⭐⭐⭐⭐ (Production ready)

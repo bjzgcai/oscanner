@@ -82,25 +82,30 @@ async def _check_feature_coverage(clone_dir: Path, features: List[str]) -> Dict[
             "test_files_found": [],
         }
 
-    # Read test file contents (cap per-file + total to keep prompt manageable)
+    # Extract test class and method names from test files (compact, avoids truncation)
     test_content_parts = []
-    for f in test_files[:15]:
+    for f in test_files[:30]:
         try:
             content = f.read_text(errors="ignore")
-            test_content_parts.append(f"--- {f.name} ---\n{content[:1500]}")
+            names = re.findall(r'(?:class|def)\s+(test\w*|Test\w*)', content, re.IGNORECASE)
+            if names:
+                test_content_parts.append(f"--- {f.name} ---\n" + "\n".join(names))
+            else:
+                # Fallback: include raw content for small files
+                test_content_parts.append(f"--- {f.name} ---\n{content[:3000]}")
         except Exception:
             pass
-    test_content = "\n\n".join(test_content_parts)[:10000]
+    test_content = "\n\n".join(test_content_parts)[:20000]
 
-    prompt = f"""You are analyzing test files to check which features are actually tested.
+    prompt = f"""You are analyzing test names to check which features are actually tested.
 
 Required features: {json.dumps(features)}
 
-Test file contents:
+Test class and method names found in the repository:
 {test_content}
 
-Determine which of the required features have dedicated test cases in the test files above.
-A feature is "covered" only if there are tests that specifically exercise that functionality.
+Determine which of the required features have dedicated test cases based on the test names above.
+A feature is "covered" if there are test classes or methods whose names clearly relate to that feature.
 
 Return ONLY a JSON object:
 {{

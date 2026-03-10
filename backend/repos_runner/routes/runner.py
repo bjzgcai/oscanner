@@ -132,6 +132,7 @@ async def run_tests_stream(
 
         async def test_task():
             try:
+                from pathlib import Path
                 result = await run_tests(
                     clone_path,
                     overview_path,
@@ -139,7 +140,12 @@ async def run_tests_stream(
                     setup_timeout=setup_timeout,
                     test_timeout=test_timeout,
                 )
-                await progress_queue.put({"status": "completed", "results": result})
+                report_path = result.get("report_path", "")
+                try:
+                    report_content = Path(report_path).read_text() if report_path else ""
+                except Exception:
+                    report_content = ""
+                await progress_queue.put({"status": "completed", "results": result, "report_content": report_content})
             except Exception as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
             finally:
@@ -173,11 +179,39 @@ async def run_tests_stream(
 @router.post("/run-all")
 async def run_all_stream(request: RunAllRequest):
     """
-    Combined clone → explore → run-tests pipeline with streaming progress.
+    Combined clone → explore → run-tests pipeline with SSE streaming progress.
+
+    Pipeline stages:
+    1. Clone   — shallow clone (depth=1) into ~/.local/share/oscanner/repos/{repo_name}/
+                 Optionally checks out a specific SHA or tag.
+    2. Explore — generates REPO_OVERVIEW.md via Claude Sonnet LLM to understand
+                 project structure, languages, and suggested test commands.
+    3. Tests   — auto-detects test framework, sets up an isolated .venv, runs tests
+                 inside a sandboxed subprocess. Produces TEST_REPORT.md with a
+                 0–100 score based on pass/fail metrics.
 
     Idempotency flags:
     - skip_clone:   reuse existing clone (skip re-cloning)
-    - skip_explore: reuse existing REPO_OVERVIEW.md (skip exploration)
+    - skip_explore: reuse existing REPO_OVERVIEW.md (skip LLM exploration)
+
+    Tag annotation scoring (Gitee only):
+    - When `tag` is provided, fetches the annotated tag message from Gitee.
+    - Extracts feature descriptions from the message and checks which features
+      are exercised by the test suite (via LLM). Uncovered features reduce the
+      maximum achievable score proportionally.
+
+    SSE events emitted:
+    - {"event": "progress", "data": {"message": "<msg>"}}   — pipeline log lines
+    - {"event": "status",   "data": {"status": "completed", "results": {...}}}
+    - {"event": "status",   "data": {"status": "failed",    "error": "<msg>"}}
+
+    What is NOT covered:
+    - Private repositories (no authentication support)
+    - Tag annotation fetch for GitHub (Gitee-only)
+    - Parallel test execution within a single repo
+    - Docker / containerised test environments
+    - Custom environment variable injection for test commands
+    - Non-Git version control systems
     """
     logger.info("run-all request: repo_url=%s tag=%s sha=%s", request.repo_url, request.tag, request.sha)
     print(f"[run-all] repo_url={request.repo_url} tag={request.tag} sha={request.sha}", flush=True)
@@ -242,11 +276,18 @@ async def run_all_stream(request: RunAllRequest):
                     tag_message=tag_message,
                 )
 
+                report_path = result.get("report_path", "")
+                try:
+                    from pathlib import Path as _Path
+                    report_content = _Path(report_path).read_text() if report_path else ""
+                except Exception:
+                    report_content = ""
                 await progress_queue.put({
                     "status": "completed",
                     "clone_metadata": clone_metadata,
                     "overview_path": overview_path,
                     "results": result,
+                    "report_content": report_content,
                 })
 
             except Exception as e:
