@@ -61,6 +61,21 @@ async def health_check():
     return {"status": "healthy", "service": "Repository Runner"}
 
 
+@app.get("/version")
+async def version():
+    """Return deployed git commit"""
+    import subprocess
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).parent,
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+    except Exception:
+        commit = "unknown"
+    return {"commit": commit, "service": "Repository Runner"}
+
+
 if __name__ == "__main__":
     import uvicorn
 
