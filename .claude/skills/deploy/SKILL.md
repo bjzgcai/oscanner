@@ -76,9 +76,9 @@ Use default `/home/ecs-user/oscanner` unless overridden. Assign to `RPATH`.
 ```bash
 ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
   echo '=== Running Processes ==='
-  pgrep -fa 'oscanner serve' || echo 'Evaluator: NOT RUNNING'
+  pgrep -fa 'backend.evaluator.server' || echo 'Evaluator: NOT RUNNING'
   pgrep -fa 'repos_runner.server' || echo 'Repos Runner: NOT RUNNING'
-  pgrep -fa 'npx serve' || echo 'Webapp: NOT RUNNING'
+  pgrep -fa 'serve out -l' || echo 'Webapp: NOT RUNNING'
   echo ''
   echo '=== Port Status ==='
   ss -tlnp 2>/dev/null | grep -E ':8000|:8001|:3000' || echo 'No services on ports 8000/8001/3000'
@@ -161,9 +161,9 @@ Wait ~5 seconds, then check:
 ```bash
 ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
   echo '=== Service Health Check ==='
-  pgrep -fa 'oscanner serve' && echo 'Evaluator: RUNNING' || echo 'Evaluator: NOT RUNNING'
+  pgrep -fa 'backend.evaluator.server' && echo 'Evaluator: RUNNING' || echo 'Evaluator: NOT RUNNING'
   pgrep -fa 'repos_runner.server' && echo 'Repos Runner: RUNNING' || echo 'Repos Runner: NOT RUNNING'
-  pgrep -fa 'npx serve' && echo 'Webapp: RUNNING' || echo 'Webapp: NOT RUNNING'
+  pgrep -fa 'serve out -l' && echo 'Webapp: RUNNING' || echo 'Webapp: NOT RUNNING'
   echo ''
   echo '=== Last 10 lines of evaluator.log ==='
   tail -n 10 ${RPATH}/evaluator.log 2>/dev/null || echo 'No log yet'
@@ -190,7 +190,7 @@ Services running on 112.126.63.117:
 Useful commands:
   Check status:  /deploy --status
   View logs:     ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 'tail -f /home/ecs-user/oscanner/evaluator.log /home/ecs-user/oscanner/repos_runner.log'
-  Stop services: ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "pkill -f 'oscanner serve|repos_runner.server|npx serve'"
+  Stop services: ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "pkill -f 'backend.evaluator.server|repos_runner.server|serve out -l'"
   Restart:       /deploy
 ```
 
