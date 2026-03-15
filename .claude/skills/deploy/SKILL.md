@@ -32,7 +32,44 @@ Parse the user's arguments first:
 - `--setup` → run first-time clone and environment setup
 - `REMOTE_PATH=/some/path` → override default remote path
 
-### Step 1: Validate SSH connectivity
+### Step 1: Commit and push local changes
+
+Skip this step if `--status` or `--setup` was passed.
+
+Check for uncommitted or unpushed local changes:
+```bash
+git status --short
+git log origin/main..HEAD --oneline
+```
+
+If there are **uncommitted changes** (staged or unstaged tracked files), create a commit:
+```bash
+git add -A
+git commit -m "deploy: <brief description of changes>"
+```
+
+Do not commit untracked files (like `tests.py`) unless they are clearly part of the deployment.
+
+If there are **unpushed commits** (local commits ahead of origin/main), push them:
+```bash
+git push origin main
+```
+
+If push fails (e.g. rejected due to diverged history), stop and report — do not force push.
+
+**Important**: Pushing to Gitee triggers an auto-PR workflow that creates a new branch named `auto***` (e.g. `auto_20260315_abc123`). The remote server must deploy from this auto branch, not `origin/main`.
+
+After pushing, identify the latest auto branch created:
+```bash
+git fetch origin
+git branch -r | grep 'origin/auto' | sort | tail -1
+```
+
+Note the branch name (e.g. `origin/auto_20260315_abc123`) — use it in Step 5.
+
+If no auto branch exists (e.g. nothing was pushed), fall back to `origin/main`.
+
+### Step 2: Validate SSH connectivity
 
 Run:
 ```bash
@@ -44,11 +81,11 @@ If this fails, stop and report the error. Common causes:
 - Server unreachable
 - Key not authorized on server
 
-### Step 2: Determine remote path
+### Step 3: Determine remote path
 
 Use default `/home/ecs-user/oscanner` unless overridden. Assign to `RPATH`.
 
-### Step 3 (--status only): Check service status
+### Step 4 (--status only): Check service status
 
 ```bash
 ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
@@ -73,7 +110,7 @@ ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
 
 Then stop — do not proceed to deploy steps.
 
-### Step 4 (--setup only): First-time clone
+### Step 5 (--setup only): First-time clone
 
 Check if repo already exists:
 ```bash
@@ -105,20 +142,22 @@ After cloning, remind the user:
 
 Then stop.
 
-### Step 5: Pull latest changes
+### Step 6: Pull latest changes
+
+Use the auto branch identified in Step 1 (or `origin/main` if no push was needed):
 
 ```bash
 ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
   cd ${RPATH} &&
   git fetch origin &&
-  git reset --hard origin/main &&
-  echo 'Git pull complete'
+  git reset --hard <auto_branch_or_origin/main> &&
+  echo 'Git pull complete, on branch: <branch_name>'
 "
 ```
 
 If the directory does not exist, suggest running `/deploy --setup` first.
 
-### Step 6: Start / restart all services
+### Step 7: Start / restart all services
 
 ```bash
 ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
@@ -130,7 +169,7 @@ ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
 
 Where `${REBUILD_FLAG}` is `--rebuild` if the user passed `--rebuild`, otherwise empty.
 
-### Step 7: Verify services are running
+### Step 8: Verify services are running
 
 Wait ~5 seconds, then check:
 ```bash
@@ -148,7 +187,7 @@ ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
 "
 ```
 
-### Step 8: Report results
+### Step 9: Report results
 
 Print a clear summary:
 ```
@@ -172,6 +211,7 @@ Useful commands:
 ## Error Handling
 
 - **SSH connection fails**: Report exact error, check key path and server reachability
+- **git push fails** (diverged history, etc.): Show error output, do not proceed, do not force push
 - **git pull fails** (merge conflicts, etc.): Show error output, do not proceed
 - **start_production.sh fails**: Show last 30 lines of evaluator.log or repos_runner.log, suggest `/deploy --rebuild`
 - **Service not running after deploy**: Show log tail, suggest checking `.env.local` exists on server
@@ -184,3 +224,4 @@ Useful commands:
 - The `uv` Python package manager is auto-installed by `start_production.sh` if missing
 - Node.js (v18+) must be pre-installed on the remote server
 - Logs are at `${RPATH}/evaluator.log`, `${RPATH}/repos_runner.log`, and `${RPATH}/frontend/webapp.log`
+- Pushing to Gitee creates an `auto***` branch — always deploy from this branch, not `origin/main`

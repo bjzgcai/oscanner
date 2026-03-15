@@ -137,7 +137,12 @@ def _find_test_files(clone_dir: Path, language: str) -> List[str]:
             continue
         rel_parts = p.parts[len(clone_dir.parts):]
         # Skip excluded directories anywhere in the relative path
-        if any(part in skip_dirs or (part.startswith(".") and part != ".") for part in rel_parts):
+        if any(
+            part in skip_dirs
+            or part.startswith(".venv")  # .venv_<hash> per-repo venvs
+            or (part.startswith(".") and part != ".")
+            for part in rel_parts
+        ):
             continue
         if p.suffix not in suffixes:
             continue
