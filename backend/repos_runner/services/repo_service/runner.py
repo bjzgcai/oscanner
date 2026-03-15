@@ -289,8 +289,20 @@ async def run_tests(
     # (e.g. `tests/unit` when tests are actually at `zhugecai/tests/unit/`).
     # Applies to Python, Node/JS/TS, Ruby, PHP; skips languages whose runners
     # auto-discover (Go, Rust, Java, Swift, etc.).
+    # When language is unknown (e.g. REPO_OVERVIEW.md was empty), scan all languages.
     language = test_info.get("language", "")
     found_test_files = _find_test_files(clone_dir, language)
+    if not found_test_files and language in ("unknown", ""):
+        for candidate in ("python", "node", "ruby", "php", "go", "rust", "java", "dotnet", "elixir", "kotlin", "swift"):
+            files = _find_test_files(clone_dir, candidate)
+            if files:
+                language = candidate
+                found_test_files = files
+                if progress_callback:
+                    await progress_callback(
+                        f"Language was unknown; auto-detected '{language}' from test files"
+                    )
+                break
     if found_test_files:
         discovered_cmd = _build_discovered_command(clone_dir, language, found_test_files)
         if discovered_cmd:
@@ -300,7 +312,14 @@ async def run_tests(
                     f"using: {discovered_cmd}"
                 )
             test_info = dict(test_info)
+            test_info["language"] = language
             test_info["test_commands"] = [discovered_cmd]
+            # Add default Python setup if none exist
+            if language == "python" and not test_info.get("setup_commands"):
+                test_info["setup_commands"] = [
+                    "pip install -r requirements.txt || true",
+                    "pip install pytest pytest-json-report",
+                ]
             _save_test_config(clone_dir, test_info)
 
     # Run setup commands with hash-based venv caching for Python
