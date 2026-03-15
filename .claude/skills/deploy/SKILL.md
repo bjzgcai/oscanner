@@ -45,29 +45,15 @@ git log origin/main..HEAD --oneline
 If there are **uncommitted changes** (staged or unstaged tracked files), create a commit:
 ```bash
 git add -A
-git commit -m "deploy: <brief description of changes>"
+git commit -m "feature: <brief description of changes>"
 ```
-
-Do not commit untracked files (like `tests.py`) unless they are clearly part of the deployment.
 
 If there are **unpushed commits** (local commits ahead of origin/main), push them:
 ```bash
 git push origin main
 ```
 
-If push fails (e.g. rejected due to diverged history), stop and report — do not force push.
 
-**Important**: Pushing to Gitee triggers an auto-PR workflow that creates a new branch named `auto***` (e.g. `auto_20260315_abc123`). The remote server must deploy from this auto branch, not `origin/main`.
-
-After pushing, identify the latest auto branch created:
-```bash
-git fetch origin
-git branch -r | grep 'origin/auto' | sort | tail -1
-```
-
-Note the branch name (e.g. `origin/auto_20260315_abc123`) — use it in Step 5.
-
-If no auto branch exists (e.g. nothing was pushed), fall back to `origin/main`.
 
 ### Step 2: Validate SSH connectivity
 
