@@ -43,6 +43,7 @@ async def clone_repository(
                 checked_out_sha = repo.head.commit.hexsha
             elif tag:
                 repo = git.Repo.clone_from(repo_url, clone_path)
+                repo.git.fetch("--tags")
                 repo.git.checkout(f"tags/{tag}")
                 checked_out_sha = repo.head.commit.hexsha
             else:

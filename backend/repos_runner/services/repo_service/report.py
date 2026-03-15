@@ -133,6 +133,7 @@ This repository does not appear to have any automated tests configured.
         # tag_message present but no feature_coverage (extraction returned nothing)
         report += f"## Feature Coverage\n\n> **Tag annotation**: {tag_message}\n\n"
         report += "> ⚠️ No testable features could be extracted from the tag message.\n\n"
+        report += "> **Score set to 0** — a tag annotation was provided but no evaluable features could be identified from it.\n\n"
 
     report += """### Grade Scale
 - 90-100: Excellent ⭐⭐⭐⭐⭐ (Production ready)
