@@ -3,12 +3,28 @@ Repository cloning logic.
 """
 
 import asyncio
+import os
 import shutil
 from typing import Optional, Dict, Any
 
 import git
 
 from .paths import get_repos_dir, parse_repo_url
+
+
+def _inject_auth_token(repo_url: str) -> str:
+    """Inject authentication token into the repo URL if available."""
+    if "gitee.com" in repo_url:
+        token = os.getenv("GITEE_TOKEN") or os.getenv("GITEE_ENTERPRISE_TOKEN")
+        if token and "://" in repo_url and "@" not in repo_url:
+            scheme, rest = repo_url.split("://", 1)
+            return f"{scheme}://oauth2:{token}@{rest}"
+    elif "github.com" in repo_url:
+        token = os.getenv("GITHUB_TOKEN")
+        if token and "://" in repo_url and "@" not in repo_url:
+            scheme, rest = repo_url.split("://", 1)
+            return f"{scheme}://oauth2:{token}@{rest}"
+    return repo_url
 
 
 async def clone_repository(
@@ -37,18 +53,19 @@ async def clone_repository(
 
     try:
         def _clone_sync():
+            auth_url = _inject_auth_token(repo_url)
             if sha:
-                repo = git.Repo.clone_from(repo_url, clone_path)
+                repo = git.Repo.clone_from(auth_url, clone_path)
                 repo.git.checkout(sha)
                 checked_out_sha = repo.head.commit.hexsha
             elif tag:
-                repo = git.Repo.clone_from(repo_url, clone_path)
+                repo = git.Repo.clone_from(auth_url, clone_path)
                 repo.git.fetch("--tags")
                 repo.git.checkout(f"tags/{tag}")
                 checked_out_sha = repo.head.commit.hexsha
             else:
                 repo = git.Repo.clone_from(
-                    repo_url, clone_path, depth=1, single_branch=True
+                    auth_url, clone_path, depth=1, single_branch=True
                 )
                 checked_out_sha = repo.head.commit.hexsha
 
