@@ -72,6 +72,12 @@ async def run_all_steps(request: RunAllRequest):
                 "data": {"status": "failed", "error": f"Runner unavailable at {RUNNER_SERVICE_URL}"},
             })
             yield f"data: {error}\n\n"
+        except Exception as e:
+            error = json.dumps({
+                "event": "status",
+                "data": {"status": "failed", "error": f"Runner connection lost: {e}"},
+            })
+            yield f"data: {error}\n\n"
 
     return StreamingResponse(
         stream_from_runner(),

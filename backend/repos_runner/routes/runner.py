@@ -290,10 +290,13 @@ async def run_all_stream(request: RunAllRequest):
                     "report_content": report_content,
                 })
 
+            except asyncio.CancelledError:
+                progress_queue.put_nowait({"status": "failed", "error": "Pipeline was cancelled"})
+                raise
             except Exception as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
             finally:
-                await progress_queue.put(None)
+                progress_queue.put_nowait(None)
 
         task = asyncio.create_task(pipeline_task())
 
@@ -307,7 +310,10 @@ async def run_all_stream(request: RunAllRequest):
                 event_data = json.dumps({"event": "status", "data": message})
             yield f"data: {event_data}\n\n"
 
-        await task
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
     return StreamingResponse(
         event_generator(),
