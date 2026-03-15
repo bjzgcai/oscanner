@@ -4,8 +4,11 @@ API routes for Repository Runner
 
 import asyncio
 import json
+import logging
 from typing import AsyncGenerator, Optional
 from fastapi import APIRouter, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
 from repos_runner.schemas import (
     RepoCloneRequest,
@@ -22,6 +25,7 @@ from repos_runner.services import (
     list_repos,
     delete_repo,
 )
+from repos_runner.services.repo_service import fetch_gitee_tag_message
 
 router = APIRouter(prefix="/api/runner")
 
@@ -128,6 +132,7 @@ async def run_tests_stream(
 
         async def test_task():
             try:
+                from pathlib import Path
                 result = await run_tests(
                     clone_path,
                     overview_path,
@@ -135,7 +140,12 @@ async def run_tests_stream(
                     setup_timeout=setup_timeout,
                     test_timeout=test_timeout,
                 )
-                await progress_queue.put({"status": "completed", "results": result})
+                report_path = result.get("report_path", "")
+                try:
+                    report_content = Path(report_path).read_text() if report_path else ""
+                except Exception:
+                    report_content = ""
+                await progress_queue.put({"status": "completed", "results": result, "report_content": report_content})
             except Exception as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
             finally:
@@ -169,12 +179,43 @@ async def run_tests_stream(
 @router.post("/run-all")
 async def run_all_stream(request: RunAllRequest):
     """
-    Combined clone → explore → run-tests pipeline with streaming progress.
+    Combined clone → explore → run-tests pipeline with SSE streaming progress.
+
+    Pipeline stages:
+    1. Clone   — shallow clone (depth=1) into ~/.local/share/oscanner/repos/{repo_name}/
+                 Optionally checks out a specific SHA or tag.
+    2. Explore — generates REPO_OVERVIEW.md via Claude Sonnet LLM to understand
+                 project structure, languages, and suggested test commands.
+    3. Tests   — auto-detects test framework, sets up an isolated .venv, runs tests
+                 inside a sandboxed subprocess. Produces TEST_REPORT.md with a
+                 0–100 score based on pass/fail metrics.
 
     Idempotency flags:
     - skip_clone:   reuse existing clone (skip re-cloning)
-    - skip_explore: reuse existing REPO_OVERVIEW.md (skip exploration)
+    - skip_explore: reuse existing REPO_OVERVIEW.md (skip LLM exploration)
+
+    Tag annotation scoring (Gitee only):
+    - When `tag` is provided, fetches the annotated tag message from Gitee.
+    - Extracts feature descriptions from the message and checks which features
+      are exercised by the test suite (via LLM). Uncovered features reduce the
+      maximum achievable score proportionally.
+
+    SSE events emitted:
+    - {"event": "progress", "data": {"message": "<msg>"}}   — pipeline log lines
+    - {"event": "status",   "data": {"status": "completed", "results": {...}}}
+    - {"event": "status",   "data": {"status": "failed",    "error": "<msg>"}}
+
+    What is NOT covered:
+    - Private repositories (no authentication support)
+    - Tag annotation fetch for GitHub (Gitee-only)
+    - Parallel test execution within a single repo
+    - Docker / containerised test environments
+    - Custom environment variable injection for test commands
+    - Non-Git version control systems
     """
+    logger.info("run-all request: repo_url=%s tag=%s sha=%s", request.repo_url, request.tag, request.sha)
+    print(f"[run-all] repo_url={request.repo_url} tag={request.tag} sha={request.sha}", flush=True)
+
     async def event_generator() -> AsyncGenerator[str, None]:
         progress_queue: asyncio.Queue = asyncio.Queue()
 
@@ -201,6 +242,20 @@ async def run_all_stream(request: RunAllRequest):
                 clone_path = clone_metadata["clone_path"]
                 overview_path = str(Path(clone_path) / "REPO_OVERVIEW.md")
 
+                # -- Fetch tag message (Gitee only) --
+                tag_message = None
+                if request.tag:
+                    await progress_callback(
+                        f"Fetching tag annotation for '{request.tag}' from Gitee..."
+                    )
+                    tag_message = await fetch_gitee_tag_message(request.repo_url, request.tag)
+                    if tag_message:
+                        await progress_callback(f"Tag message: {tag_message}")
+                    else:
+                        await progress_callback(
+                            "No tag annotation message found; running standard scoring."
+                        )
+
                 # -- Explore step --
                 if request.skip_explore and Path(overview_path).exists():
                     await progress_callback(
@@ -208,7 +263,7 @@ async def run_all_stream(request: RunAllRequest):
                     )
                 else:
                     await progress_callback("Exploring repository...")
-                    overview_path = await explore_repository(clone_path, progress_callback)
+                    overview_path = await explore_repository(clone_path, progress_callback, tag_message)
 
                 # -- Test step --
                 await progress_callback("Running tests...")
@@ -218,19 +273,30 @@ async def run_all_stream(request: RunAllRequest):
                     progress_callback,
                     setup_timeout=request.setup_timeout,
                     test_timeout=request.test_timeout,
+                    tag_message=tag_message,
                 )
 
+                report_path = result.get("report_path", "")
+                try:
+                    from pathlib import Path as _Path
+                    report_content = _Path(report_path).read_text() if report_path else ""
+                except Exception:
+                    report_content = ""
                 await progress_queue.put({
                     "status": "completed",
                     "clone_metadata": clone_metadata,
                     "overview_path": overview_path,
                     "results": result,
+                    "report_content": report_content,
                 })
 
+            except asyncio.CancelledError:
+                progress_queue.put_nowait({"status": "failed", "error": "Pipeline was cancelled"})
+                raise
             except Exception as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
             finally:
-                await progress_queue.put(None)
+                progress_queue.put_nowait(None)
 
         task = asyncio.create_task(pipeline_task())
 
@@ -244,7 +310,10 @@ async def run_all_stream(request: RunAllRequest):
                 event_data = json.dumps({"event": "status", "data": message})
             yield f"data: {event_data}\n\n"
 
-        await task
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
     return StreamingResponse(
         event_generator(),
@@ -296,11 +365,23 @@ async def batch_run_stream(request: BatchRunRequest):
                     clone_path = clone_metadata["clone_path"]
                     overview_path = str(Path(clone_path) / "REPO_OVERVIEW.md")
 
+                    # -- Fetch tag message (Gitee only) --
+                    tag_message = None
+                    if repo_req.tag:
+                        await cb(f"Fetching tag annotation for '{repo_req.tag}' from Gitee...")
+                        tag_message = await fetch_gitee_tag_message(repo_url, repo_req.tag)
+                        if tag_message:
+                            await cb(f"Tag message: {tag_message}")
+                        else:
+                            await cb(
+                                "No tag annotation message found; running standard scoring."
+                            )
+
                     if repo_req.skip_explore and Path(overview_path).exists():
                         await cb("Skipping exploration, reusing existing REPO_OVERVIEW.md")
                     else:
                         await cb("Exploring repository...")
-                        overview_path = await explore_repository(clone_path, cb)
+                        overview_path = await explore_repository(clone_path, cb, tag_message)
 
                     await cb("Running tests...")
                     result = await run_tests(
@@ -309,6 +390,7 @@ async def batch_run_stream(request: BatchRunRequest):
                         cb,
                         setup_timeout=repo_req.setup_timeout,
                         test_timeout=repo_req.test_timeout,
+                        tag_message=tag_message,
                     )
 
                     await event_queue.put({

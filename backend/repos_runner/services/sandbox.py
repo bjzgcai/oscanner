@@ -47,7 +47,7 @@ _DEFAULT_CPU_SECONDS   = 300   # matches default test_timeout
 _DEFAULT_FSIZE_MB      = 512   # max file the child can create (bytes written)
 _DEFAULT_AS_MB         = 2048  # virtual address space (2 GB)
 _DEFAULT_NOFILE        = 256   # open file descriptors
-_DEFAULT_NPROC         = 512   # processes + threads spawnable by this user
+_DEFAULT_NPROC         = 4096  # processes + threads spawnable by this user
 
 
 @dataclass
@@ -164,7 +164,14 @@ def _make_rlimit_preexec(limits: ResourceLimits):
         except (ValueError, resource.error):
             pass
         try:
-            resource.setrlimit(resource.RLIMIT_NPROC,  (nproc,  nproc))
+            # RLIMIT_NPROC is per-user on Linux — if the user already has
+            # many processes running (e.g. WSL2), setting a hard cap of 512
+            # can immediately prevent any further forks ("Cannot fork").
+            # Only apply the cap if the current soft limit is higher, and
+            # ensure we leave at least 64 slots above the current count.
+            cur_soft, cur_hard = resource.getrlimit(resource.RLIMIT_NPROC)
+            if cur_soft > nproc:
+                resource.setrlimit(resource.RLIMIT_NPROC, (nproc, min(nproc, cur_hard)))
         except (ValueError, resource.error):
             pass
 
