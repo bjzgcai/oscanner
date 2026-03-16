@@ -10,13 +10,22 @@ from typing import Optional
 from .llm import _get_api_client
 
 
+def _overview_filename(tag: Optional[str]) -> str:
+    """Return the REPO_OVERVIEW filename for the given tag (or default)."""
+    if tag:
+        safe_tag = tag.replace("/", "_").replace("\\", "_")
+        return f"REPO_OVERVIEW_{safe_tag}.md"
+    return "REPO_OVERVIEW.md"
+
+
 async def explore_repository(
     clone_path: str,
     progress_callback=None,
     tag_message: Optional[str] = None,
+    tag: Optional[str] = None,
 ) -> str:
     """
-    Explore repository and generate REPO_OVERVIEW.md using the Claude Code SDK.
+    Explore repository and generate REPO_OVERVIEW_{tag}.md using the Claude Code SDK.
 
     The SDK runs Claude as an agentic loop with shell-tool access so it can
     actually read files, list directories, and understand the project structure
@@ -24,12 +33,13 @@ async def explore_repository(
 
     Args:
         tag_message: Optional annotation describing target features to focus on.
+        tag: Optional tag name used to version the output filename.
 
     Returns:
-        Path to generated REPO_OVERVIEW.md
+        Path to generated REPO_OVERVIEW_{tag}.md (or REPO_OVERVIEW.md if no tag)
     """
     clone_dir = Path(clone_path)
-    overview_path = clone_dir / "REPO_OVERVIEW.md"
+    overview_path = clone_dir / _overview_filename(tag)
 
     if progress_callback:
         await progress_callback("Starting repository exploration with Claude Code SDK...")
@@ -47,12 +57,13 @@ async def explore_repository(
             if tag_message else ""
         )
 
+        overview_filename = _overview_filename(tag)
         prompt = (
             "You are analyzing a software repository to understand how to run its tests. "
             "Explore the repository files, read the README, config files (package.json, "
             "pyproject.toml, Cargo.toml, go.mod, etc.), and any existing test files. "
             f"{tag_section}"
-            "\n\nThen produce a file called REPO_OVERVIEW.md in the current directory with "
+            f"\n\nThen produce a file called {overview_filename} in the current directory with "
             "this exact structure:\n\n"
             "# {repo_name}\n\n"
             + (
@@ -101,7 +112,7 @@ async def explore_repository(
                     "SDK did not write the file directly; using context fallback..."
                 )
             overview_path = Path(
-                await _explore_via_messages_api(clone_path, progress_callback, tag_message)
+                await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
             )
 
         if progress_callback:
@@ -115,22 +126,23 @@ async def explore_repository(
             await progress_callback(
                 "claude-code-sdk not available; falling back to messages API..."
             )
-        return await _explore_via_messages_api(clone_path, progress_callback, tag_message)
+        return await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
 
     except Exception as e:
         if progress_callback:
             await progress_callback(f"SDK error ({e}); falling back to messages API...")
-        return await _explore_via_messages_api(clone_path, progress_callback, tag_message)
+        return await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
 
 
 async def _explore_via_messages_api(
     clone_path: str,
     progress_callback=None,
     tag_message: Optional[str] = None,
+    tag: Optional[str] = None,
 ) -> str:
     """Fallback: build context manually and call the Anthropic messages API."""
     clone_dir = Path(clone_path)
-    overview_path = clone_dir / "REPO_OVERVIEW.md"
+    overview_path = clone_dir / _overview_filename(tag)
 
     if progress_callback:
         await progress_callback("Analyzing repository structure...")

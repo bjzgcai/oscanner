@@ -38,14 +38,22 @@ def list_repos() -> List[Dict[str, Any]]:
         except Exception:
             last_accessed = None
 
+        # Collect all tag-versioned reports, e.g. TEST_REPORT_v1.0.md → tag "v1.0"
+        reports = {}
+        for f in sorted(repo_dir.glob("TEST_REPORT*.md")):
+            name = f.stem  # e.g. "TEST_REPORT_v1.0" or "TEST_REPORT"
+            tag_key = name[len("TEST_REPORT_"):] if name.startswith("TEST_REPORT_") else ""
+            reports[tag_key or "default"] = f.name
+
         repos.append({
             "repo_name": repo_dir.name,
             "clone_path": str(repo_dir),
             "size_mb": round(total_bytes / (1024 * 1024), 2),
             "last_accessed": last_accessed,
-            "has_overview": (repo_dir / "REPO_OVERVIEW.md").exists(),
-            "has_report": (repo_dir / "TEST_REPORT.md").exists(),
+            "has_overview": any(repo_dir.glob("REPO_OVERVIEW*.md")),
+            "has_report": bool(reports),
             "has_test_config": (repo_dir / "test_config.json").exists(),
+            "reports": reports,  # {"v1.0": "TEST_REPORT_v1.0.md", "default": "TEST_REPORT.md"}
         })
 
     return repos

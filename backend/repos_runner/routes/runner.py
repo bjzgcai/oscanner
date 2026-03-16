@@ -240,7 +240,9 @@ async def run_all_stream(request: RunAllRequest):
                     )
 
                 clone_path = clone_metadata["clone_path"]
-                overview_path = str(Path(clone_path) / "REPO_OVERVIEW.md")
+                _safe_tag = request.tag.replace("/", "_").replace("\\", "_") if request.tag else None
+                overview_filename = f"REPO_OVERVIEW_{_safe_tag}.md" if _safe_tag else "REPO_OVERVIEW.md"
+                overview_path = str(Path(clone_path) / overview_filename)
 
                 # -- Fetch tag message (Gitee only) --
                 tag_message = None
@@ -259,11 +261,13 @@ async def run_all_stream(request: RunAllRequest):
                 # -- Explore step --
                 if request.skip_explore and Path(overview_path).exists():
                     await progress_callback(
-                        "Skipping exploration, reusing existing REPO_OVERVIEW.md"
+                        f"Skipping exploration, reusing existing {overview_filename}"
                     )
                 else:
                     await progress_callback("Exploring repository...")
-                    overview_path = await explore_repository(clone_path, progress_callback, tag_message)
+                    overview_path = await explore_repository(
+                        clone_path, progress_callback, tag_message, tag=request.tag
+                    )
 
                 # -- Test step --
                 await progress_callback("Running tests...")
@@ -274,6 +278,7 @@ async def run_all_stream(request: RunAllRequest):
                     setup_timeout=request.setup_timeout,
                     test_timeout=request.test_timeout,
                     tag_message=tag_message,
+                    tag=request.tag,
                 )
 
                 report_path = result.get("report_path", "")
@@ -363,7 +368,9 @@ async def batch_run_stream(request: BatchRunRequest):
                         clone_metadata = await clone_repository(repo_url, repo_req.sha, repo_req.tag)
 
                     clone_path = clone_metadata["clone_path"]
-                    overview_path = str(Path(clone_path) / "REPO_OVERVIEW.md")
+                    _safe_tag = repo_req.tag.replace("/", "_").replace("\\", "_") if repo_req.tag else None
+                    overview_filename = f"REPO_OVERVIEW_{_safe_tag}.md" if _safe_tag else "REPO_OVERVIEW.md"
+                    overview_path = str(Path(clone_path) / overview_filename)
 
                     # -- Fetch tag message (Gitee only) --
                     tag_message = None
@@ -378,10 +385,12 @@ async def batch_run_stream(request: BatchRunRequest):
                             )
 
                     if repo_req.skip_explore and Path(overview_path).exists():
-                        await cb("Skipping exploration, reusing existing REPO_OVERVIEW.md")
+                        await cb(f"Skipping exploration, reusing existing {overview_filename}")
                     else:
                         await cb("Exploring repository...")
-                        overview_path = await explore_repository(clone_path, cb, tag_message)
+                        overview_path = await explore_repository(
+                            clone_path, cb, tag_message, tag=repo_req.tag
+                        )
 
                     await cb("Running tests...")
                     result = await run_tests(
@@ -391,6 +400,7 @@ async def batch_run_stream(request: BatchRunRequest):
                         setup_timeout=repo_req.setup_timeout,
                         test_timeout=repo_req.test_timeout,
                         tag_message=tag_message,
+                        tag=repo_req.tag,
                     )
 
                     await event_queue.put({

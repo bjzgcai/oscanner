@@ -232,6 +232,7 @@ async def run_tests(
     setup_timeout: int = 120,
     test_timeout: int = 300,
     tag_message: Optional[str] = None,
+    tag: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Identify and run tests based on REPO_OVERVIEW.md.
@@ -363,7 +364,8 @@ async def run_tests(
         if progress_callback:
             await progress_callback("No tests found in repository")
 
-        test_report_path = clone_dir / "TEST_REPORT.md"
+        _safe_tag = tag.replace("/", "_").replace("\\", "_") if tag else None
+        test_report_path = clone_dir / (f"TEST_REPORT_{_safe_tag}.md" if _safe_tag else "TEST_REPORT.md")
         await _generate_test_report(
             report_path=test_report_path,
             repo_name=clone_dir.name,
@@ -524,7 +526,8 @@ async def run_tests(
     # Merge command-level and individual test-case results for the report
     report_items = all_test_cases if all_test_cases else command_results
 
-    test_report_path = clone_dir / "TEST_REPORT.md"
+    _safe_tag = tag.replace("/", "_").replace("\\", "_") if tag else None
+    test_report_path = clone_dir / (f"TEST_REPORT_{_safe_tag}.md" if _safe_tag else "TEST_REPORT.md")
     await _generate_test_report(
         report_path=test_report_path,
         repo_name=clone_dir.name,
