@@ -23,34 +23,34 @@ async def _generate_test_report(
     fail_rate = (failed / total * 100) if total > 0 else 0
 
     if score >= 90:
-        grade = "Excellent ⭐⭐⭐⭐⭐"
+        grade = "优秀 ⭐⭐⭐⭐⭐"
     elif score >= 70:
-        grade = "Good ⭐⭐⭐⭐"
+        grade = "良好 ⭐⭐⭐⭐"
     elif score >= 50:
-        grade = "Fair ⭐⭐⭐"
+        grade = "一般 ⭐⭐⭐"
     else:
-        grade = "Poor ⭐"
+        grade = "较差 ⭐"
 
-    report = f"""# Test Report: {repo_name}
+    report = f"""# 测试报告：{repo_name}
 
-**Generated**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-**Overall Score**: {score}/100 ({grade})
+**生成时间**：{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+**综合评分**：{score}/100（{grade}）
 
-## Summary
-- **Total Tests**: {total}
-- **Passed**: {passed} ({pass_rate:.1f}%)
-- **Failed**: {failed} ({fail_rate:.1f}%)
-- **Skipped**: 0 (0%)
-- **Score**: {score}/100
+## 概览
+- **测试总数**：{total}
+- **通过**：{passed}（{pass_rate:.1f}%）
+- **失败**：{failed}（{fail_rate:.1f}%）
+- **跳过**：0（0%）
+- **得分**：{score}/100
 
-## Test Results
+## 测试结果
 
 """
 
     if total == 0:
-        report += """⚠️ **No tests detected in this repository**
+        report += """⚠️ **未检测到测试用例**
 
-This repository does not appear to have any automated tests configured.
+该仓库似乎没有配置任何自动化测试。
 
 """
 
@@ -58,27 +58,27 @@ This repository does not appear to have any automated tests configured.
     failed_tests = [t for t in test_results if t["status"] == "failed"]
 
     if passed_tests:
-        report += f"### ✅ Passed Tests ({len(passed_tests)})\n\n"
+        report += f"### ✅ 通过的测试（{len(passed_tests)}）\n\n"
         for t in passed_tests:
             duration = t.get("duration", 0)
-            report += f"- `{t['name']}` ({duration:.2f}s)\n"
+            report += f"- `{t['name']}` （{duration:.2f}s）\n"
         report += "\n"
 
     if failed_tests:
-        report += f"### ❌ Failed Tests ({len(failed_tests)})\n\n"
+        report += f"### ❌ 失败的测试（{len(failed_tests)}）\n\n"
         for t in failed_tests:
             duration = t.get("duration", 0)
-            report += f"- `{t['name']}` ({duration:.2f}s)\n"
+            report += f"- `{t['name']}` （{duration:.2f}s）\n"
             output = t.get("output", "")
             if output:
                 truncated_output = output[-500:] if len(output) > 500 else output
                 report += f"  ```\n  {truncated_output}\n  ```\n"
         report += "\n"
 
-    report += f"""## Score Breakdown
+    report += f"""## 得分明细
 
-- **Pass Rate**: {pass_rate:.1f}% ({passed}/{total})
-- **Final Score**: {score}/100
+- **通过率**：{pass_rate:.1f}%（{passed}/{total}）
+- **最终得分**：{score}/100
 """
 
     if feature_coverage:
@@ -86,8 +86,8 @@ This repository does not appear to have any automated tests configured.
         not_covered = feature_coverage.get("not_covered", [])
         total_features = len(covered) + len(not_covered)
         coverage_pct = feature_coverage.get("coverage_ratio", 1.0) * 100
-        report += f"""- **Feature Coverage**: {len(covered)}/{total_features} features ({coverage_pct:.0f}%)
-- **Score Formula**: pass_rate ({pass_rate:.1f}%) × feature_coverage ({coverage_pct:.0f}%) = {score}/100
+        report += f"""- **功能覆盖率**：{len(covered)}/{total_features} 个功能（{coverage_pct:.0f}%）
+- **评分公式**：通过率（{pass_rate:.1f}%）× 功能覆盖率（{coverage_pct:.0f}%）= {score}/100
 """
     report += "\n"
 
@@ -98,95 +98,94 @@ This repository does not appear to have any automated tests configured.
         coverage_pct = feature_coverage.get("coverage_ratio", 1.0) * 100
         test_files_found = feature_coverage.get("test_files_found", [])
 
-        report += f"## Feature Coverage ({len(covered)}/{total_features} — {coverage_pct:.0f}%)\n\n"
+        report += f"## 功能覆盖（{len(covered)}/{total_features} — {coverage_pct:.0f}%）\n\n"
 
         if tag_message:
-            report += f"> **Tag annotation**: {tag_message}\n\n"
+            report += f"> **标签说明**：{tag_message}\n\n"
 
         report += (
-            "Features are extracted from the tag annotation message and cross-checked "
-            "against the test files in the repository. Each uncovered feature reduces "
-            "the maximum achievable score proportionally.\n\n"
+            "功能列表从标签说明中提取，并与仓库中的测试文件进行交叉比对。"
+            "每个未覆盖的功能将按比例降低最高可得分数。\n\n"
         )
 
         if covered:
-            report += f"### ✅ Covered ({len(covered)})\n\n"
+            report += f"### ✅ 已覆盖（{len(covered)}）\n\n"
             for f in covered:
                 report += f"- {f}\n"
             report += "\n"
 
         if not_covered:
-            report += f"### ❌ Not Covered ({len(not_covered)})\n\n"
+            report += f"### ❌ 未覆盖（{len(not_covered)}）\n\n"
             for f in not_covered:
                 report += f"- {f}\n"
             report += "\n"
 
         if test_files_found:
-            report += f"### Test Files Scanned ({len(test_files_found)})\n\n"
+            report += f"### 已扫描的测试文件（{len(test_files_found)}）\n\n"
             for tf in test_files_found:
                 report += f"- `{tf}`\n"
             report += "\n"
         else:
-            report += "> ⚠️ No test files were found — all features counted as not covered.\n\n"
+            report += "> ⚠️ 未找到测试文件——所有功能均计为未覆盖。\n\n"
 
     elif tag_message:
         # tag_message present but no feature_coverage (extraction returned nothing)
-        report += f"## Feature Coverage\n\n> **Tag annotation**: {tag_message}\n\n"
-        report += "> ⚠️ No testable features could be extracted from the tag message.\n\n"
-        report += "> **Score set to 0** — a tag annotation was provided but no evaluable features could be identified from it.\n\n"
+        report += f"## 功能覆盖\n\n> **标签说明**：{tag_message}\n\n"
+        report += "> ⚠️ 无法从标签说明中提取可测试的功能点。\n\n"
+        report += "> **得分设为 0** ——已提供标签说明，但无法从中识别出可评估的功能。\n\n"
 
-    report += """### Grade Scale
-- 90-100: Excellent ⭐⭐⭐⭐⭐ (Production ready)
-- 70-89: Good ⭐⭐⭐⭐ (Minor gaps acceptable)
-- 50-69: Fair ⭐⭐⭐ (Needs improvement)
-- 0-49: Poor ⭐ (Significant gaps)
+    report += """### 评级标准
+- 90-100：优秀 ⭐⭐⭐⭐⭐（可投入生产）
+- 70-89：良好 ⭐⭐⭐⭐（少量缺口可接受）
+- 50-69：一般 ⭐⭐⭐（需要改进）
+- 0-49：较差 ⭐（存在明显缺陷）
 
-## Recommendations
+## 改进建议
 
 """
 
     if total == 0:
-        report += """### Get Started with Testing
-1. Choose a testing framework appropriate for your language/stack
-2. Write tests for critical functionality first
-3. Aim for at least 70% code coverage
-4. Set up continuous integration to run tests automatically
+        report += """### 开始编写测试
+1. 选择适合当前语言/技术栈的测试框架
+2. 优先为核心功能编写测试
+3. 争取达到至少 70% 的代码覆盖率
+4. 配置持续集成以自动运行测试
 
 """
     elif score < 70:
-        report += """### Priority Actions
-1. Fix all failing tests
-2. Investigate root causes of failures
-3. Add missing test coverage for critical paths
-4. Re-run tests until score >= 70
+        report += """### 优先事项
+1. 修复所有失败的测试
+2. 排查失败的根本原因
+3. 补充关键路径的测试覆盖
+4. 重新运行测试直至得分 >= 70
 
 """
 
     if failed_tests:
-        report += "### Failed Tests to Fix\n"
+        report += "### 需修复的失败测试\n"
         for idx, t in enumerate(failed_tests[:5], 1):
             report += f"{idx}. `{t['name']}`\n"
         if len(failed_tests) > 5:
-            report += f"\n...and {len(failed_tests) - 5} more\n"
+            report += f"\n...以及另外 {len(failed_tests) - 5} 个\n"
         report += "\n"
 
-    report += """## Next Steps
+    report += """## 后续步骤
 
 """
     if total == 0:
-        report += """1. Set up a testing framework for your project
-2. Write initial tests for core functionality
-3. Run analysis again: `/api/runner/run-tests`
+        report += """1. 为项目搭建测试框架
+2. 为核心功能编写初始测试
+3. 重新运行分析：`/api/runner/run-tests`
 
 """
     else:
-        report += """1. Review failed tests and fix underlying issues
-2. Run tests again: `/api/runner/run-tests`
-3. Aim for 70%+ pass rate (Good rating)
-4. Target 90%+ pass rate (Excellent rating)
+        report += """1. 排查失败测试并修复底层问题
+2. 重新运行测试：`/api/runner/run-tests`
+3. 目标：通过率达到 70%+（良好评级）
+4. 目标：通过率达到 90%+（优秀评级）
 
 """
 
-    report += "---\n\n*Generated by repos_runner - Automated repository testing service*\n"
+    report += "---\n\n*由 repos_runner 自动生成 - 仓库测试服务*\n"
 
     report_path.write_text(report)

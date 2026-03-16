@@ -487,3 +487,30 @@ async def remove_repo(repo_name: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/report")
+async def get_report(repo_url: str, tag: Optional[str] = None):
+    """
+    Return the content of TEST_REPORT_{tag}.md (or TEST_REPORT.md) for a cloned repo.
+    """
+    from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
+    try:
+        _, _, repo_name = parse_repo_url(repo_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    clone_dir = get_repos_dir() / repo_name
+    if not clone_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Repository '{repo_name}' not found")
+
+    if tag:
+        safe_tag = tag.replace("/", "_").replace(" ", "_")
+        report_path = clone_dir / f"TEST_REPORT_{safe_tag}.md"
+    else:
+        report_path = clone_dir / "TEST_REPORT.md"
+
+    if not report_path.exists():
+        raise HTTPException(status_code=404, detail=f"Report not found: {report_path.name}")
+
+    return {"content": report_path.read_text(), "filename": report_path.name}
