@@ -31,6 +31,8 @@ export OPEN_ROUTER_BASE_URL="https://openrouter.ai/api"
 export OPEN_ROUTER_PRIMARY_MODEL="anthropic/claude-sonnet-4.5"
 export OPEN_ROUTER_FALLBACK_MODEL="anthropic/claude-sonnet-4.5"
 export OPEN_ROUTER_FALLBACK_MODELS="anthropic/claude-sonnet-4.5"
+# Optional override for repos_runner task prompts (if unset, uses provider defaults above)
+export REPOS_RUNNER_LLM_MODEL="anthropic/claude-sonnet-4.5"
 # Optional: also try direct Anthropic API key if OpenRouter attempts fail
 export OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
 

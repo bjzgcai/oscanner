@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple
 
 
 OPENROUTER_ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
-DEFAULT_OPENROUTER_PRIMARY_MODEL = "openai/gpt-5.3-codex"
+DEFAULT_OPENROUTER_PRIMARY_MODEL = "anthropic/claude-sonnet-4.5"
 DEFAULT_OPENROUTER_FALLBACK_MODEL = "anthropic/claude-sonnet-4.5"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
 
@@ -26,6 +26,17 @@ def _env_first_nonempty(*keys: str) -> str:
 
 def _split_model_list(raw: str) -> List[str]:
     return [part.strip() for part in (raw or "").split(",") if part.strip()]
+
+
+def _default_requested_model() -> str:
+    """
+    Optional requested model override for repos_runner tasks.
+
+    Priority:
+    1) REPOS_RUNNER_LLM_MODEL
+    2) OSCANNER_LLM_MODEL
+    """
+    return _env_first_nonempty("REPOS_RUNNER_LLM_MODEL", "OSCANNER_LLM_MODEL")
 
 
 def _build_anthropic_client(api_key: str):
@@ -58,6 +69,10 @@ def _normalize_anthropic_model_name(model: str) -> str:
         return DEFAULT_ANTHROPIC_MODEL
     if value.startswith("anthropic/"):
         return value.split("/", 1)[1]
+    # Direct Anthropic provider fallback cannot serve non-Anthropic names
+    # like "openai/..." or "qwen/...". Fall back to a Claude default.
+    if "/" in value:
+        return DEFAULT_ANTHROPIC_MODEL
     return value
 
 
@@ -113,8 +128,8 @@ def _get_model_candidates(provider_name: str, requested_model: str = "") -> List
     Return model attempts for a provider.
 
     OPEN_ROUTER_KEY:
-      1) openai/gpt-5.3-codex
-      2) anthropic/claude-sonnet-4.5
+      1) OPEN_ROUTER_PRIMARY_MODEL (default anthropic/claude-sonnet-4.5)
+      2) OPEN_ROUTER_FALLBACK_MODEL / OPEN_ROUTER_FALLBACK_MODELS
       (env-overridable via OPEN_ROUTER_PRIMARY_MODEL / OPEN_ROUTER_FALLBACK_MODEL)
     """
     if provider_name == "OPEN_ROUTER_KEY":

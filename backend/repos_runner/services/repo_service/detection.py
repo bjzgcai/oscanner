@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from .llm import _messages_create_with_fallback
+from .llm import _default_requested_model, _messages_create_with_fallback
 
 
 # Maps a config-file key to (setup_commands, test_commands)
@@ -241,7 +241,7 @@ If no tests are found, return {{"test_commands": [], "setup_commands": [], "lang
 """
 
     message = _messages_create_with_fallback(
-        model="openai/gpt-5.3-codex",
+        model=_default_requested_model(),
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}],
     )

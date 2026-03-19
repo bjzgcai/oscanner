@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from .llm import _get_api_clients, _get_model_candidates
+from .llm import _default_requested_model, _get_api_clients, _get_model_candidates
 
 
 def _overview_filename(tag: Optional[str]) -> str:
@@ -206,7 +206,7 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
         )
 
     attempts = []
-    requested_model = "openai/gpt-5.3-codex"
+    requested_model = _default_requested_model()
     for provider_name, client in clients:
         for model in _get_model_candidates(provider_name, requested_model):
             attempts.append((provider_name, client, model))

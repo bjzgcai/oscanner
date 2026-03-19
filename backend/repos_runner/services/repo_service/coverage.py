@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Dict, Any, List
 
-from .llm import _messages_create_with_fallback
+from .llm import _default_requested_model, _messages_create_with_fallback
 
 
 async def _extract_features_from_tag_message(message: str) -> List[str]:
@@ -27,7 +27,7 @@ Rules:
 - Only include features explicitly mentioned or clearly implied by the message.
 """
         result = _messages_create_with_fallback(
-            model="openai/gpt-5.3-codex",
+            model=_default_requested_model(),
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -155,7 +155,7 @@ Use only feature names from the required features list.
 """
     try:
         result = _messages_create_with_fallback(
-            model="openai/gpt-5.3-codex",
+            model=_default_requested_model(),
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}],
         )
