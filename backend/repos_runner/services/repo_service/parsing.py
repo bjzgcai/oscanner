@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from .llm import _default_requested_model, _messages_create_with_fallback
+from .llm import _default_requested_model, _message_text_content, _messages_create_with_fallback
 
 
 def _parse_json_report(clone_dir: Path) -> Optional[Dict[str, Any]]:
@@ -193,7 +193,7 @@ If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total":
             messages=[{"role": "user", "content": prompt}],
         )
 
-        response_text = message.content[0].text.strip()
+        response_text = _message_text_content(message)
         json_match = re.search(r"\{[^}]+\}", response_text)
         if json_match:
             result = json.loads(json_match.group())

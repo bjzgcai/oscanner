@@ -3,7 +3,12 @@ Repository service package.
 """
 
 from .paths import get_repos_dir, parse_repo_url, fetch_gitee_tag_message
-from .llm import _get_api_client, _messages_create_with_fallback, OPENROUTER_ANTHROPIC_BASE_URL
+from .llm import (
+    _get_api_client,
+    _message_text_content,
+    _messages_create_with_fallback,
+    OPENROUTER_ANTHROPIC_BASE_URL,
+)
 from .clone import clone_repository
 from .venv import ensure_repo_venv, get_repo_venv_dir
 from .detection import (
@@ -35,6 +40,7 @@ __all__ = [
     # llm
     "OPENROUTER_ANTHROPIC_BASE_URL",
     "_get_api_client",
+    "_message_text_content",
     "_messages_create_with_fallback",
     # clone
     "clone_repository",

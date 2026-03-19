@@ -39,6 +39,34 @@ def _default_requested_model() -> str:
     return _env_first_nonempty("REPOS_RUNNER_LLM_MODEL", "OSCANNER_LLM_MODEL")
 
 
+def _message_text_content(message: Any) -> str:
+    """
+    Extract concatenated text from a Messages API response.
+
+    Some providers return mixed content blocks such as ThinkingBlock alongside
+    text blocks. Only text-bearing blocks should be consumed by downstream JSON
+    parsers.
+    """
+    content = getattr(message, "content", None)
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+
+    parts: List[str] = []
+    for block in content:
+        text = getattr(block, "text", None)
+        if isinstance(text, str) and text:
+            parts.append(text)
+            continue
+        if isinstance(block, dict):
+            block_text = block.get("text")
+            if isinstance(block_text, str) and block_text:
+                parts.append(block_text)
+
+    return "\n".join(parts).strip()
+
+
 def _build_anthropic_client(api_key: str):
     from anthropic import Anthropic
 

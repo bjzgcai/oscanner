@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from .llm import _default_requested_model, _messages_create_with_fallback
+from .llm import _default_requested_model, _message_text_content, _messages_create_with_fallback
 
 
 # Maps a config-file key to (setup_commands, test_commands)
@@ -246,7 +246,7 @@ If no tests are found, return {{"test_commands": [], "setup_commands": [], "lang
         messages=[{"role": "user", "content": prompt}],
     )
 
-    response_text = message.content[0].text
+    response_text = _message_text_content(message)
     json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
     if json_match:
         try:
