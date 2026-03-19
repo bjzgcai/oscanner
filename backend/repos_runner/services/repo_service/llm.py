@@ -7,8 +7,8 @@ from typing import Dict, Any, List, Tuple
 
 
 OPENROUTER_ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
-DEFAULT_OPENROUTER_PRIMARY_MODEL = "anthropic/claude-sonnet-4.5"
-DEFAULT_OPENROUTER_FALLBACK_MODEL = "anthropic/claude-sonnet-4.5"
+DEFAULT_OPENROUTER_PRIMARY_MODEL = "anthropic/claude-sonnet-4.6"
+DEFAULT_OPENROUTER_FALLBACK_MODEL = "anthropic/claude-sonnet-4.6"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
 
 
@@ -72,14 +72,38 @@ def _message_has_text_content(message: Any) -> bool:
     return bool(_message_text_content(message))
 
 
-def _build_anthropic_client(api_key: str):
+def _build_anthropic_client(api_key: str = "", auth_token: str = ""):
     from anthropic import Anthropic
 
-    kwargs: Dict[str, Any] = {"api_key": api_key}
+    api_key = api_key.strip()
+    auth_token = auth_token.strip()
+
+    kwargs: Dict[str, Any] = {}
+    if auth_token:
+        # Anthropic-compatible gateways such as OpenRouter expect auth_token.
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ["ANTHROPIC_AUTH_TOKEN"] = auth_token
+        kwargs["auth_token"] = auth_token
+    elif api_key:
+        os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
+        os.environ["ANTHROPIC_API_KEY"] = api_key
+        kwargs["api_key"] = api_key
+    else:
+        raise ValueError(
+            "No Anthropic credential available. Set ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY."
+        )
+
     base_url = os.getenv("ANTHROPIC_BASE_URL")
     if base_url and base_url.strip():
         kwargs["base_url"] = base_url.strip()
-    return Anthropic(**kwargs)
+    try:
+        return Anthropic(**kwargs)
+    except TypeError:
+        if "auth_token" not in kwargs:
+            raise
+        legacy_kwargs = dict(kwargs)
+        legacy_kwargs["api_key"] = legacy_kwargs.pop("auth_token")
+        return Anthropic(**legacy_kwargs)
 
 
 def _build_openrouter_client(api_key: str):
@@ -101,6 +125,19 @@ def _build_openrouter_client(api_key: str):
     except TypeError:
         # Backward compatibility for older SDKs.
         return Anthropic(api_key=api_key, base_url=openrouter_base_url)
+
+
+def _append_anthropic_clients(
+    clients: List[Tuple[str, Any]],
+    auth_token: str,
+    api_key: str,
+) -> None:
+    if auth_token:
+        clients.append(
+            ("ANTHROPIC_AUTH_TOKEN", _build_anthropic_client(auth_token=auth_token))
+        )
+    if api_key and api_key != auth_token:
+        clients.append(("ANTHROPIC_API_KEY", _build_anthropic_client(api_key=api_key)))
 
 
 def _normalize_anthropic_model_name(model: str) -> str:
@@ -172,7 +209,7 @@ def _get_model_candidates(provider_name: str, requested_model: str = "") -> List
     Return model attempts for a provider.
 
     OPEN_ROUTER_KEY:
-      1) OPEN_ROUTER_PRIMARY_MODEL (default anthropic/claude-sonnet-4.5)
+      1) OPEN_ROUTER_PRIMARY_MODEL (default anthropic/claude-sonnet-4.6)
       2) OPEN_ROUTER_FALLBACK_MODEL / OPEN_ROUTER_FALLBACK_MODELS
       (env-overridable via OPEN_ROUTER_PRIMARY_MODEL / OPEN_ROUTER_FALLBACK_MODEL)
     """
@@ -187,9 +224,10 @@ def _get_api_clients() -> List[Tuple[str, Any]]:
 
     Priority:
     1) OPEN_ROUTER_KEY
-    2) ANTHROPIC_API_KEY
+    2) ANTHROPIC_AUTH_TOKEN
+    3) ANTHROPIC_API_KEY
 
-    To allow Anthropic fallback when OpenRouter is configured, set:
+    To allow direct Anthropic-compatible fallback when OpenRouter is configured, set:
     OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
     """
     openrouter_key = _env_first_nonempty(
@@ -197,6 +235,7 @@ def _get_api_clients() -> List[Tuple[str, Any]]:
         "OPENROUTER_API_KEY",
         "OPENROUTER_KEY",
     )
+    anthropic_auth_token = _env_first_nonempty("ANTHROPIC_AUTH_TOKEN")
     anthropic_key = _env_first_nonempty("ANTHROPIC_API_KEY")
 
     clients: List[Tuple[str, Any]] = []
@@ -206,12 +245,11 @@ def _get_api_clients() -> List[Tuple[str, Any]]:
         allow_anthropic_fallback = _is_truthy(
             _env_first_nonempty("OPEN_ROUTER_FALLBACK_TO_ANTHROPIC")
         )
-        if anthropic_key and allow_anthropic_fallback:
-            clients.append(("ANTHROPIC_API_KEY", _build_anthropic_client(anthropic_key)))
+        if allow_anthropic_fallback:
+            _append_anthropic_clients(clients, anthropic_auth_token, anthropic_key)
         return clients
 
-    if anthropic_key:
-        clients.append(("ANTHROPIC_API_KEY", _build_anthropic_client(anthropic_key)))
+    _append_anthropic_clients(clients, anthropic_auth_token, anthropic_key)
 
     return clients
 
@@ -220,19 +258,25 @@ def _get_api_client(use_fallback: bool = False):
     """Return a configured Anthropic client.
 
     Default priority is OPEN_ROUTER_KEY first.
-    If OPEN_ROUTER_KEY is set, ANTHROPIC_API_KEY is only used when
+    If OPEN_ROUTER_KEY is set, direct Anthropic-compatible credentials are only used when
     OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true.
     """
     if use_fallback:
+        anthropic_auth_token = _env_first_nonempty("ANTHROPIC_AUTH_TOKEN")
         anthropic_key = _env_first_nonempty("ANTHROPIC_API_KEY")
-        if not anthropic_key:
-            raise ValueError("No fallback API key available. Set ANTHROPIC_API_KEY.")
-        return _build_anthropic_client(anthropic_key)
+        if anthropic_auth_token:
+            return _build_anthropic_client(auth_token=anthropic_auth_token)
+        if anthropic_key:
+            return _build_anthropic_client(api_key=anthropic_key)
+        raise ValueError(
+            "No fallback API credential available. Set ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY."
+        )
 
     clients = _get_api_clients()
     if not clients:
         raise ValueError(
-            "No API key available. Set OPEN_ROUTER_KEY (primary) or ANTHROPIC_API_KEY."
+            "No API credential available. Set OPEN_ROUTER_KEY (primary), "
+            "ANTHROPIC_AUTH_TOKEN, or ANTHROPIC_API_KEY."
         )
     return clients[0][1]
 
@@ -242,13 +286,14 @@ def _messages_create_with_fallback(**kwargs):
     Create a messages response using provider priority.
 
     OPEN_ROUTER_KEY is tried first when available.
-    ANTHROPIC_API_KEY is only attempted as fallback if enabled via
+    ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY are only attempted as fallback if enabled via
     OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true.
     """
     clients = _get_api_clients()
     if not clients:
         raise ValueError(
-            "No API key available. Set OPEN_ROUTER_KEY (primary) or ANTHROPIC_API_KEY."
+            "No API credential available. Set OPEN_ROUTER_KEY (primary), "
+            "ANTHROPIC_AUTH_TOKEN, or ANTHROPIC_API_KEY."
         )
 
     request_kwargs = dict(kwargs)

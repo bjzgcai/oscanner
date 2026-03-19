@@ -204,7 +204,8 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
     clients = _get_api_clients()
     if not clients:
         raise ValueError(
-            "No API key available. Set OPEN_ROUTER_KEY (primary) or ANTHROPIC_API_KEY."
+            "No API credential available. Set OPEN_ROUTER_KEY (primary), "
+            "ANTHROPIC_AUTH_TOKEN, or ANTHROPIC_API_KEY."
         )
 
     attempts = []

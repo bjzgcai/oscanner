@@ -18,22 +18,23 @@ pip install -r requirements.txt
 
 2. Set up environment variables:
 ```bash
-# Required: Claude API key
+# Required: direct Anthropic API key
 export ANTHROPIC_API_KEY="your-api-key"
-# OR
-export OSCANNER_LLM_API_KEY="your-api-key"
+# Or use an Anthropic-compatible gateway
+export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+export ANTHROPIC_AUTH_TOKEN="sk-or-v1-..."
 
-# Optional fallback: OpenRouter
+# Optional legacy/provider shortcut: OpenRouter
 export OPEN_ROUTER_KEY="sk-or-v1-..."
 # Optional override (default is https://openrouter.ai/api)
 export OPEN_ROUTER_BASE_URL="https://openrouter.ai/api"
 # Optional model routing (recommended for Anthropic-compatible endpoint)
-export OPEN_ROUTER_PRIMARY_MODEL="anthropic/claude-sonnet-4.5"
-export OPEN_ROUTER_FALLBACK_MODEL="anthropic/claude-sonnet-4.5"
-export OPEN_ROUTER_FALLBACK_MODELS="anthropic/claude-sonnet-4.5"
+export OPEN_ROUTER_PRIMARY_MODEL="anthropic/claude-sonnet-4.6"
+export OPEN_ROUTER_FALLBACK_MODEL="anthropic/claude-sonnet-4.6"
+export OPEN_ROUTER_FALLBACK_MODELS="anthropic/claude-sonnet-4.6"
 # Optional override for repos_runner task prompts (if unset, uses provider defaults above)
-export REPOS_RUNNER_LLM_MODEL="anthropic/claude-sonnet-4.5"
-# Optional: also try direct Anthropic API key if OpenRouter attempts fail
+export REPOS_RUNNER_LLM_MODEL="claude-sonnet-4-6"
+# Optional: also try direct Anthropic credential if OpenRouter attempts fail
 export OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
 
 # Optional: Custom port (default: 8001)
@@ -383,8 +384,7 @@ Use the `/test-explore` Claude Code skill to automatically:
 ## Troubleshooting
 
 ### API Key Not Found
-Ensure `ANTHROPIC_API_KEY` or `OSCANNER_LLM_API_KEY` is set in your environment.
-You can also set `OPEN_ROUTER_KEY` as a fallback provider.
+Ensure `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, or `OPEN_ROUTER_KEY` is set in your environment.
 
 ### Port Already in Use
 Change the port:
