@@ -242,6 +242,7 @@ If no tests are found, return {{"test_commands": [], "setup_commands": [], "lang
 
     message = _messages_create_with_fallback(
         model=_default_requested_model(),
+        require_text=True,
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}],
     )

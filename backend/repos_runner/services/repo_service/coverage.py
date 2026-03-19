@@ -28,6 +28,7 @@ Rules:
 """
         result = _messages_create_with_fallback(
             model=_default_requested_model(),
+            require_text=True,
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -156,6 +157,7 @@ Use only feature names from the required features list.
     try:
         result = _messages_create_with_fallback(
             model=_default_requested_model(),
+            require_text=True,
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}],
         )

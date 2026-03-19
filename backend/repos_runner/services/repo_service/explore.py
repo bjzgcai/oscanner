@@ -197,6 +197,8 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
                 ):
                     await progress_callback(f"Generated {current_length} characters...")
                     last_progress_length = current_length
+        if not content.strip():
+            raise RuntimeError("Response contained no final text blocks")
         return content
 
     clients = _get_api_clients()

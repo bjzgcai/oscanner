@@ -189,6 +189,7 @@ If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total":
 """
         message = _messages_create_with_fallback(
             model=_default_requested_model(),
+            require_text=True,
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )

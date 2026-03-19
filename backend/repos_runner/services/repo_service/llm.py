@@ -67,6 +67,11 @@ def _message_text_content(message: Any) -> str:
     return "\n".join(parts).strip()
 
 
+def _message_has_text_content(message: Any) -> bool:
+    """Return True when the response contains at least one usable text block."""
+    return bool(_message_text_content(message))
+
+
 def _build_anthropic_client(api_key: str):
     from anthropic import Anthropic
 
@@ -248,6 +253,7 @@ def _messages_create_with_fallback(**kwargs):
 
     request_kwargs = dict(kwargs)
     requested_model = str(request_kwargs.pop("model", "") or "")
+    require_text = bool(request_kwargs.pop("require_text", False))
 
     attempts: List[Tuple[str, Any, str]] = []
     for provider_name, client in clients:
@@ -257,7 +263,10 @@ def _messages_create_with_fallback(**kwargs):
     errors: List[Tuple[str, str, Exception]] = []
     for provider_name, client, model in attempts:
         try:
-            return client.messages.create(model=model, **request_kwargs)
+            response = client.messages.create(model=model, **request_kwargs)
+            if require_text and not _message_has_text_content(response):
+                raise RuntimeError("Response contained no final text blocks")
+            return response
         except Exception as error:
             errors.append((provider_name, model, error))
 
