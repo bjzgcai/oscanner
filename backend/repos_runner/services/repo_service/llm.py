@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Tuple
 
 OPENROUTER_ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
 DEFAULT_OPENROUTER_PRIMARY_MODEL = "openai/gpt-5.3-codex"
-DEFAULT_OPENROUTER_FALLBACK_MODEL = "z-ai/glm-5"
+DEFAULT_OPENROUTER_FALLBACK_MODEL = "anthropic/claude-sonnet-4.5"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
 
 
@@ -22,6 +22,10 @@ def _env_first_nonempty(*keys: str) -> str:
         if value and value.strip():
             return value.strip()
     return ""
+
+
+def _split_model_list(raw: str) -> List[str]:
+    return [part.strip() for part in (raw or "").split(",") if part.strip()]
 
 
 def _build_anthropic_client(api_key: str):
@@ -58,14 +62,25 @@ def _normalize_anthropic_model_name(model: str) -> str:
 
 
 def _openrouter_model_chain(requested_model: str) -> List[str]:
-    primary = _env_first_nonempty(
+    explicit_primary = _env_first_nonempty(
         "OPEN_ROUTER_PRIMARY_MODEL",
         "OPENROUTER_PRIMARY_MODEL",
-    ) or DEFAULT_OPENROUTER_PRIMARY_MODEL
-    fallback = _env_first_nonempty(
+    )
+    primary = explicit_primary or DEFAULT_OPENROUTER_PRIMARY_MODEL
+    fallback_raw = _env_first_nonempty(
         "OPEN_ROUTER_FALLBACK_MODEL",
         "OPENROUTER_FALLBACK_MODEL",
     ) or DEFAULT_OPENROUTER_FALLBACK_MODEL
+    extra_fallbacks_raw = _env_first_nonempty(
+        "OPEN_ROUTER_FALLBACK_MODELS",
+        "OPENROUTER_FALLBACK_MODELS",
+        "OSCANNER_LLM_FALLBACK_MODELS",
+    )
+
+    fallback_models = _split_model_list(fallback_raw)
+    if not fallback_models:
+        fallback_models = [DEFAULT_OPENROUTER_FALLBACK_MODEL]
+    extra_fallbacks = _split_model_list(extra_fallbacks_raw)
 
     requested = (requested_model or "").strip()
     defaults = {
@@ -76,9 +91,18 @@ def _openrouter_model_chain(requested_model: str) -> List[str]:
     }
 
     models: List[str] = []
-    if requested and requested not in defaults:
-        models.append(requested)
-    for model in (primary, fallback):
+    if explicit_primary:
+        if primary:
+            models.append(primary)
+        if requested and requested not in defaults and requested not in models:
+            models.append(requested)
+    else:
+        if requested and requested not in defaults:
+            models.append(requested)
+        if primary and primary not in models:
+            models.append(primary)
+
+    for model in [*fallback_models, *extra_fallbacks]:
         if model and model not in models:
             models.append(model)
     return models
@@ -90,7 +114,7 @@ def _get_model_candidates(provider_name: str, requested_model: str = "") -> List
 
     OPEN_ROUTER_KEY:
       1) openai/gpt-5.3-codex
-      2) z-ai/glm-5
+      2) anthropic/claude-sonnet-4.5
       (env-overridable via OPEN_ROUTER_PRIMARY_MODEL / OPEN_ROUTER_FALLBACK_MODEL)
     """
     if provider_name == "OPEN_ROUTER_KEY":
@@ -187,9 +211,8 @@ def _messages_create_with_fallback(**kwargs):
         provider_name, model, error = errors[0]
         raise RuntimeError(f"{provider_name} ({model}) request failed ({error})") from error
 
-    primary_name, primary_model, primary_error = errors[0]
-    fallback_name, fallback_model, fallback_error = errors[1]
-    raise RuntimeError(
-        f"{primary_name} ({primary_model}) request failed ({primary_error}); "
-        f"{fallback_name} ({fallback_model}) fallback also failed ({fallback_error})"
-    ) from fallback_error
+    error_summary = "; ".join(
+        f"{provider_name} ({model}) failed ({error})"
+        for provider_name, model, error in errors
+    )
+    raise RuntimeError(f"All model attempts failed: {error_summary}") from errors[-1][2]

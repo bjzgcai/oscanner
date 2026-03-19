@@ -229,12 +229,11 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
             provider_name, model, error = errors[0]
             raise RuntimeError(f"{provider_name} ({model}) request failed ({error})") from error
 
-        primary_name, primary_model, primary_error = errors[0]
-        fallback_name, fallback_model, fallback_error = errors[1]
-        raise RuntimeError(
-            f"{primary_name} ({primary_model}) request failed ({primary_error}); "
-            f"{fallback_name} ({fallback_model}) fallback also failed ({fallback_error})"
-        ) from fallback_error
+        error_summary = "; ".join(
+            f"{provider_name} ({model}) failed ({error})"
+            for provider_name, model, error in errors
+        )
+        raise RuntimeError(f"All model attempts failed: {error_summary}") from errors[-1][2]
 
     if progress_callback:
         await progress_callback("Writing REPO_OVERVIEW.md...")

@@ -27,6 +27,12 @@ export OSCANNER_LLM_API_KEY="your-api-key"
 export OPEN_ROUTER_KEY="sk-or-v1-..."
 # Optional override (default is https://openrouter.ai/api)
 export OPEN_ROUTER_BASE_URL="https://openrouter.ai/api"
+# Optional model routing (recommended for Anthropic-compatible endpoint)
+export OPEN_ROUTER_PRIMARY_MODEL="anthropic/claude-sonnet-4.5"
+export OPEN_ROUTER_FALLBACK_MODEL="anthropic/claude-sonnet-4.5"
+export OPEN_ROUTER_FALLBACK_MODELS="anthropic/claude-sonnet-4.5"
+# Optional: also try direct Anthropic API key if OpenRouter attempts fail
+export OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
 
 # Optional: Custom port (default: 8001)
 export RUNNER_PORT=8001
