@@ -56,7 +56,18 @@ def _build_openrouter_client(api_key: str):
         _env_first_nonempty("OPEN_ROUTER_BASE_URL", "OPENROUTER_BASE_URL")
         or OPENROUTER_ANTHROPIC_BASE_URL
     )
-    return Anthropic(api_key=api_key, base_url=openrouter_base_url)
+    # The Anthropic SDK still consults process env while preparing auth headers.
+    # When this service is pointed at OpenRouter, a stale ANTHROPIC_API_KEY from
+    # the parent shell can silently constrain requests to Anthropic providers.
+    os.environ.pop("ANTHROPIC_API_KEY", None)
+    os.environ["ANTHROPIC_AUTH_TOKEN"] = api_key
+    # Important: use auth_token for OpenRouter's Anthropic-compatible endpoint.
+    # Using api_key here can implicitly constrain routing to Anthropic providers only.
+    try:
+        return Anthropic(auth_token=api_key, base_url=openrouter_base_url)
+    except TypeError:
+        # Backward compatibility for older SDKs.
+        return Anthropic(api_key=api_key, base_url=openrouter_base_url)
 
 
 def _normalize_anthropic_model_name(model: str) -> str:

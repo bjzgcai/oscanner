@@ -25,9 +25,9 @@ from repos_runner.routes import runner
 _server_dir = Path(__file__).resolve().parent
 _server_env = _server_dir / ".env.local"
 if _server_env.exists():
-    load_dotenv(_server_env, override=False)
+    load_dotenv(_server_env, override=True)
 elif Path(".env.local").exists():
-    load_dotenv(".env.local", override=False)
+    load_dotenv(".env.local", override=True)
 load_dotenv(override=False)
 
 app = FastAPI(title="Repository Runner API")
