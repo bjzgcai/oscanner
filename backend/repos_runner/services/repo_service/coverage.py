@@ -27,7 +27,7 @@ Rules:
 - Only include features explicitly mentioned or clearly implied by the message.
 """
         result = _messages_create_with_fallback(
-            model="anthropic/claude-sonnet-4.6",
+            model="openai/gpt-5.3-codex",
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -155,7 +155,7 @@ Use only feature names from the required features list.
 """
     try:
         result = _messages_create_with_fallback(
-            model="anthropic/claude-sonnet-4.6",
+            model="openai/gpt-5.3-codex",
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}],
         )

@@ -206,7 +206,7 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
         )
 
     attempts = []
-    requested_model = "anthropic/claude-sonnet-4.6"
+    requested_model = "openai/gpt-5.3-codex"
     for provider_name, client in clients:
         for model in _get_model_candidates(provider_name, requested_model):
             attempts.append((provider_name, client, model))

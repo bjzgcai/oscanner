@@ -241,7 +241,7 @@ If no tests are found, return {{"test_commands": [], "setup_commands": [], "lang
 """
 
     message = _messages_create_with_fallback(
-        model="anthropic/claude-sonnet-4.6",
+        model="openai/gpt-5.3-codex",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}],
     )

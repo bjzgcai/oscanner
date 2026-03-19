@@ -188,7 +188,7 @@ Return ONLY a JSON object (no other text):
 If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total": 0}}
 """
         message = _messages_create_with_fallback(
-            model="anthropic/claude-sonnet-4.6",
+            model="openai/gpt-5.3-codex",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )

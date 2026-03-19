@@ -7,8 +7,8 @@ from typing import Dict, Any, List, Tuple
 
 
 OPENROUTER_ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
-DEFAULT_OPENROUTER_PRIMARY_MODEL = "anthropic/claude-sonnet-4.6"
-DEFAULT_OPENROUTER_FALLBACK_MODEL = "openai/gpt-5.3-codex"
+DEFAULT_OPENROUTER_PRIMARY_MODEL = "openai/gpt-5.3-codex"
+DEFAULT_OPENROUTER_FALLBACK_MODEL = "z-ai/glm-5"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
 
 
@@ -89,8 +89,8 @@ def _get_model_candidates(provider_name: str, requested_model: str = "") -> List
     Return model attempts for a provider.
 
     OPEN_ROUTER_KEY:
-      1) anthropic/claude-sonnet-4.6
-      2) openai/gpt-5.3-codex
+      1) openai/gpt-5.3-codex
+      2) z-ai/glm-5
       (env-overridable via OPEN_ROUTER_PRIMARY_MODEL / OPEN_ROUTER_FALLBACK_MODEL)
     """
     if provider_name == "OPEN_ROUTER_KEY":
