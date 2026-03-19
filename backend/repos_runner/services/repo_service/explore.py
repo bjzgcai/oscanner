@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from .llm import _get_api_client
+from .llm import _get_api_clients, _get_model_candidates
 
 
 def _overview_filename(tag: Optional[str]) -> str:
@@ -180,11 +180,11 @@ Repository context:
 
 Generate the markdown content for REPO_OVERVIEW.md:"""
 
-    async def _stream_once(client) -> str:
+    async def _stream_once(client, model: str) -> str:
         content = ""
         last_progress_length = 0
         with client.messages.stream(
-            model="claude-sonnet-4-6",
+            model=model,
             max_tokens=1500,
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
@@ -199,23 +199,42 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
                     last_progress_length = current_length
         return content
 
-    try:
-        overview_content = await _stream_once(_get_api_client())
-    except Exception as primary_error:
-        import os
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            raise
-        if progress_callback:
-            await progress_callback(
-                "Primary LLM request failed, retrying with ANTHROPIC_API_KEY fallback..."
-            )
+    clients = _get_api_clients()
+    if not clients:
+        raise ValueError(
+            "No API key available. Set OPEN_ROUTER_KEY (primary) or ANTHROPIC_API_KEY."
+        )
+
+    attempts = []
+    requested_model = "anthropic/claude-sonnet-4.6"
+    for provider_name, client in clients:
+        for model in _get_model_candidates(provider_name, requested_model):
+            attempts.append((provider_name, client, model))
+
+    errors = []
+    overview_content = None
+    for idx, (provider_name, client, model) in enumerate(attempts):
         try:
-            overview_content = await _stream_once(_get_api_client(use_fallback=True))
-        except Exception as fallback_error:
-            raise RuntimeError(
-                f"Primary LLM request failed ({primary_error}); "
-                f"ANTHROPIC_API_KEY fallback also failed ({fallback_error})"
-            ) from fallback_error
+            overview_content = await _stream_once(client, model)
+            break
+        except Exception as error:
+            errors.append((provider_name, model, error))
+            if progress_callback and idx < len(attempts) - 1:
+                await progress_callback(
+                    f"{provider_name} ({model}) failed, trying fallback..."
+                )
+
+    if overview_content is None:
+        if len(errors) == 1:
+            provider_name, model, error = errors[0]
+            raise RuntimeError(f"{provider_name} ({model}) request failed ({error})") from error
+
+        primary_name, primary_model, primary_error = errors[0]
+        fallback_name, fallback_model, fallback_error = errors[1]
+        raise RuntimeError(
+            f"{primary_name} ({primary_model}) request failed ({primary_error}); "
+            f"{fallback_name} ({fallback_model}) fallback also failed ({fallback_error})"
+        ) from fallback_error
 
     if progress_callback:
         await progress_callback("Writing REPO_OVERVIEW.md...")
