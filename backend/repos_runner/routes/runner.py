@@ -116,13 +116,13 @@ async def run_tests_stream(
     clone_path: str,
     overview_path: str,
     setup_timeout: int = Query(default=120, description="Seconds allowed per setup command"),
-    test_timeout: int = Query(default=300, description="Seconds allowed per test command"),
+    test_timeout: int = Query(default=600, description="Seconds allowed per test command"),
 ):
     """
     Run tests based on REPO_OVERVIEW.md with streaming progress.
 
     - setup_timeout: per-command timeout for dependency installation (default 120s)
-    - test_timeout:  per-command timeout for test execution (default 300s)
+    - test_timeout:  per-command timeout for test execution (default 600s)
     """
     async def event_generator() -> AsyncGenerator[str, None]:
         progress_queue: asyncio.Queue = asyncio.Queue()

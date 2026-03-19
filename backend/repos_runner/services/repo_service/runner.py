@@ -230,7 +230,7 @@ async def run_tests(
     overview_path: str,
     progress_callback=None,
     setup_timeout: int = 120,
-    test_timeout: int = 300,
+    test_timeout: int = 600,
     tag_message: Optional[str] = None,
     tag: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -242,7 +242,7 @@ async def run_tests(
         overview_path: Path to REPO_OVERVIEW.md
         progress_callback: Optional async callback for progress updates
         setup_timeout: Seconds allowed per setup command (default 120)
-        test_timeout: Seconds allowed per test command (default 300)
+        test_timeout: Seconds allowed per test command (default 600)
         tag_message: Optional tag annotation message; when provided the score is
                      weighted by feature coverage (features described in the message
                      that are not exercised by the test suite reduce the max score).

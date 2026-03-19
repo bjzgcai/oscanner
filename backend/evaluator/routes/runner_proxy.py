@@ -24,7 +24,7 @@ class RunAllRequest(BaseModel):
     skip_clone: bool = False
     skip_explore: bool = False
     setup_timeout: int = 120
-    test_timeout: int = 300
+    test_timeout: int = 600
 
 
 @router.post("/run-all")
@@ -109,7 +109,7 @@ async def proxy_runner_request(path: str, request: Request):
     body = await request.body()
 
     # Forward the request
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    async with httpx.AsyncClient(timeout=660.0) as client:
         try:
             # Make the proxied request
             response = await client.request(

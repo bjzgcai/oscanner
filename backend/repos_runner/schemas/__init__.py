@@ -30,7 +30,7 @@ class RunAllRequest(BaseModel):
     skip_clone: bool = False    # Reuse existing clone
     skip_explore: bool = False  # Reuse existing REPO_OVERVIEW.md
     setup_timeout: int = 120    # Seconds per setup command
-    test_timeout: int = 300     # Seconds per test command
+    test_timeout: int = 600     # Seconds per test command
 
 
 class BatchRunRequest(BaseModel):
