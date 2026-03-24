@@ -9,6 +9,8 @@ from evaluator.config.tokens import (
 )
 from evaluator.config.env import (
     get_user_env_path,
+    get_project_env_paths,
+    load_runtime_env,
     parse_env_file,
     write_env_file,
     apply_env_to_process,
@@ -21,6 +23,8 @@ __all__ = [
     "mask_secret",
     "DEFAULT_LLM_MODEL",
     "get_user_env_path",
+    "get_project_env_paths",
+    "load_runtime_env",
     "parse_env_file",
     "write_env_file",
     "apply_env_to_process",

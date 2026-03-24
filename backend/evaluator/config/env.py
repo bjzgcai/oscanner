@@ -2,14 +2,60 @@
 
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Iterable, List
 
 from evaluator.paths import get_home_dir
+from dotenv import load_dotenv
 
 
 def get_user_env_path() -> Path:
     """Store config under oscanner home dir (user-local dotfile)."""
     return get_home_dir() / ".env.local"
+
+
+def get_project_env_paths(server_file: Path | None = None, cwd: Path | None = None) -> List[Path]:
+    """
+    Return project env files in load order.
+
+    Priority:
+    1) Server-directory `.env.local`
+    2) Current working directory `.env.local` (when different)
+    """
+    paths: List[Path] = []
+    seen: set[Path] = set()
+
+    candidates: Iterable[Path] = []
+    if server_file is not None:
+        candidates = [server_file.resolve().parent / ".env.local"]
+    if cwd is not None:
+        candidates = [*candidates, cwd.resolve() / ".env.local"]
+
+    for path in candidates:
+        resolved = path.resolve()
+        if resolved in seen or not resolved.exists():
+            continue
+        seen.add(resolved)
+        paths.append(resolved)
+    return paths
+
+
+def load_runtime_env(server_file: Path | None = None, cwd: Path | None = None) -> List[Path]:
+    """
+    Load runtime env files in a stable order and return the files that were loaded.
+    """
+    loaded: List[Path] = []
+
+    for path in get_project_env_paths(server_file=server_file, cwd=cwd):
+        load_dotenv(path, override=False)
+        loaded.append(path)
+
+    user_env_path = get_user_env_path()
+    if user_env_path.exists():
+        load_dotenv(user_env_path, override=False)
+        loaded.append(user_env_path)
+
+    load_dotenv(override=False)
+    return loaded
 
 
 def parse_env_file(path: Path) -> Dict[str, str]:

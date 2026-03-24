@@ -18,7 +18,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
-from dotenv import load_dotenv
 
 # Add backend directory to Python path to allow 'evaluator' imports
 _backend_dir = Path(__file__).resolve().parent.parent
@@ -29,7 +28,7 @@ from evaluator.paths import ensure_dirs, get_data_dir, get_home_dir, get_platfor
 from evaluator.plugin_registry import discover_plugins, get_default_plugin_id, load_scan_module, PluginLoadError
 from evaluator.config import (
     get_github_token, get_gitee_token, get_llm_api_key, mask_secret, DEFAULT_LLM_MODEL,
-    get_user_env_path, parse_env_file, write_env_file, apply_env_to_process
+    load_runtime_env
 )
 from evaluator.utils import (
     parse_repo_url, parse_github_url,
@@ -47,15 +46,11 @@ from evaluator.routes import plugins, config, data, evaluation, batch, benchmark
 # Load environment variables
 #
 # Order:
-# 1) CWD .env.local (project-local overrides)
-# 2) User config dotfile (~/.local/share/oscanner/.env.local by default)
-# 3) Default dotenv behavior (.env if present)
-if Path(".env.local").exists():
-    load_dotenv(".env.local", override=False)
-user_env_path = get_user_env_path()
-if user_env_path.exists():
-    load_dotenv(str(user_env_path), override=False)
-load_dotenv(override=False)
+# 1) Evaluator server directory `.env.local`
+# 2) CWD `.env.local` (when different)
+# 3) User config dotfile (~/.local/share/oscanner/.env.local by default)
+# 4) Default dotenv behavior (`.env` if present)
+load_runtime_env(server_file=Path(__file__), cwd=Path.cwd())
 
 app = FastAPI(title="Engineer Skill Evaluator API")
 
