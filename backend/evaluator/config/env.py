@@ -46,11 +46,19 @@ def load_runtime_env(server_file: Path | None = None, cwd: Path | None = None) -
     loaded: List[Path] = []
 
     for path in get_project_env_paths(server_file=server_file, cwd=cwd):
+        # Treat empty inherited env vars as unset so file-backed values can restore
+        # them without overriding genuinely non-empty process configuration.
+        for key, value in parse_env_file(path).items():
+            if value and os.environ.get(key) == "":
+                os.environ.pop(key, None)
         load_dotenv(path, override=False)
         loaded.append(path)
 
     user_env_path = get_user_env_path()
     if user_env_path.exists():
+        for key, value in parse_env_file(user_env_path).items():
+            if value and os.environ.get(key) == "":
+                os.environ.pop(key, None)
         load_dotenv(user_env_path, override=False)
         loaded.append(user_env_path)
 

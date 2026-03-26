@@ -5,9 +5,10 @@ This module provides utilities to create isolated git worktrees for checking
 specific commits, enabling concurrent execution of checkers without conflicts.
 """
 
+import shutil
 import subprocess
 import tempfile
-import shutil
+import uuid
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
@@ -58,7 +59,8 @@ class GitWorktreeManager:
         
         Args:
             commit_sha: Commit SHA to check out
-            worktree_base: Base directory for worktrees (defaults to repo_path/.worktrees)
+            worktree_base: Base directory for worktrees. When omitted, a temporary
+                directory is created and cleaned up automatically.
             
         Yields:
             Path to the worktree directory
@@ -68,15 +70,16 @@ class GitWorktreeManager:
                 # Run checker in worktree_path
                 pass
         """
-        # Create worktree directory name based on commit SHA (first 8 chars for uniqueness)
-        worktree_name = f"checker_{commit_sha[:8]}"
+        # Include a random suffix so concurrent requests for the same commit
+        # never contend for the same checkout path.
+        worktree_name = f"checker_{commit_sha[:8]}_{uuid.uuid4().hex[:8]}"
         
         # Determine worktree base directory
         if worktree_base is None:
-            # Use a worktrees directory next to the repo (more visible and predictable)
-            worktree_base = self.repo_path.parent / ".worktrees"
-            worktree_base.mkdir(parents=True, exist_ok=True)
-            cleanup_base = False  # Don't cleanup the base directory, only the worktree
+            # Use a dedicated temporary base directory for this checkout so concurrent
+            # requests do not share state unless a caller explicitly opts into it.
+            worktree_base = Path(tempfile.mkdtemp(prefix="git-worktrees-"))
+            cleanup_base = True
         else:
             worktree_base = Path(worktree_base)
             worktree_base.mkdir(parents=True, exist_ok=True)
