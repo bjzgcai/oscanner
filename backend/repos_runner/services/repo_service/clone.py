@@ -5,6 +5,7 @@ Repository cloning logic.
 import asyncio
 import os
 import shutil
+import urllib.parse
 from typing import Optional, Dict, Any
 
 import git
@@ -14,17 +15,32 @@ from .paths import get_repos_dir, parse_repo_url
 
 def _inject_auth_token(repo_url: str) -> str:
     """Inject authentication token into the repo URL if available."""
-    if "gitee.com" in repo_url:
+    try:
+        platform, _, _ = parse_repo_url(repo_url)
+    except ValueError:
+        return repo_url
+
+    parsed = urllib.parse.urlsplit(repo_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return repo_url
+    if "@" in parsed.netloc:
+        return repo_url
+
+    if platform == "gitee":
         token = os.getenv("GITEE_TOKEN") or os.getenv("GITEE_ENTERPRISE_TOKEN")
-        if token and "://" in repo_url and "@" not in repo_url:
-            scheme, rest = repo_url.split("://", 1)
-            return f"{scheme}://oauth2:{token}@{rest}"
-    elif "github.com" in repo_url:
+    elif platform == "github":
         token = os.getenv("GITHUB_TOKEN")
-        if token and "://" in repo_url and "@" not in repo_url:
-            scheme, rest = repo_url.split("://", 1)
-            return f"{scheme}://oauth2:{token}@{rest}"
-    return repo_url
+    else:
+        token = None
+
+    if not token:
+        return repo_url
+
+    quoted_token = urllib.parse.quote(token, safe="")
+    auth_netloc = f"oauth2:{quoted_token}@{parsed.netloc}"
+    return urllib.parse.urlunsplit(
+        (parsed.scheme, auth_netloc, parsed.path, parsed.query, parsed.fragment)
+    )
 
 
 async def clone_repository(

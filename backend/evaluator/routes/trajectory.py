@@ -1,7 +1,8 @@
 """Growth trajectory API endpoints."""
 
 from pathlib import Path
-from typing import Dict, Any
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, Query
 import asyncio
 
@@ -13,10 +14,94 @@ from evaluator.services import (
     resolve_plugin_id,
     get_commits_by_date
 )
-from evaluator.paths import get_trajectory_cache_path
-from evaluator.utils import parse_repo_url
+from evaluator.paths import get_trajectory_cache_path, get_platform_data_dir
+from evaluator.services.trajectory_service import ensure_repo_data_synced
+from evaluator.utils import parse_repo_url, load_commits_from_local, get_author_from_commit
 
 router = APIRouter()
+
+
+def _get_commit_datetime(commit: Dict[str, Any]) -> Optional[datetime]:
+    """Extract commit datetime from known commit payload formats."""
+    date_str = (
+        commit.get("commit", {}).get("author", {}).get("date")
+        or commit.get("date")
+        or ""
+    )
+    if not date_str:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except Exception:
+        return None
+
+
+def _get_oldest_commit(commits: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Pick oldest commit by date when possible; otherwise fallback to list tail."""
+    oldest_commit = commits[-1]
+    oldest_date = _get_commit_datetime(oldest_commit)
+
+    for commit in commits:
+        commit_date = _get_commit_datetime(commit)
+        if commit_date is None:
+            continue
+        if oldest_date is None or commit_date < oldest_date:
+            oldest_date = commit_date
+            oldest_commit = commit
+
+    return oldest_commit
+
+
+def _infer_username_from_first_commit(repo_urls: List[str]) -> Optional[str]:
+    """
+    Infer default username from the earliest ("first") commit author
+    across all provided repositories.
+    """
+    inferred_username: Optional[str] = None
+    inferred_commit_date: Optional[datetime] = None
+
+    for repo_url in repo_urls:
+        parsed = parse_repo_url(repo_url)
+        if not parsed:
+            continue
+
+        platform, owner, repo = parsed
+
+        try:
+            # Ensure local data exists before reading commit history.
+            ensure_repo_data_synced(repo_url, max_commits=500)
+        except Exception as e:
+            print(f"[Trajectory API One-Off] Warning: failed to sync {repo_url} for username inference: {e}")
+            continue
+
+        data_dir = get_platform_data_dir(platform, owner, repo)
+        if not data_dir.exists():
+            continue
+
+        commits = load_commits_from_local(data_dir, limit=None)
+        if not commits:
+            continue
+
+        oldest_commit = _get_oldest_commit(commits)
+        author = (get_author_from_commit(oldest_commit) or "").strip()
+        if not author:
+            continue
+
+        commit_date = _get_commit_datetime(oldest_commit)
+        if inferred_username is None:
+            inferred_username = author
+            inferred_commit_date = commit_date
+            continue
+
+        if commit_date is not None and (inferred_commit_date is None or commit_date < inferred_commit_date):
+            inferred_username = author
+            inferred_commit_date = commit_date
+
+    return inferred_username
 
 
 @router.post("/api/trajectory/analyze")
@@ -206,6 +291,7 @@ async def analyze_trajectory_one_off(
         "repo_urls": ["https://gitee.com/zgcai/oscanner"],
         "aliases": ["CarterWu", "wu-yanbiao"]
     }
+    Note: `username` is optional. If null/empty, it defaults to the first commit author.
 
     Query parameters:
     - checkpoint_strategy: 'none' (default) or 'period'. Use 'none' for analyzing any commit range.
@@ -246,8 +332,10 @@ async def analyze_trajectory_one_off(
 
         aliases = request_body.get("aliases", [])
 
-        if not username:
-            raise HTTPException(status_code=400, detail="Missing required field: username")
+        if isinstance(username, str):
+            username = username.strip()
+        elif username is not None:
+            raise HTTPException(status_code=400, detail="username must be a string")
 
         if not isinstance(repo_urls, list):
             raise HTTPException(status_code=400, detail="repo_urls must be a list (can be empty)")
@@ -260,10 +348,6 @@ async def analyze_trajectory_one_off(
                 "message": "No repositories to analyze",
                 "commits_analyzed": 0
             }
-
-        # Ensure aliases includes username
-        if username not in aliases:
-            aliases = [username] + aliases
 
         # Check LLM configuration before analysis
         api_key = get_llm_api_key()
@@ -304,6 +388,20 @@ async def analyze_trajectory_one_off(
                        f"Please configure them in Settings (LLM Settings) before analyzing. "
                        f"Without tokens, API rate limits are very low (~60 requests/hour for GitHub, lower for Gitee)."
             )
+
+        # Username is optional for one-off mode: infer it from first commit author if missing.
+        if not username:
+            username = _infer_username_from_first_commit(repo_urls)
+            if not username:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Missing required field: username. Unable to infer default username from first commit author."
+                )
+            print(f"[Trajectory API One-Off] Inferred username from first commit author: {username}")
+
+        # Ensure aliases includes username after username is finalized.
+        if username not in aliases:
+            aliases = [username] + aliases
 
         # Resolve plugin ID
         plugin_id = resolve_plugin_id(plugin)
@@ -482,4 +580,3 @@ async def get_commits_by_date_endpoint(username: str) -> Dict[str, Any]:
     except Exception as e:
         print(f"[Trajectory API] Error getting commits by date: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get commits by date: {str(e)}")
-

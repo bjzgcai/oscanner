@@ -49,6 +49,10 @@ class TestGitHubExtraction:
             mock_result.stdout = "Extraction completed successfully"
             mock_result.stderr = ""
             mock_subprocess.return_value = mock_result
+
+            commits_dir = temp_data_dir / "commits"
+            commits_dir.mkdir(parents=True, exist_ok=True)
+            (commits_dir / "abc123.json").write_text("{}", encoding="utf-8")
             
             result = extract_github_data("test_owner", "test_repo")
             
@@ -73,6 +77,10 @@ class TestGitHubExtraction:
             mock_result.stdout = "Extraction completed"
             mock_result.stderr = ""
             mock_subprocess.return_value = mock_result
+
+            commits_dir = temp_data_dir / "commits"
+            commits_dir.mkdir(parents=True, exist_ok=True)
+            (commits_dir / "abc123.json").write_text("{}", encoding="utf-8")
             
             result = extract_github_data("test_owner", "test_repo")
             
@@ -99,6 +107,50 @@ class TestGitHubExtraction:
             result = extract_github_data("test_owner", "test_repo")
             
             assert result is False
+
+    def test_extract_github_data_subprocess_failure_with_git_fallback_success(self, temp_data_dir):
+        """Test GitHub extraction fallback to git when API extractor fails."""
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_github_token') as mock_token, \
+             patch('subprocess.run') as mock_subprocess, \
+             patch('evaluator.services.extraction_service._extract_github_data_via_git') as mock_git_fallback:
+            
+            mock_get_dir.return_value = temp_data_dir
+            mock_token.return_value = None
+            mock_git_fallback.return_value = True
+
+            mock_result = Mock()
+            mock_result.returncode = 1
+            mock_result.stdout = ""
+            mock_result.stderr = "HTTPError 403 rate limit exceeded"
+            mock_subprocess.return_value = mock_result
+
+            result = extract_github_data("test_owner", "test_repo")
+
+            assert result is True
+            mock_git_fallback.assert_called_once_with("test_owner", "test_repo", temp_data_dir, max_commits=500)
+
+    def test_extract_github_data_success_but_empty_commits_uses_git_fallback(self, temp_data_dir):
+        """Test fallback when API extractor exits 0 but produces no commit files."""
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_github_token') as mock_token, \
+             patch('subprocess.run') as mock_subprocess, \
+             patch('evaluator.services.extraction_service._extract_github_data_via_git') as mock_git_fallback:
+
+            mock_get_dir.return_value = temp_data_dir
+            mock_token.return_value = None
+            mock_git_fallback.return_value = True
+
+            mock_result = Mock()
+            mock_result.returncode = 0
+            mock_result.stdout = "Extraction completed"
+            mock_result.stderr = ""
+            mock_subprocess.return_value = mock_result
+
+            result = extract_github_data("test_owner", "test_repo")
+
+            assert result is True
+            mock_git_fallback.assert_called_once_with("test_owner", "test_repo", temp_data_dir, max_commits=500)
 
     def test_extract_github_data_timeout(self, temp_data_dir):
         """Test GitHub extraction timeout handling."""

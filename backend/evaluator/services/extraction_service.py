@@ -6,9 +6,12 @@ import json
 import os
 import socket
 import base64
+import shutil
+import tempfile
 import requests
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
+from datetime import datetime
 from fastapi import HTTPException
 
 from evaluator.paths import get_platform_data_dir
@@ -63,11 +66,336 @@ def check_dns_resolution(hostname: str) -> Tuple[bool, Optional[str], Optional[s
         return False, f"Unexpected error: {str(e)}", None
 
 
+def _save_json(path: Path, obj: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+
+
+def _run_git(cmd: List[str], cwd: Optional[Path] = None, timeout: int = 120) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
+def _map_git_status(status_code: str) -> str:
+    if not status_code:
+        return "modified"
+    code = status_code[0].upper()
+    return {
+        "A": "added",
+        "M": "modified",
+        "D": "removed",
+        "R": "renamed",
+        "C": "copied",
+        "T": "changed",
+        "U": "unmerged",
+    }.get(code, "modified")
+
+
+def _parse_git_diff_by_file(diff_text: str) -> Dict[str, str]:
+    patches: Dict[str, str] = {}
+    current_file = None
+    current_lines: List[str] = []
+
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            if current_file and current_lines:
+                patches[current_file] = "\n".join(current_lines)
+            current_lines = [line]
+            parts = line.split(" ")
+            if len(parts) >= 4 and parts[3].startswith("b/"):
+                current_file = parts[3][2:]
+            else:
+                current_file = None
+            continue
+        if current_file is not None:
+            current_lines.append(line)
+
+    if current_file and current_lines:
+        patches[current_file] = "\n".join(current_lines)
+
+    return patches
+
+
+def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_commits: int = 500) -> bool:
+    """
+    Fallback extractor that uses git CLI instead of GitHub API.
+    Useful when GitHub REST API is unavailable (e.g., rate limit).
+    """
+    repo_url = f"https://github.com/{owner}/{repo}.git"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    commits_dir = output_dir / "commits"
+    files_dir = output_dir / "files"
+    shutil.rmtree(commits_dir, ignore_errors=True)
+    shutil.rmtree(files_dir, ignore_errors=True)
+    commits_dir.mkdir(parents=True, exist_ok=True)
+    files_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with tempfile.TemporaryDirectory(prefix=f"{owner}_{repo}_") as tmpdir:
+            clone_dir = Path(tmpdir) / "repo"
+
+            clone_cmd = [
+                "git",
+                "clone",
+                "--no-tags",
+                "--single-branch",
+                "--depth",
+                str(max_commits),
+                repo_url,
+                str(clone_dir),
+            ]
+            clone_result = _run_git(clone_cmd, timeout=300)
+            if clone_result.returncode != 0:
+                print(f"✗ Git fallback clone failed: {clone_result.stderr}")
+                return False
+
+            branch_result = _run_git(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=clone_dir, timeout=30)
+            default_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "main"
+
+            rev_list_cmd = ["git", "rev-list", "--max-count", str(max_commits), "HEAD"]
+            rev_list_result = _run_git(rev_list_cmd, cwd=clone_dir, timeout=60)
+            if rev_list_result.returncode != 0:
+                print(f"✗ Git fallback rev-list failed: {rev_list_result.stderr}")
+                return False
+
+            shas = [line.strip() for line in rev_list_result.stdout.splitlines() if line.strip()]
+            commits_index: List[Dict[str, Any]] = []
+            commits_list: List[Dict[str, Any]] = []
+            files_context: Dict[str, int] = {}
+
+            for sha in shas:
+                meta_result = _run_git(
+                    [
+                        "git",
+                        "show",
+                        "-s",
+                        "--format=%H%n%an%n%ae%n%aI%n%cn%n%ce%n%cI%n%B",
+                        sha,
+                    ],
+                    cwd=clone_dir,
+                    timeout=30,
+                )
+                if meta_result.returncode != 0:
+                    continue
+
+                meta_lines = meta_result.stdout.splitlines()
+                if len(meta_lines) < 7:
+                    continue
+
+                subject = meta_lines[7] if len(meta_lines) > 7 else ""
+                full_message = "\n".join(meta_lines[7:]).strip() if len(meta_lines) > 7 else subject
+
+                name_status_result = _run_git(
+                    ["git", "show", "--name-status", "--format=", sha],
+                    cwd=clone_dir,
+                    timeout=30,
+                )
+                numstat_result = _run_git(
+                    ["git", "show", "--numstat", "--format=", sha],
+                    cwd=clone_dir,
+                    timeout=30,
+                )
+                diff_result = _run_git(
+                    ["git", "show", "--format=", "--no-color", sha],
+                    cwd=clone_dir,
+                    timeout=60,
+                )
+
+                if diff_result.returncode == 0:
+                    with open(commits_dir / f"{sha}.diff", "w", encoding="utf-8", errors="ignore") as f:
+                        f.write(diff_result.stdout)
+
+                patch_by_file = _parse_git_diff_by_file(diff_result.stdout if diff_result.returncode == 0 else "")
+
+                files: List[Dict[str, Any]] = []
+                if name_status_result.returncode == 0:
+                    for line in name_status_result.stdout.splitlines():
+                        if not line.strip():
+                            continue
+                        parts = line.split("\t")
+                        if len(parts) < 2:
+                            continue
+
+                        status_raw = parts[0]
+                        status = _map_git_status(status_raw)
+                        file_obj: Dict[str, Any] = {"status": status}
+
+                        if status_raw[:1].upper() in {"R", "C"} and len(parts) >= 3:
+                            old_name = parts[1]
+                            new_name = parts[2]
+                            file_obj["filename"] = new_name
+                            file_obj["previous_filename"] = old_name
+                        else:
+                            file_obj["filename"] = parts[1]
+
+                        filename = file_obj.get("filename", "")
+                        if filename:
+                            files_context[filename] = files_context.get(filename, 0) + 1
+                            patch = patch_by_file.get(filename)
+                            if patch:
+                                file_obj["patch"] = patch
+                        files.append(file_obj)
+
+                additions = 0
+                deletions = 0
+                if numstat_result.returncode == 0:
+                    for line in numstat_result.stdout.splitlines():
+                        if not line.strip():
+                            continue
+                        parts = line.split("\t")
+                        if len(parts) < 3:
+                            continue
+                        try:
+                            if parts[0] != "-":
+                                additions += int(parts[0])
+                            if parts[1] != "-":
+                                deletions += int(parts[1])
+                        except ValueError:
+                            continue
+
+                commit_obj = {
+                    "sha": meta_lines[0],
+                    "commit": {
+                        "author": {"name": meta_lines[1], "email": meta_lines[2], "date": meta_lines[3]},
+                        "committer": {"name": meta_lines[4], "email": meta_lines[5], "date": meta_lines[6]},
+                        "message": full_message,
+                    },
+                    "author": {"name": meta_lines[1], "email": meta_lines[2]},
+                    "committer": {"name": meta_lines[4], "email": meta_lines[5]},
+                    "files": files,
+                    "stats": {
+                        "additions": additions,
+                        "deletions": deletions,
+                        "total": additions + deletions,
+                    },
+                }
+
+                _save_json(commits_dir / f"{sha}.json", commit_obj)
+                commits_list.append(
+                    {
+                        "sha": meta_lines[0],
+                        "commit": {
+                            "author": {"name": meta_lines[1], "email": meta_lines[2], "date": meta_lines[3]},
+                            "committer": {"name": meta_lines[4], "email": meta_lines[5], "date": meta_lines[6]},
+                            "message": full_message,
+                        },
+                    }
+                )
+                commits_index.append(
+                    {
+                        "sha": meta_lines[0],
+                        "message": subject[:100],
+                        "author": meta_lines[1],
+                        "date": meta_lines[3],
+                        "files_changed": len(files),
+                        "additions": additions,
+                        "deletions": deletions,
+                        "files": [f.get("filename", "") for f in files if f.get("filename")],
+                    }
+                )
+
+            if not commits_index:
+                print("✗ Git fallback extracted no commits")
+                return False
+
+            _save_json(output_dir / "commits_list.json", commits_list)
+            _save_json(output_dir / "commits_index.json", commits_index)
+            _save_json(
+                output_dir / "repo_info.json",
+                {
+                    "name": repo,
+                    "full_name": f"{owner}/{repo}",
+                    "owner": {"login": owner},
+                    "default_branch": default_branch,
+                    "platform": "github",
+                    "extraction_method": "git_fallback",
+                },
+            )
+
+            repo_structure = []
+            for root, dirs, file_names in os.walk(clone_dir):
+                if ".git" in dirs:
+                    dirs.remove(".git")
+                rel = os.path.relpath(root, clone_dir)
+                repo_structure.append(
+                    {
+                        "path": "" if rel == "." else rel,
+                        "dirs": sorted(dirs),
+                        "files": sorted(file_names),
+                    }
+                )
+            _save_json(output_dir / "repo_structure.json", repo_structure)
+
+            files_fetched = 0
+            max_files = 100
+            for path, _count in sorted(files_context.items(), key=lambda kv: -kv[1])[:max_files]:
+                src_path = (clone_dir / path).resolve()
+                dst_path = (files_dir / path).resolve()
+                try:
+                    if not src_path.exists() or not src_path.is_file():
+                        continue
+                    if files_dir.resolve() not in dst_path.parents and dst_path != files_dir.resolve():
+                        continue
+                    dst_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(src_path, dst_path)
+                    files_fetched += 1
+                except Exception:
+                    continue
+
+            first_commit = commits_index[0]
+            sync_state = {
+                "last_synced_at": datetime.now().isoformat(),
+                "last_commit_sha": first_commit.get("sha") or first_commit.get("hash"),
+                "last_commit_date": first_commit.get("date", ""),
+                "total_commits_fetched": len(commits_index),
+                "sync_history": [
+                    {
+                        "synced_at": datetime.now().isoformat(),
+                        "commits_added": len(commits_index),
+                        "last_sha": first_commit.get("sha") or first_commit.get("hash"),
+                        "mode": "initial_extraction",
+                    }
+                ],
+            }
+            _save_json(output_dir / "sync_state.json", sync_state)
+
+            _save_json(
+                output_dir / "EXTRACTION_INFO.json",
+                {
+                    "repository": f"{owner}/{repo}",
+                    "url": f"https://github.com/{owner}/{repo}",
+                    "extraction_type": "git_fallback",
+                    "description": "Git-based extraction fallback",
+                    "stats": {
+                        "total_commits": len(commits_index),
+                        "unique_files_mentioned": len(files_context),
+                        "file_contents_fetched": files_fetched,
+                    },
+                },
+            )
+
+            print(f"✓ Git fallback extraction successful: {len(commits_index)} commits")
+            return True
+    except subprocess.TimeoutExpired as e:
+        print(f"✗ Git fallback timeout: {e}")
+        return False
+    except Exception as e:
+        print(f"✗ Git fallback extraction error: {e}")
+        return False
+
+
 def extract_github_data(owner: str, repo: str) -> bool:
     """Extract GitHub repository data using extraction tool"""
+    output_dir = get_platform_data_dir("github", owner, repo)
     try:
         repo_url = f"https://github.com/{owner}/{repo}"
-        output_dir = get_platform_data_dir("github", owner, repo)
 
         print(f"\n{'='*60}")
         print(f"Extracting GitHub data for {owner}/{repo}...")
@@ -95,20 +423,30 @@ def extract_github_data(owner: str, repo: str) -> bool:
 
         if result.returncode != 0:
             print(f"✗ Extraction failed: {result.stderr}")
-            return False
+            print("↻ Trying git-based fallback extraction...")
+            return _extract_github_data_via_git(owner, repo, output_dir, max_commits=500)
 
         print(f"✓ Extraction successful")
         print(result.stdout)
+
+        commits_dir = output_dir / "commits"
+        has_commit_json = commits_dir.exists() and any(commits_dir.glob("*.json"))
+        if not has_commit_json:
+            print("⚠ API extraction produced no commits, trying git-based fallback...")
+            return _extract_github_data_via_git(owner, repo, output_dir, max_commits=500)
+
         return True
 
     except subprocess.TimeoutExpired:
         print(f"✗ Extraction timeout after 30 minutes")
-        return False
+        print("↻ Trying git-based fallback extraction...")
+        return _extract_github_data_via_git(owner, repo, output_dir, max_commits=500)
     except Exception as e:
         print(f"✗ Extraction error: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        print("↻ Trying git-based fallback extraction...")
+        return _extract_github_data_via_git(owner, repo, output_dir, max_commits=500)
 
 
 def fetch_github_commits(owner: str, repo: str, limit: int = 100) -> list:
