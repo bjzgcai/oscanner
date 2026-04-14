@@ -264,6 +264,59 @@ class TestEnsureRepoDataSynced:
             assert repo == "test_repo"
             assert success is True
 
+    def test_ensure_repo_data_synced_uses_existing_data_when_not_forced(self, temp_data_dir):
+        """Test that existing local data is reused when force_sync=False."""
+        from evaluator.services.trajectory_service import ensure_repo_data_synced
+
+        repo_dir = temp_data_dir / "github" / "test_owner" / "test_repo"
+        repo_dir.mkdir(parents=True)
+        (repo_dir / "commits_index.json").write_text("[]", encoding="utf-8")
+
+        with patch('evaluator.services.trajectory_service.parse_repo_url') as mock_parse, \
+             patch('evaluator.services.trajectory_service.get_platform_data_dir') as mock_data_dir, \
+             patch('evaluator.services.trajectory_service.extract_github_data') as mock_extract:
+
+            mock_parse.return_value = ("github", "test_owner", "test_repo")
+            mock_data_dir.return_value = repo_dir
+
+            platform, owner, repo, success = ensure_repo_data_synced(
+                "https://github.com/test_owner/test_repo",
+                force_sync=False
+            )
+
+            assert platform == "github"
+            assert owner == "test_owner"
+            assert repo == "test_repo"
+            assert success is False
+            mock_extract.assert_not_called()
+
+    def test_ensure_repo_data_synced_force_sync_reextracts_when_data_exists(self, temp_data_dir):
+        """Test that force_sync=True triggers re-extraction even with existing local data."""
+        from evaluator.services.trajectory_service import ensure_repo_data_synced
+
+        repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"
+        repo_dir.mkdir(parents=True)
+        (repo_dir / "commits_index.json").write_text("[]", encoding="utf-8")
+
+        with patch('evaluator.services.trajectory_service.parse_repo_url') as mock_parse, \
+             patch('evaluator.services.trajectory_service.get_platform_data_dir') as mock_data_dir, \
+             patch('evaluator.services.trajectory_service.extract_gitee_data') as mock_extract:
+
+            mock_parse.return_value = ("gitee", "test_owner", "test_repo")
+            mock_data_dir.return_value = repo_dir
+            mock_extract.return_value = True
+
+            platform, owner, repo, success = ensure_repo_data_synced(
+                "https://gitee.com/test_owner/test_repo",
+                force_sync=True
+            )
+
+            assert platform == "gitee"
+            assert owner == "test_owner"
+            assert repo == "test_repo"
+            assert success is True
+            mock_extract.assert_called_once_with("test_owner", "test_repo", max_commits=500)
+
     def test_ensure_repo_data_synced_extraction_failure(self, temp_data_dir):
         """Test repo data sync when extraction fails."""
         from evaluator.services.trajectory_service import ensure_repo_data_synced

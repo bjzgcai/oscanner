@@ -115,13 +115,18 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
     raise ValueError(f"Unable to parse repository URL: {repo_url}")
 
 
-def ensure_repo_data_synced(repo_url: str, max_commits: int = 500) -> Tuple[str, str, str, bool]:
+def ensure_repo_data_synced(
+    repo_url: str,
+    max_commits: int = 500,
+    force_sync: bool = False
+) -> Tuple[str, str, str, bool]:
     """
     Ensure repository data is synced locally. If not present or stale, extract it.
 
     Args:
         repo_url: Repository URL
         max_commits: Maximum commits to fetch
+        force_sync: Force fresh extraction even if local data already exists
 
     Returns:
         Tuple of (platform, owner, repo, was_synced)
@@ -137,12 +142,15 @@ def ensure_repo_data_synced(repo_url: str, max_commits: int = 500) -> Tuple[str,
     commits_index = data_dir / "commits_index.json"
     data_exists = commits_index.exists()
 
-    if data_exists:
+    if data_exists and not force_sync:
         print(f"[Trajectory] Found existing data for {platform}/{owner}/{repo}")
         return platform, owner, repo, False
 
     # Extract data
-    print(f"[Trajectory] No local data found for {platform}/{owner}/{repo}, extracting...")
+    if force_sync and data_exists:
+        print(f"[Trajectory] force_sync=True: Re-extracting data for {platform}/{owner}/{repo}")
+    else:
+        print(f"[Trajectory] No local data found for {platform}/{owner}/{repo}, extracting...")
 
     try:
         if platform == "github":
@@ -962,7 +970,11 @@ def analyze_growth_trajectory(
     sync_errors = []
     for repo_url in repo_urls:
         try:
-            platform, owner, repo, was_synced = ensure_repo_data_synced(repo_url, max_commits=500)
+            platform, owner, repo, was_synced = ensure_repo_data_synced(
+                repo_url,
+                max_commits=500,
+                force_sync=not use_cache
+            )
             if was_synced:
                 print(f"[Trajectory] Extracted fresh data for {platform}/{owner}/{repo}")
         except Exception as e:
