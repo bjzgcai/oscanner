@@ -1,15 +1,13 @@
 """Data extraction and author discovery routes."""
 
 import json
-from fastapi import APIRouter, HTTPException, Query
-from pathlib import Path
+from fastapi import APIRouter, HTTPException, Query, Response
 
 from evaluator.paths import get_platform_data_dir
 from evaluator.services import (
     extract_github_data,
     extract_gitee_data,
     fetch_gitee_commits,
-    fetch_github_commits,
 )
 from evaluator.utils import get_author_from_commit
 
@@ -23,37 +21,6 @@ def _extract_platform_data(platform: str, owner: str, repo: str) -> bool:
         return extract_gitee_data(owner, repo)
     print(f"Extracting latest data from GitHub for {owner}/{repo}...")
     return extract_github_data(owner, repo)
-
-
-def _get_latest_local_sha(data_dir: Path) -> str:
-    """Read newest cached commit SHA from commits_index.json."""
-    index_path = data_dir / "commits_index.json"
-    if not index_path.exists():
-        return ""
-
-    try:
-        with open(index_path, "r", encoding="utf-8") as f:
-            index_data = json.load(f)
-        if isinstance(index_data, list) and index_data and isinstance(index_data[0], dict):
-            return (index_data[0].get("sha") or index_data[0].get("hash") or "").strip()
-    except Exception as e:
-        print(f"⚠ Failed to read local commits_index.json at {index_path}: {e}")
-
-    return ""
-
-
-def _get_latest_remote_sha(platform: str, owner: str, repo: str) -> str:
-    """Read newest remote commit SHA with a lightweight API call."""
-    try:
-        if platform == "gitee":
-            commits = fetch_gitee_commits(owner, repo, limit=1)
-        else:
-            commits = fetch_github_commits(owner, repo, limit=1)
-        if isinstance(commits, list) and commits and isinstance(commits[0], dict):
-            return (commits[0].get("sha") or commits[0].get("hash") or "").strip()
-    except Exception as e:
-        print(f"⚠ Failed to fetch latest remote SHA for {platform}/{owner}/{repo}: {e}")
-    return ""
 
 
 @router.get("/api/gitee/commits/{owner}/{repo}")
@@ -76,7 +43,13 @@ async def get_gitee_commits(
 
 
 @router.get("/api/authors/{owner}/{repo}")
-async def get_authors(owner: str, repo: str, platform: str = Query("github"), use_cache: bool = Query(True)):
+async def get_authors(
+    owner: str,
+    repo: str,
+    response: Response,
+    platform: str = Query("github"),
+    use_cache: bool = Query(True),
+):
     """
     Get list of authors from commit data
 
@@ -91,37 +64,30 @@ async def get_authors(owner: str, repo: str, platform: str = Query("github"), us
         data_dir = get_platform_data_dir(plat, owner, repo)
         commits_dir = data_dir / "commits"
         has_local_data = commits_dir.exists() and any(commits_dir.glob("*.json"))
-        used_cached_data = has_local_data
+        used_cached_data = False
 
-        # Step 1 & 2: Ensure data exists and refresh when requested or stale
-        should_refresh = False
+        # Never allow HTTP-layer caching for this endpoint.
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+
+        # Step 1 & 2: Always refresh from upstream for /api/authors
+        should_refresh = True
         if not has_local_data:
-            should_refresh = True
             print(f"No local commit data found for {plat}/{owner}/{repo}; will fetch from remote")
-        elif not use_cache:
-            should_refresh = True
-            print(f"use_cache=False for {plat}/{owner}/{repo}; forcing refresh")
         else:
-            local_latest_sha = _get_latest_local_sha(data_dir)
-            remote_latest_sha = _get_latest_remote_sha(plat, owner, repo)
-            if local_latest_sha and remote_latest_sha and local_latest_sha != remote_latest_sha:
-                should_refresh = True
-                print(
-                    f"Detected stale cache for {plat}/{owner}/{repo}: "
-                    f"local={local_latest_sha[:8]} remote={remote_latest_sha[:8]}"
-                )
+            if not use_cache:
+                print(f"use_cache=False for {plat}/{owner}/{repo}; forcing refresh")
+            else:
+                print(f"/api/authors always refreshes for {plat}/{owner}/{repo}; ignoring use_cache=True")
 
         if should_refresh:
             try:
                 success = _extract_platform_data(plat, owner, repo)
-                if not success and not has_local_data:
+                if not success:
                     raise HTTPException(status_code=500, detail=f"Failed to extract {plat} data for {owner}/{repo}")
-                if success:
-                    used_cached_data = False
             except Exception as e:
-                if not has_local_data:
-                    raise HTTPException(status_code=500, detail=f"Failed to extract {plat} data for {owner}/{repo}: {e}")
-                print(f"⚠ Refresh failed for {plat}/{owner}/{repo}, falling back to local cache: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to extract {plat} data for {owner}/{repo}: {e}")
 
         # Step 3: Load all authors from commits
         if not commits_dir.exists():
