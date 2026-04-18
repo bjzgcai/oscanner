@@ -19,6 +19,7 @@ from evaluator.services.trajectory_service import ensure_repo_data_synced
 from evaluator.utils import parse_repo_url, load_commits_from_local, get_author_from_commit
 
 router = APIRouter()
+EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME = {"吴衍标"}
 
 
 def _get_commit_datetime(commit: Dict[str, Any]) -> Optional[datetime]:
@@ -102,6 +103,57 @@ def _infer_username_from_first_commit(repo_urls: List[str]) -> Optional[str]:
             inferred_commit_date = commit_date
 
     return inferred_username
+
+
+def _infer_gitee_authors_from_commits(repo_urls: List[str]) -> List[str]:
+    """
+    Infer all author names from Gitee repositories in repo_urls.
+    Authors are returned in descending commit-count order.
+    """
+    author_counts: Dict[str, int] = {}
+    author_display_names: Dict[str, str] = {}
+
+    for repo_url in repo_urls:
+        parsed = parse_repo_url(repo_url)
+        if not parsed:
+            continue
+
+        platform, owner, repo = parsed
+        if platform != "gitee":
+            continue
+
+        try:
+            ensure_repo_data_synced(repo_url, max_commits=500)
+        except Exception as e:
+            print(f"[Trajectory API One-Off] Warning: failed to sync {repo_url} for gitee author inference: {e}")
+            continue
+
+        data_dir = get_platform_data_dir(platform, owner, repo)
+        if not data_dir.exists():
+            continue
+
+        commits = load_commits_from_local(data_dir, limit=None)
+        if not commits:
+            continue
+
+        for commit in commits:
+            author = (get_author_from_commit(commit) or "").strip()
+            if not author:
+                continue
+
+            key = author.lower()
+            if key not in author_counts:
+                author_counts[key] = 0
+                author_display_names[key] = author
+            author_counts[key] += 1
+
+    sorted_keys = sorted(
+        author_counts.keys(),
+        key=lambda k: (-author_counts[k], author_display_names[k].lower())
+    )
+    authors = [author_display_names[k] for k in sorted_keys]
+    excluded = {name.strip().lower() for name in EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME}
+    return [name for name in authors if name.strip().lower() not in excluded]
 
 
 @router.post("/api/trajectory/analyze")
@@ -291,7 +343,9 @@ async def analyze_trajectory_one_off(
         "repo_urls": ["https://gitee.com/zgcai/oscanner"],
         "aliases": ["CarterWu", "wu-yanbiao"]
     }
-    Note: `username` is optional. If null/empty, it defaults to the first commit author.
+    Note: `username` is optional.
+    - If `username` is null and repo is from Gitee, all detected authors are used (no single-author filtering).
+    - Otherwise, missing/empty username defaults to the first commit author.
 
     Query parameters:
     - checkpoint_strategy: 'none' (default) or 'period'. Use 'none' for analyzing any commit range.
@@ -323,6 +377,7 @@ async def analyze_trajectory_one_off(
             raise HTTPException(status_code=400, detail="Request body must be a JSON object")
 
         username = request_body.get("username")
+        username_is_explicit_null = "username" in request_body and request_body.get("username") is None
 
         # Handle both repo_url (singular) and repo_urls (plural) for backwards compatibility
         repo_urls = request_body.get("repo_urls", [])
@@ -331,6 +386,8 @@ async def analyze_trajectory_one_off(
             repo_urls = [request_body.get("repo_url")]
 
         aliases = request_body.get("aliases", [])
+        if not isinstance(aliases, list):
+            aliases = []
 
         if isinstance(username, str):
             username = username.strip()
@@ -389,19 +446,51 @@ async def analyze_trajectory_one_off(
                        f"Without tokens, API rate limits are very low (~60 requests/hour for GitHub, lower for Gitee)."
             )
 
-        # Username is optional for one-off mode: infer it from first commit author if missing.
-        if not username:
-            username = _infer_username_from_first_commit(repo_urls)
-            if not username:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Missing required field: username. Unable to infer default username from first commit author."
-                )
-            print(f"[Trajectory API One-Off] Inferred username from first commit author: {username}")
+        inferred_all_authors: List[str] = []
 
-        # Ensure aliases includes username after username is finalized.
-        if username not in aliases:
-            aliases = [username] + aliases
+        # Username is optional for one-off mode.
+        if not username:
+            # Special mode: username=null + gitee repo means evaluate without single-author filtering.
+            if username_is_explicit_null:
+                inferred_all_authors = _infer_gitee_authors_from_commits(repo_urls)
+                if inferred_all_authors:
+                    username = inferred_all_authors[0]
+                    print(
+                        f"[Trajectory API One-Off] username=null for gitee repo, "
+                        f"using {len(inferred_all_authors)} inferred authors"
+                    )
+                else:
+                    print(
+                        "[Trajectory API One-Off] username=null but no gitee authors inferred, "
+                        "falling back to first-commit author inference"
+                    )
+
+            if not username:
+                username = _infer_username_from_first_commit(repo_urls)
+                if not username:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Missing required field: username. Unable to infer default username from first commit author."
+                    )
+                print(f"[Trajectory API One-Off] Inferred username from first commit author: {username}")
+            elif username_is_explicit_null and inferred_all_authors:
+                print(f"[Trajectory API One-Off] Primary username set to first inferred gitee author: {username}")
+
+        # Ensure aliases include username and (when enabled) all inferred Gitee authors.
+        merged_aliases: List[str] = []
+        seen_aliases = set()
+        for candidate in [username, *inferred_all_authors, *aliases]:
+            if not isinstance(candidate, str):
+                continue
+            cleaned = candidate.strip()
+            if not cleaned:
+                continue
+            key = cleaned.lower()
+            if key in seen_aliases:
+                continue
+            seen_aliases.add(key)
+            merged_aliases.append(cleaned)
+        aliases = merged_aliases
 
         # Resolve plugin ID
         plugin_id = resolve_plugin_id(plugin)
