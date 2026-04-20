@@ -6,11 +6,14 @@ import asyncio
 import os
 import shutil
 import urllib.parse
+from pathlib import Path
 from typing import Optional, Dict, Any
 
 import git
 
 from .paths import get_repos_dir, parse_repo_url
+
+_PRESERVED_ARTIFACT_PATTERNS = ("TEST_REPORT*.md", "REPO_OVERVIEW*.md")
 
 
 def _inject_auth_token(repo_url: str) -> str:
@@ -43,6 +46,25 @@ def _inject_auth_token(repo_url: str) -> str:
     )
 
 
+def _snapshot_preserved_artifacts(repo_dir: Path) -> Dict[str, bytes]:
+    """Read existing report/overview markdown artifacts before a fresh clone."""
+    reports: Dict[str, bytes] = {}
+    if not repo_dir.exists():
+        return reports
+
+    for pattern in _PRESERVED_ARTIFACT_PATTERNS:
+        for report_file in repo_dir.glob(pattern):
+            if report_file.is_file():
+                reports[report_file.name] = report_file.read_bytes()
+    return reports
+
+
+def _restore_preserved_artifacts(repo_dir: Path, reports: Dict[str, bytes]) -> None:
+    """Restore previously snapshotted markdown artifacts into cloned repo."""
+    for filename, content in reports.items():
+        (repo_dir / filename).write_bytes(content)
+
+
 async def clone_repository(
     repo_url: str,
     sha: Optional[str] = None,
@@ -63,6 +85,7 @@ async def clone_repository(
 
     repos_dir = get_repos_dir()
     clone_path = repos_dir / repo_name
+    preserved_reports = _snapshot_preserved_artifacts(clone_path) if clone_path.exists() else {}
 
     if clone_path.exists():
         await asyncio.to_thread(shutil.rmtree, clone_path)
@@ -90,6 +113,8 @@ async def clone_repository(
                 if not repo.head.is_detached
                 else "detached"
             )
+            if preserved_reports:
+                _restore_preserved_artifacts(clone_path, preserved_reports)
 
             return {
                 "repo_name": repo_name,
