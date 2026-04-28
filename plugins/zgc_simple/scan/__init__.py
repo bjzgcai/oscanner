@@ -54,6 +54,7 @@ class CommitEvaluatorModerate:
         max_parallel_workers: int = 3,
         previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
         forced_checker_id: Optional[str] = None,
+        expected_feature: Optional[str] = None,
     ):
         self.api_key = (
             api_key
@@ -100,6 +101,7 @@ class CommitEvaluatorModerate:
         self.max_parallel_workers = max_parallel_workers
         self.previous_checkpoint_scores = previous_checkpoint_scores
         self.forced_checker_id = forced_checker_id
+        self.expected_feature = (expected_feature or "").strip()
 
         # Checker API base URL (default to localhost, can be overridden via env)
         self.checker_api_base = os.getenv("OSCANNER_CHECKER_API_BASE", "http://localhost:8000")
@@ -111,6 +113,25 @@ class CommitEvaluatorModerate:
 
         self._file_cache: Dict[str, str] = {}
         self._repo_structure: Optional[Dict[str, Any]] = None
+
+    def _build_expected_feature_block(self, is_chinese: bool) -> str:
+        if not self.expected_feature:
+            return ""
+
+        if is_chinese:
+            return (
+                "\n\n期望实现功能（评价基线）:\n"
+                f"{self.expected_feature}\n"
+                "请检查提交和文件内容是否真正实现该功能；如缺失或不完整，请降低相关维度评分，"
+                "并在 reasoning 中说明 **期望实现功能** 和 **缺失功能**。"
+            )
+
+        return (
+            "\n\nEXPECTED FEATURE BASELINE:\n"
+            f"{self.expected_feature}\n"
+            "Check whether the commits and file contents actually implement this feature. "
+            "If it is missing or incomplete, score lower on relevant dimensions and report the expected feature and lacking feature in reasoning."
+        )
 
     def __del__(self):
         """Clean up HTTP client on object destruction."""
@@ -596,6 +617,7 @@ class CommitEvaluatorModerate:
                 previous_scores_block = f"\n\n上一个评估节点的分数（基线参考）:\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\n注意：当前评估应该基于上一个节点的分数，除非有明确的负面证据，否则分数应该保持稳定或略有增长。这是成长轨迹追踪系统的一部分，评估节点基于2周周期累积的至少10个提交。"
             else:
                 previous_scores_block = f"\n\nPREVIOUS CHECKPOINT SCORES (baseline reference):\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\nNOTE: Current evaluation should build on previous scores. Maintain or gradually increase scores unless clear negative evidence exists. This is part of a growth trajectory tracking system with evaluation nodes based on 10+ commits from 2-week periods."
+        expected_feature_block = self._build_expected_feature_block(is_chinese)
 
         # Language-specific instructions
         if is_chinese:
@@ -638,11 +660,11 @@ class CommitEvaluatorModerate:
         dims_text = "\n".join(dim_lines)
 
         if is_chinese:
-            reasoning_example = "提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。"
+            reasoning_example = "提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。如期望实现功能缺失，请说明缺失功能。"
             format_note = "每个维度评分范围：0-100"
             json_instruction = "重要：必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON，格式如下："
         else:
-            reasoning_example = "Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**."
+            reasoning_example = "Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**. If the expected feature is lacking, describe the lacking feature."
             format_note = "Each dimension: score 0-100"
             json_instruction = "IMPORTANT: Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly in this format:"
 
@@ -654,7 +676,7 @@ class CommitEvaluatorModerate:
 
         return (
             f'{base_instruction}'
-            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
+            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}{expected_feature_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
             f"{json_instruction}\n{fmt_text_with_note}"
         )
 
@@ -918,6 +940,7 @@ def create_commit_evaluator(
     previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
+    expected_feature: Optional[str] = None,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -929,5 +952,5 @@ def create_commit_evaluator(
         max_parallel_workers=max_parallel_workers,
         previous_checkpoint_scores=previous_checkpoint_scores,
         forced_checker_id=forced_checker_id,
+        expected_feature=expected_feature,
     )
-

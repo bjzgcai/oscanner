@@ -67,6 +67,7 @@ def create_commit_evaluator(
     previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
+    expected_feature: Optional[str] = None,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -80,6 +81,7 @@ def create_commit_evaluator(
         previous_checkpoint_scores=previous_checkpoint_scores,
         forced_checker_id=forced_checker_id,
         worktree_base=worktree_base,
+        expected_feature=expected_feature,
     )
 
 
@@ -108,6 +110,7 @@ class CommitEvaluatorModerate:
         previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
         forced_checker_id: Optional[str] = None,
         worktree_base: str = "build",
+        expected_feature: Optional[str] = None,
     ):
         self.api_key = (
             api_key
@@ -138,6 +141,7 @@ class CommitEvaluatorModerate:
         self.previous_checkpoint_scores = previous_checkpoint_scores
         self.forced_checker_id = forced_checker_id
         self.worktree_base = worktree_base  # 'build' or 'temp'
+        self.expected_feature = (expected_feature or "").strip()
 
         # Checker API base URL (default to localhost, can be overridden via env)
         self.checker_api_base = os.getenv("OSCANNER_CHECKER_API_BASE", "http://localhost:8000")
@@ -162,6 +166,29 @@ class CommitEvaluatorModerate:
 
         self._file_cache: Dict[str, str] = {}
         self._repo_structure: Optional[Dict[str, Any]] = None
+
+    def _build_expected_feature_block(self, is_chinese: bool) -> str:
+        if not self.expected_feature:
+            return ""
+
+        if is_chinese:
+            return (
+                "\n\n期望实现功能（评价基线）:\n"
+                f"{self.expected_feature}\n"
+                "请把上面的期望实现功能作为本次整体评估的核心基线："
+                "检查提交、文件内容和仓库结构是否真正实现该功能。"
+                "如果实现缺失、不完整或只有表面痕迹，必须降低评分（相关维度分数），"
+                "并在 reasoning 中明确写出 **期望实现功能**、**缺失功能** 和扣分原因。"
+            )
+
+        return (
+            "\n\nEXPECTED FEATURE BASELINE:\n"
+            f"{self.expected_feature}\n"
+            "Use this expected feature as a core baseline for the overall evaluation. "
+            "Check whether the commits, file contents, and repository structure actually implement it. "
+            "If the implementation is missing, incomplete, or only superficial, score lower on the relevant dimensions "
+            "and explicitly report the expected feature, lacking feature, and scoring rationale in reasoning."
+        )
 
     def __del__(self):
         """Clean up HTTP client on object destruction."""
@@ -368,22 +395,26 @@ class CommitEvaluatorModerate:
         chunks_text = "\n\n".join(chunks_summary)
 
         if is_chinese:
+            expected_feature_block = self._build_expected_feature_block(is_chinese)
             merge_instruction = f"""你是一位专业的工程能力评估员。下面是对用户 "{username}" 的 {len(chunk_results)} 个独立评估结果。
 
 请综合所有评估结果，生成一个统一的最终评估：
 1. 对于数值分数：考虑所有评估的整体趋势，给出合理的综合分数（不要简单平均）
 2. 对于推理部分：整合所有评估中的关键发现，提供完整的 **主要优势**、**改进空间**、**整体评估** 部分
+{expected_feature_block}
 
 评估结果：
 {chunks_text}
 
 返回格式与之前相同的JSON格式。"""
         else:
+            expected_feature_block = self._build_expected_feature_block(is_chinese)
             merge_instruction = f"""You are an expert engineering evaluator. Below are {len(chunk_results)} independent evaluations for user "{username}".
 
 Synthesize all evaluations into a unified final assessment:
 1. For numeric scores: Consider overall trends across all evaluations, provide reasonable consolidated scores (not simple averaging)
 2. For reasoning: Integrate key findings from all evaluations, provide complete **Key Strengths**, **Areas for Growth**, **Overall Assessment** sections
+{expected_feature_block}
 
 Evaluation Results:
 {chunks_text}
@@ -943,6 +974,7 @@ Return the same JSON format as before."""
                 previous_scores_block = f"\n\n上一个评估节点的分数（基线参考）:\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\n注意：当前评估应该基于上一个节点的分数，除非有明确的负面证据，否则分数应该保持稳定或略有增长。"
             else:
                 previous_scores_block = f"\n\nPREVIOUS CHECKPOINT SCORES (baseline reference):\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\nNOTE: Current evaluation should build on previous scores. Maintain or gradually increase scores unless clear negative evidence exists."
+        expected_feature_block = self._build_expected_feature_block(is_chinese)
         
         # Language-specific instructions
         if is_chinese:
@@ -981,10 +1013,10 @@ Return the same JSON format as before."""
         dims_text = "\n".join(dim_lines)
         
         if is_chinese:
-            reasoning_example = f"基于{part_label}数据，提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。"
+            reasoning_example = f"基于{part_label}数据，提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。如期望实现功能缺失，请说明缺失功能。"
             format_note = "每个维度评分范围：0-100"
         else:
-            reasoning_example = f"Based on {part_label} data, provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**."
+            reasoning_example = f"Based on {part_label} data, provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**. If the expected feature is lacking, describe the lacking feature."
             format_note = "Each dimension: score 0-100"
         
         fmt_example = {k: 0 for k in self.dimensions.keys()}
@@ -994,7 +1026,7 @@ Return the same JSON format as before."""
         
         prompt = (
             f'{base_instruction}'
-            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}\n\n{data_label}:\n{part_context}\n\n{dimensions_label}:\n{dims_text}\n\n"
+            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}{expected_feature_block}\n\n{data_label}:\n{part_context}\n\n{dimensions_label}:\n{dims_text}\n\n"
             f"{return_json_instruction}\n{fmt_text_with_note}"
         )
         
@@ -1203,6 +1235,7 @@ Return the same JSON format as before."""
                 previous_scores_block = f"\n\n上一个评估节点的分数（基线参考）:\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\n注意：当前评估应该基于上一个节点的分数，除非有明确的负面证据，否则分数应该保持稳定或略有增长。"
             else:
                 previous_scores_block = f"\n\nPREVIOUS CHECKPOINT SCORES (baseline reference):\n{json.dumps(prev_scores, ensure_ascii=False, indent=2)}\nNOTE: Current evaluation should build on previous scores. Maintain or gradually increase scores unless clear negative evidence exists."
+        expected_feature_block = self._build_expected_feature_block(is_chinese)
 
         # Language-specific instructions
         if is_chinese:
@@ -1245,11 +1278,11 @@ Return the same JSON format as before."""
         dims_text = "\n".join(dim_lines)
 
         if is_chinese:
-            reasoning_example = "使用评分标准。提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。"
+            reasoning_example = "使用评分标准。提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。如期望实现功能缺失，请说明缺失功能。"
             format_note = "每个维度评分范围：0-100"
             json_instruction = "重要：必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON，格式如下："
         else:
-            reasoning_example = "Use the rubric. Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**."
+            reasoning_example = "Use the rubric. Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**. If the expected feature is lacking, describe the lacking feature."
             format_note = "Each dimension: score 0-100"
             json_instruction = "IMPORTANT: Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly in this format:"
 
@@ -1261,7 +1294,7 @@ Return the same JSON format as before."""
 
         return (
             f'{base_instruction}'
-            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
+            f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}{expected_feature_block}\n\n{data_label}:\n{context}\n\n{dimensions_label}:\n{dims_text}\n\n"
             f"{json_instruction}\n{fmt_text_with_note}"
         )
 
@@ -1511,5 +1544,3 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
             "scores": scores,
             "commits_summary": {"total_additions": 0, "total_deletions": 0, "files_changed": 0, "languages": []},
         }
-
-

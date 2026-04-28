@@ -341,11 +341,13 @@ async def analyze_trajectory_one_off(
     {
         "username": "CarterWu",
         "repo_urls": ["https://gitee.com/zgcai/oscanner"],
-        "aliases": ["CarterWu", "wu-yanbiao"]
+        "aliases": ["CarterWu", "wu-yanbiao"],
+        "expected_feature": "Optional feature description used as an evaluation baseline"
     }
     Note: `username` is optional.
     - If `username` is null and repo is from Gitee, all detected authors are used (no single-author filtering).
     - Otherwise, missing/empty username defaults to the first commit author.
+    - `expected_feature` is optional. When omitted or blank, evaluation uses the normal rubric only.
 
     Query parameters:
     - checkpoint_strategy: 'none' (default) or 'period'. Use 'none' for analyzing any commit range.
@@ -388,6 +390,12 @@ async def analyze_trajectory_one_off(
         aliases = request_body.get("aliases", [])
         if not isinstance(aliases, list):
             aliases = []
+
+        expected_feature = request_body.get("expected_feature")
+        if isinstance(expected_feature, str):
+            expected_feature = expected_feature.strip() or None
+        elif expected_feature is not None:
+            raise HTTPException(status_code=400, detail="expected_feature must be a string")
 
         if isinstance(username, str):
             username = username.strip()
@@ -531,7 +539,8 @@ async def analyze_trajectory_one_off(
             checkpoint_strategy_value,
             start_sha_value,
             end_sha_value,
-            False  # save_to_cache=False
+            False,  # save_to_cache=False
+            expected_feature,
         )
 
         # Extract single checkpoint from trajectory response

@@ -284,7 +284,8 @@ def create_checkpoint_evaluation(
     max_parallel_workers: int = 3,
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
-    checkpoint_strategy: str = "period"
+    checkpoint_strategy: str = "period",
+    expected_feature: Optional[str] = None,
 ) -> TrajectoryCheckpoint:
     """
     Create a checkpoint by evaluating commits.
@@ -359,6 +360,7 @@ def create_checkpoint_evaluation(
         previous_checkpoint_scores=previous_scores,
         forced_checker_id=forced_checker_id,
         worktree_base=worktree_base,
+        expected_feature=expected_feature,
     )
 
     # Evaluate
@@ -382,6 +384,8 @@ def create_checkpoint_evaluation(
     # Add required metadata fields
     evaluation_result['evaluated_at'] = datetime.utcnow().isoformat()
     evaluation_result['plugin'] = plugin_id
+    if expected_feature:
+        evaluation_result['expected_feature'] = expected_feature
 
     # Load plugin version
     try:
@@ -905,7 +909,8 @@ def analyze_growth_trajectory(
     checkpoint_strategy: str = "period",
     start_sha: Optional[str] = None,
     end_sha: Optional[str] = None,
-    save_to_cache: bool = True
+    save_to_cache: bool = True,
+    expected_feature: Optional[str] = None,
 ) -> TrajectoryResponse:
     """
     Main orchestration function for growth trajectory analysis.
@@ -1138,7 +1143,8 @@ def analyze_growth_trajectory(
                 parallel_chunking=parallel_chunking,
                 max_parallel_workers=max_parallel_workers,
                 forced_checker_id=forced_checker_id,
-                checkpoint_strategy=checkpoint_strategy
+                checkpoint_strategy=checkpoint_strategy,
+                expected_feature=expected_feature,
             )
 
             # Update trajectory
