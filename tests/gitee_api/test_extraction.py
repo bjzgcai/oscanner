@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import tempfile
 import shutil
+import json
 import sys
 
 # Add project root to path if not already there
@@ -20,6 +21,7 @@ if str(backend_dir) not in sys.path:
 # Import directly from extraction_service module
 from evaluator.services.extraction_service import (
     extract_gitee_data,
+    sync_gitee_data_incremental,
     check_dns_resolution,
 )
 
@@ -183,6 +185,114 @@ class TestGiteeExtraction:
             first_call_url = calls[0][0][0] if calls else None
             assert first_call_url is not None
             assert "gitee.com" in first_call_url
+
+    def test_sync_gitee_data_incremental_fetches_only_missing_latest_commits(self, temp_data_dir):
+        """Existing Gitee data should be extended by fetching only the latest missing commits."""
+        repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"
+        commits_dir = repo_dir / "commits"
+        commits_dir.mkdir(parents=True)
+        (repo_dir / "files").mkdir(parents=True)
+
+        existing_commit = {
+            "sha": "oldsha",
+            "commit": {"author": {"name": "Alice", "date": "2026-01-01T00:00:00+00:00"}, "message": "old"},
+        }
+        (repo_dir / "commits_list.json").write_text(json.dumps([existing_commit]), encoding="utf-8")
+        (repo_dir / "commits_index.json").write_text(
+            json.dumps([
+                {
+                    "sha": "oldsha",
+                    "message": "old",
+                    "author": "Alice",
+                    "date": "2026-01-01T00:00:00+00:00",
+                    "files_changed": 0,
+                    "files": [],
+                }
+            ]),
+            encoding="utf-8",
+        )
+
+        contributors_resp = Mock()
+        contributors_resp.status_code = 200
+        contributors_resp.json.return_value = [{"name": "Alice", "contributions": 2}]
+
+        commits_page_resp = Mock()
+        commits_page_resp.status_code = 200
+        commits_page_resp.json.return_value = [
+            {
+                "sha": "newsha",
+                "commit": {"author": {"name": "Alice", "date": "2026-01-02T00:00:00+00:00"}, "message": "new"},
+            },
+        ]
+
+        detail_resp = Mock()
+        detail_resp.status_code = 200
+        detail_resp.json.return_value = {
+            "sha": "newsha",
+            "commit": {"author": {"name": "Alice", "date": "2026-01-02T00:00:00+00:00"}, "message": "new"},
+            "files": [{"filename": "src/app.py", "patch": "@@"}],
+        }
+
+        content_resp = Mock()
+        content_resp.status_code = 200
+        content_resp.json.return_value = {"content": "cHJpbnQoJ2hpJykK", "size": 12}
+
+        responses = [contributors_resp, commits_page_resp, detail_resp, content_resp]
+        mock_sess = Mock()
+        mock_sess.get.side_effect = responses
+
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_requests_session') as mock_session, \
+             patch('evaluator.services.extraction_service.get_gitee_token') as mock_token:
+            mock_get_dir.return_value = repo_dir
+            mock_session.return_value = mock_sess
+            mock_token.return_value = "fake_token_for_test"
+
+            result = sync_gitee_data_incremental("test_owner", "test_repo", max_commits=500)
+
+        assert result is True
+
+        saved_commits = json.loads((repo_dir / "commits_list.json").read_text(encoding="utf-8"))
+        assert [commit["sha"] for commit in saved_commits] == ["newsha", "oldsha"]
+        assert (commits_dir / "newsha.json").exists()
+        assert (repo_dir / "files" / "src" / "app.py").read_text(encoding="utf-8") == "print('hi')\n"
+
+        requested_urls = [call.args[0] for call in mock_sess.get.call_args_list]
+        assert any("/contributors" in url for url in requested_urls)
+        assert sum("/commits" in url and not url.endswith("/newsha") for url in requested_urls) == 1
+
+    def test_sync_gitee_data_incremental_skips_commit_fetch_when_counts_match(self, temp_data_dir):
+        """When contributor commit count matches local commits_list.json, no commit pages are fetched."""
+        repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"
+        repo_dir.mkdir(parents=True)
+        (repo_dir / "commits_list.json").write_text(
+            json.dumps([
+                {"sha": "sha1", "commit": {"author": {"name": "Alice"}, "message": "one"}},
+                {"sha": "sha2", "commit": {"author": {"name": "Alice"}, "message": "two"}},
+            ]),
+            encoding="utf-8",
+        )
+        (repo_dir / "commits_index.json").write_text("[]", encoding="utf-8")
+
+        contributors_resp = Mock()
+        contributors_resp.status_code = 200
+        contributors_resp.json.return_value = [{"name": "Alice", "contributions": 2}]
+
+        mock_sess = Mock()
+        mock_sess.get.return_value = contributors_resp
+
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_requests_session') as mock_session, \
+             patch('evaluator.services.extraction_service.get_gitee_token') as mock_token:
+            mock_get_dir.return_value = repo_dir
+            mock_session.return_value = mock_sess
+            mock_token.return_value = "fake_token_for_test"
+
+            result = sync_gitee_data_incremental("test_owner", "test_repo", max_commits=500)
+
+        assert result is False
+        requested_urls = [call.args[0] for call in mock_sess.get.call_args_list]
+        assert requested_urls == ["https://gitee.com/api/v5/repos/test_owner/test_repo/contributors"]
 
 
 if __name__ == "__main__":

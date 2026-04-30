@@ -17,7 +17,11 @@ from evaluator.schemas import (
 )
 from evaluator.utils import load_commits_from_local, is_commit_by_author
 from evaluator.services.evaluation_service import get_or_create_evaluator
-from evaluator.services.extraction_service import extract_github_data, extract_gitee_data
+from evaluator.services.extraction_service import (
+    extract_github_data,
+    extract_gitee_data,
+    sync_gitee_data_incremental,
+)
 from evaluator.plugin_registry import load_scan_module
 
 
@@ -144,6 +148,9 @@ def ensure_repo_data_synced(
 
     if data_exists and not force_sync:
         print(f"[Trajectory] Found existing data for {platform}/{owner}/{repo}")
+        if platform == "gitee":
+            was_synced = sync_gitee_data_incremental(owner, repo, max_commits=max_commits)
+            return platform, owner, repo, was_synced
         return platform, owner, repo, False
 
     # Extract data
@@ -960,7 +967,7 @@ def analyze_growth_trajectory(
     else:
         # Update repo URLs
         trajectory.repo_urls = repo_urls
-        
+
         # If use_cache=False, clear existing checkpoints to force re-evaluation
         if not use_cache and trajectory.checkpoints:
             print(f"[Trajectory] use_cache=False: Clearing {len(trajectory.checkpoints)} existing checkpoints for re-evaluation")
@@ -969,6 +976,14 @@ def analyze_growth_trajectory(
             # Reset last_synced_sha to force re-evaluation of all commits
             trajectory.last_synced_sha = None
             trajectory.last_synced_at = None
+
+    if not save_to_cache:
+        if trajectory.checkpoints or trajectory.last_synced_sha:
+            print("[Trajectory] save_to_cache=False: Ignoring cached checkpoint sync state for one-off analysis")
+        trajectory.checkpoints = []
+        trajectory.total_checkpoints = 0
+        trajectory.last_synced_sha = None
+        trajectory.last_synced_at = None
 
     # Ensure all repos have data synced
     print(f"[Trajectory] Ensuring data is synced for {len(repo_urls)} repositories")

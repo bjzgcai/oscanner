@@ -72,6 +72,210 @@ def _save_json(path: Path, obj: Any) -> None:
         json.dump(obj, f, indent=2, ensure_ascii=False)
 
 
+def _load_json_list(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _get_commit_sha(commit: Dict[str, Any]) -> str:
+    return str(commit.get("sha") or commit.get("hash") or "").strip()
+
+
+def _build_commit_index_entry(detail: Dict[str, Any]) -> Dict[str, Any]:
+    commit_msg = detail.get("commit", {}).get("message", "") if isinstance(detail, dict) else ""
+    author_name = get_author_from_commit(detail) if isinstance(detail, dict) else ""
+    commit_date = ""
+    file_list: List[str] = []
+
+    if isinstance(detail, dict):
+        commit_date = (
+            detail.get("commit", {}).get("author", {}).get("date", "")
+            or detail.get("commit", {}).get("committer", {}).get("date", "")
+        )
+        file_list = [
+            fi.get("filename")
+            for fi in (detail.get("files") or [])
+            if isinstance(fi, dict) and fi.get("filename")
+        ]
+
+    return {
+        "sha": _get_commit_sha(detail),
+        "message": (commit_msg.split("\n")[0] if commit_msg else "")[:100],
+        "author": author_name or "",
+        "date": commit_date or "",
+        "files_changed": len(file_list),
+        "files": file_list,
+    }
+
+
+def _merge_by_sha(new_items: List[Dict[str, Any]], existing_items: List[Dict[str, Any]], max_items: int) -> List[Dict[str, Any]]:
+    merged: List[Dict[str, Any]] = []
+    seen = set()
+
+    for item in [*new_items, *existing_items]:
+        if not isinstance(item, dict):
+            continue
+        sha = _get_commit_sha(item)
+        if not sha or sha in seen:
+            continue
+        seen.add(sha)
+        merged.append(item)
+        if len(merged) >= max_items:
+            break
+
+    return merged
+
+
+def _sum_gitee_contributor_commits(contributors: Any) -> Optional[int]:
+    if isinstance(contributors, dict):
+        if isinstance(contributors.get("data"), list):
+            contributors = contributors["data"]
+        elif isinstance(contributors.get("contributors"), list):
+            contributors = contributors["contributors"]
+        else:
+            return None
+
+    if not isinstance(contributors, list):
+        return None
+
+    total = 0
+    saw_count = False
+    for contributor in contributors:
+        if not isinstance(contributor, dict):
+            continue
+        value = (
+            contributor.get("contributions")
+            or contributor.get("commit_count")
+            or contributor.get("commits")
+        )
+        try:
+            total += int(value)
+            saw_count = True
+        except (TypeError, ValueError):
+            continue
+
+    return total if saw_count else None
+
+
+def _fetch_gitee_contributor_commit_count(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    gitee_token: str,
+) -> Optional[int]:
+    api_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/contributors"
+    params = {
+        "access_token": gitee_token,
+        "type": "committers",
+    }
+
+    try:
+        resp = session.get(api_url, params=params, timeout=30)
+        if resp.status_code != 200:
+            print(f"[Gitee Incremental] Contributors API returned {resp.status_code}; skipping incremental count check")
+            return None
+        return _sum_gitee_contributor_commits(resp.json())
+    except requests.exceptions.RequestException as e:
+        print(f"[Gitee Incremental] Contributors API request failed: {e}")
+        return None
+
+
+def _fetch_gitee_commit_page(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    gitee_token: str,
+    page: int,
+    per_page: int,
+) -> List[Dict[str, Any]]:
+    api_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits"
+    params = {
+        "access_token": gitee_token,
+        "page": page,
+        "per_page": per_page,
+    }
+
+    resp = session.get(api_url, params=params, timeout=30, allow_redirects=True)
+    if resp.status_code != 200:
+        error_detail = resp.text[:200] if resp.text else "Unknown error"
+        raise Exception(f"Gitee API error ({resp.status_code}): {error_detail}")
+
+    batch = resp.json()
+    return batch if isinstance(batch, list) else []
+
+
+def _fetch_gitee_commit_detail(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    gitee_token: str,
+    commit: Dict[str, Any],
+) -> Dict[str, Any]:
+    sha = _get_commit_sha(commit)
+    if not sha:
+        return commit
+
+    detail_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits/{sha}"
+    try:
+        dresp = session.get(detail_url, params={"access_token": gitee_token}, timeout=30)
+        if dresp.status_code == 200:
+            detail = dresp.json()
+            return detail if isinstance(detail, dict) else commit
+    except requests.exceptions.RequestException:
+        pass
+    return commit
+
+
+def _write_gitee_file_context(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    gitee_token: str,
+    files_dir: Path,
+    files_context: Dict[str, int],
+    *,
+    max_files: int,
+) -> int:
+    files_dir.mkdir(parents=True, exist_ok=True)
+    files_fetched = 0
+    sorted_files = sorted(files_context.items(), key=lambda x: -x[1])[:max_files]
+
+    for filepath, _mention_count in sorted_files:
+        file_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/contents/{filepath}"
+        try:
+            file_resp = session.get(file_url, params={"access_token": gitee_token}, timeout=30)
+            if file_resp.status_code != 200:
+                continue
+
+            file_obj = file_resp.json()
+            if not isinstance(file_obj, dict):
+                continue
+
+            content_b64 = file_obj.get("content", "")
+            if not content_b64:
+                continue
+
+            content_bytes = base64.b64decode(content_b64)
+            content_str = content_bytes.decode("utf-8", errors="ignore")
+
+            file_path = files_dir / filepath
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, "w", encoding="utf-8", errors="ignore") as f:
+                f.write(content_str)
+
+            files_fetched += 1
+        except Exception:
+            continue
+
+    return files_fetched
+
+
 def _run_git(cmd: List[str], cwd: Optional[Path] = None, timeout: int = 120) -> subprocess.CompletedProcess:
     return subprocess.run(
         cmd,
@@ -489,6 +693,138 @@ def fetch_gitee_commits(owner: str, repo: str, limit: int = 100, is_enterprise: 
         raise HTTPException(status_code=500, detail=f"Failed to fetch Gitee commits: {str(e)}")
 
 
+def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -> bool:
+    """
+    Fast Gitee sync for existing local data.
+
+    Uses the contributors commit count as a cheap remote total, then fetches only the
+    latest missing commit pages and per-commit details. Returns True when local data
+    changed, False when local data is already up to date.
+    """
+    print(f"[Gitee Incremental] Checking {owner}/{repo} for new commits")
+
+    gitee_token = get_gitee_token()
+    if not gitee_token:
+        raise Exception("Gitee token not configured. Please set GITEE_TOKEN environment variable or configure it via oscanner init.")
+
+    data_dir = get_platform_data_dir("gitee", owner, repo)
+    commits_list_path = data_dir / "commits_list.json"
+    commits_index_path = data_dir / "commits_index.json"
+    commits_dir = data_dir / "commits"
+    files_dir = data_dir / "files"
+    commits_dir.mkdir(parents=True, exist_ok=True)
+    files_dir.mkdir(parents=True, exist_ok=True)
+
+    local_commits = _load_json_list(commits_list_path)
+    local_index = _load_json_list(commits_index_path)
+    local_shas = {_get_commit_sha(commit) for commit in local_commits if _get_commit_sha(commit)}
+    local_count = len(local_commits)
+
+    session = get_requests_session()
+    remote_total = _fetch_gitee_contributor_commit_count(session, owner, repo, gitee_token)
+    if remote_total is not None:
+        print(f"[Gitee Incremental] Remote contributor commit count={remote_total}, local commits={local_count}")
+        if remote_total <= local_count:
+            print("[Gitee Incremental] Local data is up to date by contributor count")
+            return False
+        missing_count = remote_total - local_count
+    else:
+        print("[Gitee Incremental] Contributor count unavailable; checking latest commit page")
+        missing_count = 100
+
+    per_page = 100
+    pages_to_fetch = max(1, (missing_count + per_page - 1) // per_page)
+    latest_commits: List[Dict[str, Any]] = []
+
+    for page in range(1, pages_to_fetch + 1):
+        batch = _fetch_gitee_commit_page(session, owner, repo, gitee_token, page, per_page)
+        if not batch:
+            break
+        latest_commits.extend(batch)
+        if len(batch) < per_page:
+            break
+
+    new_commit_summaries: List[Dict[str, Any]] = []
+    for commit in latest_commits:
+        sha = _get_commit_sha(commit)
+        if not sha:
+            continue
+        if sha in local_shas:
+            continue
+        new_commit_summaries.append(commit)
+
+    if not new_commit_summaries:
+        print("[Gitee Incremental] No new commit SHAs found in fetched latest pages")
+        return False
+
+    new_commit_summaries = new_commit_summaries[:max_commits]
+    print(f"[Gitee Incremental] Fetching details for {len(new_commit_summaries)} new commits")
+
+    new_details: List[Dict[str, Any]] = []
+    new_index_entries: List[Dict[str, Any]] = []
+    files_context: Dict[str, int] = {}
+
+    for commit in new_commit_summaries:
+        detail = _fetch_gitee_commit_detail(session, owner, repo, gitee_token, commit)
+        sha = _get_commit_sha(detail)
+        if not sha:
+            continue
+
+        _save_json(commits_dir / f"{sha}.json", detail)
+        new_details.append(detail)
+
+        index_entry = _build_commit_index_entry(detail)
+        new_index_entries.append(index_entry)
+        for filename in index_entry.get("files") or []:
+            files_context[filename] = files_context.get(filename, 0) + 1
+
+    if not new_details:
+        print("[Gitee Incremental] No usable commit details fetched")
+        return False
+
+    merged_commits = _merge_by_sha(new_details, local_commits, max_commits)
+    merged_index = _merge_by_sha(new_index_entries, local_index, max_commits)
+    _save_json(commits_list_path, merged_commits)
+    _save_json(commits_index_path, merged_index)
+
+    files_fetched = _write_gitee_file_context(
+        session,
+        owner,
+        repo,
+        gitee_token,
+        files_dir,
+        files_context,
+        max_files=100,
+    )
+
+    _save_json(
+        data_dir / "repo_info.json",
+        {"name": f"{owner}/{repo}", "full_name": f"{owner}/{repo}", "owner": owner, "platform": "gitee"},
+    )
+    _save_json(
+        data_dir / "sync_state.json",
+        {
+            "last_synced_at": datetime.now().isoformat(),
+            "last_commit_sha": _get_commit_sha(merged_index[0]) if merged_index else None,
+            "total_commits_fetched": len(merged_index),
+            "remote_total_commits": remote_total,
+            "sync_history": [
+                {
+                    "synced_at": datetime.now().isoformat(),
+                    "commits_added": len(new_details),
+                    "mode": "incremental_api",
+                }
+            ],
+        },
+    )
+
+    print(
+        f"[Gitee Incremental] Added {len(new_details)} commits, "
+        f"updated {files_fetched} file contents"
+    )
+    return True
+
+
 def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
     """
     Extract Gitee repository data into platform-specific directory similar to GitHub extractor.
@@ -636,6 +972,9 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
                     continue
 
                 file_obj = file_resp.json()
+                if not isinstance(file_obj, dict):
+                    print("✗ unexpected response")
+                    continue
 
                 # Create directory structure for the file
                 file_path = files_dir / filepath

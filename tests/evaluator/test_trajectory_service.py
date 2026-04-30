@@ -7,7 +7,9 @@ import tempfile
 import shutil
 import sys
 import json
+import inspect
 from datetime import datetime, timedelta
+from fastapi.params import Query
 
 # Add project root to path if not already there
 project_root = Path(__file__).parent.parent.parent
@@ -316,6 +318,83 @@ class TestEnsureRepoDataSynced:
             assert repo == "test_repo"
             assert success is True
             mock_extract.assert_called_once_with("test_owner", "test_repo", max_commits=500)
+
+    def test_ensure_repo_data_synced_gitee_uses_incremental_sync_when_cached(self, temp_data_dir):
+        """Existing Gitee data should use the fast incremental sync path instead of full extraction."""
+        from evaluator.services.trajectory_service import ensure_repo_data_synced
+
+        repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"
+        repo_dir.mkdir(parents=True)
+        (repo_dir / "commits_index.json").write_text("[]", encoding="utf-8")
+
+        with patch('evaluator.services.trajectory_service.parse_repo_url') as mock_parse, \
+             patch('evaluator.services.trajectory_service.get_platform_data_dir') as mock_data_dir, \
+             patch('evaluator.services.trajectory_service.sync_gitee_data_incremental') as mock_incremental, \
+             patch('evaluator.services.trajectory_service.extract_gitee_data') as mock_extract:
+
+            mock_parse.return_value = ("gitee", "test_owner", "test_repo")
+            mock_data_dir.return_value = repo_dir
+            mock_incremental.return_value = True
+
+            platform, owner, repo, success = ensure_repo_data_synced(
+                "https://gitee.com/test_owner/test_repo",
+                force_sync=False,
+            )
+
+            assert platform == "gitee"
+            assert owner == "test_owner"
+            assert repo == "test_repo"
+            assert success is True
+            mock_incremental.assert_called_once_with("test_owner", "test_repo", max_commits=500)
+            mock_extract.assert_not_called()
+
+    def test_analyze_growth_trajectory_one_off_ignores_cached_last_synced_sha(self, temp_data_dir):
+        """save_to_cache=False should use cached repo data without narrowing commits by old trajectory state."""
+        from evaluator.schemas.trajectory import TrajectoryCache
+        from evaluator.services.trajectory_service import analyze_growth_trajectory
+
+        cached_trajectory = TrajectoryCache(
+            username="Alice",
+            repo_urls=["https://gitee.com/test_owner/test_repo"],
+            checkpoints=[],
+            last_synced_sha="oldsha",
+            last_synced_at=None,
+            total_checkpoints=0,
+        )
+
+        with patch('evaluator.services.trajectory_service.load_trajectory_cache') as mock_load_cache, \
+             patch('evaluator.services.trajectory_service.ensure_repo_data_synced') as mock_sync, \
+             patch('evaluator.services.trajectory_service.get_new_commits_from_repos') as mock_new_commits, \
+             patch('evaluator.services.trajectory_service.get_repo_start_date') as mock_start_date:
+
+            mock_load_cache.return_value = cached_trajectory
+            mock_sync.return_value = ("gitee", "test_owner", "test_repo", False)
+            mock_new_commits.return_value = (0, [], ["https://gitee.com/test_owner/test_repo"])
+            mock_start_date.return_value = datetime(2026, 1, 1)
+
+            response = analyze_growth_trajectory(
+                username="Alice",
+                repo_urls=["https://gitee.com/test_owner/test_repo"],
+                aliases=["Alice"],
+                plugin_id="zgc_ai_native_2026",
+                model="deepseek/deepseek-v4-pro",
+                language="zh-CN",
+                use_cache=True,
+                checkpoint_strategy="none",
+                save_to_cache=False,
+            )
+
+            assert response.success is True
+            assert mock_new_commits.call_args.kwargs["last_synced_sha"] is None
+
+    def test_one_off_route_defaults_to_use_cache_true(self):
+        """The public one-off trajectory route should default to the fast cached sync mode."""
+        from evaluator.routes.trajectory import analyze_trajectory_one_off
+
+        default = inspect.signature(analyze_trajectory_one_off).parameters["use_cache"].default
+
+        assert isinstance(default, Query)
+        assert default.default is True
 
     def test_ensure_repo_data_synced_extraction_failure(self, temp_data_dir):
         """Test repo data sync when extraction fails."""

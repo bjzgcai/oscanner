@@ -324,7 +324,7 @@ async def analyze_trajectory_one_off(
     plugin: str = Query("zgc_ai_native_2026"),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    use_cache: bool = Query(False),
+    use_cache: bool = Query(True),
     parallel_chunking: bool = Query(True),
     max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
