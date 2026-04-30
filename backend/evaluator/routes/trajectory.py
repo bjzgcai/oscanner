@@ -20,6 +20,8 @@ from evaluator.utils import parse_repo_url, load_commits_from_local, get_author_
 
 router = APIRouter()
 EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME = {"吴衍标"}
+ONE_OFF_PRIMARY_MODEL = "deepseek/deepseek-v4-pro"
+ONE_OFF_PRIMARY_MODELS = (ONE_OFF_PRIMARY_MODEL,)
 
 
 def _get_commit_datetime(commit: Dict[str, Any]) -> Optional[datetime]:
@@ -529,7 +531,7 @@ async def analyze_trajectory_one_off(
             repo_urls,
             aliases,
             plugin_id,
-            model,
+            ONE_OFF_PRIMARY_MODEL,
             language,
             use_cache,
             parallel_chunking,
@@ -543,22 +545,37 @@ async def analyze_trajectory_one_off(
             expected_feature,
         )
 
-        # Extract single checkpoint from trajectory response
-        if response.success and response.trajectory and response.trajectory.checkpoints:
-            checkpoint = response.trajectory.checkpoints[-1]  # Get the latest (or only) checkpoint
-            return {
-                "success": True,
-                "checkpoint": checkpoint.model_dump(),
-                "message": response.message,
-                "commits_analyzed": checkpoint.commits_range.commit_count
-            }
-        else:
+        if not response.success or not response.trajectory or not response.trajectory.checkpoints:
             return {
                 "success": False,
                 "checkpoint": None,
-                "message": response.message,
-                "commits_analyzed": 0
+                "message": f"{ONE_OFF_PRIMARY_MODEL} analysis failed: {response.message}",
+                "commits_analyzed": 0,
+                "model_judging": {
+                    "primary_models": list(ONE_OFF_PRIMARY_MODELS),
+                    "synthesis_model": None,
+                    "failed_model": ONE_OFF_PRIMARY_MODEL,
+                },
             }
+
+        checkpoint = response.trajectory.checkpoints[-1]
+        checkpoint_data = checkpoint.model_dump()
+        commit_count = (
+            (checkpoint_data.get("commits_range") or {}).get("commit_count")
+            or 0
+        )
+
+        return {
+            "success": True,
+            "checkpoint": checkpoint_data,
+            "message": f"Created final one-off judgment using {ONE_OFF_PRIMARY_MODEL}.",
+            "commits_analyzed": commit_count,
+            "model_judging": {
+                "primary_models": list(ONE_OFF_PRIMARY_MODELS),
+                "synthesis_model": None,
+                "conflicts_detected": False,
+            },
+        }
 
     except HTTPException:
         raise

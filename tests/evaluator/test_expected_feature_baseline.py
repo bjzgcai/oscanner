@@ -184,3 +184,79 @@ async def test_analyze_one_off_route_allows_missing_expected_feature(monkeypatch
 
     assert result["success"] is False
     assert captured_args["expected_feature"] is None
+
+
+@pytest.mark.anyio
+async def test_analyze_one_off_route_uses_deepseek_only_without_synthesis(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+
+    models_used = []
+
+    class FakeCommitRange:
+        commit_count = 2
+
+    class FakeCheckpoint:
+        commits_range = FakeCommitRange()
+
+        def __init__(self, model_name):
+            self.model_name = model_name
+
+        def model_dump(self):
+            return {
+                "checkpoint_id": 1,
+                "commits_range": {"commit_count": 2},
+                "evaluation": {
+                    "username": "alice",
+                    "scores": {
+                        "spec_quality": 60 if self.model_name.startswith("deepseek/") else 80,
+                        "cloud_architecture": 50,
+                        "ai_engineering": 70,
+                        "mastery_professionalism": 55,
+                        "reasoning": f"**整体评估**\n{self.model_name} judgement",
+                    },
+                },
+            }
+
+    def fake_analyze_growth_trajectory(*args):
+        model_name = args[4]
+        models_used.append(model_name)
+        return SimpleNamespace(
+            success=True,
+            trajectory=SimpleNamespace(checkpoints=[FakeCheckpoint(model_name)]),
+            message=f"{model_name} done",
+        )
+
+    monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(trajectory_route, "get_github_token", lambda: "github-token")
+    monkeypatch.setattr(trajectory_route, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(trajectory_route, "resolve_plugin_id", lambda plugin: plugin)
+    monkeypatch.setattr(trajectory_route, "analyze_growth_trajectory", fake_analyze_growth_trajectory)
+
+    result = await trajectory_route.analyze_trajectory_one_off(
+        request_body={
+            "repo_url": "https://github.com/example/repo",
+            "username": "alice",
+            "aliases": ["alice"],
+            "expected_feature": "实现用户登录功能",
+        },
+        plugin="zgc_ai_native_2026",
+        model="qwen/qwen3-coder-flash",
+        language="zh-CN",
+        use_cache=False,
+        parallel_chunking=True,
+        max_parallel_workers=3,
+        forced_checker="",
+        worktree_base="build",
+        checkpoint_strategy="none",
+        start_sha="",
+        end_sha="",
+    )
+
+    assert result["success"] is True
+    assert models_used == ["deepseek/deepseek-v4-pro"]
+    assert result["checkpoint"]["evaluation"]["scores"]["reasoning"] == "**整体评估**\ndeepseek/deepseek-v4-pro judgement"
+    assert result["model_judging"] == {
+        "primary_models": ["deepseek/deepseek-v4-pro"],
+        "synthesis_model": None,
+        "conflicts_detected": False,
+    }
