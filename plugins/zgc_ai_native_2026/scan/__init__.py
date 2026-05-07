@@ -19,7 +19,7 @@ Standard reference:
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import httpx
@@ -55,6 +55,45 @@ TRAJECTORY EVALUATION CONTEXT:
 """
 
 
+ProgressCallback = Callable[[str, Dict[str, Any]], None]
+
+
+def extract_stream_delta(line: str) -> Optional[str]:
+    """Extract token text from an OpenAI-compatible SSE data line."""
+    raw = (line or "").strip()
+    if not raw:
+        return None
+    if raw.startswith("data:"):
+        raw = raw[5:].strip()
+    if not raw or raw == "[DONE]":
+        return None
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+    choices = payload.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+
+    first = choices[0] if isinstance(choices[0], dict) else {}
+    delta = first.get("delta")
+    if isinstance(delta, dict):
+        content = delta.get("content")
+        if isinstance(content, str) and content:
+            return content
+
+    message = first.get("message")
+    if isinstance(message, dict):
+        content = message.get("content")
+        if isinstance(content, str) and content:
+            return content
+
+    text = first.get("text")
+    return text if isinstance(text, str) and text else None
+
+
 def create_commit_evaluator(
     *,
     data_dir: str,
@@ -68,6 +107,7 @@ def create_commit_evaluator(
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
     expected_feature: Optional[str] = None,
+    progress_callback: Optional[ProgressCallback] = None,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -82,6 +122,7 @@ def create_commit_evaluator(
         forced_checker_id=forced_checker_id,
         worktree_base=worktree_base,
         expected_feature=expected_feature,
+        progress_callback=progress_callback,
     )
 
 
@@ -111,6 +152,7 @@ class CommitEvaluatorModerate:
         forced_checker_id: Optional[str] = None,
         worktree_base: str = "build",
         expected_feature: Optional[str] = None,
+        progress_callback: Optional[ProgressCallback] = None,
     ):
         self.api_key = (
             api_key
@@ -142,6 +184,7 @@ class CommitEvaluatorModerate:
         self.forced_checker_id = forced_checker_id
         self.worktree_base = worktree_base  # 'build' or 'temp'
         self.expected_feature = (expected_feature or "").strip()
+        self.progress_callback = progress_callback
 
         # Checker API base URL (default to localhost, can be overridden via env)
         self.checker_api_base = os.getenv("OSCANNER_CHECKER_API_BASE", "http://localhost:8000")
@@ -197,6 +240,61 @@ class CommitEvaluatorModerate:
                 self._http_client.close()
             except Exception:
                 pass  # Ignore errors during cleanup
+
+    def _emit_progress(self, event: str, data: Dict[str, Any]) -> None:
+        if not self.progress_callback:
+            return
+        try:
+            self.progress_callback(event, data)
+        except Exception as e:
+            print(f"[Streaming] Progress callback failed: {e}")
+
+    def _complete_chat(self, model: str, prompt: str, *, label: str) -> str:
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "max_tokens": 4000,
+        }
+
+        if not self.progress_callback:
+            resp = self._http_client.post(
+                self.api_url,
+                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                json=payload,
+            )
+            if not resp.is_success:
+                raise RuntimeError(f"{resp.status_code} {resp.text[:200]}")
+            data = resp.json()
+            if "choices" not in data or not data["choices"]:
+                raise RuntimeError("No choices in response")
+            return data["choices"][0]["message"]["content"]
+
+        self._emit_progress("section", {"title": label, "status": "running"})
+        content_parts: List[str] = []
+        stream_payload = dict(payload)
+        stream_payload["stream"] = True
+
+        with self._http_client.stream(
+            "POST",
+            self.api_url,
+            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+            json=stream_payload,
+        ) as resp:
+            if not resp.is_success:
+                body = resp.read().decode("utf-8", errors="replace")
+                raise RuntimeError(f"{resp.status_code} {body[:200]}")
+
+            for line in resp.iter_lines():
+                delta = extract_stream_delta(line)
+                if delta is None:
+                    continue
+                content_parts.append(delta)
+                self._emit_progress("token", {"content": delta, "label": label})
+
+        content = "".join(content_parts)
+        self._emit_progress("section", {"title": label, "status": "done"})
+        return content
 
     def evaluate_engineer(
         self,
@@ -1034,25 +1132,7 @@ Return the same JSON format as before."""
         models_to_try = [self.model] + (self.fallback_models or [])
         for m in models_to_try:
             try:
-                resp = self._http_client.post(
-                    self.api_url,
-                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                    json={
-                        "model": m,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.3,
-                        "max_tokens": 4000,
-                    },
-                )
-                
-                if not resp.is_success:
-                    continue
-                
-                data = resp.json()
-                if "choices" not in data or not data["choices"]:
-                    continue
-                
-                content = data["choices"][0]["message"]["content"]
+                content = self._complete_chat(m, prompt, label=f"评估{part_label}")
                 print(f"[Multi-Stage] Part {part_name} response received ({len(content)} chars)")
                 result = self._parse_llm_response_with_retry(content, prompt, m)
                 result["_part_name"] = part_name  # Mark which part this result came from
@@ -1162,40 +1242,13 @@ Return the same JSON format as before."""
                 print(f"[LLM] Calling {m} at {self.api_url}")
                 print(f"[DEBUG] Request config: temperature=0.3, max_tokens=4000")
 
-                resp = self._http_client.post(
-                    self.api_url,
-                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                    json={
-                        "model": m,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.3,
-                        "max_tokens": 4000,
-                    },
-                )
-                print(f"[DEBUG] API response status: {resp.status_code}")
-
-                # httpx uses is_success instead of ok
-                if not resp.is_success:
-                    last_err = f"{resp.status_code} {resp.text[:200]}"
-                    print(f"[ERROR] LLM API returned error: {last_err}")
-                    continue
-
-                data = resp.json()
-                print(f"[DEBUG] Response JSON keys: {list(data.keys())}")
-
-                if "choices" not in data or not data["choices"]:
-                    print(f"[ERROR] No choices in API response: {data}")
-                    last_err = "No choices in response"
-                    continue
-
-                content = data["choices"][0]["message"]["content"]
+                content = self._complete_chat(m, prompt, label="生成整体评估")
                 print(f"[LLM] Response received ({len(content)} chars), parsing...")
                 return self._parse_llm_response_with_retry(content, prompt, m)
 
             except KeyError as e:
                 last_err = f"KeyError accessing response structure: {e}"
                 print(f"[ERROR] {last_err}")
-                print(f"[DEBUG] Response data: {str(data)[:500]}")
                 continue
             except Exception as e:
                 last_err = str(e)

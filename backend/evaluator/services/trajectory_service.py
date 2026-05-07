@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Callable, Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
 
 from evaluator.paths import get_trajectory_cache_path, get_platform_data_dir
@@ -23,6 +23,8 @@ from evaluator.services.extraction_service import (
     sync_gitee_data_incremental,
 )
 from evaluator.plugin_registry import load_scan_module
+
+ProgressCallback = Callable[[str, Dict[str, Any]], None]
 
 
 def load_trajectory_cache(username: str) -> Optional[TrajectoryCache]:
@@ -293,6 +295,7 @@ def create_checkpoint_evaluation(
     worktree_base: str = "build",
     checkpoint_strategy: str = "period",
     expected_feature: Optional[str] = None,
+    progress_callback: Optional[ProgressCallback] = None,
 ) -> TrajectoryCheckpoint:
     """
     Create a checkpoint by evaluating commits.
@@ -368,10 +371,17 @@ def create_checkpoint_evaluation(
         forced_checker_id=forced_checker_id,
         worktree_base=worktree_base,
         expected_feature=expected_feature,
+        progress_callback=progress_callback,
     )
 
     # Evaluate
     print(f"[Trajectory] Evaluating checkpoint {checkpoint_id} with {len(commits)} commits (previous_checkpoint: {previous_checkpoint.checkpoint_id if previous_checkpoint else 'None'})")
+    if progress_callback:
+        progress_callback("section", {
+            "title": f"评估检查点 #{checkpoint_id}",
+            "status": "running",
+            "commit_count": len(commits),
+        })
     evaluation_result = evaluator.evaluate_engineer(
         commits=sorted_commits,
         username=username,
@@ -379,6 +389,12 @@ def create_checkpoint_evaluation(
         load_files=True,
         use_chunking=True
     )
+    if progress_callback:
+        progress_callback("section", {
+            "title": f"评估检查点 #{checkpoint_id}",
+            "status": "done",
+            "commit_count": len(commits),
+        })
 
     # Debug: Check type of evaluation_result
     print(f"[Trajectory] evaluation_result type: {type(evaluation_result)}")
@@ -918,6 +934,7 @@ def analyze_growth_trajectory(
     end_sha: Optional[str] = None,
     save_to_cache: bool = True,
     expected_feature: Optional[str] = None,
+    progress_callback: Optional[ProgressCallback] = None,
 ) -> TrajectoryResponse:
     """
     Main orchestration function for growth trajectory analysis.
@@ -945,6 +962,9 @@ def analyze_growth_trajectory(
     Returns:
         TrajectoryResponse with analysis results
     """
+    if progress_callback:
+        progress_callback("section", {"title": "准备轨迹分析", "status": "running"})
+
     # Normalize username for consistent caching (sort if comma-separated)
     if ',' in username:
         authors = [a.strip() for a in username.split(',')]
@@ -987,6 +1007,12 @@ def analyze_growth_trajectory(
 
     # Ensure all repos have data synced
     print(f"[Trajectory] Ensuring data is synced for {len(repo_urls)} repositories")
+    if progress_callback:
+        progress_callback("section", {
+            "title": "同步仓库数据",
+            "status": "running",
+            "repo_count": len(repo_urls),
+        })
     sync_errors = []
     for repo_url in repo_urls:
         try:
@@ -1007,6 +1033,13 @@ def analyze_growth_trajectory(
                 sync_errors.append(f"Connection error: Cannot reach {repo_url}. Please check your network connection.")
             else:
                 sync_errors.append(f"Failed to extract data from {repo_url}: {error_msg}")
+    if progress_callback:
+        progress_callback("section", {
+            "title": "同步仓库数据",
+            "status": "done" if not sync_errors else "warning",
+            "repo_count": len(repo_urls),
+            "errors": sync_errors,
+        })
 
     # Get commits (all commits if use_cache=False and checkpoints cleared, only new commits if use_cache=True)
     # When use_cache=False, last_synced_sha is set to None, so get_new_commits_from_repos will return all commits
@@ -1018,6 +1051,12 @@ def analyze_growth_trajectory(
     )
 
     print(f"[Trajectory] Found {new_commits_count} commits to evaluate (last_synced_sha: {trajectory.last_synced_sha}, use_cache={use_cache})")
+    if progress_callback:
+        progress_callback("section", {
+            "title": "筛选提交记录",
+            "status": "done",
+            "commit_count": new_commits_count,
+        })
 
     # Apply commit range filtering when checkpoint_strategy is 'none'
     if checkpoint_strategy == "none" and (start_sha or end_sha):
@@ -1100,6 +1139,13 @@ def analyze_growth_trajectory(
         )
 
     print(f"[Trajectory] Grouped into {len(checkpoint_groups)} checkpoint groups, {len(remaining_shas)} commits remaining")
+    if progress_callback:
+        progress_callback("section", {
+            "title": "组织评估检查点",
+            "status": "done",
+            "checkpoint_count": len(checkpoint_groups),
+            "remaining_commits": len(remaining_shas),
+        })
 
     # Check if we have any checkpoint groups
     if not checkpoint_groups:
@@ -1160,6 +1206,7 @@ def analyze_growth_trajectory(
                 forced_checker_id=forced_checker_id,
                 checkpoint_strategy=checkpoint_strategy,
                 expected_feature=expected_feature,
+                progress_callback=progress_callback,
             )
 
             # Update trajectory

@@ -4,7 +4,9 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 import asyncio
+import json
 
 from evaluator.config import DEFAULT_LLM_MODEL, get_llm_api_key, get_github_token, get_gitee_token
 from evaluator.schemas import TrajectoryResponse
@@ -22,6 +24,11 @@ router = APIRouter()
 EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME = {"吴衍标"}
 ONE_OFF_PRIMARY_MODEL = "deepseek/deepseek-v4-pro"
 ONE_OFF_PRIMARY_MODELS = (ONE_OFF_PRIMARY_MODEL,)
+
+
+def format_sse_event(event: str, data: Dict[str, Any]) -> str:
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {event}\ndata: {payload}\n\n"
 
 
 def _get_commit_datetime(commit: Dict[str, Any]) -> Optional[datetime]:
@@ -318,6 +325,174 @@ async def analyze_trajectory(
         raise HTTPException(status_code=500, detail=f"Trajectory analysis failed: {str(e)}")
 
 
+@router.post("/api/trajectory/analyze_stream")
+async def analyze_trajectory_stream(
+    request_body: Dict[str, Any],
+    plugin: str = Query(""),
+    model: str = Query(DEFAULT_LLM_MODEL),
+    language: str = Query("zh-CN"),
+    use_cache: bool = Query(True),
+    parallel_chunking: bool = Query(True),
+    max_parallel_workers: int = Query(3),
+    forced_checker: str = Query(""),
+    worktree_base: str = Query("build"),
+    checkpoint_strategy: str = Query("period")
+) -> StreamingResponse:
+    """
+    Stream cached trajectory analysis as SSE.
+
+    Final `result` event matches /api/trajectory/analyze response shape.
+    """
+
+    async def event_stream():
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue[tuple[str, Dict[str, Any]]] = asyncio.Queue()
+
+        def emit(event: str, data: Dict[str, Any]) -> None:
+            loop.call_soon_threadsafe(queue.put_nowait, (event, data))
+
+        def run_analysis() -> Dict[str, Any]:
+            if not isinstance(request_body, dict):
+                raise ValueError("Request body must be a JSON object")
+
+            username = request_body.get("username")
+            repo_urls = request_body.get("repo_urls", [])
+            if not repo_urls and request_body.get("repo_url"):
+                repo_urls = [request_body.get("repo_url")]
+
+            aliases = request_body.get("aliases", [])
+            if not isinstance(aliases, list):
+                aliases = []
+
+            if not username:
+                raise ValueError("Missing required field: username")
+
+            if not isinstance(repo_urls, list):
+                raise ValueError("repo_urls must be a list (can be empty)")
+
+            if not repo_urls:
+                return {
+                    "success": True,
+                    "trajectory": {
+                        "username": username,
+                        "repo_urls": [],
+                        "checkpoints": [],
+                        "total_checkpoints": 0,
+                        "created_at": None,
+                        "updated_at": None,
+                    },
+                    "new_checkpoint_created": False,
+                    "message": "No repositories to analyze",
+                    "commits_pending": 0,
+                }
+
+            if username not in aliases:
+                aliases = [username] + aliases
+
+            api_key = get_llm_api_key()
+            if not api_key:
+                raise RuntimeError(
+                    "LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
+                )
+
+            github_token = get_github_token()
+            gitee_token = get_gitee_token()
+            missing_platforms: List[str] = []
+
+            for repo_url in repo_urls:
+                parsed = parse_repo_url(repo_url)
+                if not parsed:
+                    continue
+
+                platform, _, _ = parsed
+                if platform == "github" and not github_token and "github" not in missing_platforms:
+                    missing_platforms.append("github")
+                elif platform == "gitee" and not gitee_token and "gitee" not in missing_platforms:
+                    missing_platforms.append("gitee")
+
+            if missing_platforms:
+                missing_tokens = []
+                if "github" in missing_platforms:
+                    missing_tokens.append("GitHub Token (GITHUB_TOKEN)")
+                if "gitee" in missing_platforms:
+                    missing_tokens.append("Gitee Token (GITEE_TOKEN)")
+                raise RuntimeError(
+                    f"Missing required platform tokens: {', '.join(missing_tokens)}. "
+                    "Please configure them in Settings (LLM Settings) before analyzing. "
+                    "Without tokens, API rate limits are very low (~60 requests/hour for GitHub, lower for Gitee)."
+                )
+
+            plugin_id = resolve_plugin_id(plugin)
+            forced_checker_id = forced_checker.strip() if forced_checker else None
+            worktree_base_value = worktree_base.strip() if worktree_base else "build"
+            if worktree_base_value not in ("build", "temp"):
+                worktree_base_value = "build"
+
+            checkpoint_strategy_value = checkpoint_strategy.strip() if checkpoint_strategy else "period"
+            if checkpoint_strategy_value not in ("period", "none"):
+                checkpoint_strategy_value = "period"
+
+            emit("section", {
+                "title": "开始成长轨迹分析",
+                "status": "running",
+                "username": username,
+                "repo_count": len(repo_urls),
+            })
+
+            response = analyze_growth_trajectory(
+                username,
+                repo_urls,
+                aliases,
+                plugin_id,
+                model,
+                language,
+                use_cache,
+                parallel_chunking,
+                max_parallel_workers,
+                forced_checker_id,
+                worktree_base_value,
+                checkpoint_strategy_value,
+                None,
+                None,
+                True,
+                None,
+                emit,
+            )
+            return response.model_dump()
+
+        yield format_sse_event("section", {"title": "连接已建立", "status": "done"})
+        task = loop.run_in_executor(None, run_analysis)
+
+        while True:
+            if task.done():
+                while not queue.empty():
+                    event, data = queue.get_nowait()
+                    yield format_sse_event(event, data)
+                try:
+                    result = task.result()
+                    yield format_sse_event("result", result)
+                    yield format_sse_event("done", {"finish_reason": "stop"})
+                except Exception as e:
+                    yield format_sse_event("error", {"message": str(e)})
+                break
+
+            try:
+                event, data = await asyncio.wait_for(queue.get(), timeout=15)
+                yield format_sse_event(event, data)
+            except asyncio.TimeoutError:
+                yield format_sse_event("heartbeat", {"status": "running"})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @router.post("/api/trajectory/analyze_one-off")
 async def analyze_trajectory_one_off(
     request_body: Dict[str, Any],
@@ -582,6 +757,248 @@ async def analyze_trajectory_one_off(
     except Exception as e:
         print(f"[Trajectory API One-Off] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Trajectory analysis failed: {str(e)}")
+
+
+@router.post("/api/trajectory/analyze_one_off_stream")
+async def analyze_trajectory_one_off_stream(
+    request_body: Dict[str, Any],
+    plugin: str = Query("zgc_ai_native_2026"),
+    model: str = Query(DEFAULT_LLM_MODEL),
+    language: str = Query("zh-CN"),
+    use_cache: bool = Query(True),
+    parallel_chunking: bool = Query(True),
+    max_parallel_workers: int = Query(3),
+    forced_checker: str = Query(""),
+    worktree_base: str = Query("build"),
+    checkpoint_strategy: str = Query("none"),
+    start_sha: str = Query(""),
+    end_sha: str = Query("")
+) -> StreamingResponse:
+    """
+    Stream one-off trajectory analysis as SSE.
+
+    Events:
+    - section: high-level analysis phase status
+    - token: raw LLM token text from OpenAI-compatible streaming chunks
+    - result: final JSON payload matching /api/trajectory/analyze_one-off
+    - error: user-readable failure
+    - done: stream completed
+    """
+
+    async def event_stream():
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue[tuple[str, Dict[str, Any]]] = asyncio.Queue()
+
+        def emit(event: str, data: Dict[str, Any]) -> None:
+            loop.call_soon_threadsafe(queue.put_nowait, (event, data))
+
+        def run_analysis() -> Dict[str, Any]:
+            if not isinstance(request_body, dict):
+                raise ValueError("Request body must be a JSON object")
+
+            username = request_body.get("username")
+            username_is_explicit_null = "username" in request_body and request_body.get("username") is None
+
+            repo_urls = request_body.get("repo_urls", [])
+            if not repo_urls and request_body.get("repo_url"):
+                repo_urls = [request_body.get("repo_url")]
+
+            aliases = request_body.get("aliases", [])
+            if not isinstance(aliases, list):
+                aliases = []
+
+            expected_feature = request_body.get("expected_feature")
+            if isinstance(expected_feature, str):
+                expected_feature = expected_feature.strip() or None
+            elif expected_feature is not None:
+                raise ValueError("expected_feature must be a string")
+
+            if isinstance(username, str):
+                username = username.strip()
+            elif username is not None:
+                raise ValueError("username must be a string")
+
+            if not isinstance(repo_urls, list):
+                raise ValueError("repo_urls must be a list (can be empty)")
+
+            if not repo_urls:
+                return {
+                    "success": False,
+                    "checkpoint": None,
+                    "message": "No repositories to analyze",
+                    "commits_analyzed": 0,
+                }
+
+            api_key = get_llm_api_key()
+            if not api_key:
+                raise RuntimeError(
+                    "LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
+                )
+
+            github_token = get_github_token()
+            gitee_token = get_gitee_token()
+            missing_platforms: List[str] = []
+
+            for repo_url in repo_urls:
+                parsed = parse_repo_url(repo_url)
+                if not parsed:
+                    continue
+
+                platform, _, _ = parsed
+                if platform == "github" and not github_token and "github" not in missing_platforms:
+                    missing_platforms.append("github")
+                elif platform == "gitee" and not gitee_token and "gitee" not in missing_platforms:
+                    missing_platforms.append("gitee")
+
+            if missing_platforms:
+                missing_tokens = []
+                if "github" in missing_platforms:
+                    missing_tokens.append("GitHub Token (GITHUB_TOKEN)")
+                if "gitee" in missing_platforms:
+                    missing_tokens.append("Gitee Token (GITEE_TOKEN)")
+                raise RuntimeError(
+                    f"Missing required platform tokens: {', '.join(missing_tokens)}. "
+                    "Please configure them in Settings (LLM Settings) before analyzing. "
+                    "Without tokens, API rate limits are very low (~60 requests/hour for GitHub, lower for Gitee)."
+                )
+
+            inferred_all_authors: List[str] = []
+            if not username:
+                if username_is_explicit_null:
+                    inferred_all_authors = _infer_gitee_authors_from_commits(repo_urls)
+                    if inferred_all_authors:
+                        username = inferred_all_authors[0]
+                        emit("section", {
+                            "title": "识别仓库作者",
+                            "status": "done",
+                            "author_count": len(inferred_all_authors),
+                        })
+
+                if not username:
+                    username = _infer_username_from_first_commit(repo_urls)
+                    if not username:
+                        raise RuntimeError(
+                            "Missing required field: username. Unable to infer default username from first commit author."
+                        )
+
+            merged_aliases: List[str] = []
+            seen_aliases = set()
+            for candidate in [username, *inferred_all_authors, *aliases]:
+                if not isinstance(candidate, str):
+                    continue
+                cleaned = candidate.strip()
+                if not cleaned:
+                    continue
+                key = cleaned.lower()
+                if key in seen_aliases:
+                    continue
+                seen_aliases.add(key)
+                merged_aliases.append(cleaned)
+            aliases = merged_aliases
+
+            plugin_id = resolve_plugin_id(plugin)
+            forced_checker_id = forced_checker.strip() if forced_checker else None
+            worktree_base_value = worktree_base.strip() if worktree_base else "build"
+            if worktree_base_value not in ("build", "temp"):
+                worktree_base_value = "build"
+
+            checkpoint_strategy_value = checkpoint_strategy.strip() if checkpoint_strategy else "none"
+            if checkpoint_strategy_value not in ("period", "none"):
+                checkpoint_strategy_value = "none"
+
+            start_sha_value = start_sha.strip() if start_sha else None
+            end_sha_value = end_sha.strip() if end_sha else None
+
+            emit("section", {
+                "title": "开始整体评估",
+                "status": "running",
+                "username": username,
+                "repo_count": len(repo_urls),
+            })
+
+            response = analyze_growth_trajectory(
+                username,
+                repo_urls,
+                aliases,
+                plugin_id,
+                ONE_OFF_PRIMARY_MODEL,
+                language,
+                use_cache,
+                parallel_chunking,
+                max_parallel_workers,
+                forced_checker_id,
+                worktree_base_value,
+                checkpoint_strategy_value,
+                start_sha_value,
+                end_sha_value,
+                False,
+                expected_feature,
+                emit,
+            )
+
+            if not response.success or not response.trajectory or not response.trajectory.checkpoints:
+                return {
+                    "success": False,
+                    "checkpoint": None,
+                    "message": f"{ONE_OFF_PRIMARY_MODEL} analysis failed: {response.message}",
+                    "commits_analyzed": 0,
+                    "model_judging": {
+                        "primary_models": list(ONE_OFF_PRIMARY_MODELS),
+                        "synthesis_model": None,
+                        "failed_model": ONE_OFF_PRIMARY_MODEL,
+                    },
+                }
+
+            checkpoint = response.trajectory.checkpoints[-1]
+            checkpoint_data = checkpoint.model_dump()
+            commit_count = (
+                (checkpoint_data.get("commits_range") or {}).get("commit_count")
+                or 0
+            )
+
+            return {
+                "success": True,
+                "checkpoint": checkpoint_data,
+                "message": f"Created final one-off judgment using {ONE_OFF_PRIMARY_MODEL}.",
+                "commits_analyzed": commit_count,
+                "model_judging": {
+                    "primary_models": list(ONE_OFF_PRIMARY_MODELS),
+                    "synthesis_model": None,
+                    "conflicts_detected": False,
+                },
+            }
+
+        yield format_sse_event("section", {"title": "连接已建立", "status": "done"})
+        task = loop.run_in_executor(None, run_analysis)
+
+        while True:
+            if task.done():
+                while not queue.empty():
+                    event, data = queue.get_nowait()
+                    yield format_sse_event(event, data)
+                try:
+                    result = task.result()
+                    yield format_sse_event("result", result)
+                    yield format_sse_event("done", {"finish_reason": "stop"})
+                except Exception as e:
+                    yield format_sse_event("error", {"message": str(e)})
+                break
+
+            try:
+                event, data = await asyncio.wait_for(queue.get(), timeout=15)
+                yield format_sse_event(event, data)
+            except asyncio.TimeoutError:
+                yield format_sse_event("heartbeat", {"status": "running"})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/api/trajectory/{username}")
