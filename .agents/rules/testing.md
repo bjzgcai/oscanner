@@ -1,9 +1,9 @@
 # Testing Conventions
 
 ## Current Testing Approach
-- **Integration testing** through CLI and API endpoints
-- **Manual verification** via dashboard UI
-- **Example scripts**: `example_moderate_evaluation.py`
+- Integration testing through CLI and API endpoints
+- Manual verification via dashboard UI
+- Example scripts: `example_moderate_evaluation.py`
 
 ## Testing Strategy
 
@@ -22,7 +22,7 @@ Test each endpoint with:
 
 ### Evaluation Testing
 - Test single author evaluation
-- Test multi-alias evaluation & merge
+- Test multi-alias evaluation and merge
 - Verify weighted averaging logic
 - Check LLM response parsing
 
@@ -34,7 +34,7 @@ Test each endpoint with:
 
 ## Test Data
 - Use public repositories for testing
-- Test with real commit data (no mocking)
+- Test with real commit data; avoid mocks for collector/evaluation flows unless an external dependency must be isolated
 - Verify cache directories created correctly
 
 ## Error Scenarios

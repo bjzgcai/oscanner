@@ -1,0 +1,7 @@
+interface:
+  display_name: "Test Explore"
+  short_description: "Assess tests, coverage, and quality gaps"
+  default_prompt: "Use $test-explore to assess test coverage and quality for a target component."
+
+policy:
+  allow_implicit_invocation: true
