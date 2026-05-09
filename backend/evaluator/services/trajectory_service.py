@@ -1,6 +1,7 @@
 """Trajectory service for managing user growth tracking."""
 
 import json
+import inspect
 from pathlib import Path
 from typing import Callable, Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
@@ -280,6 +281,7 @@ def analyze_group_repositories(
     full_repo: bool = True,
     use_chunking: bool = False,
     expected_feature: Optional[str] = None,
+    progress_callback: Optional[ProgressCallback] = None,
 ) -> Dict[str, Any]:
     """
     Evaluate multiple repositories in one request, using full repository commit history.
@@ -306,6 +308,13 @@ def analyze_group_repositories(
         seen_urls.add(repo_url)
         repo_urls.append(repo_url)
 
+    if progress_callback:
+        progress_callback("section", {
+            "title": "同步仓库数据",
+            "status": "running",
+            "repo_count": len(repo_urls),
+        })
+
     sync_results: Dict[str, Dict[str, Any]] = {}
     with ThreadPoolExecutor(max_workers=min(max_workers, len(repo_urls) or 1)) as executor:
         futures = {
@@ -326,10 +335,19 @@ def analyze_group_repositories(
             except Exception as e:
                 sync_results[repo_url] = {"success": False, "error": str(e)}
 
+    if progress_callback:
+        synced_count = sum(1 for item in sync_results.values() if item.get("success"))
+        progress_callback("section", {
+            "title": "同步仓库数据",
+            "status": "done" if synced_count == len(repo_urls) else "warning",
+            "repo_count": len(repo_urls),
+            "success_count": synced_count,
+        })
+
     meta, scan_mod, _ = load_scan_module(plugin_id)
     results: List[Dict[str, Any]] = []
 
-    for item in repositories:
+    for index, item in enumerate(repositories):
         repo_url = str(item.get("repo_url") or "").strip()
         base_result = {
             "id": item.get("id"),
@@ -361,6 +379,14 @@ def analyze_group_repositories(
             continue
 
         try:
+            if progress_callback:
+                progress_callback("section", {
+                    "title": f"评估仓库 {index + 1}/{len(repositories)}",
+                    "status": "running",
+                    "repo_url": repo_url,
+                    "username": item.get("username"),
+                })
+
             commits, data_dir = _load_all_repo_commits(repo_url)
             if not commits:
                 results.append({
@@ -395,18 +421,27 @@ def analyze_group_repositories(
                 })
                 continue
 
+            evaluator_kwargs = {
+                "data_dir": str(data_dir),
+                "api_key": get_llm_api_key(),
+                "model": model,
+                "mode": "moderate",
+                "language": language,
+                "parallel_chunking": False,
+                "max_parallel_workers": 1,
+                "forced_checker_id": forced_checker_id,
+                "worktree_base": worktree_base,
+                "expected_feature": expected_feature,
+                "max_input_tokens": 1_000_000,
+                "progress_callback": progress_callback,
+            }
+            accepted_kwargs = set(inspect.signature(scan_mod.create_commit_evaluator).parameters)
             evaluator = scan_mod.create_commit_evaluator(
-                data_dir=str(data_dir),
-                api_key=get_llm_api_key(),
-                model=model,
-                mode="moderate",
-                language=language,
-                parallel_chunking=False,
-                max_parallel_workers=1,
-                forced_checker_id=forced_checker_id,
-                worktree_base=worktree_base,
-                expected_feature=expected_feature,
-                max_input_tokens=1_000_000,
+                **{
+                    key: value
+                    for key, value in evaluator_kwargs.items()
+                    if key in accepted_kwargs
+                }
             )
 
             if full_repo and hasattr(evaluator, "evaluate_repository"):
@@ -447,6 +482,14 @@ def analyze_group_repositories(
                 "commits_analyzed": len(commits),
                 "sync": sync_result,
             })
+            if progress_callback:
+                progress_callback("section", {
+                    "title": f"评估仓库 {index + 1}/{len(repositories)}",
+                    "status": "done",
+                    "repo_url": repo_url,
+                    "username": item.get("username"),
+                    "commit_count": len(commits),
+                })
         except Exception as e:
             results.append({
                 **base_result,
@@ -457,6 +500,14 @@ def analyze_group_repositories(
                 "commits_analyzed": 0,
                 "sync": sync_result,
             })
+            if progress_callback:
+                progress_callback("section", {
+                    "title": f"评估仓库 {index + 1}/{len(repositories)}",
+                    "status": "warning",
+                    "repo_url": repo_url,
+                    "username": item.get("username"),
+                    "message": str(e),
+                })
 
     success_count = sum(1 for item in results if item.get("success"))
     failed_count = len(results) - success_count

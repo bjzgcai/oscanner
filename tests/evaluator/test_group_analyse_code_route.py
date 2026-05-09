@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from fastapi.responses import StreamingResponse
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -74,6 +75,75 @@ async def test_group_analyse_code_route_batches_repos_without_parallel_chunking(
     assert captured["full_repo"] is True
     assert captured["use_chunking"] is False
     assert captured["max_fetch_workers"] == 4
+
+
+@pytest.mark.anyio
+async def test_group_analyse_code_route_streams_progress_and_final_result(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+
+    captured = {}
+
+    class FakeRequest:
+        headers = {"accept": "text/event-stream"}
+
+    def fake_analyze_group_repositories(**kwargs):
+        captured.update(kwargs)
+        kwargs["progress_callback"]("section", {
+            "title": "评估 Alice",
+            "status": "running",
+            "repo_url": "https://gitee.com/org/repo-a",
+        })
+        kwargs["progress_callback"]("token", {"content": "streamed judgment"})
+        return {
+            "success": True,
+            "results": [
+                {
+                    "success": True,
+                    "id": "s1",
+                    "username": "Alice",
+                    "repo_url": "https://gitee.com/org/repo-a",
+                    "score": 88,
+                    "checkpoint": {"evaluation": {"scores": {"total": 88}}},
+                    "commits_analyzed": 12,
+                },
+            ],
+            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+        }
+
+    monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(trajectory_route, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(trajectory_route, "resolve_plugin_id", lambda plugin: plugin)
+    monkeypatch.setattr(trajectory_route, "analyze_group_repositories", fake_analyze_group_repositories)
+
+    response = await trajectory_route.group_analyse_code(
+        request_body={
+            "tag": "整体",
+            "students": [
+                {"id": "s1", "username": "Alice", "repo_url": "https://gitee.com/org/repo-a"},
+            ],
+        },
+        request=FakeRequest(),
+        plugin="zgc_ai_native_2026",
+        language="zh-CN",
+        use_cache=True,
+        max_fetch_workers=4,
+        forced_checker="",
+        worktree_base="build",
+    )
+
+    assert isinstance(response, StreamingResponse)
+
+    chunks = []
+    async for chunk in response.body_iterator:
+        chunks.append(chunk if isinstance(chunk, bytes) else chunk.encode("utf-8"))
+    body = b"".join(chunks).decode("utf-8")
+
+    assert captured["progress_callback"]
+    assert "event: section" in body
+    assert "评估 Alice" in body
+    assert "streamed judgment" in body
+    assert "event: result" in body
+    assert '"repo_url":"https://gitee.com/org/repo-a"' in body
 
 
 def test_ai_native_plugin_evaluate_repository_uses_all_commits_without_chunking(monkeypatch):

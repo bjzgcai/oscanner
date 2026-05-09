@@ -3,7 +3,7 @@
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 import asyncio
 import json
@@ -87,6 +87,27 @@ def _check_platform_tokens_for_repos(repo_urls: List[str]) -> None:
 def format_sse_event(event: str, data: Dict[str, Any]) -> str:
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     return f"event: {event}\ndata: {payload}\n\n"
+
+
+def _wants_sse(request: Request | None) -> bool:
+    accept = str((getattr(request, "headers", {}) or {}).get("accept") or "").lower()
+    return "text/event-stream" in accept
+
+
+def _with_single_repo_compat(result: Dict[str, Any]) -> Dict[str, Any]:
+    # Single-repo compatibility for callers that expect the one-off shape.
+    results = result.get("results") if isinstance(result, dict) else None
+    if isinstance(results, list) and len(results) == 1:
+        single = results[0]
+        return {
+            **result,
+            "checkpoint": single.get("checkpoint"),
+            "score": single.get("score"),
+            "commits_analyzed": single.get("commits_analyzed", 0),
+            "repo_url": single.get("repo_url"),
+            "username": single.get("username"),
+        }
+    return result
 
 
 def _get_commit_datetime(commit: Dict[str, Any]) -> Optional[datetime]:
@@ -554,6 +575,7 @@ async def analyze_trajectory_stream(
 @router.post("/api/courses/group_analyse_code")
 async def group_analyse_code(
     request_body: Dict[str, Any],
+    request: Request = None,
     plugin: str = Query("zgc_ai_native_2026"),
     language: str = Query("zh-CN"),
     use_cache: bool = Query(True),
@@ -571,6 +593,25 @@ async def group_analyse_code(
     - it accepts multiple repos in a single request so scores are produced with
       the same model, rubric, and runtime settings
     """
+    if _wants_sse(request):
+        return StreamingResponse(
+            _group_analyse_code_event_stream(
+                request_body=request_body,
+                plugin=plugin,
+                language=language,
+                use_cache=use_cache,
+                max_fetch_workers=max_fetch_workers,
+                forced_checker=forced_checker,
+                worktree_base=worktree_base,
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     try:
         if not isinstance(request_body, dict):
             raise HTTPException(status_code=400, detail="Request body must be a JSON object")
@@ -624,26 +665,108 @@ async def group_analyse_code(
             ),
         )
 
-        # Single-repo compatibility for callers that expect the one-off shape.
-        results = result.get("results") if isinstance(result, dict) else None
-        if isinstance(results, list) and len(results) == 1:
-            single = results[0]
-            return {
-                **result,
-                "checkpoint": single.get("checkpoint"),
-                "score": single.get("score"),
-                "commits_analyzed": single.get("commits_analyzed", 0),
-                "repo_url": single.get("repo_url"),
-                "username": single.get("username"),
-            }
-
-        return result
+        return _with_single_repo_compat(result)
 
     except HTTPException:
         raise
     except Exception as e:
         print(f"[Courses Group Analyse] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Group analysis failed: {str(e)}")
+
+
+async def _group_analyse_code_event_stream(
+    *,
+    request_body: Dict[str, Any],
+    plugin: str,
+    language: str,
+    use_cache: bool,
+    max_fetch_workers: int,
+    forced_checker: str,
+    worktree_base: str,
+):
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue[tuple[str, Dict[str, Any]]] = asyncio.Queue()
+
+    def emit(event: str, data: Dict[str, Any]) -> None:
+        loop.call_soon_threadsafe(queue.put_nowait, (event, data))
+
+    def run_analysis() -> Dict[str, Any]:
+        if not isinstance(request_body, dict):
+            raise ValueError("Request body must be a JSON object")
+
+        repositories = _extract_group_repository_items(request_body)
+        if not repositories:
+            return {
+                "success": False,
+                "message": "No repositories to analyze",
+                "results": [],
+                "summary": {"total": 0, "success": 0, "failed": 0},
+            }
+
+        api_key = get_llm_api_key()
+        if not api_key:
+            raise RuntimeError(
+                "LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
+            )
+
+        repo_urls = [str(item.get("repo_url") or "").strip() for item in repositories if item.get("repo_url")]
+        _check_platform_tokens_for_repos(repo_urls)
+
+        plugin_id = resolve_plugin_id(plugin)
+        forced_checker_id = forced_checker.strip() if forced_checker else None
+        worktree_base_value = worktree_base.strip() if worktree_base else "build"
+        if worktree_base_value not in ("build", "temp"):
+            worktree_base_value = "build"
+
+        expected_feature = request_body.get("expected_feature")
+        if isinstance(expected_feature, str):
+            expected_feature = expected_feature.strip() or None
+        elif expected_feature is not None:
+            raise ValueError("expected_feature must be a string")
+
+        emit("section", {
+            "title": "开始团体仓库评估",
+            "status": "running",
+            "repo_count": len(repositories),
+        })
+
+        result = analyze_group_repositories(
+            repositories=repositories,
+            plugin_id=plugin_id,
+            model=ONE_OFF_PRIMARY_MODEL,
+            language=language,
+            use_cache=use_cache,
+            max_fetch_workers=max_fetch_workers,
+            forced_checker_id=forced_checker_id,
+            worktree_base=worktree_base_value,
+            full_repo=True,
+            use_chunking=False,
+            expected_feature=expected_feature,
+            progress_callback=emit,
+        )
+        return _with_single_repo_compat(result)
+
+    yield format_sse_event("section", {"title": "连接已建立", "status": "done"})
+    task = loop.run_in_executor(None, run_analysis)
+
+    while True:
+        if task.done():
+            while not queue.empty():
+                event, data = queue.get_nowait()
+                yield format_sse_event(event, data)
+            try:
+                result = task.result()
+                yield format_sse_event("result", result)
+                yield format_sse_event("done", {"finish_reason": "stop"})
+            except Exception as e:
+                yield format_sse_event("error", {"message": str(e)})
+            break
+
+        try:
+            event, data = await asyncio.wait_for(queue.get(), timeout=15)
+            yield format_sse_event(event, data)
+        except asyncio.TimeoutError:
+            yield format_sse_event("heartbeat", {"status": "running"})
 
 
 @router.post("/api/trajectory/analyze_one-off")
