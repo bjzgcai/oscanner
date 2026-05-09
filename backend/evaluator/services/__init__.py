@@ -22,6 +22,7 @@ from evaluator.services.trajectory_service import (
     load_trajectory_cache,
     save_trajectory_cache,
     analyze_growth_trajectory,
+    analyze_group_repositories,
     get_commits_by_date,
 )
 
@@ -41,5 +42,6 @@ __all__ = [
     "load_trajectory_cache",
     "save_trajectory_cache",
     "analyze_growth_trajectory",
+    "analyze_group_repositories",
     "get_commits_by_date",
 ]

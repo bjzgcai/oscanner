@@ -117,6 +117,7 @@ def _build_commit_index_entry(detail: Dict[str, Any]) -> Dict[str, Any]:
 def _merge_by_sha(new_items: List[Dict[str, Any]], existing_items: List[Dict[str, Any]], max_items: int) -> List[Dict[str, Any]]:
     merged: List[Dict[str, Any]] = []
     seen = set()
+    unlimited = max_items <= 0
 
     for item in [*new_items, *existing_items]:
         if not isinstance(item, dict):
@@ -126,7 +127,7 @@ def _merge_by_sha(new_items: List[Dict[str, Any]], existing_items: List[Dict[str
             continue
         seen.add(sha)
         merged.append(item)
-        if len(merged) >= max_items:
+        if not unlimited and len(merged) >= max_items:
             break
 
     return merged
@@ -350,11 +351,11 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
                 "clone",
                 "--no-tags",
                 "--single-branch",
-                "--depth",
-                str(max_commits),
                 repo_url,
                 str(clone_dir),
             ]
+            if max_commits > 0:
+                clone_cmd[4:4] = ["--depth", str(max_commits)]
             clone_result = _run_git(clone_cmd, timeout=300)
             if clone_result.returncode != 0:
                 print(f"✗ Git fallback clone failed: {clone_result.stderr}")
@@ -363,7 +364,10 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
             branch_result = _run_git(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=clone_dir, timeout=30)
             default_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "main"
 
-            rev_list_cmd = ["git", "rev-list", "--max-count", str(max_commits), "HEAD"]
+            rev_list_cmd = ["git", "rev-list"]
+            if max_commits > 0:
+                rev_list_cmd.extend(["--max-count", str(max_commits)])
+            rev_list_cmd.append("HEAD")
             rev_list_result = _run_git(rev_list_cmd, cwd=clone_dir, timeout=60)
             if rev_list_result.returncode != 0:
                 print(f"✗ Git fallback rev-list failed: {rev_list_result.stderr}")
@@ -595,7 +599,7 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
         return False
 
 
-def extract_github_data(owner: str, repo: str) -> bool:
+def extract_github_data(owner: str, repo: str, max_commits: int = 500) -> bool:
     """Extract GitHub repository data using extraction tool"""
     output_dir = get_platform_data_dir("github", owner, repo)
     try:
@@ -615,7 +619,7 @@ def extract_github_data(owner: str, repo: str) -> bool:
             "--out",
             str(output_dir),
             "--max-commits",
-            "500",  # Fetch enough to cover all contributors
+            str(max_commits),  # 0 means all commits in the extractor
         ]
 
         gh_token = get_github_token()
@@ -628,7 +632,7 @@ def extract_github_data(owner: str, repo: str) -> bool:
         if result.returncode != 0:
             print(f"✗ Extraction failed: {result.stderr}")
             print("↻ Trying git-based fallback extraction...")
-            return _extract_github_data_via_git(owner, repo, output_dir, max_commits=500)
+            return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
 
         print(f"✓ Extraction successful")
         print(result.stdout)
@@ -637,20 +641,20 @@ def extract_github_data(owner: str, repo: str) -> bool:
         has_commit_json = commits_dir.exists() and any(commits_dir.glob("*.json"))
         if not has_commit_json:
             print("⚠ API extraction produced no commits, trying git-based fallback...")
-            return _extract_github_data_via_git(owner, repo, output_dir, max_commits=500)
+            return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
 
         return True
 
     except subprocess.TimeoutExpired:
         print(f"✗ Extraction timeout after 30 minutes")
         print("↻ Trying git-based fallback extraction...")
-        return _extract_github_data_via_git(owner, repo, output_dir, max_commits=500)
+        return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
     except Exception as e:
         print(f"✗ Extraction error: {e}")
         import traceback
         traceback.print_exc()
         print("↻ Trying git-based fallback extraction...")
-        return _extract_github_data_via_git(owner, repo, output_dir, max_commits=500)
+        return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
 
 
 def fetch_github_commits(owner: str, repo: str, limit: int = 100) -> list:
@@ -755,9 +759,13 @@ def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -
 
     if not new_commit_summaries:
         print("[Gitee Incremental] No new commit SHAs found in fetched latest pages")
+        if max_commits <= 0 and remote_total is not None and remote_total > local_count:
+            print("[Gitee Incremental] Local data appears capped; re-extracting full history")
+            return extract_gitee_data(owner, repo, max_commits=0)
         return False
 
-    new_commit_summaries = new_commit_summaries[:max_commits]
+    if max_commits > 0:
+        new_commit_summaries = new_commit_summaries[:max_commits]
     print(f"[Gitee Incremental] Fetching details for {len(new_commit_summaries)} new commits")
 
     new_details: List[Dict[str, Any]] = []
@@ -857,7 +865,7 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
         per_page = 100
         session = get_requests_session()
         
-        while len(commits) < max_commits:
+        while max_commits <= 0 or len(commits) < max_commits:
             api_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits"
             params: Dict[str, Any] = {
                 "per_page": per_page,
@@ -891,7 +899,8 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
             if len(batch) < per_page:
                 break
             page += 1
-        commits = commits[:max_commits]
+        if max_commits > 0:
+            commits = commits[:max_commits]
 
         with open(data_dir / "commits_list.json", "w", encoding="utf-8") as f:
             json.dump(commits, f, indent=2, ensure_ascii=False)

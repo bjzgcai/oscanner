@@ -13,6 +13,7 @@ from evaluator.schemas import TrajectoryResponse
 from evaluator.services import (
     load_trajectory_cache,
     analyze_growth_trajectory,
+    analyze_group_repositories,
     resolve_plugin_id,
     get_commits_by_date
 )
@@ -24,6 +25,63 @@ router = APIRouter()
 EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME = {"吴衍标"}
 ONE_OFF_PRIMARY_MODEL = "deepseek/deepseek-v4-pro"
 ONE_OFF_PRIMARY_MODELS = (ONE_OFF_PRIMARY_MODEL,)
+
+
+def _extract_group_repository_items(request_body: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Accept batch payloads from Courses and direct callers.
+
+    Supported shapes:
+    - {"students": [{"repo_url": "...", ...}]}
+    - {"repositories": [{"repo_url": "...", ...}]}
+    - {"repos": [{"repo_url": "...", ...}]}
+    - {"repo_url": "..."} for single-repo compatibility
+    """
+    for key in ("students", "repositories", "repos"):
+        items = request_body.get(key)
+        if isinstance(items, list):
+            return [item for item in items if isinstance(item, dict)]
+
+    repo_url = str(request_body.get("repo_url") or "").strip()
+    if repo_url:
+        return [{
+            "id": request_body.get("id"),
+            "username": request_body.get("username"),
+            "repo_url": repo_url,
+            "organization": request_body.get("organization"),
+            "pq_id": request_body.get("pq_id"),
+        }]
+
+    return []
+
+
+def _check_platform_tokens_for_repos(repo_urls: List[str]) -> None:
+    github_token = get_github_token()
+    gitee_token = get_gitee_token()
+    missing_platforms = []
+
+    for repo_url in repo_urls:
+        parsed = parse_repo_url(repo_url)
+        if not parsed:
+            continue
+
+        platform, _, _ = parsed
+        if platform == "github" and not github_token and "github" not in missing_platforms:
+            missing_platforms.append("github")
+        elif platform == "gitee" and not gitee_token and "gitee" not in missing_platforms:
+            missing_platforms.append("gitee")
+
+    if missing_platforms:
+        missing_tokens = []
+        if "github" in missing_platforms:
+            missing_tokens.append("GitHub Token (GITHUB_TOKEN)")
+        if "gitee" in missing_platforms:
+            missing_tokens.append("Gitee Token (GITEE_TOKEN)")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required platform tokens: {', '.join(missing_tokens)}. "
+                   "Please configure them before analyzing.",
+        )
 
 
 def format_sse_event(event: str, data: Dict[str, Any]) -> str:
@@ -491,6 +549,101 @@ async def analyze_trajectory_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/api/courses/group_analyse_code")
+async def group_analyse_code(
+    request_body: Dict[str, Any],
+    plugin: str = Query("zgc_ai_native_2026"),
+    language: str = Query("zh-CN"),
+    use_cache: bool = Query(True),
+    max_fetch_workers: int = Query(4),
+    forced_checker: str = Query(""),
+    worktree_base: str = Query("build"),
+) -> Dict[str, Any]:
+    """
+    Courses-compatible full repository group evaluation.
+
+    This endpoint is intentionally repository-scoped, not author-scoped:
+    - it evaluates every commit stored for each repo
+    - it uses DeepSeek V4 Pro's long context window
+    - it disables commit chunking for the LLM evaluation path
+    - it accepts multiple repos in a single request so scores are produced with
+      the same model, rubric, and runtime settings
+    """
+    try:
+        if not isinstance(request_body, dict):
+            raise HTTPException(status_code=400, detail="Request body must be a JSON object")
+
+        repositories = _extract_group_repository_items(request_body)
+        if not repositories:
+            return {
+                "success": False,
+                "message": "No repositories to analyze",
+                "results": [],
+                "summary": {"total": 0, "success": 0, "failed": 0},
+            }
+
+        api_key = get_llm_api_key()
+        if not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init).",
+            )
+
+        repo_urls = [str(item.get("repo_url") or "").strip() for item in repositories if item.get("repo_url")]
+        _check_platform_tokens_for_repos(repo_urls)
+
+        plugin_id = resolve_plugin_id(plugin)
+        forced_checker_id = forced_checker.strip() if forced_checker else None
+        worktree_base_value = worktree_base.strip() if worktree_base else "build"
+        if worktree_base_value not in ("build", "temp"):
+            worktree_base_value = "build"
+
+        expected_feature = request_body.get("expected_feature")
+        if isinstance(expected_feature, str):
+            expected_feature = expected_feature.strip() or None
+        elif expected_feature is not None:
+            raise HTTPException(status_code=400, detail="expected_feature must be a string")
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            lambda: analyze_group_repositories(
+                repositories=repositories,
+                plugin_id=plugin_id,
+                model=ONE_OFF_PRIMARY_MODEL,
+                language=language,
+                use_cache=use_cache,
+                max_fetch_workers=max_fetch_workers,
+                forced_checker_id=forced_checker_id,
+                worktree_base=worktree_base_value,
+                full_repo=True,
+                use_chunking=False,
+                expected_feature=expected_feature,
+            ),
+        )
+
+        # Single-repo compatibility for callers that expect the one-off shape.
+        results = result.get("results") if isinstance(result, dict) else None
+        if isinstance(results, list) and len(results) == 1:
+            single = results[0]
+            return {
+                **result,
+                "checkpoint": single.get("checkpoint"),
+                "score": single.get("score"),
+                "commits_analyzed": single.get("commits_analyzed", 0),
+                "repo_url": single.get("repo_url"),
+                "username": single.get("username"),
+            }
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Courses Group Analyse] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Group analysis failed: {str(e)}")
 
 
 @router.post("/api/trajectory/analyze_one-off")

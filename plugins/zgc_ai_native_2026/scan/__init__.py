@@ -108,6 +108,7 @@ def create_commit_evaluator(
     worktree_base: str = "build",
     expected_feature: Optional[str] = None,
     progress_callback: Optional[ProgressCallback] = None,
+    max_input_tokens: Optional[int] = None,
 ):
     return CommitEvaluatorModerate(
         data_dir=data_dir,
@@ -123,6 +124,7 @@ def create_commit_evaluator(
         worktree_base=worktree_base,
         expected_feature=expected_feature,
         progress_callback=progress_callback,
+        max_input_tokens=max_input_tokens,
     )
 
 
@@ -137,7 +139,7 @@ class CommitEvaluatorModerate:
         self,
         *,
         api_key: Optional[str] = None,
-        max_input_tokens: int = 190000,
+        max_input_tokens: Optional[int] = None,
         data_dir: Optional[str] = None,
         mode: str = "moderate",
         model: Optional[str] = None,
@@ -171,6 +173,14 @@ class CommitEvaluatorModerate:
             or os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL")
             or f"{self.api_base_url.rstrip('/')}/chat/completions"
         )
+        if max_input_tokens is None:
+            env_max_input_tokens = os.getenv("OSCANNER_LLM_MAX_INPUT_TOKENS")
+            if env_max_input_tokens:
+                max_input_tokens = int(env_max_input_tokens)
+            elif str(model or "").strip() == "deepseek/deepseek-v4-pro":
+                max_input_tokens = 1_000_000
+            else:
+                max_input_tokens = 190_000
         self.max_input_tokens = int(max_input_tokens)
         self.data_dir = Path(data_dir) if data_dir else None
         self.mode = mode
@@ -314,6 +324,72 @@ class CommitEvaluatorModerate:
         if use_chunking and len(author_commits) > 20:
             return self._evaluate_engineer_chunked(author_commits, username, load_files=load_files)
         return self._evaluate_engineer_standard(author_commits, username, load_files=load_files)
+
+    def evaluate_repository(
+        self,
+        *,
+        commits: List[Dict[str, Any]],
+        repo_label: str,
+        max_commits: Optional[int] = None,
+        load_files: bool = True,
+        use_chunking: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Evaluate a repository as one unit, without filtering commits by author.
+
+        This is used by Courses group evaluation for the tag "整体", where the
+        object being scored is the repo's complete performance rather than a
+        single contributor's trajectory.
+        """
+        if not commits:
+            return self._get_empty_evaluation(repo_label)
+        analyzed_commits = commits if max_commits is None else commits[: int(max_commits)]
+        if use_chunking:
+            return self._evaluate_engineer_chunked(analyzed_commits, repo_label, load_files=load_files)
+        return self._evaluate_repository_standard(analyzed_commits, repo_label, load_files=load_files)
+
+    def _evaluate_repository_standard(self, commits: List[Dict[str, Any]], repo_label: str, *, load_files: bool) -> Dict[str, Any]:
+        file_contents: Dict[str, str] = {}
+        repo_structure: Optional[Dict[str, Any]] = None
+        if self.mode == "moderate" and load_files and self.data_dir:
+            file_contents = self._load_relevant_files(commits)
+            repo_structure = self._load_repo_structure()
+
+        context_parts, checker_raw_analysis = self._build_context_parts(
+            commits,
+            repo_label,
+            file_contents=file_contents,
+            repo_structure=repo_structure,
+            commit_limit=None,
+        )
+
+        partial_results: List[Dict[str, Any]] = []
+        for part_name, part_context in context_parts.items():
+            if part_context:
+                part_result = self._evaluate_part_with_llm(part_name, part_context, repo_label, chunk_idx=None)
+                partial_results.append(part_result)
+
+        if partial_results:
+            scores = self._merge_partial_evaluations(partial_results, repo_label, checker_raw_analysis=checker_raw_analysis)
+        else:
+            context = self._build_commit_context(
+                commits,
+                repo_label,
+                file_contents=file_contents,
+                repo_structure=repo_structure,
+                commit_limit=None,
+            )
+            scores = self._evaluate_with_llm(context, repo_label)
+
+        return {
+            "username": repo_label,
+            "total_commits_analyzed": len(commits),
+            "files_loaded": len(file_contents),
+            "mode": self.mode,
+            "scores": scores,
+            "commits_summary": self._summarize_commits(commits),
+            "scope": "full_repo",
+        }
 
     def _is_commit_by_author(self, commit: Dict[str, Any], username: str) -> bool:
         # Handle comma-separated usernames as multiple aliases
@@ -713,6 +789,7 @@ Return the same JSON format as before."""
         *,
         file_contents: Dict[str, str],
         repo_structure: Optional[Dict[str, Any]],
+        commit_limit: Optional[int] = 50,
     ) -> tuple:
         """
         Build context as separate parts for multi-stage LLM evaluation.
@@ -742,7 +819,8 @@ Return the same JSON format as before."""
             print(f"[Checker] [Plugin] Enabled checkers: {list(checker_keyword_map.keys())}")
             
             # Process commits: check for /checker:xxx keywords
-            for c in commits[:50]:
+            commits_for_context = commits if commit_limit is None else commits[:commit_limit]
+            for c in commits_for_context:
                 sha = c.get("sha") or c.get("hash") or ""
                 msg = c.get("message") or c.get("commit", {}).get("message") or ""
                 keywords = self._extract_checker_keywords(msg)
@@ -842,7 +920,8 @@ Return the same JSON format as before."""
         # Build commits part
         commits_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
         commits_parts.append("COMMITS:")
-        for c in commits[:50]:
+        commits_for_context = commits if commit_limit is None else commits[:commit_limit]
+        for c in commits_for_context:
             sha = c.get("sha") or c.get("hash") or ""
             msg = (c.get("message") or c.get("commit", {}).get("message") or "").split("\n")[0][:160]
             commits_parts.append(f"\n- {sha} {msg}")
@@ -877,6 +956,7 @@ Return the same JSON format as before."""
         *,
         file_contents: Dict[str, str],
         repo_structure: Optional[Dict[str, Any]],
+        commit_limit: Optional[int] = 50,
     ) -> str:
         parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
         
@@ -902,7 +982,8 @@ Return the same JSON format as before."""
             print(f"[Checker] [Plugin] Enabled checkers: {list(checker_keyword_map.keys())}")
             
             # Process commits: check for /checker:xxx keywords
-            for c in commits[:50]:
+            commits_for_context = commits if commit_limit is None else commits[:commit_limit]
+            for c in commits_for_context:
                 sha = c.get("sha") or c.get("hash") or ""
                 msg = c.get("message") or c.get("commit", {}).get("message") or ""
                 keywords = self._extract_checker_keywords(msg)
@@ -972,7 +1053,8 @@ Return the same JSON format as before."""
             parts.append("")
         
         parts.append("COMMITS:")
-        for c in commits[:50]:
+        commits_for_context = commits if commit_limit is None else commits[:commit_limit]
+        for c in commits_for_context:
             sha = c.get("sha") or c.get("hash") or ""
             msg = (c.get("message") or c.get("commit", {}).get("message") or "").split("\n")[0][:160]
             parts.append(f"\n- {sha} {msg}")

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Callable, Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from evaluator.paths import get_trajectory_cache_path, get_platform_data_dir
 from evaluator.config import get_llm_api_key
@@ -163,7 +164,7 @@ def ensure_repo_data_synced(
 
     try:
         if platform == "github":
-            success = extract_github_data(owner, repo)
+            success = extract_github_data(owner, repo, max_commits=max_commits)
         elif platform == "gitee":
             success = extract_gitee_data(owner, repo, max_commits=max_commits)
         else:
@@ -198,6 +199,282 @@ def ensure_repo_data_synced(
 
     print(f"[Trajectory] Successfully extracted data for {platform}/{owner}/{repo}")
     return platform, owner, repo, True
+
+
+def _sync_repo_for_group_eval(repo_url: str, use_cache: bool) -> Tuple[str, str, str, bool]:
+    """Sync one repository for full-repo group evaluation."""
+    return ensure_repo_data_synced(
+        repo_url,
+        max_commits=0,
+        force_sync=not use_cache,
+    )
+
+
+def _normalize_commit_date(commit: Dict[str, Any]) -> str:
+    return (
+        commit.get("commit", {}).get("author", {}).get("date", "")
+        or commit.get("date", "")
+        or ""
+    )
+
+
+def _load_all_repo_commits(repo_url: str) -> Tuple[List[Dict[str, Any]], Path]:
+    platform, owner, repo = parse_repo_url(repo_url)
+    data_dir = get_platform_data_dir(platform, owner, repo)
+    commits = load_commits_from_local(data_dir, limit=None)
+    commits.sort(key=_normalize_commit_date, reverse=False)
+    return commits, data_dir
+
+
+def _extract_numeric_score(evaluation_result: Dict[str, Any]) -> float:
+    scores = evaluation_result.get("scores") or {}
+    direct = scores.get("total_score") or scores.get("total")
+    if isinstance(direct, (int, float)):
+        return float(direct)
+
+    total = 0.0
+    found = False
+    for key, value in scores.items():
+        if key == "reasoning":
+            continue
+        if isinstance(value, (int, float)):
+            total += float(value)
+            found = True
+    return total if found else 0.0
+
+
+def _build_group_checkpoint(
+    *,
+    commits: List[Dict[str, Any]],
+    repo_url: str,
+    evaluation_result: Dict[str, Any],
+) -> Dict[str, Any]:
+    start_sha = (commits[0].get("sha") or commits[0].get("hash")) if commits else None
+    end_sha = (commits[-1].get("sha") or commits[-1].get("hash")) if commits else None
+    return {
+        "checkpoint_id": 1,
+        "created_at": datetime.utcnow().isoformat(),
+        "commits_range": {
+            "start_sha": start_sha,
+            "end_sha": end_sha,
+            "commit_count": len(commits),
+        },
+        "evaluation": evaluation_result,
+        "repos_analyzed": [repo_url],
+        "aliases_used": [],
+        "previous_checkpoint_id": None,
+        "growth_comparison": None,
+    }
+
+
+def analyze_group_repositories(
+    *,
+    repositories: List[Dict[str, Any]],
+    plugin_id: str,
+    model: str,
+    language: str,
+    use_cache: bool = True,
+    max_fetch_workers: int = 4,
+    forced_checker_id: Optional[str] = None,
+    worktree_base: str = "build",
+    full_repo: bool = True,
+    use_chunking: bool = False,
+    expected_feature: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Evaluate multiple repositories in one request, using full repository commit history.
+
+    Repository data is still stored in the normal platform data directories. Fetch/sync
+    work runs concurrently; LLM evaluation runs per repo with the same model and rubric
+    so the scores are comparable.
+    """
+    if not repositories:
+        return {
+            "success": False,
+            "message": "No repositories to analyze",
+            "results": [],
+            "summary": {"total": 0, "success": 0, "failed": 0},
+        }
+
+    max_workers = max(1, int(max_fetch_workers or 1))
+    repo_urls = []
+    seen_urls = set()
+    for item in repositories:
+        repo_url = str(item.get("repo_url") or "").strip()
+        if not repo_url or repo_url in seen_urls:
+            continue
+        seen_urls.add(repo_url)
+        repo_urls.append(repo_url)
+
+    sync_results: Dict[str, Dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=min(max_workers, len(repo_urls) or 1)) as executor:
+        futures = {
+            executor.submit(_sync_repo_for_group_eval, repo_url, use_cache): repo_url
+            for repo_url in repo_urls
+        }
+        for future in as_completed(futures):
+            repo_url = futures[future]
+            try:
+                platform, owner, repo, was_synced = future.result()
+                sync_results[repo_url] = {
+                    "success": True,
+                    "platform": platform,
+                    "owner": owner,
+                    "repo": repo,
+                    "was_synced": was_synced,
+                }
+            except Exception as e:
+                sync_results[repo_url] = {"success": False, "error": str(e)}
+
+    meta, scan_mod, _ = load_scan_module(plugin_id)
+    results: List[Dict[str, Any]] = []
+
+    for item in repositories:
+        repo_url = str(item.get("repo_url") or "").strip()
+        base_result = {
+            "id": item.get("id"),
+            "username": item.get("username"),
+            "repo_url": repo_url,
+        }
+
+        if not repo_url:
+            results.append({
+                **base_result,
+                "success": False,
+                "message": "Missing repo_url",
+                "score": 0,
+                "checkpoint": None,
+                "commits_analyzed": 0,
+            })
+            continue
+
+        sync_result = sync_results.get(repo_url) or {"success": False, "error": "Repository was not synced"}
+        if not sync_result.get("success"):
+            results.append({
+                **base_result,
+                "success": False,
+                "message": sync_result.get("error") or "Repository sync failed",
+                "score": 0,
+                "checkpoint": None,
+                "commits_analyzed": 0,
+            })
+            continue
+
+        try:
+            commits, data_dir = _load_all_repo_commits(repo_url)
+            if not commits:
+                results.append({
+                    **base_result,
+                    "success": True,
+                    "message": "Repository has no commits",
+                    "score": 0,
+                    "checkpoint": _build_group_checkpoint(
+                        commits=[],
+                        repo_url=repo_url,
+                        evaluation_result={
+                            "username": repo_url,
+                            "total_commits_analyzed": 0,
+                            "files_loaded": 0,
+                            "mode": "moderate",
+                            "scores": {
+                                "spec_quality": 0,
+                                "cloud_architecture": 0,
+                                "ai_engineering": 0,
+                                "mastery_professionalism": 0,
+                                "reasoning": "Repository is empty - no code to analyze.",
+                            },
+                            "commits_summary": {
+                                "total_additions": 0,
+                                "total_deletions": 0,
+                                "files_changed": 0,
+                                "languages": [],
+                            },
+                        },
+                    ),
+                    "commits_analyzed": 0,
+                })
+                continue
+
+            evaluator = scan_mod.create_commit_evaluator(
+                data_dir=str(data_dir),
+                api_key=get_llm_api_key(),
+                model=model,
+                mode="moderate",
+                language=language,
+                parallel_chunking=False,
+                max_parallel_workers=1,
+                forced_checker_id=forced_checker_id,
+                worktree_base=worktree_base,
+                expected_feature=expected_feature,
+                max_input_tokens=1_000_000,
+            )
+
+            if full_repo and hasattr(evaluator, "evaluate_repository"):
+                evaluation_result = evaluator.evaluate_repository(
+                    commits=commits,
+                    repo_label=repo_url,
+                    max_commits=None,
+                    load_files=True,
+                    use_chunking=use_chunking,
+                )
+            else:
+                evaluation_result = evaluator.evaluate_engineer(
+                    commits=commits,
+                    username=repo_url,
+                    max_commits=None,
+                    load_files=True,
+                    use_chunking=use_chunking,
+                )
+
+            evaluation_result["evaluated_at"] = datetime.utcnow().isoformat()
+            evaluation_result["plugin"] = plugin_id
+            evaluation_result["plugin_version"] = getattr(meta, "version", "0.1.0")
+            if expected_feature:
+                evaluation_result["expected_feature"] = expected_feature
+
+            checkpoint = _build_group_checkpoint(
+                commits=commits,
+                repo_url=repo_url,
+                evaluation_result=evaluation_result,
+            )
+            score = _extract_numeric_score(evaluation_result)
+            results.append({
+                **base_result,
+                "success": True,
+                "message": f"Created full-repo group judgment using {model}.",
+                "score": score,
+                "checkpoint": checkpoint,
+                "commits_analyzed": len(commits),
+                "sync": sync_result,
+            })
+        except Exception as e:
+            results.append({
+                **base_result,
+                "success": False,
+                "message": str(e),
+                "score": 0,
+                "checkpoint": None,
+                "commits_analyzed": 0,
+                "sync": sync_result,
+            })
+
+    success_count = sum(1 for item in results if item.get("success"))
+    failed_count = len(results) - success_count
+    return {
+        "success": failed_count == 0,
+        "message": f"Group evaluation completed: {success_count} succeeded, {failed_count} failed.",
+        "results": results,
+        "summary": {
+            "total": len(results),
+            "success": success_count,
+            "failed": failed_count,
+        },
+        "model_judging": {
+            "primary_models": [model],
+            "synthesis_model": None,
+            "conflicts_detected": False,
+        },
+    }
 
 
 
