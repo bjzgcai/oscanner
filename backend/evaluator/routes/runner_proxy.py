@@ -21,6 +21,7 @@ class RunAllRequest(BaseModel):
     repo_url: str
     sha: str | None = None
     tag: str | None = None
+    tag_message: str | None = None
     skip_clone: bool = False
     skip_explore: bool = False
     setup_timeout: int = 120
@@ -41,6 +42,7 @@ async def run_all_steps(request: RunAllRequest):
         "repo_url": request.repo_url,
         "sha": request.sha,
         "tag": request.tag,
+        "tag_message": request.tag_message,
         "skip_clone": request.skip_clone,
         "skip_explore": request.skip_explore,
         "setup_timeout": request.setup_timeout,

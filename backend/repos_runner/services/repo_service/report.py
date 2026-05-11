@@ -7,6 +7,13 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 
+def _format_tag_message_section(tag_message: Optional[str]) -> str:
+    text = str(tag_message or "").strip()
+    if not text:
+        return ""
+    return f"### 标签说明\n\n{text}\n\n"
+
+
 async def _generate_test_report(
     report_path: Path,
     repo_name: str,
@@ -100,8 +107,7 @@ async def _generate_test_report(
 
         report += f"## 功能覆盖（{len(covered)}/{total_features} — {coverage_pct:.0f}%）\n\n"
 
-        if tag_message:
-            report += f"> **标签说明**：{tag_message}\n\n"
+        report += _format_tag_message_section(tag_message)
 
         report += (
             "功能列表从标签说明中提取，并与仓库中的测试文件进行交叉比对。"
@@ -130,7 +136,8 @@ async def _generate_test_report(
 
     elif tag_message:
         # tag_message present but no feature_coverage (extraction returned nothing)
-        report += f"## 功能覆盖\n\n> **标签说明**：{tag_message}\n\n"
+        report += "## 功能覆盖\n\n"
+        report += _format_tag_message_section(tag_message)
         report += "> ⚠️ 无法从标签说明中提取可测试的功能点。\n\n"
         report += "> **得分设为 0** ——已提供标签说明，但无法从中识别出可评估的功能。\n\n"
 

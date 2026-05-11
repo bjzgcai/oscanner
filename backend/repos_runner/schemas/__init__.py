@@ -27,6 +27,7 @@ class RunAllRequest(BaseModel):
     repo_url: str
     sha: Optional[str] = None
     tag: Optional[str] = None  # Optional tag to checkout (ignored if sha is set)
+    tag_message: Optional[str] = None  # Merged feature requirements supplied by Courses
     skip_clone: bool = False    # Reuse existing clone
     skip_explore: bool = False  # Reuse existing REPO_OVERVIEW.md
     setup_timeout: int = 120    # Seconds per setup command

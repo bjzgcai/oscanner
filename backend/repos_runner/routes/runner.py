@@ -244,9 +244,11 @@ async def run_all_stream(request: RunAllRequest):
                 overview_filename = f"REPO_OVERVIEW_{_safe_tag}.md" if _safe_tag else "REPO_OVERVIEW.md"
                 overview_path = str(Path(clone_path) / overview_filename)
 
-                # -- Fetch tag message (Gitee only) --
-                tag_message = None
-                if request.tag:
+                # -- Feature requirements / tag message --
+                tag_message = str(request.tag_message or "").strip() or None
+                if tag_message:
+                    await progress_callback("Using forwarded feature requirements.")
+                elif request.tag:
                     await progress_callback(
                         f"Fetching tag annotation for '{request.tag}' from Gitee..."
                     )
@@ -372,9 +374,11 @@ async def batch_run_stream(request: BatchRunRequest):
                     overview_filename = f"REPO_OVERVIEW_{_safe_tag}.md" if _safe_tag else "REPO_OVERVIEW.md"
                     overview_path = str(Path(clone_path) / overview_filename)
 
-                    # -- Fetch tag message (Gitee only) --
-                    tag_message = None
-                    if repo_req.tag:
+                    # -- Feature requirements / tag message --
+                    tag_message = str(repo_req.tag_message or "").strip() or None
+                    if tag_message:
+                        await cb("Using forwarded feature requirements.")
+                    elif repo_req.tag:
                         await cb(f"Fetching tag annotation for '{repo_req.tag}' from Gitee...")
                         tag_message = await fetch_gitee_tag_message(repo_url, repo_req.tag)
                         if tag_message:
