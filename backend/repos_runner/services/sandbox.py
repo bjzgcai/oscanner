@@ -29,10 +29,13 @@ from __future__ import annotations
 import os
 import platform
 import resource
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
 import textwrap
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -48,6 +51,8 @@ _DEFAULT_FSIZE_MB      = 512   # max file the child can create (bytes written)
 _DEFAULT_AS_MB         = 2048  # virtual address space (2 GB)
 _DEFAULT_NOFILE        = 256   # open file descriptors
 _DEFAULT_NPROC         = 4096  # processes + threads spawnable by this user
+_DOCKER_WORKDIR       = "/workspace"
+_DEFAULT_DOCKER_IMAGE = "python:3.12-bookworm"
 
 
 @dataclass
@@ -68,6 +73,266 @@ class ResourceLimits:
     def from_timeout(cls, timeout_seconds: int) -> "ResourceLimits":
         """Convenience constructor that ties CPU cap to the wall-clock timeout."""
         return cls(cpu_seconds=timeout_seconds)
+
+
+def requested_executor() -> str:
+    """Return requested repo execution backend: host, docker, or auto."""
+    value = os.getenv("REPOS_RUNNER_EXECUTOR", "auto").strip().lower()
+    return value if value in {"host", "docker", "auto"} else "auto"
+
+
+def docker_available() -> bool:
+    """Return True when the Docker CLI and daemon are usable."""
+    if not shutil.which("docker"):
+        return False
+    try:
+        result = subprocess.run(
+            ["docker", "info", "--format", "{{.ServerVersion}}"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=3,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def should_use_docker_executor() -> bool:
+    """Decide whether repo commands should run in Docker."""
+    executor = requested_executor()
+    if executor == "host":
+        return False
+    if executor == "docker":
+        if not shutil.which("docker"):
+            raise RuntimeError("REPOS_RUNNER_EXECUTOR=docker but Docker CLI was not found")
+        return True
+    return docker_available()
+
+
+class HostSandboxSession:
+    """Execution session backed by the existing host sandbox."""
+
+    is_docker = False
+
+    def __init__(self, repo_dir: Path):
+        self.repo_dir = Path(repo_dir)
+
+    def __enter__(self) -> "HostSandboxSession":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def run(
+        self,
+        cmd: str,
+        *,
+        cwd: Path,
+        timeout: int,
+        env: Optional[dict] = None,
+    ) -> subprocess.CompletedProcess:
+        return run_sandboxed(cmd, cwd=Path(cwd), timeout=timeout, env=env)
+
+
+class DockerSandboxSession:
+    """Disposable Docker container used for one cloned repository run."""
+
+    is_docker = True
+
+    def __init__(self, repo_dir: Path):
+        self.repo_dir = Path(repo_dir).resolve()
+        self.image = os.getenv("REPOS_RUNNER_DOCKER_IMAGE", _DEFAULT_DOCKER_IMAGE)
+        self.name = f"oscanner-runner-{uuid.uuid4().hex[:12]}"
+        self.container_id = ""
+
+    def __enter__(self) -> "DockerSandboxSession":
+        mount = f"{self.repo_dir}:{_DOCKER_WORKDIR}"
+        result = subprocess.run(
+            [
+                "docker",
+                "run",
+                "-d",
+                "--rm",
+                "--name",
+                self.name,
+                "--network",
+                os.getenv("REPOS_RUNNER_DOCKER_NETWORK", "bridge"),
+                "--memory",
+                os.getenv("REPOS_RUNNER_DOCKER_MEMORY", "2g"),
+                "--cpus",
+                os.getenv("REPOS_RUNNER_DOCKER_CPUS", "2"),
+                "--pids-limit",
+                os.getenv("REPOS_RUNNER_DOCKER_PIDS", "512"),
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "-v",
+                mount,
+                "-w",
+                _DOCKER_WORKDIR,
+                "-e",
+                "CI=1",
+                "-e",
+                "PYTHONUNBUFFERED=1",
+                self.image,
+                "sleep",
+                "86400",
+            ],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=60,
+        )
+        self.container_id = (result.stdout or "").strip()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        try:
+            subprocess.run(
+                ["docker", "rm", "-f", self.name],
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            pass
+        return False
+
+    def _container_cwd(self, cwd: Path) -> str:
+        cwd = Path(cwd).resolve()
+        try:
+            rel = cwd.relative_to(self.repo_dir)
+        except ValueError:
+            return _DOCKER_WORKDIR
+        if str(rel) == ".":
+            return _DOCKER_WORKDIR
+        return f"{_DOCKER_WORKDIR}/{rel.as_posix()}"
+
+    def _container_path(self, path: Path) -> str:
+        path = Path(path).resolve()
+        rel = path.relative_to(self.repo_dir)
+        return f"{_DOCKER_WORKDIR}/{rel.as_posix()}"
+
+    def run(
+        self,
+        cmd: str,
+        *,
+        cwd: Path,
+        timeout: int,
+        env: Optional[dict] = None,
+    ) -> subprocess.CompletedProcess:
+        args = ["docker", "exec", "-i", "-w", self._container_cwd(Path(cwd))]
+        for key, value in (env or {}).items():
+            args.extend(["-e", f"{key}={value}"])
+        args.extend([self.name, "/bin/sh", "-lc", cmd])
+        return subprocess.run(
+            args,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout,
+        )
+
+    def start_background(
+        self,
+        command: str,
+        *,
+        cwd: Path,
+        log_path: Path,
+        env: Optional[dict] = None,
+    ) -> None:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        container_log = self._container_path(log_path)
+        env_prefix = " ".join(
+            f"{shlex.quote(str(key))}={shlex.quote(str(value))}"
+            for key, value in (env or {}).items()
+        )
+        if env_prefix:
+            env_prefix += " "
+        shell_cmd = (
+            f"mkdir -p {shlex.quote(str(Path(container_log).parent))} && "
+            f"({env_prefix}{command}) >> {shlex.quote(container_log)} 2>&1 &"
+        )
+        subprocess.run(
+            [
+                "docker",
+                "exec",
+                "-d",
+                "-w",
+                self._container_cwd(Path(cwd)),
+                self.name,
+                "/bin/sh",
+                "-lc",
+                shell_cmd,
+            ],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=10,
+        )
+
+    def http_get(self, url: str, *, expect_json: bool = False, timeout: int = 5) -> tuple[bool, str, str]:
+        code = (
+            "import json, sys, urllib.request\n"
+            "url = sys.argv[1]\n"
+            "expect_json = sys.argv[2] == '1'\n"
+            "try:\n"
+            "    with urllib.request.urlopen(url, timeout=3) as response:\n"
+            "        body = response.read(1048576)\n"
+            "        if response.status >= 400:\n"
+            "            print(f'HTTP {response.status}')\n"
+            "            sys.exit(1)\n"
+            "        if expect_json:\n"
+            "            json.loads(body.decode('utf-8', errors='ignore'))\n"
+            "        print(f'HTTP {response.status}')\n"
+            "except Exception as error:\n"
+            "    print(str(error))\n"
+            "    sys.exit(1)\n"
+        )
+        cmd = (
+            "python -c "
+            f"{shlex.quote(code)} {shlex.quote(url)} {'1' if expect_json else '0'} "
+            "|| python3 -c "
+            f"{shlex.quote(code)} {shlex.quote(url)} {'1' if expect_json else '0'}"
+        )
+        result = self.run(cmd, cwd=self.repo_dir, timeout=timeout)
+        detail = (result.stdout or result.stderr or "").strip().splitlines()
+        message = detail[-1] if detail else f"exit {result.returncode}"
+        return result.returncode == 0, url if result.returncode == 0 else "", message
+
+    def http_text(self, url: str, *, timeout: int = 5) -> str:
+        code = (
+            "import sys, urllib.request\n"
+            "try:\n"
+            "    with urllib.request.urlopen(sys.argv[1], timeout=3) as response:\n"
+            "        print(response.read(1048576).decode('utf-8', errors='ignore'))\n"
+            "except Exception:\n"
+            "    sys.exit(1)\n"
+        )
+        result = self.run(
+            "python -c "
+            f"{shlex.quote(code)} {shlex.quote(url)} "
+            "|| python3 -c "
+            f"{shlex.quote(code)} {shlex.quote(url)}",
+            cwd=self.repo_dir,
+            timeout=timeout,
+        )
+        return result.stdout if result.returncode == 0 else ""
+
+
+def create_execution_session(repo_dir: Path):
+    """Create the configured execution session for a cloned repository."""
+    if should_use_docker_executor():
+        return DockerSandboxSession(Path(repo_dir))
+    return HostSandboxSession(Path(repo_dir))
 
 
 # ---------------------------------------------------------------------------

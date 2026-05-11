@@ -80,3 +80,34 @@ def test_clone_repository_preserves_existing_reports_and_overviews(monkeypatch, 
     assert overview_tagged.read_text() == "old tagged overview"
     assert (clone_path / "README.md").exists()
     assert not non_report.exists()
+
+
+def test_clone_repository_preserves_report_artifact_directories(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+    clone_path = repos_dir / "demo-repo"
+    artifact_dir = clone_path / "TEST_ARTIFACTS_Coursework_Submit_5.2"
+    screenshot = artifact_dir / "runtime-evidence" / "screenshots" / "docs.png"
+    screenshot.parent.mkdir(parents=True)
+    screenshot.write_bytes(b"png")
+
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.get_repos_dir",
+        lambda: repos_dir,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.parse_repo_url",
+        lambda _repo_url: ("github", "owner", "demo-repo"),
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone._inject_auth_token",
+        lambda repo_url: repo_url,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.git.Repo.clone_from",
+        _fake_clone_from,
+    )
+
+    result = asyncio.run(clone_repository("https://github.com/owner/demo-repo"))
+
+    assert result["repo_name"] == "demo-repo"
+    assert screenshot.read_bytes() == b"png"

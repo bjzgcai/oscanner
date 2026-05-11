@@ -39,6 +39,12 @@ export OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
 
 # Optional: Custom port (default: 8001)
 export RUNNER_PORT=8001
+
+# Optional: isolate repo setup/tests/runtime checks in Docker
+# auto = use Docker when the daemon is available, host = current host sandbox,
+# docker = require Docker and fail if it cannot start.
+export REPOS_RUNNER_EXECUTOR=auto
+export REPOS_RUNNER_DOCKER_IMAGE=python:3.12-bookworm
 ```
 
 ## Usage
@@ -392,6 +398,19 @@ Change the port:
 export RUNNER_PORT=8002
 ./start_server.sh
 ```
+
+To avoid conflicts between your local apps and repositories under test, run repo
+setup, tests, and runtime checks in Docker:
+```bash
+export REPOS_RUNNER_EXECUTOR=docker
+./start_server.sh
+```
+
+The cloned repo is mounted at `/workspace` inside a disposable container, so
+`TEST_REPORT_{tag}.md`, `.test_report.json`, `test_config.json`, and
+`TEST_ARTIFACTS_{tag}/` remain saved in the repo directory on the host. Student
+services can bind ports such as `8000` inside the container without occupying
+host ports.
 
 ### Clone Failures
 - Verify repository URL format

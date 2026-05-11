@@ -85,6 +85,65 @@ def test_runtime_subprocess_env_does_not_forward_tokens(monkeypatch):
     assert env["CI"] == "1"
 
 
+def test_collect_runtime_evidence_uses_docker_session_for_ports(monkeypatch, tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text(
+        """
+```bash
+python scripts/dev-app-backend.py
+python scripts/dev-frontend.py
+```
+""",
+        encoding="utf-8",
+    )
+    scripts = repo / "scripts"
+    scripts.mkdir()
+    (scripts / "dev-app-backend.py").write_text("print('backend')\n", encoding="utf-8")
+    (scripts / "dev-frontend.py").write_text("print('frontend')\n", encoding="utf-8")
+
+    class _FakeDockerSession:
+        is_docker = True
+
+        def __init__(self):
+            self.started = []
+            self.probed = []
+
+        def start_background(self, command, *, cwd, log_path, env=None):
+            self.started.append((command, Path(cwd).relative_to(repo), log_path.name))
+
+        def http_get(self, url, *, expect_json=False, timeout=5):
+            self.probed.append((url, expect_json))
+            return True, url, "HTTP 200"
+
+        def http_text(self, url, *, timeout=5):
+            return "scene"
+
+    session = _FakeDockerSession()
+    monkeypatch.setattr(
+        runtime_evidence,
+        "_listening_pids",
+        lambda _port: (_ for _ in ()).throw(AssertionError("host ports should not be probed")),
+    )
+
+    evidence = asyncio.run(
+        runtime_evidence.collect_runtime_evidence(
+            repo,
+            tag="v1",
+            service_timeout=0.1,
+            execution_session=session,
+        )
+    )
+
+    assert evidence["executor"] == "docker"
+    assert [item[0] for item in session.started] == [
+        "python scripts/dev-app-backend.py",
+        "python scripts/dev-frontend.py",
+    ]
+    assert ("http://127.0.0.1:8000/health", True) in session.probed
+    assert any(check["id"] == "app_backend_starts" and check["passed"] for check in evidence["checks"])
+
+
 def test_generate_test_report_includes_runtime_evidence(tmp_path):
     report_path = tmp_path / "TEST_REPORT.md"
 
@@ -175,7 +234,7 @@ def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
             "test_files_found": ["tests/test_app.py"],
         }
 
-    async def _fake_collect_runtime_evidence(_clone_dir, tag="", progress_callback=None):
+    async def _fake_collect_runtime_evidence(_clone_dir, tag="", progress_callback=None, execution_session=None):
         return {
             "summary": {"passed": 1, "total": 1},
             "covered_features": ["Docs endpoint accessible"],

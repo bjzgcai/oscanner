@@ -256,15 +256,33 @@ def _relative_artifact(path: Path, clone_dir: Path) -> str:
     return path.relative_to(clone_dir).as_posix()
 
 
-def _start_process(command_item: dict[str, str], repo_dir: Path, artifact_dir: Path) -> subprocess.Popen:
+def _command_log_path(command_item: dict[str, str], artifact_dir: Path) -> Path:
+    log_name = _slug(command_item["command"].replace(" ", "_"))[:80] + ".log"
+    return artifact_dir / "logs" / log_name
+
+
+def _start_process(
+    command_item: dict[str, str],
+    repo_dir: Path,
+    artifact_dir: Path,
+    execution_session=None,
+) -> subprocess.Popen | None:
     args = shlex.split(command_item["command"])
     if not args:
         raise ValueError("Empty command")
     if args[0] == "python":
         args[0] = sys.executable
 
-    log_name = _slug(command_item["command"].replace(" ", "_"))[:80] + ".log"
-    log_path = artifact_dir / "logs" / log_name
+    log_path = _command_log_path(command_item, artifact_dir)
+    if getattr(execution_session, "is_docker", False):
+        execution_session.start_background(
+            command_item["command"],
+            cwd=repo_dir / command_item.get("cwd", "."),
+            log_path=log_path,
+            env=runtime_subprocess_env(),
+        )
+        return None
+
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_file = log_path.open("ab")
     try:
@@ -286,26 +304,36 @@ async def _run_check_command(
     repo_dir: Path,
     artifact_dir: Path,
     timeout: int = 90,
+    execution_session=None,
 ) -> dict[str, Any]:
     args = shlex.split(command_item["command"])
     if args and args[0] == "python":
         args[0] = sys.executable
-    log_path = artifact_dir / "logs" / (_slug(command_item["command"].replace(" ", "_"))[:80] + ".log")
+    log_path = _command_log_path(command_item, artifact_dir)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _run() -> tuple[bool, str]:
         try:
-            result = subprocess.run(
-                args,
-                cwd=repo_dir / command_item.get("cwd", "."),
-                env=runtime_subprocess_env(),
-                check=False,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                timeout=timeout,
-            )
-            output = result.stdout or ""
+            if getattr(execution_session, "is_docker", False):
+                result = execution_session.run(
+                    command_item["command"],
+                    cwd=repo_dir / command_item.get("cwd", "."),
+                    env=runtime_subprocess_env(),
+                    timeout=timeout,
+                )
+                output = (result.stdout or "") + (result.stderr or "")
+            else:
+                result = subprocess.run(
+                    args,
+                    cwd=repo_dir / command_item.get("cwd", "."),
+                    env=runtime_subprocess_env(),
+                    check=False,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    timeout=timeout,
+                )
+                output = result.stdout or ""
             log_path.write_text(output, encoding="utf-8", errors="ignore")
             detail = f"exit {result.returncode}"
             if output.strip():
@@ -394,9 +422,25 @@ async def _wait_http(
     expect_json: bool = False,
     timeout: float = 20.0,
     baseline_ports: dict[int, set[int]] | None = None,
+    execution_session=None,
 ) -> tuple[bool, str, str]:
     deadline = time.monotonic() + timeout
     last_error = ""
+    if getattr(execution_session, "is_docker", False):
+        while time.monotonic() < deadline:
+            for url in urls:
+                ok, resolved_url, detail = await asyncio.to_thread(
+                    execution_session.http_get,
+                    url,
+                    expect_json=expect_json,
+                    timeout=5,
+                )
+                if ok:
+                    return True, resolved_url, detail
+                last_error = f"{url}: {detail}"
+            await asyncio.sleep(1)
+        return False, "", last_error or "No response"
+
     async with httpx.AsyncClient(timeout=3.0, follow_redirects=True) as client:
         while time.monotonic() < deadline:
             for url in urls:
@@ -460,7 +504,10 @@ async def _capture_screenshot(url: str, screenshot_path: Path) -> bool:
         return False
 
 
-async def _dump_dom(url: str) -> str:
+async def _dump_dom(url: str, execution_session=None) -> str:
+    if getattr(execution_session, "is_docker", False):
+        return await asyncio.to_thread(execution_session.http_text, url, timeout=5)
+
     def _dump() -> str:
         result = _run_chrome(["--virtual-time-budget=3000", "--dump-dom", url])
         if result.returncode == 0:
@@ -478,6 +525,7 @@ async def collect_runtime_evidence(
     tag: str = "",
     progress_callback=None,
     service_timeout: float = DEFAULT_SERVICE_TIMEOUT_SECONDS,
+    execution_session=None,
 ) -> dict[str, Any]:
     """Start documented services and collect runtime/static feature evidence."""
     clone_dir = Path(clone_dir)
@@ -486,6 +534,7 @@ async def collect_runtime_evidence(
 
     evidence: dict[str, Any] = {
         "enabled": True,
+        "executor": "docker" if getattr(execution_session, "is_docker", False) else "host",
         "clone_dir": str(clone_dir),
         "artifact_dir": str(artifact_dir),
         "commands": [],
@@ -501,19 +550,30 @@ async def collect_runtime_evidence(
     commands = discover_documented_start_commands(clone_dir)
     evidence["commands"] = commands
     evidence["checks"].extend(_static_feature_checks(clone_dir))
-    baseline_ports = {port: _listening_pids(port) for port in PROBED_PORTS}
+    baseline_ports = None if getattr(execution_session, "is_docker", False) else {
+        port: _listening_pids(port) for port in PROBED_PORTS
+    }
 
     processes: list[subprocess.Popen] = []
     try:
         for item in commands:
             command = item["command"]
             if "scripts/check.py" in command or "scripts/tasks.py" in command:
-                evidence["checks"].append(await _run_check_command(item, clone_dir, artifact_dir))
+                evidence["checks"].append(
+                    await _run_check_command(
+                        item,
+                        clone_dir,
+                        artifact_dir,
+                        execution_session=execution_session,
+                    )
+                )
                 continue
             try:
                 if progress_callback:
                     await progress_callback(f"Starting documented service: {command}")
-                processes.append(_start_process(item, clone_dir, artifact_dir))
+                proc = _start_process(item, clone_dir, artifact_dir, execution_session)
+                if proc is not None:
+                    processes.append(proc)
             except Exception as error:
                 evidence["warnings"].append(f"Failed to start '{command}': {error}")
 
@@ -526,6 +586,7 @@ async def collect_runtime_evidence(
             expect_json=True,
             timeout=service_timeout,
             baseline_ports=baseline_ports,
+            execution_session=execution_session,
         )
         evidence["checks"].append(
             _feature_check(
@@ -542,6 +603,7 @@ async def collect_runtime_evidence(
             expect_json=True,
             timeout=2.0,
             baseline_ports=baseline_ports,
+            execution_session=execution_session,
         )
         evidence["checks"].append(
             _feature_check(
@@ -558,6 +620,7 @@ async def collect_runtime_evidence(
             expect_json=True,
             timeout=2.0,
             baseline_ports=baseline_ports,
+            execution_session=execution_session,
         )
         evidence["checks"].append(
             _feature_check(
@@ -573,9 +636,10 @@ async def collect_runtime_evidence(
             ["http://127.0.0.1:8000/docs", "http://127.0.0.1:8200/docs"],
             timeout=8.0,
             baseline_ports=baseline_ports,
+            execution_session=execution_session,
         )
         docs_screenshots: list[str] = []
-        if docs_ok and docs_url:
+        if docs_ok and docs_url and not getattr(execution_session, "is_docker", False):
             docs_path = artifact_dir / "screenshots" / "docs.png"
             if await _capture_screenshot(docs_url, docs_path):
                 docs_screenshots.append(_relative_artifact(docs_path, clone_dir))
@@ -598,14 +662,16 @@ async def collect_runtime_evidence(
             ],
             timeout=12.0,
             baseline_ports=baseline_ports,
+            execution_session=execution_session,
         )
         frontend_screenshots: list[str] = []
         dom_text = ""
         if frontend_ok and frontend_url:
-            homepage_path = artifact_dir / "screenshots" / "homepage.png"
-            if await _capture_screenshot(frontend_url, homepage_path):
-                frontend_screenshots.append(_relative_artifact(homepage_path, clone_dir))
-            dom_text = await _dump_dom(frontend_url)
+            if not getattr(execution_session, "is_docker", False):
+                homepage_path = artifact_dir / "screenshots" / "homepage.png"
+                if await _capture_screenshot(frontend_url, homepage_path):
+                    frontend_screenshots.append(_relative_artifact(homepage_path, clone_dir))
+            dom_text = await _dump_dom(frontend_url, execution_session=execution_session)
         evidence["checks"].append(
             _feature_check(
                 "frontend_dev_server",

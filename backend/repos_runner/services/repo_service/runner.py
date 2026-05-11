@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-from repos_runner.services.sandbox import run_sandboxed
+from repos_runner.services.sandbox import create_execution_session, run_sandboxed
 
 from .venv import ensure_repo_venv
 from .detection import (
@@ -22,6 +22,13 @@ from .parsing import _parse_json_report, _parse_test_output
 from .coverage import _extract_features_from_tag_message, _check_feature_coverage
 from .report import _generate_test_report
 from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_coverage
+
+
+def _run_repo_command(execution_session, cmd: str, *, cwd: Path, timeout: int):
+    """Run a repo command through Docker when configured, otherwise use host sandbox."""
+    if getattr(execution_session, "is_docker", False):
+        return execution_session.run(cmd, cwd=cwd, timeout=timeout)
+    return run_sandboxed(cmd, cwd=cwd, timeout=timeout)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -324,203 +331,214 @@ async def run_tests(
                 ]
             _save_test_config(clone_dir, test_info)
 
-    # Run setup commands with hash-based venv caching for Python
-    if test_info.get("setup_commands"):
-        venv_python = ensure_repo_venv(clone_path)
+    with create_execution_session(clone_dir) as execution_session:
+        using_docker = getattr(execution_session, "is_docker", False)
+        if progress_callback and using_docker:
+            await progress_callback("Using Docker executor for setup, tests, and runtime evidence")
+
+        # Run setup commands with hash-based venv caching for Python on host.
+        # Docker keeps setup and test commands inside one container, so global
+        # installs from setup remain available for the following test commands.
+        if test_info.get("setup_commands"):
+            venv_python = None if using_docker else ensure_repo_venv(clone_path)
+            language = test_info.get("language", "")
+
+            for cmd in test_info["setup_commands"]:
+                if progress_callback:
+                    await progress_callback(f"Running setup: {cmd}")
+
+                if (
+                    not using_docker
+                    and language == "python"
+                    and venv_python is not None
+                    and (cmd.startswith("pip install") or cmd.startswith("pip3 install"))
+                ):
+                    cmd = cmd.replace("pip install", f"{venv_python} -m pip install")
+                    cmd = cmd.replace("pip3 install", f"{venv_python} -m pip install")
+
+                try:
+                    result = _run_repo_command(
+                        execution_session,
+                        cmd,
+                        cwd=clone_dir,
+                        timeout=setup_timeout,
+                    )
+                    if progress_callback and result.returncode != 0:
+                        await progress_callback(f"Setup warning: {result.stderr[:200]}")
+                except subprocess.TimeoutExpired:
+                    if progress_callback:
+                        await progress_callback(
+                            f"Setup command timed out after {setup_timeout}s: {cmd}"
+                        )
+                except Exception as e:
+                    if progress_callback:
+                        await progress_callback(f"Setup failed: {str(e)}")
+
+        # Run test commands
+        test_commands = test_info.get("test_commands", [])
+        num_commands = len(test_commands)
+
+        if num_commands == 0:
+            if progress_callback:
+                await progress_callback("No tests found in repository")
+
+            _safe_tag = tag.replace("/", "_").replace("\\", "_") if tag else None
+            test_report_path = clone_dir / (f"TEST_REPORT_{_safe_tag}.md" if _safe_tag else "TEST_REPORT.md")
+            await _generate_test_report(
+                report_path=test_report_path,
+                repo_name=clone_dir.name,
+                total=0, passed=0, failed=0, score=0,
+                test_results=[],
+            )
+            return {
+                "total": 0, "passed": 0, "failed": 0, "skipped": 0,
+                "score": 0, "details": [],
+                "message": "No tests found in repository",
+                "report_path": str(test_report_path),
+            }
+
+        total_passed = 0
+        total_failed = 0
+        total_tests = 0
+        all_test_cases: List[Dict[str, Any]] = []
+        command_results = []
+
+        venv_python = None if using_docker else ensure_repo_venv(clone_path)
         language = test_info.get("language", "")
 
-        for cmd in test_info["setup_commands"]:
+        for idx, cmd in enumerate(test_commands):
             if progress_callback:
-                await progress_callback(f"Running setup: {cmd}")
+                await progress_callback(f"Running test {idx + 1}/{num_commands}: {cmd}")
 
-            # Route pip installs through the per-repo venv
-            if language == "python" and (
-                cmd.startswith("pip install") or cmd.startswith("pip3 install")
-            ):
-                cmd = cmd.replace("pip install", f"{venv_python} -m pip install")
-                cmd = cmd.replace("pip3 install", f"{venv_python} -m pip install")
+            modified_cmd = cmd
+            if not using_docker and language == "python" and venv_python is not None:
+                if cmd.startswith("python ") or cmd.startswith("python3 "):
+                    modified_cmd = f"{venv_python} " + cmd.split(" ", 1)[1]
+                elif cmd.startswith("pytest"):
+                    modified_cmd = f"{venv_python} -m pytest" + cmd[6:]
 
+            start_time = datetime.now()
             try:
-                result = run_sandboxed(
-                    cmd,
+                result = _run_repo_command(
+                    execution_session,
+                    modified_cmd,
                     cwd=clone_dir,
-                    timeout=setup_timeout,
+                    timeout=test_timeout,
                 )
-                if progress_callback and result.returncode != 0:
-                    await progress_callback(f"Setup warning: {result.stderr[:200]}")
-            except subprocess.TimeoutExpired:
+
+                duration = (datetime.now() - start_time).total_seconds()
+                output = result.stdout + result.stderr
+
+                # Try structured JSON report first
+                structured = _parse_json_report(clone_dir)
+                if structured:
+                    cmd_passed = structured["passed"]
+                    cmd_failed = structured["failed"]
+                    cmd_total = structured["total"]
+                    status = "passed" if cmd_failed == 0 else "failed"
+                    all_test_cases.extend(structured.get("test_cases", []))
+                else:
+                    # Fall back to regex / LLM parsing of stdout
+                    parsed_counts = await _parse_test_output(output)
+                    if parsed_counts:
+                        cmd_passed = parsed_counts["passed"]
+                        cmd_failed = parsed_counts["failed"]
+                        cmd_total = parsed_counts["total"]
+                        status = "passed" if cmd_failed == 0 else "failed"
+                    else:
+                        status = "passed" if result.returncode == 0 else "failed"
+                        cmd_passed = 1 if status == "passed" else 0
+                        cmd_failed = 1 if status == "failed" else 0
+                        cmd_total = 1
+
+                total_passed += cmd_passed
+                total_failed += cmd_failed
+                total_tests += cmd_total
+
+                command_results.append({
+                    "name": cmd,
+                    "status": status,
+                    "duration": duration,
+                    "output": output,
+                })
+
                 if progress_callback:
                     await progress_callback(
-                        f"Setup command timed out after {setup_timeout}s: {cmd}"
+                        f"Test {idx + 1}: {cmd_passed} passed, {cmd_failed} failed"
                     )
-            except Exception as e:
+
+            except subprocess.TimeoutExpired:
+                command_results.append({
+                    "name": cmd,
+                    "status": "failed",
+                    "duration": float(test_timeout),
+                    "output": f"Test timed out after {test_timeout}s",
+                })
+                total_failed += 1
+                total_tests += 1
                 if progress_callback:
-                    await progress_callback(f"Setup failed: {str(e)}")
+                    await progress_callback(f"Test {idx + 1} timed out after {test_timeout}s")
 
-    # Run test commands
-    test_commands = test_info.get("test_commands", [])
-    num_commands = len(test_commands)
+            except Exception as e:
+                command_results.append({
+                    "name": cmd,
+                    "status": "failed",
+                    "duration": 0.0,
+                    "output": str(e),
+                })
+                total_failed += 1
+                total_tests += 1
+                if progress_callback:
+                    await progress_callback(f"Test {idx + 1} error: {str(e)}")
 
-    if num_commands == 0:
-        if progress_callback:
-            await progress_callback("No tests found in repository")
+        raw_pass_rate = (total_passed / total_tests) if total_tests > 0 else 0
 
-        _safe_tag = tag.replace("/", "_").replace("\\", "_") if tag else None
-        test_report_path = clone_dir / (f"TEST_REPORT_{_safe_tag}.md" if _safe_tag else "TEST_REPORT.md")
-        await _generate_test_report(
-            report_path=test_report_path,
-            repo_name=clone_dir.name,
-            total=0, passed=0, failed=0, score=0,
-            test_results=[],
-        )
-        return {
-            "total": 0, "passed": 0, "failed": 0, "skipped": 0,
-            "score": 0, "details": [],
-            "message": "No tests found in repository",
-            "report_path": str(test_report_path),
-        }
+        # -- Feature coverage adjustment (when tag_message is provided) --
+        feature_coverage: Optional[Dict[str, Any]] = None
+        runtime_evidence: Optional[Dict[str, Any]] = None
+        coverage_ratio = 1.0
 
-    total_passed = 0
-    total_failed = 0
-    total_tests = 0
-    all_test_cases: List[Dict[str, Any]] = []
-    command_results = []
-
-    venv_python = ensure_repo_venv(clone_path)
-    language = test_info.get("language", "")
-
-    for idx, cmd in enumerate(test_commands):
-        if progress_callback:
-            await progress_callback(f"Running test {idx + 1}/{num_commands}: {cmd}")
-
-        # Route Python commands through per-repo venv
-        modified_cmd = cmd
-        if language == "python":
-            if cmd.startswith("python ") or cmd.startswith("python3 "):
-                modified_cmd = f"{venv_python} " + cmd.split(" ", 1)[1]
-            elif cmd.startswith("pytest"):
-                modified_cmd = f"{venv_python} -m pytest" + cmd[6:]
-
-        start_time = datetime.now()
-        try:
-            result = run_sandboxed(
-                modified_cmd,
-                cwd=clone_dir,
-                timeout=test_timeout,
-            )
-
-            duration = (datetime.now() - start_time).total_seconds()
-            output = result.stdout + result.stderr
-
-            # Try structured JSON report first
-            structured = _parse_json_report(clone_dir)
-            if structured:
-                cmd_passed = structured["passed"]
-                cmd_failed = structured["failed"]
-                cmd_total = structured["total"]
-                status = "passed" if cmd_failed == 0 else "failed"
-                all_test_cases.extend(structured.get("test_cases", []))
+        if tag_message and tag_message.strip():
+            if progress_callback:
+                await progress_callback("Analyzing tag message for required features...")
+            features = await _extract_features_from_tag_message(tag_message)
+            if features:
+                if progress_callback:
+                    await progress_callback(
+                        f"Required features ({len(features)}): {', '.join(features)}"
+                    )
+                if progress_callback:
+                    await progress_callback("Checking feature coverage in test files...")
+                feature_coverage = await _check_feature_coverage(clone_dir, features)
+                if progress_callback:
+                    await progress_callback("Collecting runtime feature evidence...")
+                runtime_evidence = await collect_runtime_evidence(
+                    clone_dir,
+                    tag=tag or "",
+                    progress_callback=progress_callback,
+                    execution_session=execution_session,
+                )
+                feature_coverage = merge_runtime_feature_coverage(
+                    feature_coverage,
+                    runtime_evidence,
+                )
+                coverage_ratio = feature_coverage["coverage_ratio"]
+                covered = feature_coverage["covered"]
+                not_covered = feature_coverage["not_covered"]
+                if progress_callback:
+                    await progress_callback(
+                        f"Feature coverage: {len(covered)}/{len(features)} features covered "
+                        f"({coverage_ratio * 100:.0f}%)"
+                    )
+                if not_covered and progress_callback:
+                    await progress_callback(f"Missing feature tests: {', '.join(not_covered)}")
             else:
-                # Fall back to regex / LLM parsing of stdout
-                parsed_counts = await _parse_test_output(output)
-                if parsed_counts:
-                    cmd_passed = parsed_counts["passed"]
-                    cmd_failed = parsed_counts["failed"]
-                    cmd_total = parsed_counts["total"]
-                    status = "passed" if cmd_failed == 0 else "failed"
-                else:
-                    status = "passed" if result.returncode == 0 else "failed"
-                    cmd_passed = 1 if status == "passed" else 0
-                    cmd_failed = 1 if status == "failed" else 0
-                    cmd_total = 1
-
-            total_passed += cmd_passed
-            total_failed += cmd_failed
-            total_tests += cmd_total
-
-            command_results.append({
-                "name": cmd,
-                "status": status,
-                "duration": duration,
-                "output": output,
-            })
-
-            if progress_callback:
-                await progress_callback(
-                    f"Test {idx + 1}: {cmd_passed} passed, {cmd_failed} failed"
-                )
-
-        except subprocess.TimeoutExpired:
-            command_results.append({
-                "name": cmd,
-                "status": "failed",
-                "duration": float(test_timeout),
-                "output": f"Test timed out after {test_timeout}s",
-            })
-            total_failed += 1
-            total_tests += 1
-            if progress_callback:
-                await progress_callback(f"Test {idx + 1} timed out after {test_timeout}s")
-
-        except Exception as e:
-            command_results.append({
-                "name": cmd,
-                "status": "failed",
-                "duration": 0.0,
-                "output": str(e),
-            })
-            total_failed += 1
-            total_tests += 1
-            if progress_callback:
-                await progress_callback(f"Test {idx + 1} error: {str(e)}")
-
-    raw_pass_rate = (total_passed / total_tests) if total_tests > 0 else 0
-
-    # -- Feature coverage adjustment (when tag_message is provided) --
-    feature_coverage: Optional[Dict[str, Any]] = None
-    runtime_evidence: Optional[Dict[str, Any]] = None
-    coverage_ratio = 1.0
-
-    if tag_message and tag_message.strip():
-        if progress_callback:
-            await progress_callback("Analyzing tag message for required features...")
-        features = await _extract_features_from_tag_message(tag_message)
-        if features:
-            if progress_callback:
-                await progress_callback(
-                    f"Required features ({len(features)}): {', '.join(features)}"
-                )
-            if progress_callback:
-                await progress_callback("Checking feature coverage in test files...")
-            feature_coverage = await _check_feature_coverage(clone_dir, features)
-            if progress_callback:
-                await progress_callback("Collecting runtime feature evidence...")
-            runtime_evidence = await collect_runtime_evidence(
-                clone_dir,
-                tag=tag or "",
-                progress_callback=progress_callback,
-            )
-            feature_coverage = merge_runtime_feature_coverage(
-                feature_coverage,
-                runtime_evidence,
-            )
-            coverage_ratio = feature_coverage["coverage_ratio"]
-            covered = feature_coverage["covered"]
-            not_covered = feature_coverage["not_covered"]
-            if progress_callback:
-                await progress_callback(
-                    f"Feature coverage: {len(covered)}/{len(features)} features covered "
-                    f"({coverage_ratio * 100:.0f}%)"
-                )
-            if not_covered and progress_callback:
-                await progress_callback(f"Missing feature tests: {', '.join(not_covered)}")
-        else:
-            # Tag message present but no testable features could be extracted → score is 0
-            coverage_ratio = 0.0
-            if progress_callback:
-                await progress_callback(
-                    "No testable features could be extracted from the tag message — score set to 0"
-                )
+                # tag_message present but no testable features could be extracted → score is 0
+                coverage_ratio = 0.0
+                if progress_callback:
+                    await progress_callback(
+                        "No testable features could be extracted from the tag message — score set to 0"
+                    )
 
     score = int(raw_pass_rate * coverage_ratio * 100)
 
