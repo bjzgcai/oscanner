@@ -21,6 +21,7 @@ from .detection import (
 from .parsing import _parse_json_report, _parse_test_output
 from .coverage import _extract_features_from_tag_message, _check_feature_coverage
 from .report import _generate_test_report
+from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_coverage
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -477,6 +478,7 @@ async def run_tests(
 
     # -- Feature coverage adjustment (when tag_message is provided) --
     feature_coverage: Optional[Dict[str, Any]] = None
+    runtime_evidence: Optional[Dict[str, Any]] = None
     coverage_ratio = 1.0
 
     if tag_message and tag_message.strip():
@@ -491,6 +493,17 @@ async def run_tests(
             if progress_callback:
                 await progress_callback("Checking feature coverage in test files...")
             feature_coverage = await _check_feature_coverage(clone_dir, features)
+            if progress_callback:
+                await progress_callback("Collecting runtime feature evidence...")
+            runtime_evidence = await collect_runtime_evidence(
+                clone_dir,
+                tag=tag or "",
+                progress_callback=progress_callback,
+            )
+            feature_coverage = merge_runtime_feature_coverage(
+                feature_coverage,
+                runtime_evidence,
+            )
             coverage_ratio = feature_coverage["coverage_ratio"]
             covered = feature_coverage["covered"]
             not_covered = feature_coverage["not_covered"]
@@ -538,6 +551,7 @@ async def run_tests(
         test_results=report_items,
         feature_coverage=feature_coverage,
         tag_message=tag_message,
+        runtime_evidence=runtime_evidence,
     )
 
     if progress_callback:
@@ -556,4 +570,6 @@ async def run_tests(
     if feature_coverage:
         result["feature_coverage"] = feature_coverage
         result["tag_message"] = tag_message
+    if runtime_evidence:
+        result["runtime_evidence"] = runtime_evidence
     return result

@@ -244,6 +244,81 @@ def _extract_numeric_score(evaluation_result: Dict[str, Any]) -> float:
     return total if found else 0.0
 
 
+def _token_count(value: Any) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)) and value >= 0:
+        return int(value)
+    if isinstance(value, str):
+        cleaned = value.strip().replace(",", "")
+        if cleaned.isdigit():
+            return int(cleaned)
+    return None
+
+
+def _normalize_token_usage(usage: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(usage, dict):
+        return None
+
+    input_tokens = (
+        _token_count(usage.get("input_tokens"))
+        or _token_count(usage.get("inputTokens"))
+        or _token_count(usage.get("prompt_tokens"))
+        or _token_count(usage.get("promptTokens"))
+    )
+    output_tokens = (
+        _token_count(usage.get("output_tokens"))
+        or _token_count(usage.get("outputTokens"))
+        or _token_count(usage.get("completion_tokens"))
+        or _token_count(usage.get("completionTokens"))
+    )
+    total_tokens = _token_count(usage.get("total_tokens")) or _token_count(usage.get("totalTokens"))
+
+    if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        total_tokens = input_tokens + output_tokens
+    if input_tokens is None and total_tokens is not None and output_tokens is not None:
+        input_tokens = max(total_tokens - output_tokens, 0)
+    if output_tokens is None and total_tokens is not None and input_tokens is not None:
+        output_tokens = max(total_tokens - input_tokens, 0)
+
+    if input_tokens is None and output_tokens is None and total_tokens is None:
+        return None
+
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "source": "provider" if usage.get("source") == "provider" else "estimated",
+    }
+
+
+def _sum_token_usage(usages: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not usages:
+        return None
+
+    summary: Dict[str, Any] = {
+        "input_tokens": None,
+        "output_tokens": None,
+        "total_tokens": None,
+        "source": "provider" if all(usage.get("source") == "provider" for usage in usages) else "estimated",
+    }
+    for field in ("input_tokens", "output_tokens", "total_tokens"):
+        values = [
+            usage.get(field)
+            for usage in usages
+            if isinstance(usage.get(field), int)
+        ]
+        if values:
+            summary[field] = sum(values)
+
+    if summary["total_tokens"] is None and (
+        summary["input_tokens"] is not None or summary["output_tokens"] is not None
+    ):
+        summary["total_tokens"] = (summary["input_tokens"] or 0) + (summary["output_tokens"] or 0)
+
+    return summary
+
+
 def _build_group_checkpoint(
     *,
     commits: List[Dict[str, Any]],
@@ -473,7 +548,7 @@ def analyze_group_repositories(
                 evaluation_result=evaluation_result,
             )
             score = _extract_numeric_score(evaluation_result)
-            results.append({
+            row = {
                 **base_result,
                 "success": True,
                 "message": f"Created full-repo group judgment using {model}.",
@@ -481,7 +556,11 @@ def analyze_group_repositories(
                 "checkpoint": checkpoint,
                 "commits_analyzed": len(commits),
                 "sync": sync_result,
-            })
+            }
+            token_usage = _normalize_token_usage(evaluation_result.get("token_usage"))
+            if token_usage:
+                row["token_usage"] = token_usage
+            results.append(row)
             if progress_callback:
                 progress_callback("section", {
                     "title": f"评估仓库 {index + 1}/{len(repositories)}",
@@ -511,7 +590,7 @@ def analyze_group_repositories(
 
     success_count = sum(1 for item in results if item.get("success"))
     failed_count = len(results) - success_count
-    return {
+    response = {
         "success": failed_count == 0,
         "message": f"Group evaluation completed: {success_count} succeeded, {failed_count} failed.",
         "results": results,
@@ -526,6 +605,14 @@ def analyze_group_repositories(
             "conflicts_detected": False,
         },
     }
+    token_usage = _sum_token_usage([
+        usage
+        for item in results
+        if (usage := _normalize_token_usage(item.get("token_usage")))
+    ])
+    if token_usage:
+        response["token_usage"] = token_usage
+    return response
 
 
 

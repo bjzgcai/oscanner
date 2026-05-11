@@ -17,7 +17,9 @@ Standard reference:
 """
 
 import json
+import math
 import os
+import re
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -56,6 +58,7 @@ TRAJECTORY EVALUATION CONTEXT:
 
 
 ProgressCallback = Callable[[str, Dict[str, Any]], None]
+CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 
 
 def extract_stream_delta(line: str) -> Optional[str]:
@@ -92,6 +95,25 @@ def extract_stream_delta(line: str) -> Optional[str]:
 
     text = first.get("text")
     return text if isinstance(text, str) and text else None
+
+
+def extract_stream_usage(line: str) -> Optional[Dict[str, Any]]:
+    """Extract provider usage from an OpenAI-compatible SSE data line."""
+    raw = (line or "").strip()
+    if not raw:
+        return None
+    if raw.startswith("data:"):
+        raw = raw[5:].strip()
+    if not raw or raw == "[DONE]":
+        return None
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+    usage = payload.get("usage")
+    return usage if isinstance(usage, dict) else None
 
 
 def create_commit_evaluator(
@@ -195,6 +217,7 @@ class CommitEvaluatorModerate:
         self.worktree_base = worktree_base  # 'build' or 'temp'
         self.expected_feature = (expected_feature or "").strip()
         self.progress_callback = progress_callback
+        self._token_usage_records: List[Dict[str, Any]] = []
 
         # Checker API base URL (default to localhost, can be overridden via env)
         self.checker_api_base = os.getenv("OSCANNER_CHECKER_API_BASE", "http://localhost:8000")
@@ -259,6 +282,120 @@ class CommitEvaluatorModerate:
         except Exception as e:
             print(f"[Streaming] Progress callback failed: {e}")
 
+    @staticmethod
+    def _token_count(value: Any) -> Optional[int]:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, (int, float)) and value >= 0:
+            return int(value)
+        if isinstance(value, str):
+            cleaned = value.strip().replace(",", "")
+            if cleaned.isdigit():
+                return int(cleaned)
+        return None
+
+    @classmethod
+    def _normalize_token_usage(cls, usage: Any, source: str = "provider") -> Optional[Dict[str, Any]]:
+        if not isinstance(usage, dict):
+            return None
+
+        input_tokens = (
+            cls._token_count(usage.get("input_tokens"))
+            or cls._token_count(usage.get("inputTokens"))
+            or cls._token_count(usage.get("prompt_tokens"))
+            or cls._token_count(usage.get("promptTokens"))
+        )
+        output_tokens = (
+            cls._token_count(usage.get("output_tokens"))
+            or cls._token_count(usage.get("outputTokens"))
+            or cls._token_count(usage.get("completion_tokens"))
+            or cls._token_count(usage.get("completionTokens"))
+        )
+        total_tokens = (
+            cls._token_count(usage.get("total_tokens"))
+            or cls._token_count(usage.get("totalTokens"))
+        )
+
+        if total_tokens is None and input_tokens is not None and output_tokens is not None:
+            total_tokens = input_tokens + output_tokens
+        if input_tokens is None and total_tokens is not None and output_tokens is not None:
+            input_tokens = max(total_tokens - output_tokens, 0)
+        if output_tokens is None and total_tokens is not None and input_tokens is not None:
+            output_tokens = max(total_tokens - input_tokens, 0)
+
+        if input_tokens is None and output_tokens is None and total_tokens is None:
+            return None
+
+        return {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+            "source": source,
+        }
+
+    @staticmethod
+    def _estimate_token_count(text: str) -> Optional[int]:
+        normalized = str(text or "").strip()
+        if not normalized:
+            return None
+        cjk_count = len(CJK_PATTERN.findall(normalized))
+        compact_non_cjk = CJK_PATTERN.sub("", normalized)
+        compact_non_cjk = re.sub(r"\s+", "", compact_non_cjk)
+        non_cjk_estimate = math.ceil(len(compact_non_cjk) / 4) if compact_non_cjk else 0
+        return max(1, cjk_count + non_cjk_estimate)
+
+    def _record_chat_token_usage(
+        self,
+        *,
+        prompt: str,
+        content: str,
+        provider_usage: Optional[Dict[str, Any]],
+    ) -> None:
+        usage = self._normalize_token_usage(provider_usage, source="provider")
+        if not usage:
+            input_tokens = self._estimate_token_count(prompt)
+            output_tokens = self._estimate_token_count(content)
+            if input_tokens is None and output_tokens is None:
+                return
+            usage = {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": (input_tokens or 0) + (output_tokens or 0),
+                "source": "estimated",
+            }
+        self._token_usage_records.append(usage)
+
+    def _reset_token_usage(self) -> None:
+        self._token_usage_records = []
+
+    def _summarize_token_usage(self) -> Optional[Dict[str, Any]]:
+        if not self._token_usage_records:
+            return None
+
+        summary: Dict[str, Any] = {
+            "input_tokens": None,
+            "output_tokens": None,
+            "total_tokens": None,
+            "source": "provider"
+            if all(record.get("source") == "provider" for record in self._token_usage_records)
+            else "estimated",
+        }
+        for field in ("input_tokens", "output_tokens", "total_tokens"):
+            values = [
+                record.get(field)
+                for record in self._token_usage_records
+                if isinstance(record.get(field), int)
+            ]
+            if values:
+                summary[field] = sum(values)
+
+        if summary["total_tokens"] is None and (
+            summary["input_tokens"] is not None or summary["output_tokens"] is not None
+        ):
+            summary["total_tokens"] = (summary["input_tokens"] or 0) + (summary["output_tokens"] or 0)
+
+        return summary
+
     def _complete_chat(self, model: str, prompt: str, *, label: str) -> str:
         payload = {
             "model": model,
@@ -278,12 +415,16 @@ class CommitEvaluatorModerate:
             data = resp.json()
             if "choices" not in data or not data["choices"]:
                 raise RuntimeError("No choices in response")
-            return data["choices"][0]["message"]["content"]
+            content = data["choices"][0]["message"]["content"]
+            self._record_chat_token_usage(prompt=prompt, content=content, provider_usage=data.get("usage"))
+            return content
 
         self._emit_progress("section", {"title": label, "status": "running"})
         content_parts: List[str] = []
         stream_payload = dict(payload)
         stream_payload["stream"] = True
+        stream_payload["stream_options"] = {"include_usage": True}
+        provider_usage: Optional[Dict[str, Any]] = None
 
         with self._http_client.stream(
             "POST",
@@ -296,6 +437,9 @@ class CommitEvaluatorModerate:
                 raise RuntimeError(f"{resp.status_code} {body[:200]}")
 
             for line in resp.iter_lines():
+                usage = extract_stream_usage(line)
+                if usage:
+                    provider_usage = usage
                 delta = extract_stream_delta(line)
                 if delta is None:
                     continue
@@ -303,6 +447,7 @@ class CommitEvaluatorModerate:
                 self._emit_progress("token", {"content": delta, "label": label})
 
         content = "".join(content_parts)
+        self._record_chat_token_usage(prompt=prompt, content=content, provider_usage=provider_usage)
         self._emit_progress("section", {"title": label, "status": "done"})
         return content
 
@@ -349,6 +494,7 @@ class CommitEvaluatorModerate:
         return self._evaluate_repository_standard(analyzed_commits, repo_label, load_files=load_files)
 
     def _evaluate_repository_standard(self, commits: List[Dict[str, Any]], repo_label: str, *, load_files: bool) -> Dict[str, Any]:
+        self._reset_token_usage()
         file_contents: Dict[str, str] = {}
         repo_structure: Optional[Dict[str, Any]] = None
         if self.mode == "moderate" and load_files and self.data_dir:
@@ -381,7 +527,7 @@ class CommitEvaluatorModerate:
             )
             scores = self._evaluate_with_llm(context, repo_label)
 
-        return {
+        result = {
             "username": repo_label,
             "total_commits_analyzed": len(commits),
             "files_loaded": len(file_contents),
@@ -390,6 +536,10 @@ class CommitEvaluatorModerate:
             "commits_summary": self._summarize_commits(commits),
             "scope": "full_repo",
         }
+        token_usage = self._summarize_token_usage()
+        if token_usage:
+            result["token_usage"] = token_usage
+        return result
 
     def _is_commit_by_author(self, commit: Dict[str, Any], username: str) -> bool:
         # Handle comma-separated usernames as multiple aliases
@@ -403,6 +553,7 @@ class CommitEvaluatorModerate:
         return False
 
     def _evaluate_engineer_standard(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
+        self._reset_token_usage()
         file_contents: Dict[str, str] = {}
         repo_structure: Optional[Dict[str, Any]] = None
         if self.mode == "moderate" and load_files and self.data_dir:
@@ -427,7 +578,7 @@ class CommitEvaluatorModerate:
             context = self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure)
             scores = self._evaluate_with_llm(context, username)
         
-        return {
+        result = {
             "username": username,
             "total_commits_analyzed": len(commits),
             "files_loaded": len(file_contents),
@@ -435,6 +586,10 @@ class CommitEvaluatorModerate:
             "scores": scores,
             "commits_summary": self._summarize_commits(commits),
         }
+        token_usage = self._summarize_token_usage()
+        if token_usage:
+            result["token_usage"] = token_usage
+        return result
 
     def _evaluate_engineer_chunked(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
         commits_per_chunk = 15 if self.mode == "moderate" else 20

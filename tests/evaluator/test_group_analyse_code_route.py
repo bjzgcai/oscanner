@@ -210,3 +210,218 @@ def test_ai_native_plugin_evaluate_repository_uses_all_commits_without_chunking(
     assert "sha-1" in commits_context
     assert "sha-30" in commits_context
     assert "Commits: 30" in commits_context
+
+
+def test_ai_native_plugin_evaluate_repository_reports_provider_token_usage(monkeypatch):
+    import importlib.util
+
+    scan_path = PROJECT_ROOT / "plugins" / "zgc_ai_native_2026" / "scan" / "__init__.py"
+    spec = importlib.util.spec_from_file_location("test_zgc_ai_native_2026_group_scan_usage", scan_path)
+    plugin = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(plugin)
+
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+
+    class FakeResponse:
+        is_success = True
+
+        def __init__(self, prompt_tokens, completion_tokens):
+            self._prompt_tokens = prompt_tokens
+            self._completion_tokens = completion_tokens
+
+        def json(self):
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": (
+                                '{"spec_quality":80,"cloud_architecture":70,'
+                                '"ai_engineering":75,"mastery_professionalism":85,'
+                                '"reasoning":"ok"}'
+                            )
+                        }
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": self._prompt_tokens,
+                    "completion_tokens": self._completion_tokens,
+                    "total_tokens": self._prompt_tokens + self._completion_tokens,
+                },
+            }
+
+    calls = []
+
+    def fake_post(*_args, json=None, **_kwargs):
+        calls.append(json)
+        return FakeResponse(
+            prompt_tokens=1000 + len(calls),
+            completion_tokens=100 + len(calls),
+        )
+
+    monkeypatch.setattr(evaluator._http_client, "post", fake_post)
+
+    result = evaluator.evaluate_repository(
+        commits=[
+            {
+                "sha": "sha-1",
+                "commit": {"author": {"name": "Ada", "date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                "files": [{"filename": "README.md", "patch": "+hello"}],
+            }
+        ],
+        repo_label="https://gitee.com/org/repo",
+        load_files=False,
+        use_chunking=False,
+    )
+
+    assert len(calls) == 1
+    assert result["token_usage"] == {
+        "input_tokens": 1001,
+        "output_tokens": 101,
+        "total_tokens": 1102,
+        "source": "provider",
+    }
+
+
+def test_ai_native_plugin_streaming_evaluation_reports_provider_token_usage(monkeypatch):
+    import importlib.util
+
+    scan_path = PROJECT_ROOT / "plugins" / "zgc_ai_native_2026" / "scan" / "__init__.py"
+    spec = importlib.util.spec_from_file_location("test_zgc_ai_native_2026_group_scan_stream_usage", scan_path)
+    plugin = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(plugin)
+
+    events = []
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+        progress_callback=lambda event, data: events.append((event, data)),
+    )
+
+    class FakeStreamResponse:
+        is_success = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def iter_lines(self):
+            yield 'data: {"choices":[{"delta":{"content":"{\\"spec_quality\\":80,\\"cloud_architecture\\":70,"}}]}\n\n'
+            yield 'data: {"choices":[{"delta":{"content":"\\"ai_engineering\\":75,\\"mastery_professionalism\\":85,\\"reasoning\\":\\"ok\\"}"}}]}\n\n'
+            yield 'data: {"choices":[],"usage":{"prompt_tokens":2345,"completion_tokens":123,"total_tokens":2468}}\n\n'
+            yield "data: [DONE]\n\n"
+
+    captured_payloads = []
+
+    def fake_stream(*_args, json=None, **_kwargs):
+        captured_payloads.append(json)
+        return FakeStreamResponse()
+
+    monkeypatch.setattr(evaluator._http_client, "stream", fake_stream)
+
+    result = evaluator.evaluate_repository(
+        commits=[
+            {
+                "sha": "sha-1",
+                "commit": {"author": {"name": "Ada", "date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                "files": [{"filename": "README.md", "patch": "+hello"}],
+            }
+        ],
+        repo_label="https://gitee.com/org/repo",
+        load_files=False,
+        use_chunking=False,
+    )
+
+    assert captured_payloads[0]["stream"] is True
+    assert captured_payloads[0]["stream_options"] == {"include_usage": True}
+    assert result["token_usage"] == {
+        "input_tokens": 2345,
+        "output_tokens": 123,
+        "total_tokens": 2468,
+        "source": "provider",
+    }
+    assert any(event == "token" for event, _data in events)
+
+
+def test_analyze_group_repositories_exposes_row_and_total_token_usage(monkeypatch):
+    from types import SimpleNamespace
+
+    from evaluator.services import trajectory_service
+
+    class FakeEvaluator:
+        def evaluate_repository(self, **_kwargs):
+            return {
+                "username": "https://gitee.com/org/repo",
+                "total_commits_analyzed": 1,
+                "files_loaded": 0,
+                "mode": "moderate",
+                "scores": {
+                    "spec_quality": 80,
+                    "cloud_architecture": 70,
+                    "ai_engineering": 75,
+                    "mastery_professionalism": 85,
+                    "reasoning": "ok",
+                },
+                "commits_summary": {},
+                "token_usage": {
+                    "input_tokens": 2345,
+                    "output_tokens": 123,
+                    "total_tokens": 2468,
+                    "source": "provider",
+                },
+            }
+
+    fake_scan = SimpleNamespace(create_commit_evaluator=lambda **_kwargs: FakeEvaluator())
+    fake_meta = SimpleNamespace(version="0.1.0")
+
+    monkeypatch.setattr(
+        trajectory_service,
+        "_sync_repo_for_group_eval",
+        lambda repo_url, use_cache: ("gitee", "org", "repo", False),
+    )
+    monkeypatch.setattr(
+        trajectory_service,
+        "_load_all_repo_commits",
+        lambda repo_url: (
+            [
+                {
+                    "sha": "sha-1",
+                    "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                }
+            ],
+            PROJECT_ROOT,
+        ),
+    )
+    monkeypatch.setattr(trajectory_service, "load_scan_module", lambda _plugin_id: (fake_meta, fake_scan, PROJECT_ROOT))
+    monkeypatch.setattr(trajectory_service, "get_llm_api_key", lambda: "test-key")
+
+    result = trajectory_service.analyze_group_repositories(
+        repositories=[
+            {
+                "id": "s1",
+                "username": "Alice",
+                "repo_url": "https://gitee.com/org/repo",
+            }
+        ],
+        plugin_id="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+
+    assert result["token_usage"] == {
+        "input_tokens": 2345,
+        "output_tokens": 123,
+        "total_tokens": 2468,
+        "source": "provider",
+    }
+    assert result["results"][0]["token_usage"] == result["token_usage"]

@@ -24,6 +24,7 @@ async def _generate_test_report(
     test_results: list,
     feature_coverage: Optional[Dict[str, Any]] = None,
     tag_message: Optional[str] = None,
+    runtime_evidence: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Generate TEST_REPORT.md for analyzed repository."""
     pass_rate = (passed / total * 100) if total > 0 else 0
@@ -140,6 +141,34 @@ async def _generate_test_report(
         report += _format_tag_message_section(tag_message)
         report += "> ⚠️ 无法从标签说明中提取可测试的功能点。\n\n"
         report += "> **得分设为 0** ——已提供标签说明，但无法从中识别出可评估的功能。\n\n"
+
+    if runtime_evidence:
+        checks = runtime_evidence.get("checks", [])
+        summary = runtime_evidence.get("summary") or {}
+        passed_checks = summary.get(
+            "passed",
+            len([check for check in checks if check.get("passed")]),
+        )
+        total_checks = summary.get("total", len(checks))
+
+        report += "## 运行时功能验证\n\n"
+        report += f"- **验证结果**：{passed_checks}/{total_checks} 项通过\n"
+        if runtime_evidence.get("commands"):
+            report += "- **启动来源**：README/文档中的安全启动命令\n"
+        for warning in (runtime_evidence.get("warnings") or [])[:3]:
+            report += f"- **警告**：{warning}\n"
+        report += "\n"
+
+        for check in checks:
+            icon = "✅" if check.get("passed") else "❌"
+            label = check.get("label") or check.get("id") or "runtime check"
+            report += f"### {icon} {label}\n\n"
+            evidence = str(check.get("evidence") or "").strip()
+            if evidence:
+                report += f"- 证据：{evidence}\n"
+            for screenshot in check.get("screenshots") or []:
+                report += f"- 截图：![{check.get('id', 'screenshot')}]({screenshot})\n"
+            report += "\n"
 
     report += """### 评级标准
 - 90-100：优秀 ⭐⭐⭐⭐⭐（可投入生产）
