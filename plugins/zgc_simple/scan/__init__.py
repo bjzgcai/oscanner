@@ -221,12 +221,15 @@ class CommitEvaluatorModerate:
             else:
                 accumulated = self._merge_evaluations(accumulated, chunk_scores, idx)
 
+        if accumulated is None:
+            raise RuntimeError("LLM evaluation failed: no chunks were evaluated")
+
         return {
             "username": username,
             "total_commits_analyzed": len(commits),
             "files_loaded": len(all_files),
             "mode": self.mode,
-            "scores": accumulated or self._fallback_evaluation(""),
+            "scores": accumulated,
             "commits_summary": self._summarize_commits(commits),
             "chunked": True,
             "chunks_processed": len(chunks),
@@ -549,11 +552,8 @@ class CommitEvaluatorModerate:
         return None
 
     def _evaluate_with_llm(self, context: str, username: str, chunk_idx: Optional[int] = None) -> Dict[str, Any]:
-        allow_fallback = str(os.getenv("OSCANNER_ALLOW_FALLBACK") or "").strip().lower() in ("1", "true", "yes", "y")
         if not self.api_key:
             print("[ERROR] LLM API key not configured")
-            if allow_fallback:
-                return self._fallback_evaluation(context)
             raise RuntimeError("LLM not configured (missing API key)")
 
         prompt = self._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)
@@ -587,9 +587,6 @@ class CommitEvaluatorModerate:
                 print(f"[ERROR] LLM request failed for model {m}: {last_err}")
                 continue
         print(f"[ERROR] All LLM models failed. Last error: {last_err}")
-        if allow_fallback:
-            print("[WARNING] Using fallback evaluation (keyword-based)")
-            return self._fallback_evaluation(context)
         raise RuntimeError(f"LLM request failed for all models. last_error={last_err}")
 
     def _estimate_tokens(self, text: str) -> int:
@@ -691,8 +688,8 @@ class CommitEvaluatorModerate:
             print(f"[ERROR] Failed to parse LLM response: {error_msg}")
             
             if retry_count >= max_retries:
-                print(f"[ERROR] Max retries ({max_retries}) reached, using fallback")
-                return self._get_fallback_evaluation()
+                print(f"[ERROR] Max retries ({max_retries}) reached")
+                return self._handle_parse_retry_failure(error_msg)
             
             # Build retry prompt with original prompt and error information
             is_chinese = self.language == "zh-CN"
@@ -738,12 +735,12 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
                 # httpx uses is_success instead of ok
                 if not resp.is_success:
                     print(f"[ERROR] Retry LLM API returned error: {resp.status_code} {resp.text[:200]}")
-                    return self._get_fallback_evaluation()
+                    return self._handle_parse_retry_failure(f"Retry LLM API returned error: {resp.status_code}")
                 
                 retry_data = resp.json()
                 if "choices" not in retry_data or not retry_data["choices"]:
                     print(f"[ERROR] No choices in retry API response")
-                    return self._get_fallback_evaluation()
+                    return self._handle_parse_retry_failure("No choices in retry API response")
                 
                 retry_content = retry_data["choices"][0]["message"]["content"]
                 print(f"[LLM] Retry response received ({len(retry_content)} chars), parsing...")
@@ -751,7 +748,10 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
                 
             except Exception as retry_error:
                 print(f"[ERROR] Retry LLM call failed: {retry_error}")
-                return self._get_fallback_evaluation()
+                return self._handle_parse_retry_failure(str(retry_error))
+
+    def _handle_parse_retry_failure(self, reason: str) -> Dict[str, Any]:
+        raise RuntimeError(f"LLM response parsing failed after retry: {reason}")
 
     def _parse_llm_response(self, content: str) -> Dict[str, Any]:
         try:
@@ -840,13 +840,6 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
             # Re-raise to trigger retry mechanism
             raise
 
-    def _get_fallback_evaluation(self) -> Dict[str, Any]:
-        """Get fallback evaluation with default scores."""
-        print("[FALLBACK] Using default scores due to parsing failure")
-        fallback = {k: 50 for k in self.dimensions.keys()}
-        fallback["reasoning"] = "**Error:** LLM response parsing failed. Using default scores."
-        return fallback
-
     def _format_reasoning(self, reasoning: str) -> str:
         r = (reasoning or "").replace("\\n\\n", "\n\n").replace("\\n", "\n")
         return r.strip()
@@ -860,37 +853,6 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
         out["reasoning"] = (nr + "\n\n---\n\n" + pr).strip() if (nr and pr) else (nr or pr)
         out["chunks_merged"] = chunk_idx
         return out
-
-    def _fallback_evaluation(self, context: str) -> Dict[str, Any]:
-        text = (context or "").lower()
-
-        def score_by_keywords(keywords: List[str]) -> int:
-            hits = sum(1 for kw in keywords if kw in text)
-            if not keywords:
-                return 0
-            return min(100, int((hits / len(keywords)) * 100))
-
-        # Heuristic keywords (broad/default)
-        kw = {
-            "ai_fullstack": ["model", "training", "tensorflow", "pytorch", "neural", "ml", "ai", "inference"],
-            "ai_architecture": ["api", "architecture", "design", "service", "endpoint", "microservice", "schema"],
-            "cloud_native": ["docker", "kubernetes", "k8s", "ci/cd", "deploy", "container", "cloud", "terraform"],
-            "open_source": ["fix", "issue", "pr", "review", "merge", "refactor", "improve", "doc"],
-            "intelligent_dev": ["test", "unit", "integration", "auto", "script", "tool", "lint", "format", "cli"],
-            "leadership": ["optimize", "performance", "security", "best practice", "pattern", "migration"],
-        }
-
-        scores: Dict[str, Any] = {}
-        for k in self.dimensions.keys():
-            scores[k] = score_by_keywords(kw.get(k, []))
-
-        scores["reasoning"] = (
-            "**Note:** LLM not available or failed; using keyword-based heuristic scoring.\n\n"
-            "**Key Strengths:** Scores reflect presence of relevant keywords in commits/diffs/files.\n\n"
-            "**Areas for Growth:** Configure a working LLM provider for deeper contextual analysis.\n\n"
-            "**Overall Assessment:** Treat these scores as rough indicators only."
-        )
-        return scores
 
     def _summarize_commits(self, commits: List[Dict[str, Any]]) -> Dict[str, Any]:
         total_additions = 0

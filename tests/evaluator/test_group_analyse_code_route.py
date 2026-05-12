@@ -1,9 +1,11 @@
 """Tests for courses-style group repository evaluation."""
 
+import importlib.util
 import sys
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
 
@@ -11,6 +13,183 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = PROJECT_ROOT / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
+
+
+def _load_scan_plugin(plugin_id: str, module_name: str):
+    scan_path = PROJECT_ROOT / "plugins" / plugin_id / "scan" / "__init__.py"
+    spec = importlib.util.spec_from_file_location(module_name, scan_path)
+    plugin = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(plugin)
+    return plugin
+
+
+class _FakeInvalidLlmResponse:
+    is_success = True
+    status_code = 200
+    text = "ok"
+
+    def json(self):
+        return {"choices": [{"message": {"content": "still not json"}}]}
+
+
+class _FakeValidRetryResponse:
+    is_success = True
+    status_code = 200
+    text = "ok"
+
+    def __init__(self, content: str):
+        self._content = content
+
+    def json(self):
+        return {"choices": [{"message": {"content": self._content}}]}
+
+
+@pytest.mark.parametrize(
+    ("plugin_id", "valid_content", "expected_key"),
+    [
+        (
+            "zgc_simple",
+            '{"ai_fullstack":81,"ai_architecture":82,"cloud_native":83,'
+            '"open_source":84,"intelligent_dev":85,"leadership":86,"reasoning":"fixed"}',
+            "ai_fullstack",
+        ),
+        (
+            "zgc_ai_native_2026",
+            '{"spec_quality":81,"cloud_architecture":82,'
+            '"ai_engineering":83,"mastery_professionalism":84,"reasoning":"fixed"}',
+            "spec_quality",
+        ),
+    ],
+)
+def test_plugin_parse_retry_returns_valid_retry_response(
+    monkeypatch,
+    plugin_id,
+    valid_content,
+    expected_key,
+):
+    plugin = _load_scan_plugin(plugin_id, f"test_{plugin_id}_parse_retry_success")
+    evaluator = plugin.create_commit_evaluator(data_dir="", api_key="test-key", model="test-model")
+
+    retry_calls = []
+
+    def fake_post(*_args, **_kwargs):
+        retry_calls.append(True)
+        return _FakeValidRetryResponse(valid_content)
+
+    monkeypatch.setattr(evaluator._http_client, "post", fake_post)
+
+    result = evaluator._parse_llm_response_with_retry("not json", "original prompt", "test-model")
+
+    assert len(retry_calls) == 1
+    assert result[expected_key] == 81
+    assert result["reasoning"] == "fixed"
+
+
+@pytest.mark.parametrize("plugin_id", ["zgc_simple", "zgc_ai_native_2026"])
+def test_plugin_parse_retry_exhaustion_raises_by_default(monkeypatch, plugin_id):
+    plugin = _load_scan_plugin(plugin_id, f"test_{plugin_id}_parse_retry_raise")
+    evaluator = plugin.create_commit_evaluator(data_dir="", api_key="test-key", model="test-model")
+
+    retry_calls = []
+
+    def fake_post(*_args, **_kwargs):
+        retry_calls.append(True)
+        return _FakeInvalidLlmResponse()
+
+    monkeypatch.setattr(evaluator._http_client, "post", fake_post)
+
+    with pytest.raises(RuntimeError, match="LLM response parsing failed"):
+        evaluator._parse_llm_response_with_retry("not json", "original prompt", "test-model")
+
+    assert len(retry_calls) == 1
+
+
+def test_ai_native_part_evaluation_parse_failure_raises_by_default(monkeypatch):
+    plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_part_parse_failure")
+    evaluator = plugin.create_commit_evaluator(data_dir="", api_key="test-key", model="test-model")
+
+    monkeypatch.setattr(evaluator, "_complete_chat", lambda *_args, **_kwargs: "not json")
+    monkeypatch.setattr(evaluator._http_client, "post", lambda *_args, **_kwargs: _FakeInvalidLlmResponse())
+
+    with pytest.raises(RuntimeError, match="LLM part evaluation failed.*LLM response parsing failed"):
+        evaluator._evaluate_part_with_llm("commits", "commit context", "https://gitee.com/org/repo")
+
+
+def test_analyze_group_repositories_bubbles_llm_parse_failure(monkeypatch):
+    from types import SimpleNamespace
+
+    from evaluator.services import trajectory_service
+
+    class FakeEvaluator:
+        def evaluate_repository(self, **_kwargs):
+            raise RuntimeError("LLM response parsing failed after retry: bad json")
+
+    fake_scan = SimpleNamespace(create_commit_evaluator=lambda **_kwargs: FakeEvaluator())
+    fake_meta = SimpleNamespace(version="0.1.0")
+
+    monkeypatch.setattr(
+        trajectory_service,
+        "_sync_repo_for_group_eval",
+        lambda repo_url, use_cache: ("gitee", "org", "repo", True),
+    )
+    monkeypatch.setattr(
+        trajectory_service,
+        "_load_all_repo_commits",
+        lambda repo_url: (
+            [
+                {
+                    "sha": "sha-1",
+                    "commit": {"author": {"name": "Ada", "date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                    "files": [{"filename": "README.md", "patch": "+hello"}],
+                }
+            ],
+            PROJECT_ROOT,
+        ),
+    )
+    monkeypatch.setattr(trajectory_service, "load_scan_module", lambda _plugin_id: (fake_meta, fake_scan, PROJECT_ROOT))
+    monkeypatch.setattr(trajectory_service, "get_llm_api_key", lambda: "test-key")
+
+    with pytest.raises(RuntimeError, match="LLM response parsing failed"):
+        trajectory_service.analyze_group_repositories(
+            repositories=[{"id": "s1", "repo_url": "https://gitee.com/org/repo"}],
+            plugin_id="zgc_ai_native_2026",
+            model="deepseek/deepseek-v4-pro",
+            language="zh-CN",
+            use_cache=True,
+        )
+
+
+@pytest.mark.anyio
+async def test_group_analyse_code_route_returns_500_for_llm_parse_failure(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+
+    def fake_analyze_group_repositories(**_kwargs):
+        raise RuntimeError("LLM response parsing failed after retry: bad json")
+
+    monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(trajectory_route, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(trajectory_route, "resolve_plugin_id", lambda plugin: plugin)
+    monkeypatch.setattr(trajectory_route, "analyze_group_repositories", fake_analyze_group_repositories)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await trajectory_route.group_analyse_code(
+            request_body={
+                "tag": "整体",
+                "students": [
+                    {"id": "s1", "username": "Alice", "repo_url": "https://gitee.com/org/repo-a"},
+                ],
+            },
+            plugin="zgc_ai_native_2026",
+            language="zh-CN",
+            use_cache=True,
+            max_fetch_workers=4,
+            forced_checker="",
+            worktree_base="build",
+        )
+
+    assert exc_info.value.status_code == 500
+    assert "LLM response parsing failed" in exc_info.value.detail
 
 
 @pytest.mark.anyio

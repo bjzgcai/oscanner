@@ -405,6 +405,10 @@ def _sync_gitee_boundary_commits(
         }, False
 
 
+def _is_llm_parse_failure(error: Exception) -> bool:
+    return "LLM response parsing failed" in str(error)
+
+
 def analyze_group_repositories(
     *,
     repositories: List[Dict[str, Any]],
@@ -693,6 +697,8 @@ def analyze_group_repositories(
                     "commit_count": len(commits),
                 })
         except Exception as e:
+            if _is_llm_parse_failure(e):
+                raise
             results.append({
                 **base_result,
                 "success": False,
