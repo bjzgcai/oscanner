@@ -44,7 +44,7 @@ export RUNNER_PORT=8001
 # auto = use Docker when the daemon is available, host = current host sandbox,
 # docker = require Docker and fail if it cannot start.
 export REPOS_RUNNER_EXECUTOR=auto
-export REPOS_RUNNER_DOCKER_IMAGE=python:3.12-bookworm
+export REPOS_RUNNER_DOCKER_IMAGE=oscanner-repos-runner:py3.12-node
 ```
 
 ## Usage

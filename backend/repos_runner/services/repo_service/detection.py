@@ -18,14 +18,14 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "content_hints": {"pyproject.toml": ["pytest"], "setup.cfg": ["pytest"]},
         "setup": ["pip install -e .[test] || pip install -r requirements.txt || true",
                   "pip install pytest pytest-json-report"],
-        "test": ["pytest --json-report --json-report-file=.test_report.json -v || true"],
+        "test": ["pytest --json-report --json-report-file=.test_report.json -v"],
         "language": "python",
     },
     {
         "files": ["requirements-test.txt", "requirements_test.txt"],
         "content_hints": {},
         "setup": ["pip install -r requirements-test.txt"],
-        "test": ["pytest --json-report --json-report-file=.test_report.json -v || true"],
+        "test": ["pytest --json-report --json-report-file=.test_report.json -v"],
         "language": "python",
     },
     # Node / Jest
@@ -33,14 +33,14 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": ["jest.config.js", "jest.config.ts", "jest.config.mjs"],
         "content_hints": {},
         "setup": ["npm install"],
-        "test": ["npx jest --json --outputFile=.test_report.json || true"],
+        "test": ["npx jest --json --outputFile=.test_report.json"],
         "language": "node",
     },
     {
         "files": ["package.json"],
         "content_hints": {"package.json": ["jest"]},
         "setup": ["npm install"],
-        "test": ["npx jest --json --outputFile=.test_report.json || true"],
+        "test": ["npx jest --json --outputFile=.test_report.json"],
         "language": "node",
     },
     # Node / Vitest
@@ -48,14 +48,14 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": ["vitest.config.ts", "vitest.config.js"],
         "content_hints": {},
         "setup": ["npm install"],
-        "test": ["npx vitest run --reporter=json > .test_report.json || true"],
+        "test": ["npx vitest run --reporter=json > .test_report.json"],
         "language": "node",
     },
     {
         "files": ["package.json"],
         "content_hints": {"package.json": ["vitest"]},
         "setup": ["npm install"],
-        "test": ["npx vitest run --reporter=json > .test_report.json || true"],
+        "test": ["npx vitest run --reporter=json > .test_report.json"],
         "language": "node",
     },
     # Node / Mocha
@@ -63,7 +63,7 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": [".mocharc.js", ".mocharc.yml", ".mocharc.json"],
         "content_hints": {},
         "setup": ["npm install"],
-        "test": ["npx mocha --reporter json > .test_report.json || true"],
+        "test": ["npx mocha --reporter json > .test_report.json"],
         "language": "node",
     },
     # Go
@@ -71,7 +71,7 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": ["go.mod"],
         "content_hints": {},
         "setup": ["go mod download"],
-        "test": ["go test ./... -v -json > .test_report.json || true"],
+        "test": ["go test ./... -v -json > .test_report.json"],
         "language": "go",
     },
     # Rust
@@ -79,7 +79,7 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": ["Cargo.toml"],
         "content_hints": {},
         "setup": [],
-        "test": ["cargo test -- --format json 2>&1 > .test_report.json || cargo test 2>&1 | tee .test_report.txt || true"],
+        "test": ["cargo test -- --format json 2>&1 > .test_report.json || cargo test 2>&1 | tee .test_report.txt"],
         "language": "rust",
     },
     # Maven (Java)
@@ -87,7 +87,7 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": ["pom.xml"],
         "content_hints": {},
         "setup": [],
-        "test": ["mvn test -q 2>&1 | tee .test_report.txt || true"],
+        "test": ["mvn test -q 2>&1 | tee .test_report.txt"],
         "language": "java",
     },
     # Gradle (Java/Kotlin)
@@ -95,7 +95,7 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": ["build.gradle", "build.gradle.kts"],
         "content_hints": {},
         "setup": [],
-        "test": ["./gradlew test 2>&1 | tee .test_report.txt || true"],
+        "test": ["./gradlew test 2>&1 | tee .test_report.txt"],
         "language": "java",
     },
     # Ruby
@@ -103,7 +103,7 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": ["Gemfile"],
         "content_hints": {},
         "setup": ["bundle install"],
-        "test": ["bundle exec rspec --format json --out .test_report.json || bundle exec rake test 2>&1 | tee .test_report.txt || true"],
+        "test": ["bundle exec rspec --format json --out .test_report.json || bundle exec rake test 2>&1 | tee .test_report.txt"],
         "language": "ruby",
     },
     # Dotnet
@@ -112,7 +112,7 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "glob": "**/*.csproj",
         "content_hints": {},
         "setup": ["dotnet restore"],
-        "test": ["dotnet test --logger trx 2>&1 | tee .test_report.txt || true"],
+        "test": ["dotnet test --logger trx 2>&1 | tee .test_report.txt"],
         "language": "dotnet",
     },
     # Elixir
@@ -120,7 +120,7 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "files": ["mix.exs"],
         "content_hints": {},
         "setup": ["mix deps.get"],
-        "test": ["mix test --formatter ExUnit.CLIFormatter 2>&1 | tee .test_report.txt || true"],
+        "test": ["mix test --formatter ExUnit.CLIFormatter 2>&1 | tee .test_report.txt"],
         "language": "elixir",
     },
 ]

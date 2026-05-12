@@ -52,7 +52,9 @@ _DEFAULT_AS_MB         = 2048  # virtual address space (2 GB)
 _DEFAULT_NOFILE        = 256   # open file descriptors
 _DEFAULT_NPROC         = 4096  # processes + threads spawnable by this user
 _DOCKER_WORKDIR       = "/workspace"
-_DEFAULT_DOCKER_IMAGE = "python:3.12-bookworm"
+_DOCKER_VENV          = "/opt/oscanner-venv"
+_DOCKER_DEFAULT_PATH  = f"{_DOCKER_VENV}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+_DEFAULT_DOCKER_IMAGE = "oscanner-repos-runner:py3.12-node"
 
 
 @dataclass
@@ -169,6 +171,8 @@ class DockerSandboxSession:
                 "ALL",
                 "--security-opt",
                 "no-new-privileges",
+                "--user",
+                f"{self.repo_dir.stat().st_uid}:{self.repo_dir.stat().st_gid}",
                 "-v",
                 mount,
                 "-w",
@@ -177,6 +181,10 @@ class DockerSandboxSession:
                 "CI=1",
                 "-e",
                 "PYTHONUNBUFFERED=1",
+                "-e",
+                f"VIRTUAL_ENV={_DOCKER_VENV}",
+                "-e",
+                f"PATH={_DOCKER_DEFAULT_PATH}",
                 self.image,
                 "sleep",
                 "86400",
@@ -230,14 +238,15 @@ class DockerSandboxSession:
         args = ["docker", "exec", "-i", "-w", self._container_cwd(Path(cwd))]
         for key, value in (env or {}).items():
             args.extend(["-e", f"{key}={value}"])
-        args.extend([self.name, "/bin/sh", "-lc", cmd])
+        args.extend(["-e", f"VIRTUAL_ENV={_DOCKER_VENV}", "-e", f"PATH={_DOCKER_DEFAULT_PATH}"])
+        args.extend([self.name, "timeout", "-k", "5", str(timeout), "/bin/sh", "-c", cmd])
         return subprocess.run(
             args,
             check=False,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=timeout,
+            timeout=timeout + 10,
         )
 
     def start_background(
@@ -269,7 +278,7 @@ class DockerSandboxSession:
                 self._container_cwd(Path(cwd)),
                 self.name,
                 "/bin/sh",
-                "-lc",
+                "-c",
                 shell_cmd,
             ],
             check=False,

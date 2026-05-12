@@ -24,7 +24,7 @@ class RunAllRequest(BaseModel):
     tag_message: str | None = None
     skip_clone: bool = False
     skip_explore: bool = False
-    setup_timeout: int = 120
+    setup_timeout: int = 300
     test_timeout: int = 600
 
 

@@ -4,6 +4,7 @@ Main test execution entry point.
 
 import asyncio
 import os
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -23,12 +24,25 @@ from .coverage import _extract_features_from_tag_message, _check_feature_coverag
 from .report import _generate_test_report
 from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_coverage
 
+_SHELL_SUCCESS_MASK_RE = re.compile(r"\s*(?:\|\|\s*true|;\s*true)\s*$")
+_PIP_REQUIREMENTS_RE = re.compile(r"(?:^|\s)pip(?:3)?\s+install\s+-r\s+([^;&|]+)")
+
 
 def _run_repo_command(execution_session, cmd: str, *, cwd: Path, timeout: int):
     """Run a repo command through Docker when configured, otherwise use host sandbox."""
     if getattr(execution_session, "is_docker", False):
         return execution_session.run(cmd, cwd=cwd, timeout=timeout)
     return run_sandboxed(cmd, cwd=cwd, timeout=timeout)
+
+
+def _strip_shell_success_mask(cmd: str) -> str:
+    """Remove final shell clauses that force a failing test command to exit 0."""
+    cleaned = str(cmd or "").strip()
+    while True:
+        next_cleaned = _SHELL_SUCCESS_MASK_RE.sub("", cleaned).strip()
+        if next_cleaned == cleaned:
+            return cleaned
+        cleaned = next_cleaned
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +174,81 @@ def _find_test_files(clone_dir: Path, language: str) -> List[str]:
     return found
 
 
+def _find_python_requirement_files(clone_dir: Path) -> List[str]:
+    """Return repo-relative Python requirements files outside generated/vendor dirs."""
+    skip_dirs = {
+        ".git",
+        ".hg",
+        ".svn",
+        ".tox",
+        ".venv",
+        "venv",
+        "__pycache__",
+        "node_modules",
+        "dist",
+        "build",
+        "TEST_ARTIFACTS",
+    }
+    found: List[str] = []
+    seen_content: set[bytes] = set()
+    for p in clone_dir.rglob("requirements*.txt"):
+        if not p.is_file():
+            continue
+        rel_parts = p.parts[len(clone_dir.parts):]
+        if any(part in skip_dirs or part.startswith(".venv") for part in rel_parts):
+            continue
+        try:
+            content = p.read_bytes()
+        except Exception:
+            content = str(p.relative_to(clone_dir)).encode()
+        if content in seen_content:
+            continue
+        seen_content.add(content)
+        found.append(str(p.relative_to(clone_dir)))
+    return sorted(found, key=lambda item: (item.count("/"), item))
+
+
+def _augment_python_setup_commands(clone_dir: Path, test_info: Dict[str, Any]) -> Dict[str, Any]:
+    """Install discovered requirements files so nested service tests get their deps."""
+    if test_info.get("language") != "python":
+        return test_info
+
+    commands: List[str] = []
+    seen_requirement_content: set[bytes] = set()
+    for command in list(test_info.get("setup_commands") or []):
+        match = _PIP_REQUIREMENTS_RE.search(command)
+        if match:
+            req_path = match.group(1).strip().strip("'\"")
+            try:
+                content = (clone_dir / req_path).read_bytes()
+            except Exception:
+                content = req_path.encode()
+            if content in seen_requirement_content:
+                continue
+            seen_requirement_content.add(content)
+        commands.append(command)
+    existing = "\n".join(commands)
+
+    for requirements_file in _find_python_requirement_files(clone_dir):
+        if requirements_file in existing:
+            continue
+        try:
+            content = (clone_dir / requirements_file).read_bytes()
+        except Exception:
+            content = requirements_file.encode()
+        if content in seen_requirement_content:
+            continue
+        seen_requirement_content.add(content)
+        commands.append(f"pip install -r {requirements_file}")
+
+    if not any("pytest" in command and "pytest-json-report" in command for command in commands):
+        commands.append("pip install pytest pytest-json-report")
+
+    updated = dict(test_info)
+    updated["setup_commands"] = commands
+    return updated
+
+
 def _detect_node_framework(clone_dir: Path) -> str:
     """Return 'jest', 'vitest', or 'mocha' by inspecting package.json."""
     pkg = clone_dir / "package.json"
@@ -197,30 +286,30 @@ def _build_discovered_command(clone_dir: Path, language: str, test_files: List[s
 
     if language == "python":
         paths_arg = test_dir if test_dir not in (".", "") else " ".join(test_files[:10])
-        return f"pytest {paths_arg} --json-report --json-report-file=.test_report.json -v || true"
+        return f"pytest {paths_arg} --json-report --json-report-file=.test_report.json -v"
 
     if language == "node":
         framework = _detect_node_framework(clone_dir)
         dir_arg = "" if test_dir in (".", "") else f" {test_dir}"
         if framework == "vitest":
-            return f"npx vitest run{dir_arg} --reporter=json > .test_report.json || true"
+            return f"npx vitest run{dir_arg} --reporter=json > .test_report.json"
         if framework == "mocha":
             # Mocha takes glob / file list
             files_arg = " ".join(f'"{f}"' for f in test_files[:20])
-            return f"npx mocha {files_arg} --reporter json > .test_report.json || true"
+            return f"npx mocha {files_arg} --reporter json > .test_report.json"
         # Jest (default)
-        return f"npx jest{dir_arg} --json --outputFile=.test_report.json || true"
+        return f"npx jest{dir_arg} --json --outputFile=.test_report.json"
 
     if language == "ruby":
         dir_arg = f" {test_dir}" if test_dir not in (".", "") else ""
         return (
             f"bundle exec rspec{dir_arg} --format json --out .test_report.json || "
-            "bundle exec rake test 2>&1 | tee .test_report.txt || true"
+            "bundle exec rake test 2>&1 | tee .test_report.txt"
         )
 
     if language == "php":
         dir_arg = f" {test_dir}" if test_dir not in (".", "") else ""
-        return f"vendor/bin/phpunit{dir_arg} --log-junit .test_report.xml 2>&1 | tee .test_report.txt || true"
+        return f"vendor/bin/phpunit{dir_arg} --log-junit .test_report.xml 2>&1 | tee .test_report.txt"
 
     if language == "dotnet":
         # dotnet test discovers automatically; no path needed
@@ -237,7 +326,7 @@ async def run_tests(
     clone_path: str,
     overview_path: str,
     progress_callback=None,
-    setup_timeout: int = 120,
+    setup_timeout: int = 300,
     test_timeout: int = 600,
     tag_message: Optional[str] = None,
     tag: Optional[str] = None,
@@ -249,7 +338,7 @@ async def run_tests(
         clone_path: Path to the cloned repository
         overview_path: Path to REPO_OVERVIEW.md
         progress_callback: Optional async callback for progress updates
-        setup_timeout: Seconds allowed per setup command (default 120)
+        setup_timeout: Seconds allowed per setup command (default 300)
         test_timeout: Seconds allowed per test command (default 600)
         tag_message: Optional tag annotation message; when provided the score is
                      weighted by feature coverage (features described in the message
@@ -331,6 +420,8 @@ async def run_tests(
                 ]
             _save_test_config(clone_dir, test_info)
 
+    test_info = _augment_python_setup_commands(clone_dir, test_info)
+
     with create_execution_session(clone_dir) as execution_session:
         using_docker = getattr(execution_session, "is_docker", False)
         if progress_callback and using_docker:
@@ -407,6 +498,7 @@ async def run_tests(
         language = test_info.get("language", "")
 
         for idx, cmd in enumerate(test_commands):
+            cmd = _strip_shell_success_mask(cmd)
             if progress_callback:
                 await progress_callback(f"Running test {idx + 1}/{num_commands}: {cmd}")
 
