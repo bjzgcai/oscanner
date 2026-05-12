@@ -71,6 +71,7 @@ async def test_group_analyse_code_route_batches_repos_without_parallel_chunking(
         "https://gitee.com/org/repo-a",
         "https://github.com/org/repo-b",
     ]
+    assert all("username" not in item for item in captured["repositories"])
     assert captured["model"] == "deepseek/deepseek-v4-pro"
     assert captured["full_repo"] is True
     assert captured["use_chunking"] is False
@@ -425,3 +426,326 @@ def test_analyze_group_repositories_exposes_row_and_total_token_usage(monkeypatc
         "source": "provider",
     }
     assert result["results"][0]["token_usage"] == result["token_usage"]
+
+
+def test_analyze_group_repositories_applies_per_repo_commit_ranges(monkeypatch):
+    from types import SimpleNamespace
+
+    from evaluator.services import trajectory_service
+
+    captured_commits = {}
+
+    class FakeEvaluator:
+        def evaluate_repository(self, commits, repo_label, **_kwargs):
+            captured_commits[repo_label] = [commit["sha"] for commit in commits]
+            return {
+                "username": repo_label,
+                "total_commits_analyzed": len(commits),
+                "files_loaded": 0,
+                "mode": "moderate",
+                "scores": {
+                    "total": len(commits),
+                    "reasoning": "range ok",
+                },
+                "commits_summary": {},
+            }
+
+    fake_scan = SimpleNamespace(create_commit_evaluator=lambda **_kwargs: FakeEvaluator())
+    fake_meta = SimpleNamespace(version="0.1.0")
+    commits_by_repo = {
+        "https://gitee.com/org/repo-a": [
+            {"sha": "a-latest", "commit": {"author": {"date": "2026-01-04T00:00:00Z"}, "message": "latest"}},
+            {"sha": "a-tag", "commit": {"author": {"date": "2026-01-03T00:00:00Z"}, "message": "tag"}},
+            {"sha": "a-middle", "commit": {"author": {"date": "2026-01-02T00:00:00Z"}, "message": "middle"}},
+            {"sha": "a-first", "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "first"}},
+        ],
+        "https://gitee.com/org/repo-b": [
+            {"sha": "b-latest", "commit": {"author": {"date": "2026-01-04T00:00:00Z"}, "message": "latest"}},
+            {"sha": "b-tag", "commit": {"author": {"date": "2026-01-03T00:00:00Z"}, "message": "tag"}},
+            {"sha": "b-prev", "commit": {"author": {"date": "2026-01-02T00:00:00Z"}, "message": "prev"}},
+            {"sha": "b-first", "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "first"}},
+        ],
+    }
+
+    monkeypatch.setattr(
+        trajectory_service,
+        "_sync_repo_for_group_eval",
+        lambda repo_url, use_cache: ("gitee", "org", repo_url.rsplit("/", 1)[-1], False),
+    )
+    monkeypatch.setattr(
+        trajectory_service,
+        "_load_all_repo_commits",
+        lambda repo_url: (commits_by_repo[repo_url], PROJECT_ROOT),
+    )
+    monkeypatch.setattr(trajectory_service, "load_scan_module", lambda _plugin_id: (fake_meta, fake_scan, PROJECT_ROOT))
+    monkeypatch.setattr(trajectory_service, "get_llm_api_key", lambda: "test-key")
+
+    result = trajectory_service.analyze_group_repositories(
+        repositories=[
+            {
+                "id": "s1",
+                "username": "Alice",
+                "repo_url": "https://gitee.com/org/repo-a",
+                "end_sha": "a-tag",
+            },
+            {
+                "id": "s2",
+                "username": "Bob",
+                "repo_url": "https://gitee.com/org/repo-b",
+                "start_sha": "b-prev",
+                "end_sha": "b-tag",
+            },
+        ],
+        plugin_id="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+
+    assert result["success"] is True
+    assert captured_commits == {
+        "https://gitee.com/org/repo-a": ["a-tag", "a-middle", "a-first"],
+        "https://gitee.com/org/repo-b": ["b-tag", "b-prev"],
+    }
+    assert result["results"][0]["checkpoint"]["commits_range"] == {
+        "start_sha": "a-first",
+        "end_sha": "a-tag",
+        "commit_count": 3,
+    }
+    assert result["results"][1]["checkpoint"]["commits_range"] == {
+        "start_sha": "b-prev",
+        "end_sha": "b-tag",
+        "commit_count": 2,
+    }
+
+
+def test_analyze_group_repositories_reports_repo_scoped_missing_sha(monkeypatch):
+    from types import SimpleNamespace
+
+    from evaluator.services import trajectory_service
+
+    fake_scan = SimpleNamespace(create_commit_evaluator=lambda **_kwargs: None)
+    fake_meta = SimpleNamespace(version="0.1.0")
+
+    monkeypatch.setattr(
+        trajectory_service,
+        "_sync_repo_for_group_eval",
+        lambda repo_url, use_cache: ("gitee", "org", "repo", False),
+    )
+    monkeypatch.setattr(
+        trajectory_service,
+        "_load_all_repo_commits",
+        lambda repo_url: (
+            [
+                {
+                    "sha": "existing-sha",
+                    "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                }
+            ],
+            PROJECT_ROOT,
+        ),
+    )
+    monkeypatch.setattr(trajectory_service, "load_scan_module", lambda _plugin_id: (fake_meta, fake_scan, PROJECT_ROOT))
+
+    result = trajectory_service.analyze_group_repositories(
+        repositories=[
+            {
+                "id": "s1",
+                "username": "Alice",
+                "repo_url": "https://gitee.com/org/repo",
+                "end_sha": "missing-sha",
+            }
+        ],
+        plugin_id="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+
+    assert result["success"] is False
+    assert result["results"][0]["message"] == (
+        "end_sha 'missing-sha' not found in repository commits. "
+        "Please verify the commit hash exists in the repository."
+    )
+    assert "specified user" not in result["results"][0]["message"]
+
+
+def test_analyze_group_repositories_refreshes_and_retries_missing_sha(monkeypatch):
+    from types import SimpleNamespace
+
+    from evaluator.services import trajectory_service
+
+    sync_calls = []
+    load_calls = []
+    evaluated_commits = []
+
+    class FakeEvaluator:
+        def evaluate_repository(self, commits, repo_label, **_kwargs):
+            evaluated_commits.extend(commit["sha"] for commit in commits)
+            return {
+                "username": repo_label,
+                "total_commits_analyzed": len(commits),
+                "files_loaded": 0,
+                "mode": "moderate",
+                "scores": {
+                    "total": len(commits),
+                    "reasoning": "retried after refresh",
+                },
+                "commits_summary": {},
+            }
+
+    def fake_sync(repo_url, use_cache):
+        sync_calls.append((repo_url, use_cache))
+        return ("gitee", "org", "repo", not use_cache)
+
+    def fake_load(repo_url):
+        load_calls.append(repo_url)
+        if len(load_calls) == 1:
+            return (
+                [
+                    {
+                        "sha": "existing-sha",
+                        "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                    }
+                ],
+                PROJECT_ROOT,
+            )
+        return (
+            [
+                {
+                    "sha": "target-sha",
+                    "commit": {"author": {"date": "2026-01-02T00:00:00Z"}, "message": "target"},
+                },
+                {
+                    "sha": "existing-sha",
+                    "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                },
+            ],
+            PROJECT_ROOT,
+        )
+
+    fake_scan = SimpleNamespace(create_commit_evaluator=lambda **_kwargs: FakeEvaluator())
+    fake_meta = SimpleNamespace(version="0.1.0")
+
+    monkeypatch.setattr(trajectory_service, "_sync_repo_for_group_eval", fake_sync)
+    monkeypatch.setattr(trajectory_service, "_load_all_repo_commits", fake_load)
+    monkeypatch.setattr(trajectory_service, "load_scan_module", lambda _plugin_id: (fake_meta, fake_scan, PROJECT_ROOT))
+    monkeypatch.setattr(trajectory_service, "get_llm_api_key", lambda: "test-key")
+
+    result = trajectory_service.analyze_group_repositories(
+        repositories=[
+            {
+                "id": "s1",
+                "username": "Alice",
+                "repo_url": "https://gitee.com/org/repo",
+                "end_sha": "target-sha",
+            }
+        ],
+        plugin_id="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+        use_cache=True,
+    )
+
+    assert result["success"] is True
+    assert sync_calls == [
+        ("https://gitee.com/org/repo", True),
+        ("https://gitee.com/org/repo", False),
+    ]
+    assert load_calls == [
+        "https://gitee.com/org/repo",
+        "https://gitee.com/org/repo",
+    ]
+    assert evaluated_commits == ["target-sha", "existing-sha"]
+    assert result["results"][0]["commits_analyzed"] == 2
+
+
+def test_analyze_group_repositories_fetches_missing_gitee_boundary_sha(monkeypatch):
+    from types import SimpleNamespace
+
+    from evaluator.services import trajectory_service
+
+    load_calls = []
+    boundary_sync_calls = []
+    evaluated_commits = []
+
+    class FakeEvaluator:
+        def evaluate_repository(self, commits, repo_label, **_kwargs):
+            evaluated_commits.extend(commit["sha"] for commit in commits)
+            return {
+                "username": repo_label,
+                "total_commits_analyzed": len(commits),
+                "files_loaded": 0,
+                "mode": "moderate",
+                "scores": {
+                    "total": len(commits),
+                    "reasoning": "tag boundary synced",
+                },
+                "commits_summary": {},
+            }
+
+    def fake_load(repo_url):
+        load_calls.append(repo_url)
+        if len(load_calls) < 3:
+            return (
+                [
+                    {
+                        "sha": "existing-sha",
+                        "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                    }
+                ],
+                PROJECT_ROOT,
+            )
+        return (
+            [
+                {
+                    "sha": "tag-sha",
+                    "commit": {"author": {"date": "2026-01-02T00:00:00Z"}, "message": "tag"},
+                },
+                {
+                    "sha": "existing-sha",
+                    "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                },
+            ],
+            PROJECT_ROOT,
+        )
+
+    def fake_sync_boundary(owner, repo, shas):
+        boundary_sync_calls.append((owner, repo, shas))
+        return True
+
+    fake_scan = SimpleNamespace(create_commit_evaluator=lambda **_kwargs: FakeEvaluator())
+    fake_meta = SimpleNamespace(version="0.1.0")
+
+    monkeypatch.setattr(
+        trajectory_service,
+        "_sync_repo_for_group_eval",
+        lambda repo_url, use_cache: ("gitee", "org", "repo", not use_cache),
+    )
+    monkeypatch.setattr(trajectory_service, "_load_all_repo_commits", fake_load)
+    monkeypatch.setattr(trajectory_service, "sync_gitee_commits_by_sha", fake_sync_boundary, raising=False)
+    monkeypatch.setattr(trajectory_service, "load_scan_module", lambda _plugin_id: (fake_meta, fake_scan, PROJECT_ROOT))
+    monkeypatch.setattr(trajectory_service, "get_llm_api_key", lambda: "test-key")
+
+    result = trajectory_service.analyze_group_repositories(
+        repositories=[
+            {
+                "id": "s1",
+                "repo_url": "https://gitee.com/org/repo",
+                "tag": "Coursework_Submit_2.3",
+                "end_sha": "tag-sha",
+            }
+        ],
+        plugin_id="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+        use_cache=True,
+    )
+
+    assert result["success"] is True
+    assert boundary_sync_calls == [("org", "repo", ["tag-sha"])]
+    assert load_calls == [
+        "https://gitee.com/org/repo",
+        "https://gitee.com/org/repo",
+        "https://gitee.com/org/repo",
+    ]
+    assert evaluated_commits == ["tag-sha", "existing-sha"]
+    assert result["results"][0]["sync"]["boundary_sync"] is True

@@ -27,6 +27,14 @@ ONE_OFF_PRIMARY_MODEL = "deepseek/deepseek-v4-pro"
 ONE_OFF_PRIMARY_MODELS = (ONE_OFF_PRIMARY_MODEL,)
 
 
+def _repository_scoped_group_item(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        key: value
+        for key, value in item.items()
+        if key not in {"username", "aliases", "author_aliases"}
+    }
+
+
 def _extract_group_repository_items(request_body: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Accept batch payloads from Courses and direct callers.
@@ -40,13 +48,16 @@ def _extract_group_repository_items(request_body: Dict[str, Any]) -> List[Dict[s
     for key in ("students", "repositories", "repos"):
         items = request_body.get(key)
         if isinstance(items, list):
-            return [item for item in items if isinstance(item, dict)]
+            return [
+                _repository_scoped_group_item(item)
+                for item in items
+                if isinstance(item, dict)
+            ]
 
     repo_url = str(request_body.get("repo_url") or "").strip()
     if repo_url:
         return [{
             "id": request_body.get("id"),
-            "username": request_body.get("username"),
             "repo_url": repo_url,
             "organization": request_body.get("organization"),
             "pq_id": request_body.get("pq_id"),

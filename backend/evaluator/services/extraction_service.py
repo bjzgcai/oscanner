@@ -233,6 +233,98 @@ def _fetch_gitee_commit_detail(
     return commit
 
 
+def sync_gitee_commits_by_sha(owner: str, repo: str, shas: List[str]) -> bool:
+    """Fetch specific Gitee commit details and merge them into local extracted data."""
+    requested_shas: List[str] = []
+    seen_requested = set()
+    for sha in shas:
+        text = str(sha or "").strip()
+        if text and text not in seen_requested:
+            seen_requested.add(text)
+            requested_shas.append(text)
+
+    if not requested_shas:
+        return False
+
+    gitee_token = get_gitee_token()
+    if not gitee_token:
+        raise Exception("Gitee token not configured. Please set GITEE_TOKEN environment variable or configure it via oscanner init.")
+
+    data_dir = get_platform_data_dir("gitee", owner, repo)
+    commits_list_path = data_dir / "commits_list.json"
+    commits_index_path = data_dir / "commits_index.json"
+    commits_dir = data_dir / "commits"
+    files_dir = data_dir / "files"
+    commits_dir.mkdir(parents=True, exist_ok=True)
+    files_dir.mkdir(parents=True, exist_ok=True)
+
+    local_commits = _load_json_list(commits_list_path)
+    local_index = _load_json_list(commits_index_path)
+    local_index_shas = {_get_commit_sha(commit) for commit in local_index if _get_commit_sha(commit)}
+    missing_shas = [
+        sha
+        for sha in requested_shas
+        if sha not in local_index_shas or not (commits_dir / f"{sha}.json").exists()
+    ]
+    if not missing_shas:
+        return False
+
+    print(f"[Gitee Boundary Sync] Fetching {len(missing_shas)} requested commits for {owner}/{repo}")
+    session = get_requests_session()
+    new_details: List[Dict[str, Any]] = []
+    new_index_entries: List[Dict[str, Any]] = []
+    files_context: Dict[str, int] = {}
+
+    for sha in missing_shas:
+        detail = _fetch_gitee_commit_detail(session, owner, repo, gitee_token, {"sha": sha})
+        if _get_commit_sha(detail) != sha or not isinstance(detail.get("commit"), dict):
+            print(f"[Gitee Boundary Sync] Commit {sha} could not be fetched as a usable commit")
+            continue
+
+        _save_json(commits_dir / f"{sha}.json", detail)
+        new_details.append(detail)
+
+        index_entry = _build_commit_index_entry(detail)
+        new_index_entries.append(index_entry)
+        for filename in index_entry.get("files") or []:
+            files_context[filename] = files_context.get(filename, 0) + 1
+
+    if not new_details:
+        return False
+
+    _save_json(commits_list_path, _merge_by_sha(new_details, local_commits, 0))
+    _save_json(commits_index_path, _merge_by_sha(new_index_entries, local_index, 0))
+    _write_gitee_file_context(
+        session,
+        owner,
+        repo,
+        gitee_token,
+        files_dir,
+        files_context,
+        max_files=100,
+    )
+    _save_json(
+        data_dir / "repo_info.json",
+        {"name": f"{owner}/{repo}", "full_name": f"{owner}/{repo}", "owner": owner, "platform": "gitee"},
+    )
+    _save_json(
+        data_dir / "sync_state.json",
+        {
+            "last_synced_at": datetime.now().isoformat(),
+            "last_commit_sha": _get_commit_sha(new_index_entries[0]) if new_index_entries else None,
+            "total_commits_fetched": len(_load_json_list(commits_index_path)),
+            "sync_history": [
+                {
+                    "synced_at": datetime.now().isoformat(),
+                    "commits_added": len(new_index_entries),
+                    "mode": "boundary_sha_sync",
+                }
+            ],
+        },
+    )
+    return True
+
+
 def _write_gitee_file_context(
     session: requests.Session,
     owner: str,
@@ -729,9 +821,10 @@ def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -
     if remote_total is not None:
         print(f"[Gitee Incremental] Remote contributor commit count={remote_total}, local commits={local_count}")
         if remote_total <= local_count:
-            print("[Gitee Incremental] Local data is up to date by contributor count")
-            return False
-        missing_count = remote_total - local_count
+            print("[Gitee Incremental] Contributor count is not newer; verifying latest commit page")
+            missing_count = 100
+        else:
+            missing_count = remote_total - local_count
     else:
         print("[Gitee Incremental] Contributor count unavailable; checking latest commit page")
         missing_count = 100

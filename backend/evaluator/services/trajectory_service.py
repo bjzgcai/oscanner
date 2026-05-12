@@ -23,6 +23,7 @@ from evaluator.services.extraction_service import (
     extract_github_data,
     extract_gitee_data,
     sync_gitee_data_incremental,
+    sync_gitee_commits_by_sha,
 )
 from evaluator.plugin_registry import load_scan_module
 
@@ -223,7 +224,7 @@ def _load_all_repo_commits(repo_url: str) -> Tuple[List[Dict[str, Any]], Path]:
     platform, owner, repo = parse_repo_url(repo_url)
     data_dir = get_platform_data_dir(platform, owner, repo)
     commits = load_commits_from_local(data_dir, limit=None)
-    commits.sort(key=_normalize_commit_date, reverse=False)
+    commits.sort(key=_normalize_commit_date, reverse=True)
     return commits, data_dir
 
 
@@ -325,8 +326,8 @@ def _build_group_checkpoint(
     repo_url: str,
     evaluation_result: Dict[str, Any],
 ) -> Dict[str, Any]:
-    start_sha = (commits[0].get("sha") or commits[0].get("hash")) if commits else None
-    end_sha = (commits[-1].get("sha") or commits[-1].get("hash")) if commits else None
+    start_sha = (commits[-1].get("sha") or commits[-1].get("hash")) if commits else None
+    end_sha = (commits[0].get("sha") or commits[0].get("hash")) if commits else None
     return {
         "checkpoint_id": 1,
         "created_at": datetime.utcnow().isoformat(),
@@ -341,6 +342,67 @@ def _build_group_checkpoint(
         "previous_checkpoint_id": None,
         "growth_comparison": None,
     }
+
+
+def _filter_group_repo_commits(
+    commits: List[Dict[str, Any]],
+    item: Dict[str, Any],
+):
+    start_sha = str(item.get("start_sha") or "").strip() or None
+    end_sha = str(item.get("end_sha") or "").strip() or None
+    if not start_sha and not end_sha:
+        return commits
+    result = filter_commits_by_range(commits, start_sha, end_sha)
+    if isinstance(result, dict) and not result.get("success", True):
+        message = str(result.get("message") or "")
+        message = message.replace(
+            "not found in commits. Please verify the commit hash exists in the repository and is authored by the specified user.",
+            "not found in repository commits. Please verify the commit hash exists in the repository.",
+        )
+        return {**result, "message": message}
+    return result
+
+
+def _requested_group_boundary_shas(item: Dict[str, Any]) -> List[str]:
+    shas: List[str] = []
+    seen = set()
+    for key in ("start_sha", "end_sha"):
+        sha = str(item.get(key) or "").strip()
+        if sha and sha not in seen:
+            seen.add(sha)
+            shas.append(sha)
+    return shas
+
+
+def _sync_gitee_boundary_commits(
+    repo_url: str,
+    item: Dict[str, Any],
+    sync_result: Dict[str, Any],
+) -> Tuple[Dict[str, Any], bool]:
+    shas = _requested_group_boundary_shas(item)
+    if not shas:
+        return sync_result, False
+
+    try:
+        owner = str(sync_result.get("owner") or "").strip()
+        repo = str(sync_result.get("repo") or "").strip()
+        if not owner or not repo:
+            platform, owner, repo = parse_repo_url(repo_url)
+            if platform != "gitee":
+                return sync_result, False
+
+        changed = sync_gitee_commits_by_sha(owner, repo, shas)
+        return {
+            **sync_result,
+            "boundary_sync": True,
+            "boundary_sync_added": changed,
+        }, changed
+    except Exception as e:
+        return {
+            **sync_result,
+            "boundary_sync": False,
+            "boundary_sync_error": str(e),
+        }, False
 
 
 def analyze_group_repositories(
@@ -463,6 +525,67 @@ def analyze_group_repositories(
                 })
 
             commits, data_dir = _load_all_repo_commits(repo_url)
+            filtered_commits = _filter_group_repo_commits(commits, item)
+            if (
+                isinstance(filtered_commits, dict)
+                and not filtered_commits.get("success", True)
+                and sync_result.get("platform") == "gitee"
+                and use_cache
+            ):
+                print(
+                    "[Trajectory] Requested group SHA was missing after incremental sync; "
+                    f"forcing refresh for {repo_url} and retrying once"
+                )
+                try:
+                    platform, owner, repo, was_synced = _sync_repo_for_group_eval(repo_url, use_cache=False)
+                    sync_result = {
+                        "success": True,
+                        "platform": platform,
+                        "owner": owner,
+                        "repo": repo,
+                        "was_synced": was_synced,
+                        "retry_sync": True,
+                    }
+                    commits, data_dir = _load_all_repo_commits(repo_url)
+                    filtered_commits = _filter_group_repo_commits(commits, item)
+                except Exception as e:
+                    sync_result = {**sync_result, "retry_sync": False, "retry_error": str(e)}
+
+            if (
+                isinstance(filtered_commits, dict)
+                and not filtered_commits.get("success", True)
+                and sync_result.get("platform") == "gitee"
+            ):
+                print(
+                    "[Trajectory] Requested group SHA was not in branch history; "
+                    f"fetching explicit Gitee boundary commits for {repo_url}"
+                )
+                sync_result, boundary_synced = _sync_gitee_boundary_commits(repo_url, item, sync_result)
+                if boundary_synced:
+                    commits, data_dir = _load_all_repo_commits(repo_url)
+                    filtered_commits = _filter_group_repo_commits(commits, item)
+
+            if isinstance(filtered_commits, dict) and not filtered_commits.get("success", True):
+                results.append({
+                    **base_result,
+                    "success": False,
+                    "message": filtered_commits["message"],
+                    "score": 0,
+                    "checkpoint": None,
+                    "commits_analyzed": 0,
+                    "sync": sync_result,
+                })
+                if progress_callback:
+                    progress_callback("section", {
+                        "title": f"评估仓库 {index + 1}/{len(repositories)}",
+                        "status": "warning",
+                        "repo_url": repo_url,
+                        "username": item.get("username"),
+                        "error": filtered_commits["message"],
+                    })
+                continue
+
+            commits = filtered_commits
             if not commits:
                 results.append({
                     **base_result,

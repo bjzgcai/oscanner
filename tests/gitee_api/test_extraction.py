@@ -261,8 +261,8 @@ class TestGiteeExtraction:
         assert any("/contributors" in url for url in requested_urls)
         assert sum("/commits" in url and not url.endswith("/newsha") for url in requested_urls) == 1
 
-    def test_sync_gitee_data_incremental_skips_commit_fetch_when_counts_match(self, temp_data_dir):
-        """When contributor commit count matches local commits_list.json, no commit pages are fetched."""
+    def test_sync_gitee_data_incremental_verifies_latest_page_when_counts_match(self, temp_data_dir):
+        """When contributor count matches local data, verify latest SHAs before skipping details."""
         repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"
         repo_dir.mkdir(parents=True)
         (repo_dir / "commits_list.json").write_text(
@@ -278,8 +278,15 @@ class TestGiteeExtraction:
         contributors_resp.status_code = 200
         contributors_resp.json.return_value = [{"name": "Alice", "contributions": 2}]
 
+        commits_page_resp = Mock()
+        commits_page_resp.status_code = 200
+        commits_page_resp.json.return_value = [
+            {"sha": "sha1", "commit": {"author": {"name": "Alice"}, "message": "one"}},
+            {"sha": "sha2", "commit": {"author": {"name": "Alice"}, "message": "two"}},
+        ]
+
         mock_sess = Mock()
-        mock_sess.get.return_value = contributors_resp
+        mock_sess.get.side_effect = [contributors_resp, commits_page_resp]
 
         with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
              patch('evaluator.services.extraction_service.get_requests_session') as mock_session, \
@@ -292,7 +299,67 @@ class TestGiteeExtraction:
 
         assert result is False
         requested_urls = [call.args[0] for call in mock_sess.get.call_args_list]
-        assert requested_urls == ["https://gitee.com/api/v5/repos/test_owner/test_repo/contributors"]
+        assert requested_urls == [
+            "https://gitee.com/api/v5/repos/test_owner/test_repo/contributors",
+            "https://gitee.com/api/v5/repos/test_owner/test_repo/commits",
+        ]
+
+    def test_sync_gitee_data_incremental_fetches_missing_latest_sha_even_when_counts_match(self, temp_data_dir):
+        """Matching contributor counts should not hide a missing latest remote SHA."""
+        repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"
+        commits_dir = repo_dir / "commits"
+        commits_dir.mkdir(parents=True)
+        (repo_dir / "files").mkdir(parents=True)
+        (repo_dir / "commits_list.json").write_text(
+            json.dumps([
+                {"sha": "local-new", "commit": {"author": {"name": "Alice"}, "message": "local new"}},
+                {"sha": "local-old", "commit": {"author": {"name": "Alice"}, "message": "local old"}},
+            ]),
+            encoding="utf-8",
+        )
+        (repo_dir / "commits_index.json").write_text("[]", encoding="utf-8")
+
+        contributors_resp = Mock()
+        contributors_resp.status_code = 200
+        contributors_resp.json.return_value = [{"name": "Alice", "contributions": 2}]
+
+        commits_page_resp = Mock()
+        commits_page_resp.status_code = 200
+        commits_page_resp.json.return_value = [
+            {
+                "sha": "remote-new",
+                "commit": {"author": {"name": "Alice", "date": "2026-01-03T00:00:00+00:00"}, "message": "remote new"},
+            },
+            {
+                "sha": "local-new",
+                "commit": {"author": {"name": "Alice", "date": "2026-01-02T00:00:00+00:00"}, "message": "local new"},
+            },
+        ]
+
+        detail_resp = Mock()
+        detail_resp.status_code = 200
+        detail_resp.json.return_value = {
+            "sha": "remote-new",
+            "commit": {"author": {"name": "Alice", "date": "2026-01-03T00:00:00+00:00"}, "message": "remote new"},
+            "files": [],
+        }
+
+        mock_sess = Mock()
+        mock_sess.get.side_effect = [contributors_resp, commits_page_resp, detail_resp]
+
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_requests_session') as mock_session, \
+             patch('evaluator.services.extraction_service.get_gitee_token') as mock_token:
+            mock_get_dir.return_value = repo_dir
+            mock_session.return_value = mock_sess
+            mock_token.return_value = "fake_token_for_test"
+
+            result = sync_gitee_data_incremental("test_owner", "test_repo", max_commits=500)
+
+        assert result is True
+        saved_commits = json.loads((repo_dir / "commits_list.json").read_text(encoding="utf-8"))
+        assert [commit["sha"] for commit in saved_commits] == ["remote-new", "local-new", "local-old"]
+        assert (commits_dir / "remote-new.json").exists()
 
 
 if __name__ == "__main__":
