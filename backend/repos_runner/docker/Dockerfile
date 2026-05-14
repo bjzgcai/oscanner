@@ -7,6 +7,12 @@ ENV PATH="/opt/oscanner-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/b
 
 COPY --from=python-runtime /usr/local /usr/local
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        chromium \
+        fonts-noto-cjk \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN python -m venv "$VIRTUAL_ENV" \
     && "$VIRTUAL_ENV/bin/python" -m pip install --upgrade pip setuptools wheel \
     && "$VIRTUAL_ENV/bin/python" -m pip install \

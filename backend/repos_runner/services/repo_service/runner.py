@@ -27,6 +27,8 @@ from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_co
 
 _SHELL_SUCCESS_MASK_RE = re.compile(r"\s*(?:\|\|\s*true|;\s*true)\s*$")
 _PIP_REQUIREMENTS_RE = re.compile(r"(?:^|\s)pip(?:3)?\s+install\s+-r\s+([^;&|]+)")
+MIN_RELEVANT_CODE_TEST_WEIGHT = 30
+MAX_RELEVANT_CODE_TEST_WEIGHT = 40
 
 
 def _run_repo_command(execution_session, cmd: str, *, cwd: Path, timeout: int):
@@ -44,6 +46,58 @@ def _strip_shell_success_mask(cmd: str) -> str:
         if next_cleaned == cleaned:
             return cleaned
         cleaned = next_cleaned
+
+
+def _clamp_ratio(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def _score_breakdown(
+    raw_pass_rate: float,
+    coverage_ratio: float,
+    has_functionality: bool,
+    code_relevance_ratio: float = 1.0,
+) -> Dict[str, Any]:
+    if not has_functionality:
+        code_score = int(_clamp_ratio(raw_pass_rate) * 100)
+        return {
+            "score": code_score,
+            "code_score": code_score,
+            "code_weight": 100,
+            "functionality_score": 0,
+            "functionality_weight": 0,
+            "code_pass_rate": _clamp_ratio(raw_pass_rate),
+            "functionality_coverage_ratio": 1.0,
+            "code_relevance_ratio": 1.0,
+            "weight_explanation": "No tag requirements were provided, so the score uses code test pass rate only.",
+        }
+
+    relevance = _clamp_ratio(code_relevance_ratio)
+    code_weight = MIN_RELEVANT_CODE_TEST_WEIGHT + int(
+        round((MAX_RELEVANT_CODE_TEST_WEIGHT - MIN_RELEVANT_CODE_TEST_WEIGHT) * relevance)
+    )
+    functionality_weight = 100 - code_weight
+    code_score = int(_clamp_ratio(raw_pass_rate) * relevance * code_weight)
+    functionality_score = int(_clamp_ratio(coverage_ratio) * functionality_weight)
+    return {
+        "score": code_score + functionality_score,
+        "code_score": code_score,
+        "code_weight": code_weight,
+        "functionality_score": functionality_score,
+        "functionality_weight": functionality_weight,
+        "code_pass_rate": _clamp_ratio(raw_pass_rate),
+        "functionality_coverage_ratio": _clamp_ratio(coverage_ratio),
+        "code_relevance_ratio": relevance,
+        "weight_explanation": (
+            "With tag requirements, code test weight is dynamic: 30% when no relevant "
+            "feature tests are found and up to 40% when tests cover the required features. "
+            "Functionality acceptance receives the remaining weight."
+        ),
+    }
+
+
+def _weighted_score(raw_pass_rate: float, coverage_ratio: float, has_functionality: bool) -> int:
+    return int(_score_breakdown(raw_pass_rate, coverage_ratio, has_functionality)["score"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -641,8 +695,11 @@ async def run_tests(
         feature_coverage: Optional[Dict[str, Any]] = None
         runtime_evidence: Optional[Dict[str, Any]] = None
         coverage_ratio = 1.0
+        code_relevance_ratio = 1.0
 
-        if tag_message and tag_message.strip():
+        has_functionality_score = bool(tag_message and tag_message.strip())
+        if has_functionality_score:
+            code_relevance_ratio = 0.0
             if progress_callback:
                 await progress_callback("Analyzing tag message for required features...")
             features = await _extract_features_from_tag_message(tag_message)
@@ -654,6 +711,8 @@ async def run_tests(
                 if progress_callback:
                     await progress_callback("Checking feature coverage in test files...")
                 feature_coverage = await _check_feature_coverage(clone_dir, features)
+                code_relevance_ratio = float(feature_coverage.get("coverage_ratio", 0.0))
+                feature_coverage["code_relevance_ratio"] = code_relevance_ratio
                 if progress_callback:
                     await progress_callback("Collecting runtime feature evidence...")
                 runtime_evidence = await collect_runtime_evidence(
@@ -677,21 +736,32 @@ async def run_tests(
                 if not_covered and progress_callback:
                     await progress_callback(f"Missing feature tests: {', '.join(not_covered)}")
             else:
-                # tag_message present but no testable features could be extracted → score is 0
+                # tag_message present but no testable features could be extracted.
+                # Code tests can still earn their weighted portion.
                 coverage_ratio = 0.0
+                code_relevance_ratio = 0.0
                 if progress_callback:
                     await progress_callback(
-                        "No testable features could be extracted from the tag message — score set to 0"
+                        "No testable features could be extracted from the tag message — functionality score set to 0"
                     )
 
-    score = int(raw_pass_rate * coverage_ratio * 100)
+    score_breakdown = _score_breakdown(
+        raw_pass_rate,
+        coverage_ratio,
+        bool(tag_message and tag_message.strip()),
+        code_relevance_ratio,
+    )
+    score = int(score_breakdown["score"])
 
     if progress_callback:
         if feature_coverage:
             await progress_callback(
                 f"Tests completed. Score: {score}/100 "
-                f"(pass_rate={raw_pass_rate * 100:.1f}% × "
-                f"feature_coverage={coverage_ratio * 100:.0f}%)"
+                f"(code_tests={raw_pass_rate * 100:.1f}% × relevance "
+                f"{score_breakdown['code_relevance_ratio'] * 100:.0f}% × "
+                f"{score_breakdown['code_weight']} + "
+                f"functionality={coverage_ratio * 100:.0f}% × "
+                f"{score_breakdown['functionality_weight']})"
             )
         else:
             await progress_callback(
@@ -714,6 +784,7 @@ async def run_tests(
         feature_coverage=feature_coverage,
         tag_message=tag_message,
         runtime_evidence=runtime_evidence,
+        score_breakdown=score_breakdown,
     )
 
     if progress_callback:
@@ -725,6 +796,7 @@ async def run_tests(
         "failed": total_failed,
         "skipped": 0,
         "score": score,
+        "score_breakdown": score_breakdown,
         "details": command_results,
         "test_cases": all_test_cases,
         "report_path": str(test_report_path),

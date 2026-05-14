@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
 import os
 import re
 import shlex
@@ -18,6 +19,8 @@ from urllib.parse import urlparse
 
 import httpx
 
+from .llm import _message_text_content, _messages_create_with_fallback
+
 
 DOC_CANDIDATES = (
     "README.md",
@@ -28,6 +31,8 @@ DOC_CANDIDATES = (
 
 DEFAULT_SERVICE_TIMEOUT_SECONDS = 75.0
 PROBED_PORTS = {8000, 8100, 8200, 5173, 3000, 3003}
+DEFAULT_RUNTIME_COMPAT_MODEL = "deepseek/deepseek-v4-pro"
+SHELL_CONTROL_TOKENS = (" && ", " || ", ";")
 
 
 def _slug(value: Any, fallback: str = "unknown") -> str:
@@ -80,6 +85,24 @@ def _iter_command_lines(text: str) -> list[str]:
     return commands
 
 
+def _safe_documented_cwd(line: str, repo_dir: Path, current_cwd: str) -> str | None:
+    match = re.match(r"^\s*cd\s+([^\s;&|]+)\s*$", line)
+    if not match:
+        return None
+    raw_path = match.group(1).strip().strip("'\"")
+    path = Path(raw_path)
+    if path.is_absolute() or ".." in path.parts:
+        return None
+    next_dir = (repo_dir / current_cwd / path).resolve()
+    try:
+        rel = next_dir.relative_to(repo_dir.resolve())
+    except ValueError:
+        return None
+    if not next_dir.is_dir():
+        return None
+    return "." if str(rel) == "." else rel.as_posix()
+
+
 def _canonical_python_script_command(line: str, repo_dir: Path) -> str | None:
     match = re.search(
         r"\b(?:python|python3)\s+(scripts/(?:dev-[a-z0-9_-]+|start|check|tasks)\.py(?:\s+[a-z0-9_-]+)?)",
@@ -99,22 +122,255 @@ def _canonical_python_script_command(line: str, repo_dir: Path) -> str | None:
     return f"python {script_and_args}"
 
 
-def _canonical_npm_command(line: str, repo_dir: Path) -> tuple[str, str] | None:
+def _canonical_uvicorn_command(line: str, repo_dir: Path, cwd: str) -> tuple[str, str] | None:
+    match = re.search(
+        r"(?:^|\s)(?:python(?:3)?\s+-m\s+)?uvicorn\s+"
+        r"([a-zA-Z_][\w.]*:[a-zA-Z_][\w]*)\b(?P<args>.*)$",
+        line,
+    )
+    if not match:
+        return None
+    app_target = match.group(1)
+    args = match.group("args") or ""
+    port_match = re.search(r"(?:^|\s)--port(?:=|\s+)(\d{2,5})(?:\s|$)", args)
+    if not port_match:
+        return None
+    port = int(port_match.group(1))
+    if port not in PROBED_PORTS:
+        return None
+    package_dir = (repo_dir / cwd).resolve()
+    try:
+        package_dir.relative_to(repo_dir.resolve())
+    except ValueError:
+        return None
+    if not package_dir.is_dir():
+        return None
+    module_name = app_target.split(":", 1)[0]
+    module_path = package_dir / Path(*module_name.split(".")).with_suffix(".py")
+    package_init = package_dir / Path(*module_name.split(".")) / "__init__.py"
+    if not module_path.is_file() and not package_init.is_file():
+        return None
+    return f"python -m uvicorn {app_target} --host 127.0.0.1 --port {port}", cwd
+
+
+def _setup_state_for(setup_by_cwd: dict[str, dict[str, Any]], cwd: str) -> dict[str, Any]:
+    return setup_by_cwd.setdefault(cwd, {"venv": "", "requirements": [], "npm_install": False})
+
+
+def _remember_documented_setup(line: str, repo_dir: Path, cwd: str, setup_by_cwd: dict[str, dict[str, Any]]) -> bool:
+    lowered = line.lower().strip()
+    state = _setup_state_for(setup_by_cwd, cwd)
+
+    venv_match = re.match(r"^(?:python|python3)\s+-m\s+venv\s+([^\s;&|]+)\s*$", line)
+    if venv_match:
+        venv_dir = venv_match.group(1).strip().strip("'\"")
+        path = Path(venv_dir)
+        if not path.is_absolute() and ".." not in path.parts:
+            state["venv"] = path.as_posix()
+        return True
+
+    if re.search(r"(?:^|\s)(?:source\s+)?\.?/?\.venv[\\/](?:scripts|bin)[\\/]activate", lowered):
+        if not state.get("venv"):
+            state["venv"] = ".venv"
+        return True
+
+    pip_match = re.match(r"^(?:python\s+-m\s+)?pip(?:3)?\s+install\s+-r\s+([^\s;&|]+)\s*$", line)
+    if pip_match:
+        req = pip_match.group(1).strip().strip("'\"")
+        req_path = Path(req)
+        if not req_path.is_absolute() and ".." not in req_path.parts and (repo_dir / cwd / req_path).is_file():
+            requirements = state.setdefault("requirements", [])
+            req_value = req_path.as_posix()
+            if req_value not in requirements:
+                requirements.append(req_value)
+        return True
+
+    if lowered in {"npm install", "npm i", "pnpm install", "yarn install"}:
+        state["npm_install"] = True
+        return True
+
+    return False
+
+
+def _with_python_setup(command: str, repo_dir: Path, cwd: str, setup_by_cwd: dict[str, dict[str, Any]]) -> str:
+    state = _setup_state_for(setup_by_cwd, cwd)
+    requirements = list(state.get("requirements") or [])
+    if not requirements and (repo_dir / cwd / "requirements.txt").is_file():
+        requirements.append("requirements.txt")
+
+    prefix: list[str] = []
+    venv = str(state.get("venv") or "").strip()
+    if venv:
+        safe_venv = Path(venv).as_posix()
+        prefix.append(f"python -m venv {shlex.quote(safe_venv)}")
+        prefix.append(f". {shlex.quote(safe_venv + '/bin/activate')}")
+    for requirement in requirements:
+        prefix.append(f"python -m pip install -r {shlex.quote(requirement)}")
+
+    if not prefix:
+        return command
+    return " && ".join([*prefix, command])
+
+
+def _with_node_setup(command: str, cwd: str, setup_by_cwd: dict[str, dict[str, Any]]) -> str:
+    state = _setup_state_for(setup_by_cwd, cwd)
+    if state.get("npm_install"):
+        return f"npm install && {command}"
+    return command
+
+
+def _canonical_npm_command(line: str, repo_dir: Path, cwd: str = ".") -> tuple[str, str] | None:
     lowered = line.lower()
     if "npm run dev" not in lowered:
         return None
-    cwd = "."
+    command_cwd = cwd
     if re.search(r"\bcd\s+frontend\b", lowered):
-        cwd = "frontend"
+        command_cwd = "frontend"
     elif (repo_dir / "frontend" / "package.json").is_file() and not (repo_dir / "package.json").is_file():
-        cwd = "frontend"
-    package_dir = repo_dir / cwd
+        command_cwd = "frontend"
+    package_dir = repo_dir / command_cwd
     if not (package_dir / "package.json").is_file():
         return None
     command = "npm run dev"
     if "--host" not in lowered:
         command += " -- --host 127.0.0.1"
-    return command, cwd
+    return command, command_cwd
+
+
+def _normalize_compatible_command(
+    command: str,
+    cwd: str,
+    repo_dir: Path,
+    setup_by_cwd: dict[str, dict[str, Any]],
+) -> tuple[str, str] | None:
+    safe_cwd = _safe_documented_cwd(f"cd {cwd}", repo_dir, ".") if cwd != "." else "."
+    if safe_cwd is None:
+        return None
+
+    script_command = _canonical_python_script_command(command, repo_dir)
+    if script_command:
+        return script_command, "."
+
+    uvicorn_command = _canonical_uvicorn_command(command, repo_dir, safe_cwd)
+    if uvicorn_command:
+        normalized, command_cwd = uvicorn_command
+        return _with_python_setup(normalized, repo_dir, command_cwd, setup_by_cwd), command_cwd
+
+    npm_command = _canonical_npm_command(command, repo_dir, safe_cwd)
+    if npm_command:
+        normalized, command_cwd = npm_command
+        return _with_node_setup(normalized, command_cwd, setup_by_cwd), command_cwd
+
+    return None
+
+
+def _runtime_compat_llm_enabled() -> bool:
+    return _is_truthy(os.getenv("REPOS_RUNNER_RUNTIME_COMPAT_LLM", ""))
+
+
+def _runtime_compat_model() -> str:
+    return os.getenv("REPOS_RUNNER_RUNTIME_COMPAT_MODEL", "").strip() or DEFAULT_RUNTIME_COMPAT_MODEL
+
+
+def _repo_path_sample(repo_dir: Path, limit: int = 250) -> list[str]:
+    skip_dirs = {".git", ".venv", "venv", "node_modules", "dist", "build", "__pycache__"}
+    paths: list[str] = []
+    for path in sorted(repo_dir.rglob("*")):
+        try:
+            rel = path.relative_to(repo_dir)
+        except ValueError:
+            continue
+        if any(part in skip_dirs or part.startswith(".venv") for part in rel.parts):
+            continue
+        paths.append(rel.as_posix() + ("/" if path.is_dir() else ""))
+        if len(paths) >= limit:
+            break
+    return paths
+
+
+def _extract_json_array(text: str) -> list[Any]:
+    match = re.search(r"\[.*\]", text or "", flags=re.DOTALL)
+    if not match:
+        return []
+    try:
+        data = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def _discover_llm_compatible_start_commands(
+    repo_dir: Path,
+    setup_by_cwd: dict[str, dict[str, Any]],
+) -> list[dict[str, str]]:
+    if not _runtime_compat_llm_enabled():
+        return []
+
+    doc_parts: list[str] = []
+    for doc_path in _iter_doc_files(repo_dir):
+        try:
+            text = doc_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        doc_parts.append(f"--- {doc_path.relative_to(repo_dir)} ---\n{text[:5000]}")
+
+    if not doc_parts:
+        return []
+
+    repo_paths_json = json.dumps(_repo_path_sample(repo_dir), ensure_ascii=False)
+    docs_text = "\n\n".join(doc_parts)[:20000]
+    prompt = f"""You are helping normalize repository startup instructions for a Linux/Docker test runner.
+
+Return ONLY a JSON array of objects with this shape:
+[{{"command": "uvicorn app.main:app --port 8000", "cwd": "services/app_backend", "source": "README.md"}}]
+
+Allowed command families:
+- uvicorn <module>:<app> --port <port>
+- python -m uvicorn <module>:<app> --port <port>
+- npm run dev
+- python scripts/dev-*.py
+- python scripts/start.py start
+- python scripts/check.py
+- python scripts/tasks.py check
+
+Rules:
+- Use only relative cwd values that exist in the repository.
+- Do not include install, activate, rm, curl, shell redirection, secrets, or arbitrary commands.
+- Prefer app_backend on port 8000, agent_gateway on 8100, domain_layer on 8200, and frontend on 5173/3000/3003 when documented.
+
+Repository paths:
+{repo_paths_json}
+
+Documents:
+{docs_text}
+"""
+    try:
+        message = _messages_create_with_fallback(
+            model=_runtime_compat_model(),
+            require_text=True,
+            max_tokens=900,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception:
+        return []
+
+    candidates = _extract_json_array(_message_text_content(message))
+    commands: list[dict[str, str]] = []
+    for item in candidates:
+        if not isinstance(item, dict):
+            continue
+        normalized = _normalize_compatible_command(
+            str(item.get("command") or ""),
+            str(item.get("cwd") or "."),
+            repo_dir,
+            setup_by_cwd,
+        )
+        if not normalized:
+            continue
+        command, cwd = normalized
+        source = str(item.get("source") or "LLM compatibility scan").strip() or "LLM compatibility scan"
+        commands.append({"command": command, "cwd": cwd, "source": source})
+    return commands
 
 
 def discover_documented_start_commands(repo_dir: Path) -> list[dict[str, str]]:
@@ -122,31 +378,53 @@ def discover_documented_start_commands(repo_dir: Path) -> list[dict[str, str]]:
     repo_dir = Path(repo_dir)
     discovered: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
+    setup_by_cwd: dict[str, dict[str, Any]] = {}
 
     for doc_path in _iter_doc_files(repo_dir):
         try:
             text = doc_path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
+        cwd = "."
         for line in _iter_command_lines(text):
+            next_cwd = _safe_documented_cwd(line, repo_dir, cwd)
+            if next_cwd is not None:
+                cwd = next_cwd
+                continue
+            if _remember_documented_setup(line, repo_dir, cwd, setup_by_cwd):
+                continue
             command = _canonical_python_script_command(line, repo_dir)
-            cwd = "."
-            npm_command = _canonical_npm_command(line, repo_dir)
+            command_cwd = "."
+            uvicorn_command = _canonical_uvicorn_command(line, repo_dir, cwd)
+            if uvicorn_command:
+                command, command_cwd = uvicorn_command
+                command = _with_python_setup(command, repo_dir, command_cwd, setup_by_cwd)
+            npm_command = _canonical_npm_command(line, repo_dir, cwd)
             if npm_command:
-                command, cwd = npm_command
+                command, command_cwd = npm_command
+                command = _with_node_setup(command, command_cwd, setup_by_cwd)
             if not command:
                 continue
-            key = (cwd, command)
+            key = (command_cwd, command)
             if key in seen:
                 continue
             seen.add(key)
             discovered.append({
                 "command": command,
-                "cwd": cwd,
+                "cwd": command_cwd,
                 "source": str(doc_path.relative_to(repo_dir)),
             })
             if len(discovered) >= 8:
                 break
+
+    for item in _discover_llm_compatible_start_commands(repo_dir, setup_by_cwd):
+        key = (item["cwd"], item["command"])
+        if key in seen:
+            continue
+        seen.add(key)
+        discovered.append(item)
+        if len(discovered) >= 8:
+            break
 
     if any("scripts/dev-" in item["command"] for item in discovered):
         discovered = [item for item in discovered if "scripts/start.py" not in item["command"]]
@@ -183,6 +461,10 @@ def runtime_subprocess_env() -> dict[str, str]:
     env["PYTHONUNBUFFERED"] = "1"
     env["CI"] = "1"
     return env
+
+
+def _is_truthy(value: str) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _env_scene_configured(repo_dir: Path) -> bool:
@@ -336,10 +618,12 @@ def _start_process(
     artifact_dir: Path,
     execution_session=None,
 ) -> subprocess.Popen | None:
-    args = shlex.split(command_item["command"])
+    command = command_item["command"]
+    use_shell = any(token in command for token in SHELL_CONTROL_TOKENS)
+    args = ["/bin/sh", "-c", command] if use_shell else shlex.split(command)
     if not args:
         raise ValueError("Empty command")
-    if args[0] == "python":
+    if not use_shell and args[0] == "python":
         args[0] = sys.executable
 
     log_path = _command_log_path(command_item, artifact_dir)
@@ -556,8 +840,18 @@ def _run_chrome(args: list[str], timeout: int = 20) -> subprocess.CompletedProce
     )
 
 
-async def _capture_screenshot(url: str, screenshot_path: Path) -> bool:
+async def _capture_screenshot(url: str, screenshot_path: Path, execution_session=None) -> bool:
     screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+    if getattr(execution_session, "is_docker", False) and hasattr(execution_session, "capture_screenshot"):
+        try:
+            return await asyncio.to_thread(
+                execution_session.capture_screenshot,
+                url,
+                screenshot_path,
+                timeout=20,
+            )
+        except Exception:
+            return False
 
     def _capture() -> bool:
         result = _run_chrome([
@@ -575,6 +869,11 @@ async def _capture_screenshot(url: str, screenshot_path: Path) -> bool:
 
 async def _dump_dom(url: str, execution_session=None) -> str:
     if getattr(execution_session, "is_docker", False):
+        if hasattr(execution_session, "dump_dom"):
+            try:
+                return await asyncio.to_thread(execution_session.dump_dom, url, timeout=10)
+            except Exception:
+                return ""
         return await asyncio.to_thread(execution_session.http_text, url, timeout=5)
 
     def _dump() -> str:
@@ -708,9 +1007,9 @@ async def collect_runtime_evidence(
             execution_session=execution_session,
         )
         docs_screenshots: list[str] = []
-        if docs_ok and docs_url and not getattr(execution_session, "is_docker", False):
+        if docs_ok and docs_url:
             docs_path = artifact_dir / "screenshots" / "docs.png"
-            if await _capture_screenshot(docs_url, docs_path):
+            if await _capture_screenshot(docs_url, docs_path, execution_session=execution_session):
                 docs_screenshots.append(_relative_artifact(docs_path, clone_dir))
         evidence["checks"].append(
             _feature_check(
@@ -736,10 +1035,9 @@ async def collect_runtime_evidence(
         frontend_screenshots: list[str] = []
         dom_text = ""
         if frontend_ok and frontend_url:
-            if not getattr(execution_session, "is_docker", False):
-                homepage_path = artifact_dir / "screenshots" / "homepage.png"
-                if await _capture_screenshot(frontend_url, homepage_path):
-                    frontend_screenshots.append(_relative_artifact(homepage_path, clone_dir))
+            homepage_path = artifact_dir / "screenshots" / "homepage.png"
+            if await _capture_screenshot(frontend_url, homepage_path, execution_session=execution_session):
+                frontend_screenshots.append(_relative_artifact(homepage_path, clone_dir))
             dom_text = await _dump_dom(frontend_url, execution_session=execution_session)
         evidence["checks"].append(
             _feature_check(

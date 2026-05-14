@@ -357,6 +357,38 @@ class DockerSandboxSession:
         )
         return result.stdout if result.returncode == 0 else ""
 
+    def dump_dom(self, url: str, *, timeout: int = 10) -> str:
+        result = self.run(
+            "chromium --headless=new --no-sandbox --disable-gpu "
+            "--virtual-time-budget=3000 --dump-dom "
+            f"{shlex.quote(url)}",
+            cwd=self.repo_dir,
+            timeout=timeout,
+        )
+        if result.returncode == 0:
+            return result.stdout
+        return self.http_text(url, timeout=timeout)
+
+    def capture_screenshot(self, url: str, screenshot_path: Path, *, timeout: int = 20) -> bool:
+        screenshot_path = Path(screenshot_path)
+        screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+        container_path = self._container_path(screenshot_path)
+        result = self.run(
+            "mkdir -p "
+            f"{shlex.quote(str(Path(container_path).parent))} && "
+            "chromium --headless=new --no-sandbox --disable-gpu "
+            "--window-size=1365,768 "
+            f"--screenshot={shlex.quote(container_path)} "
+            f"{shlex.quote(url)}",
+            cwd=self.repo_dir,
+            timeout=timeout,
+        )
+        return (
+            result.returncode == 0
+            and screenshot_path.is_file()
+            and screenshot_path.stat().st_size > 0
+        )
+
 
 def create_execution_session(repo_dir: Path):
     """Create the configured execution session for a cloned repository."""

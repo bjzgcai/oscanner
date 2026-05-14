@@ -4,14 +4,77 @@ Test report generation (TEST_REPORT.md).
 
 from datetime import datetime
 from pathlib import Path
+import re
 from typing import Optional, Dict, Any, List
 
+DEFAULT_CODE_TEST_WEIGHT = 30
+DEFAULT_FUNCTIONALITY_WEIGHT = 70
 
-def _format_tag_message_section(tag_message: Optional[str]) -> str:
+
+def _split_tag_message(tag_message: Optional[str]) -> Dict[str, str]:
     text = str(tag_message or "").strip()
     if not text:
+        return {"teacher": "", "student": ""}
+
+    course_marker = re.search(
+        r"^##\s*Course tag requirements\s*$",
+        text,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+    repo_marker = re.search(
+        r"^##\s*Repository tag description\s*$",
+        text,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+    if course_marker or repo_marker:
+        teacher = ""
+        student = ""
+        if course_marker:
+            start = course_marker.end()
+            end = repo_marker.start() if repo_marker and repo_marker.start() > start else len(text)
+            teacher = text[start:end].strip()
+        if repo_marker:
+            student = text[repo_marker.end():].strip()
+        return {"teacher": teacher, "student": student}
+
+    return {"teacher": "", "student": text}
+
+
+def _format_features_to_test_section(tag_message: Optional[str]) -> str:
+    parts = _split_tag_message(tag_message)
+    teacher = parts["teacher"]
+    student = parts["student"]
+    if not teacher and not student:
         return ""
-    return f"### 标签说明\n\n{text}\n\n"
+
+    section = "## 待测仓库功能\n\n"
+    section += '### 老师要求（可以为空，为空则表示"学生任意发挥"）\n\n'
+    section += f"{teacher}\n\n" if teacher else "> 未配置课程标签要求。\n\n"
+    section += "### 学生自述功能\n\n"
+    section += f"{student}\n\n" if student else "> 学生仓库标签未提供自述功能。\n\n"
+    return section
+
+
+def _check_group(check: Dict[str, Any]) -> str:
+    check_id = str(check.get("id") or "")
+    if check_id.startswith("harness_") or check_id in {
+        "project_skeleton",
+        "environment_configuration",
+        "domain_layer_directory",
+        "domain_layer_requirements",
+        "api_wrapper_reserved",
+    }:
+        return "静态功能检查"
+    if check_id in {"frontend_dev_server", "homepage_opens", "homepage_scene_placeholder"}:
+        return "UI Evidence"
+    return "API / 服务运行验证"
+
+
+def _format_fenced_block(content: str) -> str:
+    fence = "```"
+    while fence in content:
+        fence += "`"
+    return f"{fence}\n{content.rstrip()}\n{fence}\n"
 
 
 async def _generate_test_report(
@@ -25,10 +88,37 @@ async def _generate_test_report(
     feature_coverage: Optional[Dict[str, Any]] = None,
     tag_message: Optional[str] = None,
     runtime_evidence: Optional[Dict[str, Any]] = None,
+    score_breakdown: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Generate TEST_REPORT.md for analyzed repository."""
     pass_rate = (passed / total * 100) if total > 0 else 0
     fail_rate = (failed / total * 100) if total > 0 else 0
+    has_functionality_score = bool(feature_coverage or tag_message)
+    coverage_ratio = 0.0
+    total_features = 0
+    covered_features = []
+    not_covered_features = []
+    if feature_coverage:
+        covered_features = feature_coverage.get("covered", [])
+        not_covered_features = feature_coverage.get("not_covered", [])
+        total_features = len(covered_features) + len(not_covered_features)
+        coverage_ratio = float(feature_coverage.get("coverage_ratio", 1.0))
+    if score_breakdown:
+        code_max = int(score_breakdown.get("code_weight", 100 if not has_functionality_score else DEFAULT_CODE_TEST_WEIGHT))
+        functionality_max = int(score_breakdown.get("functionality_weight", 0 if not has_functionality_score else DEFAULT_FUNCTIONALITY_WEIGHT))
+        code_score = int(score_breakdown.get("code_score", 0))
+        functionality_score = int(score_breakdown.get("functionality_score", 0))
+        code_relevance_ratio = float(score_breakdown.get("code_relevance_ratio", 1.0))
+        weight_explanation = str(score_breakdown.get("weight_explanation") or "").strip()
+    else:
+        code_max = 100 if not has_functionality_score else DEFAULT_CODE_TEST_WEIGHT
+        functionality_max = 0 if not has_functionality_score else DEFAULT_FUNCTIONALITY_WEIGHT
+        code_relevance_ratio = 1.0 if not has_functionality_score else float(
+            (feature_coverage or {}).get("code_relevance_ratio", 0.0)
+        )
+        code_score = int((passed / total if total > 0 else 0) * code_max * code_relevance_ratio)
+        functionality_score = int(coverage_ratio * functionality_max)
+        weight_explanation = ""
 
     if score >= 90:
         grade = "优秀 ⭐⭐⭐⭐⭐"
@@ -50,8 +140,31 @@ async def _generate_test_report(
 - **失败**：{failed}（{fail_rate:.1f}%）
 - **跳过**：0（0%）
 - **得分**：{score}/100
+- **代码测试分数**：{code_score}/{code_max}（通过 {passed} / 失败 {failed}，相关度 {code_relevance_ratio * 100:.0f}%）
 
-## 测试结果
+"""
+
+    if has_functionality_score:
+        report += (
+            f"- **功能测试分数**：{functionality_score}/{functionality_max}\n"
+            f"- **总分**：代码测试 {code_score} + 功能测试 {functionality_score} = {score}/100\n"
+            f"- **动态权重说明**：代码测试权重 {code_max}%，功能验收权重 {functionality_max}%。"
+            f"{weight_explanation or '代码测试权重按测试与待测功能的相关度动态分配，功能验收获得剩余权重。'}\n\n"
+        )
+    else:
+        report += "- **功能测试分数**：未启用（未提供标签要求）\n"
+        report += f"- **总分**：代码测试 {code_score} = {score}/100\n\n"
+
+    report += _format_features_to_test_section(tag_message)
+
+    report += f"""
+
+## 代码测试
+
+- **代码测试权重**：{code_max}/100
+- **代码测试得分**：{code_score}/{code_max}
+- **代码测试通过率**：{pass_rate:.1f}%（{passed}/{total}）
+- **待测功能相关度**：{code_relevance_ratio * 100:.0f}%
 
 """
 
@@ -80,39 +193,24 @@ async def _generate_test_report(
             output = t.get("output", "")
             if output:
                 truncated_output = output[-500:] if len(output) > 500 else output
-                report += f"  ```\n  {truncated_output}\n  ```\n"
+                report += f"\n{_format_fenced_block(truncated_output)}"
         report += "\n"
 
-    report += f"""## 得分明细
-
-- **通过率**：{pass_rate:.1f}%（{passed}/{total}）
-- **最终得分**：{score}/100
-"""
-
     if feature_coverage:
-        covered = feature_coverage.get("covered", [])
-        not_covered = feature_coverage.get("not_covered", [])
-        total_features = len(covered) + len(not_covered)
-        coverage_pct = feature_coverage.get("coverage_ratio", 1.0) * 100
-        report += f"""- **功能覆盖率**：{len(covered)}/{total_features} 个功能（{coverage_pct:.0f}%）
-- **评分公式**：通过率（{pass_rate:.1f}%）× 功能覆盖率（{coverage_pct:.0f}%）= {score}/100
-"""
-    report += "\n"
-
-    if feature_coverage:
-        covered = feature_coverage.get("covered", [])
-        not_covered = feature_coverage.get("not_covered", [])
-        total_features = len(covered) + len(not_covered)
-        coverage_pct = feature_coverage.get("coverage_ratio", 1.0) * 100
+        covered = covered_features
+        not_covered = not_covered_features
+        coverage_pct = coverage_ratio * 100
         test_files_found = feature_coverage.get("test_files_found", [])
 
-        report += f"## 功能覆盖（{len(covered)}/{total_features} — {coverage_pct:.0f}%）\n\n"
-
-        report += _format_tag_message_section(tag_message)
+        report += f"## 功能验收\n\n"
+        report += f"- **功能验收权重**：{functionality_max}/100\n"
+        report += f"- **功能验收得分**：{functionality_score}/{functionality_max}\n"
+        report += f"- **功能覆盖率**：{len(covered)}/{total_features} 个功能（{coverage_pct:.0f}%）\n\n"
+        report += f"### 功能覆盖（{len(covered)}/{total_features} — {coverage_pct:.0f}%）\n\n"
 
         report += (
-            "功能列表从标签说明中提取，并与仓库中的测试文件进行交叉比对。"
-            "每个未覆盖的功能将按比例降低最高可得分数。\n\n"
+            "功能列表从上方“待测仓库功能”提取，并与仓库测试文件、静态检查、"
+            "服务运行验证和 UI evidence 交叉比对。每个功能只计入一次。\n\n"
         )
 
         if covered:
@@ -137,10 +235,11 @@ async def _generate_test_report(
 
     elif tag_message:
         # tag_message present but no feature_coverage (extraction returned nothing)
-        report += "## 功能覆盖\n\n"
-        report += _format_tag_message_section(tag_message)
+        report += "## 功能验收\n\n"
+        report += f"- **功能验收权重**：{functionality_max}/100\n"
+        report += f"- **功能验收得分**：0/{functionality_max}\n\n"
         report += "> ⚠️ 无法从标签说明中提取可测试的功能点。\n\n"
-        report += "> **得分设为 0** ——已提供标签说明，但无法从中识别出可评估的功能。\n\n"
+        report += "> 功能验收部分计为 0 分；代码测试部分仍按相关测试通过率计分。\n\n"
 
     if runtime_evidence:
         checks = runtime_evidence.get("checks", [])
@@ -159,16 +258,42 @@ async def _generate_test_report(
             report += f"- **警告**：{warning}\n"
         report += "\n"
 
-        for check in checks:
-            icon = "✅" if check.get("passed") else "❌"
-            label = check.get("label") or check.get("id") or "runtime check"
-            report += f"### {icon} {label}\n\n"
-            evidence = str(check.get("evidence") or "").strip()
-            if evidence:
-                report += f"- 证据：{evidence}\n"
-            for screenshot in check.get("screenshots") or []:
-                report += f"- 截图：![{check.get('id', 'screenshot')}]({screenshot})\n"
-            report += "\n"
+        for group_name in ["静态功能检查", "API / 服务运行验证", "UI Evidence"]:
+            group_checks = [check for check in checks if _check_group(check) == group_name]
+            if not group_checks:
+                continue
+            report += f"### {group_name}\n\n"
+            for check in group_checks:
+                icon = "✅" if check.get("passed") else "❌"
+                label = check.get("label") or check.get("id") or "runtime check"
+                report += f"#### {icon} {label}\n\n"
+                evidence = str(check.get("evidence") or "").strip()
+                if evidence:
+                    report += f"- 证据：{evidence}\n"
+                for screenshot in check.get("screenshots") or []:
+                    report += f"- 截图：![{check.get('id', 'screenshot')}]({screenshot})\n"
+                report += "\n"
+
+    report += "## 得分明细\n\n"
+    if has_functionality_score:
+        report += (
+            f"- **代码测试得分**：{code_score}/{code_max} "
+            f"（通过率 {pass_rate:.1f}% × 相关度 {code_relevance_ratio * 100:.0f}% × 权重 {code_max}）\n"
+            f"- **功能验收得分**：{functionality_score}/{functionality_max} "
+            f"（功能覆盖率 {coverage_ratio * 100:.0f}% × 权重 {functionality_max}）\n"
+            f"- **最终得分**：{score}/100\n"
+            f"- **评分公式**：代码测试 × 代码测试权重 + 功能验收 × 功能验收权重 = "
+            f"{code_score} + {functionality_score} = {score}/100\n\n"
+            f"> 动态权重：代码测试权重 {code_max}%，功能验收权重 {functionality_max}%。"
+            f"代码测试相关度越高，代码测试权重越接近 40%；相关度为 0 时，"
+            f"功能验收最高可得 70 分，代码测试不得分。\n\n"
+        )
+    else:
+        report += (
+            f"- **通过率**：{pass_rate:.1f}%（{passed}/{total}）\n"
+            f"- **最终得分**：{score}/100\n"
+            f"- **评分公式**：代码测试通过率（{pass_rate:.1f}%）× 100 = {score}/100\n\n"
+        )
 
     report += """### 评级标准
 - 90-100：优秀 ⭐⭐⭐⭐⭐（可投入生产）

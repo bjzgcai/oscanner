@@ -45,6 +45,12 @@ export RUNNER_PORT=8001
 # docker = require Docker and fail if it cannot start.
 export REPOS_RUNNER_EXECUTOR=auto
 export REPOS_RUNNER_DOCKER_IMAGE=oscanner-repos-runner:py3.12-node
+
+# Optional: ask an LLM to suggest Linux/Docker-compatible startup commands
+# when README instructions are inconsistent or incomplete. Suggestions are
+# validated against the same safe command allowlist before execution.
+export REPOS_RUNNER_RUNTIME_COMPAT_LLM=false
+export REPOS_RUNNER_RUNTIME_COMPAT_MODEL="deepseek/deepseek-v4-pro"
 ```
 
 ## Usage
@@ -184,8 +190,11 @@ data: {"event":"status","data":{"status":"completed","results":{...},"report_pat
 
 Automatically generates `TEST_REPORT.md` in the repository directory with:
 - Summary (total, passed, failed, score)
-- Detailed test results (pass/fail status, duration, output)
+- Code test results from executed unit/integration/test commands
+- Functionality test results from tag-derived feature coverage and runtime evidence
 - Score breakdown and recommendations
+
+When a tag is provided, the report file is named `TEST_REPORT_{tag}.md`.
 
 ## Web Interface
 
@@ -246,10 +255,52 @@ This isolated structure ensures:
 - Creates isolated virtual environment per repository at `{repo_path}/.venv`
 - Executes setup commands if needed (installs dependencies in repo's venv)
 - Runs all identified test commands in isolated environment
-- Calculates score based on pass/fail ratio
+- Calculates score from relevance-gated code tests and functional acceptance when tag requirements are available
 - Captures full test output for debugging
 - Each repository has its own dependency isolation
 - Generates TEST_REPORT.md in each repository directory
+
+### Runtime Evidence From README
+
+When tag requirements are available, repos_runner also reads `README.md`, `README.en.md`,
+`AGENT.md`, `AGENTS.md`, and up to 20 Markdown files under `docs/` to collect runtime
+evidence. It tracks simple `cd <relative-dir>` lines inside shell blocks and starts
+safe local services that match one of these patterns:
+
+- `python scripts/dev-*.py`
+- `python scripts/start.py start`
+- `python scripts/check.py`
+- `python scripts/tasks.py check`
+- `uvicorn <module>:<app> --port <probed-port>`
+- `python -m uvicorn <module>:<app> --port <probed-port>`
+- `npm run dev`
+
+For `uvicorn` and `npm run dev`, the runner normalizes host binding to
+`127.0.0.1` so checks can probe local ports inside the execution session.
+When README instructions contain Windows virtualenv activation such as
+`.venv\Scripts\activate`, the runner converts the service startup to the Linux/Docker
+equivalent (`. .venv/bin/activate`) and prefixes the command with documented
+`python -m venv` / `pip install -r ...` setup where safe.
+Arbitrary README shell commands are not executed.
+
+When the Docker executor is used, the runner image includes Chromium and CJK
+fonts. Runtime evidence uses that browser to capture screenshots and rendered DOM
+for UI checks such as homepage loading and scene placeholder text. These UI
+checks are evidence for functional acceptance; they are not a third scoring
+bucket.
+
+If `REPOS_RUNNER_RUNTIME_COMPAT_LLM=true`, repos_runner asks the configured
+compatibility model, default `deepseek/deepseek-v4-pro`, to suggest missing
+Linux/Docker-compatible startup commands from README-like files and repository
+paths. The model output is treated as untrusted: only JSON suggestions that
+normalize back into the allowlisted command families above are executed.
+
+### Feature Directory Checks
+
+Directory checks are performed against the cloned Git tree. Git does not preserve
+empty directories, so required directories such as `.harness/datasets/`,
+`.harness/eval/`, and `.harness/logs/` need a committed placeholder file such as
+`.gitkeep` to exist after clone.
 
 ## Architecture
 
@@ -363,10 +414,18 @@ This script will:
 
 Tests are scored based on the following metrics:
 
-- **Pass Rate**: (Passed / Total) × 100
-- **Coverage**: Percentage of code covered by tests
-- **Critical Path**: Clone, explore, and test execution paths must pass
-- **Error Handling**: Graceful handling of network failures, invalid inputs
+- **Without tag requirements**: score is the code test pass rate, `(Passed / Total) × 100`.
+- **With tag requirements**: score is split into two dynamic parts:
+  - **Code tests: 30-40%** — unit/integration/test commands, gated by how much the tests relate to required features.
+  - **Functional acceptance: 60-70%** — required feature coverage from static checks, service/API runtime evidence, and UI evidence.
+- **Formula with tag requirements**:
+  `final_score = code_pass_rate × code_relevance_ratio × code_weight + functionality_coverage_ratio × functionality_weight`.
+
+The dynamic distribution starts at `code_weight=30` and `functionality_weight=70`
+when no relevant code tests are found. As code tests cover more required features,
+`code_weight` rises toward 40 and `functionality_weight` falls toward 60. This
+avoids both old all-or-nothing scoring and the opposite problem where unrelated
+passing tests make a missing feature set look healthy.
 
 **Grade Scale:**
 - 90-100: Excellent (all critical paths covered)

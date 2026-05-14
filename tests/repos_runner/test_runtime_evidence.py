@@ -42,6 +42,138 @@ rm -rf /
     assert all("scripts/tasks.py check" not in item["command"] for item in commands)
 
 
+def test_discover_documented_start_commands_follows_readme_cd_context_for_uvicorn(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text(
+        """
+### 启动后端服务
+
+```bash
+# app_backend (端口 8000)
+cd services/app_backend
+python -m venv .venv
+.venv\\Scripts\\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+### 启动前端
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+""",
+        encoding="utf-8",
+    )
+    (repo / "services" / "app_backend" / "app").mkdir(parents=True)
+    (repo / "services" / "app_backend" / "requirements.txt").write_text(
+        "fastapi\nuvicorn\n",
+        encoding="utf-8",
+    )
+    (repo / "services" / "app_backend" / "app" / "main.py").write_text(
+        "from fastapi import FastAPI\napp = FastAPI()\n",
+        encoding="utf-8",
+    )
+    (repo / "frontend").mkdir()
+    (repo / "frontend" / "package.json").write_text(
+        '{"scripts":{"dev":"vite"}}',
+        encoding="utf-8",
+    )
+
+    commands = runtime_evidence.discover_documented_start_commands(repo)
+
+    assert commands == [
+        {
+            "command": (
+                "python -m venv .venv && . .venv/bin/activate && "
+                "python -m pip install -r requirements.txt && "
+                "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+            ),
+            "cwd": "services/app_backend",
+            "source": "README.md",
+        },
+        {
+            "command": "npm run dev -- --host 127.0.0.1",
+            "cwd": "frontend",
+            "source": "README.md",
+        },
+    ]
+
+
+def test_start_process_runs_canonical_shell_commands_through_sh(monkeypatch, tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    artifact_dir = repo / "artifacts"
+    captured = {}
+
+    class _FakeProcess:
+        pass
+
+    def _fake_popen(args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return _FakeProcess()
+
+    monkeypatch.setattr(runtime_evidence.subprocess, "Popen", _fake_popen)
+
+    command = "python -m venv .venv && . .venv/bin/activate && python -m uvicorn app.main:app --port 8000"
+    proc = runtime_evidence._start_process(
+        {"command": command, "cwd": ".", "source": "README.md"},
+        repo,
+        artifact_dir,
+    )
+
+    assert isinstance(proc, _FakeProcess)
+    assert captured["args"] == ["/bin/sh", "-c", command]
+    assert captured["kwargs"]["cwd"] == repo
+
+
+def test_ai_compatible_commands_are_validated_and_normalized(monkeypatch, tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Demo\n", encoding="utf-8")
+    (repo / "services" / "domain_layer" / "app").mkdir(parents=True)
+    (repo / "services" / "domain_layer" / "requirements.txt").write_text(
+        "fastapi\nuvicorn\n",
+        encoding="utf-8",
+    )
+    (repo / "services" / "domain_layer" / "app" / "main.py").write_text(
+        "from fastapi import FastAPI\napp = FastAPI()\n",
+        encoding="utf-8",
+    )
+
+    class _Message:
+        content = [
+            {
+                "text": """
+[
+  {"command": "uvicorn app.main:app --reload --port 8200", "cwd": "services/domain_layer", "source": "README.md"},
+  {"command": "rm -rf /", "cwd": ".", "source": "README.md"}
+]
+"""
+            }
+        ]
+
+    monkeypatch.setenv("REPOS_RUNNER_RUNTIME_COMPAT_LLM", "true")
+    monkeypatch.setattr(runtime_evidence, "_messages_create_with_fallback", lambda **_kwargs: _Message())
+
+    commands = runtime_evidence.discover_documented_start_commands(repo)
+
+    assert commands == [
+        {
+            "command": (
+                "python -m pip install -r requirements.txt && "
+                "python -m uvicorn app.main:app --host 127.0.0.1 --port 8200"
+            ),
+            "cwd": "services/domain_layer",
+            "source": "README.md",
+        }
+    ]
+
+
 def test_merge_runtime_feature_coverage_moves_proven_features():
     feature_coverage = {
         "covered": ["Health endpoint returns JSON"],
@@ -147,6 +279,7 @@ python scripts/dev-frontend.py
         def __init__(self):
             self.started = []
             self.probed = []
+            self.screenshots = []
 
         def start_background(self, command, *, cwd, log_path, env=None):
             self.started.append((command, Path(cwd).relative_to(repo), log_path.name))
@@ -156,7 +289,16 @@ python scripts/dev-frontend.py
             return True, url, "HTTP 200"
 
         def http_text(self, url, *, timeout=5):
-            return "scene"
+            return "server html without rendered app"
+
+        def dump_dom(self, url, *, timeout=10):
+            return "<html><body>scene selection</body></html>"
+
+        def capture_screenshot(self, url, screenshot_path, *, timeout=20):
+            Path(screenshot_path).parent.mkdir(parents=True, exist_ok=True)
+            Path(screenshot_path).write_bytes(b"png")
+            self.screenshots.append((url, Path(screenshot_path).name))
+            return True
 
     session = _FakeDockerSession()
     monkeypatch.setattr(
@@ -181,6 +323,14 @@ python scripts/dev-frontend.py
     ]
     assert ("http://127.0.0.1:8000/health", True) in session.probed
     assert any(check["id"] == "app_backend_starts" and check["passed"] for check in evidence["checks"])
+    assert ("http://127.0.0.1:8000/docs", "docs.png") in session.screenshots
+    assert ("http://127.0.0.1:5173", "homepage.png") in session.screenshots
+    assert any(
+        check["id"] == "homepage_scene_placeholder"
+        and check["passed"]
+        and check["screenshots"]
+        for check in evidence["checks"]
+    )
 
 
 def test_generate_test_report_includes_runtime_evidence(tmp_path):
@@ -208,7 +358,12 @@ def test_generate_test_report_includes_runtime_evidence(tmp_path):
                 "coverage_ratio": 1.0,
                 "test_files_found": ["tests/test_app.py"],
             },
-            tag_message="- `/docs` 可访问",
+            tag_message=(
+                "## Course tag requirements\n\n"
+                "- `/docs` 可访问\n\n"
+                "## Repository tag description\n\n"
+                "项目启动与统一骨架"
+            ),
             runtime_evidence={
                 "summary": {"passed": 1, "total": 1},
                 "checks": [
@@ -222,13 +377,103 @@ def test_generate_test_report_includes_runtime_evidence(tmp_path):
                 ],
                 "warnings": [],
             },
+            score_breakdown={
+                "score": 100,
+                "code_score": 40,
+                "code_weight": 40,
+                "functionality_score": 60,
+                "functionality_weight": 60,
+                "code_pass_rate": 1.0,
+                "functionality_coverage_ratio": 1.0,
+                "code_relevance_ratio": 1.0,
+                "weight_explanation": "test fixture",
+            },
         )
     )
 
     report = report_path.read_text(encoding="utf-8")
+    assert report.index("## 待测仓库功能") < report.index("## 代码测试")
+    assert '### 老师要求（可以为空，为空则表示"学生任意发挥"）' in report
+    assert "### 学生自述功能" in report
+    assert "## 代码测试" in report
+    assert "## 功能验收" in report
+    assert "代码测试权重" in report
+    assert "功能验收权重" in report
     assert "## 运行时功能验证" in report
     assert "1/1 项通过" in report
     assert "TEST_ARTIFACTS/runtime/screenshots/docs.png" in report
+
+
+def test_run_tests_scores_code_and_functionality_independently(monkeypatch, tmp_path):
+    from repos_runner.services.repo_service import runner as runner_service
+
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+    overview = clone_dir / "REPO_OVERVIEW_class-01.md"
+    overview.write_text("overview", encoding="utf-8")
+
+    monkeypatch.setattr(
+        runner_service,
+        "_detect_frameworks_statically",
+        lambda _clone_dir: {
+            "language": "python",
+            "test_commands": ["curl http://localhost:8000/health"],
+            "setup_commands": [],
+        },
+    )
+    monkeypatch.setattr(runner_service, "_find_test_files", lambda _clone_dir, _language: [])
+    monkeypatch.setattr(runner_service, "ensure_repo_venv", lambda _clone_path: sys.executable)
+
+    class _SandboxResult:
+        returncode = 7
+        stdout = ""
+        stderr = "curl: (7) Failed to connect"
+
+    monkeypatch.setattr(runner_service, "run_sandboxed", lambda *args, **kwargs: _SandboxResult())
+    monkeypatch.setattr(runner_service, "_parse_json_report", lambda _clone_dir: None)
+
+    async def _fake_parse_test_output(_output):
+        return None
+
+    async def _fake_extract_features(_message):
+        return ["Health endpoint returns JSON", "Docs endpoint accessible"]
+
+    async def _fake_check_feature_coverage(_clone_dir, _features):
+        return {
+            "covered": [],
+            "not_covered": ["Health endpoint returns JSON", "Docs endpoint accessible"],
+            "coverage_ratio": 0.0,
+            "test_files_found": [],
+        }
+
+    async def _fake_collect_runtime_evidence(_clone_dir, tag="", progress_callback=None, execution_session=None):
+        return {
+            "summary": {"passed": 2, "total": 2},
+            "covered_features": ["Health endpoint returns JSON", "Docs endpoint accessible"],
+            "checks": [],
+        }
+
+    monkeypatch.setattr(runner_service, "_parse_test_output", _fake_parse_test_output)
+    monkeypatch.setattr(runner_service, "_extract_features_from_tag_message", _fake_extract_features)
+    monkeypatch.setattr(runner_service, "_check_feature_coverage", _fake_check_feature_coverage)
+    monkeypatch.setattr(runner_service, "collect_runtime_evidence", _fake_collect_runtime_evidence)
+
+    result = asyncio.run(
+        runner_service.run_tests(
+            str(clone_dir),
+            str(overview),
+            tag_message="- `/health` and `/docs`",
+            tag="class-01",
+        )
+    )
+
+    assert result["score"] == 70
+    assert result["score_breakdown"]["code_weight"] == 30
+    assert result["score_breakdown"]["functionality_weight"] == 70
+    assert result["score_breakdown"]["code_relevance_ratio"] == 0.0
+    report = Path(result["report_path"]).read_text(encoding="utf-8")
+    assert "代码测试得分**：0/30" in report
+    assert "功能验收得分**：70/70" in report
 
 
 def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
@@ -303,7 +548,10 @@ def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
         )
     )
 
-    assert result["score"] == 100
+    assert result["score"] == 82
+    assert result["score_breakdown"]["code_weight"] == 35
+    assert result["score_breakdown"]["functionality_weight"] == 65
+    assert result["score_breakdown"]["code_relevance_ratio"] == 0.5
     assert result["feature_coverage"]["coverage_ratio"] == 1.0
     assert result["runtime_evidence"]["summary"] == {"passed": 1, "total": 1}
     assert "运行时功能验证" in Path(result["report_path"]).read_text(encoding="utf-8")
