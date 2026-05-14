@@ -218,6 +218,7 @@ class CommitEvaluatorModerate:
         self.expected_feature = (expected_feature or "").strip()
         self.progress_callback = progress_callback
         self._token_usage_records: List[Dict[str, Any]] = []
+        self._latest_dimension_evidence: Dict[str, List[Dict[str, Any]]] = {}
 
         # Checker API base URL (default to localhost, can be overridden via env)
         self.checker_api_base = os.getenv("OSCANNER_CHECKER_API_BASE", "http://localhost:8000")
@@ -238,6 +239,12 @@ class CommitEvaluatorModerate:
             "cloud_architecture": "Evidence: containerization, IaC (Terraform/Pulumi), K8s configs, deployment automation, resource optimization, architecture docs/ADR, API design, migration patterns (anti-corruption layer).",
             "ai_engineering": "Evidence: agent orchestration, tool definitions, structured prompts, LLM traces/logs, eval datasets, feedback loops, automation scripts, intelligent workflows.",
             "mastery_professionalism": "Evidence: open source collaboration, meaningful commits/PRs, code reviews, documentation, trade-off analysis, security/performance fixes, mentorship, standards definition.",
+        }
+        self.dimension_titles_zh = {
+            "spec_quality": "规范与内建质量",
+            "cloud_architecture": "云原生与架构演进",
+            "ai_engineering": "AI工程与自动演进",
+            "mastery_professionalism": "工程修养与职业素养",
         }
 
         self._file_cache: Dict[str, str] = {}
@@ -265,6 +272,208 @@ class CommitEvaluatorModerate:
             "If the implementation is missing, incomplete, or only superficial, score lower on the relevant dimensions "
             "and explicitly report the expected feature, lacking feature, and scoring rationale in reasoning."
         )
+
+    @staticmethod
+    def _score_to_level(score: Any) -> str:
+        try:
+            numeric = int(score)
+        except (TypeError, ValueError):
+            numeric = 0
+        if numeric >= 85:
+            return "L5"
+        if numeric >= 70:
+            return "L4"
+        if numeric >= 50:
+            return "L3"
+        if numeric >= 30:
+            return "L2"
+        return "L1"
+
+    @staticmethod
+    def _commit_sha(commit: Dict[str, Any]) -> str:
+        return str(commit.get("sha") or commit.get("hash") or "").strip()
+
+    @staticmethod
+    def _commit_message(commit: Dict[str, Any]) -> str:
+        raw = commit.get("message") or commit.get("commit", {}).get("message") or ""
+        return str(raw).splitlines()[0].strip()
+
+    @staticmethod
+    def _commit_files(commit: Dict[str, Any], limit: int = 6) -> List[str]:
+        files: List[str] = []
+        for item in commit.get("files") or []:
+            if isinstance(item, dict):
+                filename = item.get("filename") or item.get("path") or item.get("name")
+            else:
+                filename = item
+            if filename:
+                files.append(str(filename))
+            if len(files) >= limit:
+                break
+        return files
+
+    def _dimension_matches_for_commit(self, commit: Dict[str, Any]) -> List[str]:
+        message = self._commit_message(commit)
+        files = self._commit_files(commit, limit=20)
+        haystack = f"{message} {' '.join(files)}".lower()
+        keyword_map = {
+            "spec_quality": [
+                "test", "spec", "schema", "valid", "lint", "format", "type", "refactor",
+                "quality", "coverage", "bug", "fix", "edge", "unit", "integration",
+            ],
+            "cloud_architecture": [
+                "docker", "compose", "k8s", "kubernetes", "helm", "deploy", "deployment",
+                "workflow", "ci", "cd", "terraform", "pulumi", "infra", "architecture",
+                "migration", "api", "server", "config",
+            ],
+            "ai_engineering": [
+                "ai", "llm", "prompt", "agent", "tool", "eval", "trace", "model",
+                "openai", "checker", "automation", "workflow", "rag", "embedding",
+            ],
+            "mastery_professionalism": [
+                "doc", "readme", "adr", "security", "performance", "perf", "tradeoff",
+                "trade-off", "review", "changelog", "license", "contributing", "fix",
+            ],
+        }
+        matches: List[str] = []
+        for dimension, keywords in keyword_map.items():
+            if any(keyword in haystack for keyword in keywords):
+                matches.append(dimension)
+        return matches
+
+    def _build_dimension_evidence(
+        self,
+        commits: List[Dict[str, Any]],
+        checker_results_summary: List[Dict[str, Any]],
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        evidence: Dict[str, List[Dict[str, Any]]] = {key: [] for key in self.dimensions.keys()}
+        seen: Dict[str, set] = {key: set() for key in self.dimensions.keys()}
+
+        def add_entry(dimension: str, entry: Dict[str, Any]) -> None:
+            if dimension not in evidence:
+                return
+            key = (entry.get("sha"), entry.get("message"), tuple(entry.get("files") or []), entry.get("checker"))
+            if key in seen[dimension]:
+                return
+            seen[dimension].add(key)
+            if len(evidence[dimension]) < 5:
+                evidence[dimension].append(entry)
+
+        for commit in commits:
+            sha = self._commit_sha(commit)
+            message = self._commit_message(commit)
+            files = self._commit_files(commit)
+            if not sha and not message and not files:
+                continue
+            entry = {
+                "sha": sha[:8] if sha else "",
+                "message": message[:180] if message else "(no commit message)",
+                "files": files,
+            }
+            for dimension in self._dimension_matches_for_commit(commit):
+                add_entry(dimension, entry)
+
+        for checker in checker_results_summary:
+            checker_id = str(checker.get("checker") or "").strip()
+            if not checker_id:
+                continue
+            add_entry(
+                "spec_quality",
+                {
+                    "sha": str(checker.get("commit") or "").strip(),
+                    "message": str(checker.get("message") or "Code quality checker result")[:180],
+                    "files": [],
+                    "checker": checker_id,
+                    "score": checker.get("score", 0),
+                },
+            )
+
+        fallback_commits = []
+        for commit in commits[:3]:
+            sha = self._commit_sha(commit)
+            message = self._commit_message(commit)
+            files = self._commit_files(commit)
+            if sha or message or files:
+                fallback_commits.append({
+                    "sha": sha[:8] if sha else "",
+                    "message": message[:180] if message else "(no commit message)",
+                    "files": files,
+                    "fallback": True,
+                })
+
+        for dimension in evidence:
+            if not evidence[dimension]:
+                for entry in fallback_commits:
+                    add_entry(dimension, entry)
+        return evidence
+
+    @staticmethod
+    def _format_evidence_entry(entry: Dict[str, Any], *, is_chinese: bool) -> str:
+        sha = entry.get("sha") or "unknown"
+        message = entry.get("message") or "(no commit message)"
+        files = entry.get("files") or []
+        checker = entry.get("checker")
+        checker_suffix = ""
+        if checker:
+            score = entry.get("score", 0)
+            checker_suffix = f"；checker={checker}，score={score}/100" if is_chinese else f"; checker={checker}, score={score}/100"
+        files_text = ", ".join(str(f) for f in files[:6]) if files else ("未记录文件路径" if is_chinese else "no file paths recorded")
+        if is_chinese:
+            return f"- commit `{sha}`：{message}；文件：{files_text}{checker_suffix}"
+        return f"- commit `{sha}`: {message}; files: {files_text}{checker_suffix}"
+
+    def _format_structured_reasoning(
+        self,
+        final_scores: Dict[str, Any],
+        all_reasonings: List[str],
+        checker_raw_analysis: Optional[str],
+    ) -> str:
+        is_chinese = self.language == "zh-CN"
+        evidence = self._latest_dimension_evidence or {key: [] for key in self.dimensions.keys()}
+        sections: List[str] = []
+
+        for key, english_title in self.dimensions.items():
+            title = self.dimension_titles_zh.get(key, english_title) if is_chinese else english_title
+            score = int(final_scores.get(key, 0) or 0)
+            level = self._score_to_level(score)
+            if is_chinese:
+                sections.append(f"## {title}\n\n分数：{score}/100\n等级：{level}\n\n证据：")
+            else:
+                sections.append(f"## {title}\n\nScore: {score}/100\nLevel: {level}\n\nEvidence:")
+
+            entries = evidence.get(key) or []
+            if entries:
+                sections.extend(self._format_evidence_entry(entry, is_chinese=is_chinese) for entry in entries)
+            else:
+                sections.append("- 暂无可定位到提交和文件路径的直接证据。" if is_chinese else "- No direct commit/file evidence was available.")
+
+            dimension_reasonings = [r for r in all_reasonings if r.strip()]
+            if dimension_reasonings:
+                label = "评估判断" if is_chinese else "Assessment"
+                sections.append("")
+                sections.append(f"{label}：{dimension_reasonings[0][:500]}")
+            if checker_raw_analysis and key == "spec_quality":
+                label = "检查器摘要" if is_chinese else "Checker Summary"
+                sections.append("")
+                sections.append(f"{label}：{checker_raw_analysis[:800]}")
+            sections.append("")
+
+        if is_chinese:
+            conclusion = [
+                "## 结论与建议",
+                "",
+                "结论：本次评估已按四个 AI-Native 2026 维度完成，分数和等级反映了提交、文件路径、检查器结果与模型判断的综合结果。",
+                "建议：后续提升应优先补齐低分维度的工程闭环，例如可复现质量门禁、部署自动化、AI 工程可观测性，以及更清晰的设计取舍记录。",
+            ]
+        else:
+            conclusion = [
+                "## Conclusion And Suggestions",
+                "",
+                "Conclusion: This evaluation follows the four AI-Native 2026 dimensions, with scores and levels synthesized from commits, file paths, checker results, and model judgment.",
+                "Suggestion: Prioritize the lowest-scoring dimensions with reproducible quality gates, deployment automation, AI observability, and clearer design trade-off records.",
+            ]
+        sections.extend(conclusion)
+        return "\n".join(sections).strip()
 
     def __del__(self):
         """Clean up HTTP client on object destruction."""
@@ -1053,6 +1262,7 @@ Return the same JSON format as before."""
         
         # Extract checker raw analysis for final result
         checker_raw_analysis_parts: List[str] = []
+        self._latest_dimension_evidence = self._build_dimension_evidence(commits, checker_results_summary)
         
         # Build checker results part
         if checker_results_summary:
@@ -1182,6 +1392,8 @@ Return the same JSON format as before."""
         checker_elapsed = time.time() - checker_start
         print(f"[Checker] [Plugin] Checker processing completed in {checker_elapsed:.3f}s, found {len(checker_results_summary)} results")
         
+        self._latest_dimension_evidence = self._build_dimension_evidence(commits, checker_results_summary)
+
         # Append checker results FIRST (before other content) to prevent truncation
         if checker_results_summary:
             parts.append("")
@@ -1351,10 +1563,21 @@ Return the same JSON format as before."""
         dims_text = "\n".join(dim_lines)
         
         if is_chinese:
-            reasoning_example = f"基于{part_label}数据，提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。如期望实现功能缺失，请说明缺失功能。"
+            reasoning_example = (
+                f"基于{part_label}数据，按四个维度组织 reasoning："
+                "**规范与内建质量**、**云原生与架构演进**、**AI工程与自动演进**、**工程修养与职业素养**。"
+                "每个维度写出评分对应的 L1-L5 等级，并引用可见证据（commit sha、commit message、文件名/路径）。"
+                "最后写 **结论与建议**，该部分只给总结和建议，不重复证明细节。"
+            )
             format_note = "每个维度评分范围：0-100"
         else:
-            reasoning_example = f"Based on {part_label} data, provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**. If the expected feature is lacking, describe the lacking feature."
+            reasoning_example = (
+                f"Based on {part_label} data, structure reasoning by the four dimensions: "
+                "**Specification & Built-in Quality**, **Cloud-Native & Architecture Evolution**, "
+                "**AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. "
+                "For each dimension include the L1-L5 level and visible evidence (commit sha, commit message, file names/paths). "
+                "End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details."
+            )
             format_note = "Each dimension: score 0-100"
         
         fmt_example = {k: 0 for k in self.dimensions.keys()}
@@ -1442,23 +1665,11 @@ Return the same JSON format as before."""
             else:
                 final_scores[dim] = 0
         
-        # Merge reasoning with clear sections
-        reasoning_parts: List[str] = []
-        
-        # Add checker raw analysis first if available (this is the actual checker output)
-        if checker_raw_analysis:
-            checker_label = "代码质量检查器原始分析" if is_chinese else "Code Quality Checker Raw Analysis"
-            reasoning_parts.append(f"**{checker_label}**:\n\n{checker_raw_analysis}")
-        
-        # Add LLM evaluations from each part
-        if all_reasonings:
-            reasoning_parts.extend(all_reasonings)
-        
-        if reasoning_parts:
-            merged_reasoning = "\n\n".join(reasoning_parts)
-            final_scores["reasoning"] = merged_reasoning
-        else:
-            final_scores["reasoning"] = "Multi-stage evaluation completed." if not is_chinese else "多阶段评估完成。"
+        final_scores["reasoning"] = self._format_structured_reasoning(
+            final_scores,
+            all_reasonings,
+            checker_raw_analysis,
+        )
         
         print(f"[Multi-Stage] Merged {len(partial_results)} partial evaluations into final scores")
         return final_scores
@@ -1564,11 +1775,22 @@ Return the same JSON format as before."""
         dims_text = "\n".join(dim_lines)
 
         if is_chinese:
-            reasoning_example = "使用评分标准。提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。如期望实现功能缺失，请说明缺失功能。"
+            reasoning_example = (
+                "使用评分标准。reasoning 必须包含四个维度章节："
+                "**规范与内建质量**、**云原生与架构演进**、**AI工程与自动演进**、**工程修养与职业素养**。"
+                "每个章节写明该维度分数、L1-L5 等级，并列出证据（commit sha、commit message、文件名/路径）。"
+                "最后提供 **结论与建议**，只总结和给建议，不重复证明细节。"
+            )
             format_note = "每个维度评分范围：0-100"
             json_instruction = "重要：必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON，格式如下："
         else:
-            reasoning_example = "Use the rubric. Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**. If the expected feature is lacking, describe the lacking feature."
+            reasoning_example = (
+                "Use the rubric. The reasoning must contain four dimension sections: "
+                "**Specification & Built-in Quality**, **Cloud-Native & Architecture Evolution**, "
+                "**AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. "
+                "Each section must include the dimension score, L1-L5 level, and evidence (commit sha, commit message, file names/paths). "
+                "End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details."
+            )
             format_note = "Each dimension: score 0-100"
             json_instruction = "IMPORTANT: Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly in this format:"
 

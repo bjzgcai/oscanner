@@ -468,6 +468,99 @@ def test_ai_native_plugin_evaluate_repository_reports_provider_token_usage(monke
     }
 
 
+def test_ai_native_plugin_reasoning_uses_structured_dimension_evidence(monkeypatch):
+    plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_structured_reasoning")
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+
+    def fake_part_eval(part_name, part_context, username, chunk_idx=None):
+        return {
+            "spec_quality": 82,
+            "cloud_architecture": 76,
+            "ai_engineering": 68,
+            "mastery_professionalism": 88,
+            "reasoning": f"{part_name} judgment",
+        }
+
+    monkeypatch.setattr(evaluator, "_evaluate_part_with_llm", fake_part_eval)
+
+    result = evaluator.evaluate_repository(
+        commits=[
+            {
+                "sha": "abc123456789",
+                "commit": {
+                    "author": {"name": "Ada", "date": "2026-01-01T00:00:00Z"},
+                    "message": "refactor validation and add unit tests",
+                },
+                "files": [
+                    {"filename": "backend/schemas/course.py", "patch": "+class Course"},
+                    {"filename": "tests/test_course_schema.py", "patch": "+def test_schema"},
+                ],
+            },
+            {
+                "sha": "def987654321",
+                "commit": {
+                    "author": {"name": "Ada", "date": "2026-01-02T00:00:00Z"},
+                    "message": "add docker compose and deployment workflow",
+                },
+                "files": [
+                    {"filename": "docker-compose.yml", "patch": "+services:"},
+                    {"filename": ".github/workflows/ci.yml", "patch": "+name: ci"},
+                ],
+            },
+            {
+                "sha": "fed555555555",
+                "commit": {
+                    "author": {"name": "Ada", "date": "2026-01-03T00:00:00Z"},
+                    "message": "add llm prompt evaluation traces",
+                },
+                "files": [
+                    {"filename": "backend/ai/prompts.py", "patch": "+PROMPT"},
+                    {"filename": "evals/llm_trace.json", "patch": "+{}"},
+                ],
+            },
+            {
+                "sha": "999aaa111bbb",
+                "commit": {
+                    "author": {"name": "Ada", "date": "2026-01-04T00:00:00Z"},
+                    "message": "document security tradeoffs in ADR",
+                },
+                "files": [
+                    {"filename": "docs/adr/security.md", "patch": "+tradeoff"},
+                    {"filename": "CHANGELOG.md", "patch": "+security notes"},
+                ],
+            },
+        ],
+        repo_label="https://gitee.com/org/repo",
+        load_files=False,
+        use_chunking=False,
+    )
+
+    reasoning = result["scores"]["reasoning"]
+    for section in [
+        "## 规范与内建质量",
+        "## 云原生与架构演进",
+        "## AI工程与自动演进",
+        "## 工程修养与职业素养",
+        "## 结论与建议",
+    ]:
+        assert section in reasoning
+
+    assert "分数：82/100" in reasoning
+    assert "等级：L4" in reasoning
+    assert "abc12345" in reasoning
+    assert "refactor validation and add unit tests" in reasoning
+    assert "backend/schemas/course.py" in reasoning
+    assert "docker-compose.yml" in reasoning
+    assert "backend/ai/prompts.py" in reasoning
+    assert "docs/adr/security.md" in reasoning
+    assert reasoning.rfind("## 结论与建议") > reasoning.rfind("## 工程修养与职业素养")
+
+
 def test_ai_native_plugin_streaming_evaluation_reports_provider_token_usage(monkeypatch):
     import importlib.util
 
