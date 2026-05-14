@@ -74,6 +74,45 @@ def test_merge_runtime_feature_coverage_moves_proven_features():
     ]
 
 
+def test_static_runtime_checks_cover_broad_scaffold_harness_and_env_features(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Demo\n", encoding="utf-8")
+    (repo / ".env").write_text("ARCHIVE_SCENE=college\n", encoding="utf-8")
+    (repo / "frontend").mkdir()
+    (repo / "services" / "app_backend").mkdir(parents=True)
+    (repo / "services" / "domain_layer").mkdir(parents=True)
+    (repo / "scripts").mkdir()
+    harness = repo / ".harness"
+    harness.mkdir()
+    (harness / "README.md").write_text("harness\n", encoding="utf-8")
+    (harness / "ROADMAP.md").write_text("roadmap\n", encoding="utf-8")
+    for dirname in ["rules", "specs", "datasets", "eval", "logs"]:
+        (harness / dirname).mkdir()
+
+    checks = runtime_evidence._static_feature_checks(repo)
+    evidence = {"covered_features": [], "checks": checks}
+    feature_coverage = {
+        "covered": [],
+        "not_covered": [
+            "Project skeleton initialization",
+            "Harness directory setup",
+            "Environment configuration",
+        ],
+        "coverage_ratio": 0.0,
+        "test_files_found": [],
+    }
+
+    merged = runtime_evidence.merge_runtime_feature_coverage(feature_coverage, evidence)
+
+    assert merged["not_covered"] == []
+    assert merged["runtime_covered"] == [
+        "Project skeleton initialization",
+        "Harness directory setup",
+        "Environment configuration",
+    ]
+
+
 def test_runtime_subprocess_env_does_not_forward_tokens(monkeypatch):
     monkeypatch.setenv("GITEE_TOKEN", "secret")
     monkeypatch.setenv("OPEN_ROUTER_KEY", "secret")

@@ -5,6 +5,7 @@ Main test execution entry point.
 import asyncio
 import os
 import re
+import shlex
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -174,7 +175,11 @@ def _find_test_files(clone_dir: Path, language: str) -> List[str]:
     return found
 
 
-def _find_python_requirement_files(clone_dir: Path) -> List[str]:
+def _find_python_requirement_file_paths(
+    clone_dir: Path,
+    *,
+    dedupe_content: bool,
+) -> List[str]:
     """Return repo-relative Python requirements files outside generated/vendor dirs."""
     skip_dirs = {
         ".git",
@@ -201,11 +206,36 @@ def _find_python_requirement_files(clone_dir: Path) -> List[str]:
             content = p.read_bytes()
         except Exception:
             content = str(p.relative_to(clone_dir)).encode()
-        if content in seen_content:
+        if dedupe_content and content in seen_content:
             continue
         seen_content.add(content)
         found.append(str(p.relative_to(clone_dir)))
     return sorted(found, key=lambda item: (item.count("/"), item))
+
+
+def _find_python_requirement_files(clone_dir: Path) -> List[str]:
+    """Return dependency manifests to install once into the active Python environment."""
+    return _find_python_requirement_file_paths(clone_dir, dedupe_content=True)
+
+
+def _docker_nested_python_venv_setup_commands(clone_dir: Path) -> List[str]:
+    """Create nested service .venv directories used by documented startup scripts."""
+    commands: List[str] = []
+    for requirements_file in _find_python_requirement_file_paths(
+        clone_dir,
+        dedupe_content=False,
+    ):
+        requirements_path = Path(requirements_file)
+        service_dir = requirements_path.parent
+        if str(service_dir) == ".":
+            continue
+        venv_dir = service_dir / ".venv"
+        commands.append(
+            "python -m venv --clear --system-site-packages "
+            f"{shlex.quote(venv_dir.as_posix())} && "
+            f"{shlex.quote((venv_dir / 'bin' / 'python').as_posix())} -m pip --version"
+        )
+    return commands
 
 
 def _augment_python_setup_commands(clone_dir: Path, test_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -464,6 +494,28 @@ async def run_tests(
                 except Exception as e:
                     if progress_callback:
                         await progress_callback(f"Setup failed: {str(e)}")
+
+        if using_docker and test_info.get("language") == "python":
+            for cmd in _docker_nested_python_venv_setup_commands(clone_dir):
+                if progress_callback:
+                    await progress_callback(f"Preparing service runtime env: {cmd}")
+                try:
+                    result = _run_repo_command(
+                        execution_session,
+                        cmd,
+                        cwd=clone_dir,
+                        timeout=setup_timeout,
+                    )
+                    if progress_callback and result.returncode != 0:
+                        await progress_callback(f"Service env setup warning: {result.stderr[:200]}")
+                except subprocess.TimeoutExpired:
+                    if progress_callback:
+                        await progress_callback(
+                            f"Service env setup timed out after {setup_timeout}s: {cmd}"
+                        )
+                except Exception as e:
+                    if progress_callback:
+                        await progress_callback(f"Service env setup failed: {str(e)}")
 
         # Run test commands
         test_commands = test_info.get("test_commands", [])

@@ -54,6 +54,7 @@ _DEFAULT_NPROC         = 4096  # processes + threads spawnable by this user
 _DOCKER_WORKDIR       = "/workspace"
 _DOCKER_VENV          = "/opt/oscanner-venv"
 _DOCKER_DEFAULT_PATH  = f"{_DOCKER_VENV}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+_DOCKER_SITE_PACKAGES = f"{_DOCKER_VENV}/lib/python3.12/site-packages"
 _DEFAULT_DOCKER_IMAGE = "oscanner-repos-runner:py3.12-node"
 
 
@@ -182,6 +183,10 @@ class DockerSandboxSession:
                 "-e",
                 "PYTHONUNBUFFERED=1",
                 "-e",
+                "HOME=/tmp",
+                "-e",
+                "PIP_CACHE_DIR=/tmp/pip-cache",
+                "-e",
                 f"VIRTUAL_ENV={_DOCKER_VENV}",
                 "-e",
                 f"PATH={_DOCKER_DEFAULT_PATH}",
@@ -227,6 +232,23 @@ class DockerSandboxSession:
         rel = path.relative_to(self.repo_dir)
         return f"{_DOCKER_WORKDIR}/{rel.as_posix()}"
 
+    def _exec_env(self, env: Optional[dict] = None) -> dict[str, str]:
+        docker_env = {
+            key: str(value)
+            for key, value in (env or {}).items()
+            if key not in {"PATH", "HOME", "VIRTUAL_ENV", "PYTHONPATH", "PIP_CACHE_DIR"}
+        }
+        docker_env.update(
+            {
+                "HOME": "/tmp",
+                "PIP_CACHE_DIR": "/tmp/pip-cache",
+                "VIRTUAL_ENV": _DOCKER_VENV,
+                "PATH": _DOCKER_DEFAULT_PATH,
+                "PYTHONPATH": _DOCKER_SITE_PACKAGES,
+            }
+        )
+        return docker_env
+
     def run(
         self,
         cmd: str,
@@ -236,9 +258,8 @@ class DockerSandboxSession:
         env: Optional[dict] = None,
     ) -> subprocess.CompletedProcess:
         args = ["docker", "exec", "-i", "-w", self._container_cwd(Path(cwd))]
-        for key, value in (env or {}).items():
+        for key, value in self._exec_env(env).items():
             args.extend(["-e", f"{key}={value}"])
-        args.extend(["-e", f"VIRTUAL_ENV={_DOCKER_VENV}", "-e", f"PATH={_DOCKER_DEFAULT_PATH}"])
         args.extend([self.name, "timeout", "-k", "5", str(timeout), "/bin/sh", "-c", cmd])
         return subprocess.run(
             args,
@@ -261,7 +282,7 @@ class DockerSandboxSession:
         container_log = self._container_path(log_path)
         env_prefix = " ".join(
             f"{shlex.quote(str(key))}={shlex.quote(str(value))}"
-            for key, value in (env or {}).items()
+            for key, value in self._exec_env(env).items()
         )
         if env_prefix:
             env_prefix += " "

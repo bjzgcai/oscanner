@@ -185,8 +185,44 @@ def runtime_subprocess_env() -> dict[str, str]:
     return env
 
 
+def _env_scene_configured(repo_dir: Path) -> bool:
+    for name in [".env", ".env.example"]:
+        env_path = repo_dir / name
+        if not env_path.is_file():
+            continue
+        try:
+            content = env_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        for line in content.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, value = stripped.split("=", 1)
+            if key.strip() == "ARCHIVE_SCENE" and value.strip().strip("'\""):
+                return True
+    return False
+
+
 def _static_feature_checks(repo_dir: Path) -> list[dict[str, Any]]:
     harness = repo_dir / ".harness"
+    harness_dirs = ["rules", "specs", "datasets", "eval", "logs"]
+    project_skeleton_ok = all(
+        path.exists()
+        for path in [
+            repo_dir / "README.md",
+            repo_dir / "frontend",
+            repo_dir / "services" / "app_backend",
+            repo_dir / "services" / "domain_layer",
+            repo_dir / "scripts",
+            harness,
+        ]
+    )
+    harness_setup_ok = (
+        (harness / "README.md").is_file()
+        and (harness / "ROADMAP.md").is_file()
+        and all((harness / name).is_dir() for name in harness_dirs)
+    )
     frontend_api_candidates = [
         repo_dir / "frontend" / "src" / "api.js",
         repo_dir / "frontend" / "src" / "api.ts",
@@ -196,6 +232,39 @@ def _static_feature_checks(repo_dir: Path) -> list[dict[str, Any]]:
         repo_dir / "frontend" / "src" / "services" / "api.ts",
     ]
     return [
+        _feature_check(
+            "project_skeleton",
+            "Project skeleton initialized",
+            project_skeleton_ok,
+            "README.md, frontend/, services/, scripts/, .harness/",
+            [
+                "Project skeleton initialization",
+                "Project unified skeleton initialization",
+                "Project scaffold initialized",
+            ],
+        ),
+        _feature_check(
+            "harness_setup",
+            ".harness key files and directories exist",
+            harness_setup_ok,
+            ".harness README.md, ROADMAP.md, rules/, specs/, datasets/, eval/, logs/",
+            [
+                "Harness directory setup",
+                "Harness file setup",
+                ".harness key files and directories established",
+            ],
+        ),
+        _feature_check(
+            "environment_configuration",
+            "Environment configuration exists",
+            _env_scene_configured(repo_dir),
+            ".env or .env.example ARCHIVE_SCENE",
+            [
+                "Environment configuration",
+                "ENV scene configuration",
+                ".env main scene configuration",
+            ],
+        ),
         _feature_check(
             "domain_layer_directory",
             "domain_layer directory exists",
