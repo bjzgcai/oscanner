@@ -404,6 +404,38 @@ def test_generate_test_report_includes_runtime_evidence(tmp_path):
     assert "TEST_ARTIFACTS/runtime/screenshots/docs.png" in report
 
 
+def test_generate_test_report_marks_missing_static_runtime_paths(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".harness").mkdir()
+
+    report_path = tmp_path / "TEST_REPORT.md"
+    checks = runtime_evidence._static_feature_checks(repo)
+    datasets_check = next(check for check in checks if check["id"] == "harness_datasets")
+
+    asyncio.run(
+        _generate_test_report(
+            report_path=report_path,
+            repo_name="demo",
+            total=0,
+            passed=0,
+            failed=0,
+            score=0,
+            test_results=[],
+            runtime_evidence={
+                "summary": {"passed": 0, "total": 1},
+                "checks": [datasets_check],
+                "warnings": [],
+            },
+        )
+    )
+
+    report = report_path.read_text(encoding="utf-8")
+
+    assert "#### ❌ .harness datasets/ exists" in report
+    assert "- 证据：.harness/datasets/ 不存在" in report
+
+
 def test_run_tests_scores_code_and_functionality_independently(monkeypatch, tmp_path):
     from repos_runner.services.repo_service import runner as runner_service
 

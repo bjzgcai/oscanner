@@ -451,6 +451,10 @@ def _feature_check(
     }
 
 
+def _existence_evidence(path_label: str, exists: bool) -> str:
+    return path_label if exists else f"{path_label} 不存在"
+
+
 def runtime_subprocess_env() -> dict[str, str]:
     """Return a minimal env for untrusted repo runtime commands."""
     env = {}
@@ -513,6 +517,13 @@ def _static_feature_checks(repo_dir: Path) -> list[dict[str, Any]]:
         repo_dir / "frontend" / "src" / "services" / "api.js",
         repo_dir / "frontend" / "src" / "services" / "api.ts",
     ]
+    env_configured = _env_scene_configured(repo_dir)
+    domain_layer_exists = (repo_dir / "services" / "domain_layer").is_dir()
+    domain_requirements_exists = (repo_dir / "services" / "domain_layer" / "requirements.txt").is_file()
+    api_wrapper_exists = any(path.is_file() for path in frontend_api_candidates)
+    harness_readme_exists = (harness / "README.md").is_file()
+    harness_roadmap_exists = (harness / "ROADMAP.md").is_file()
+    harness_dir_exists = {name: (harness / name).is_dir() for name in harness_dirs}
     return [
         _feature_check(
             "project_skeleton",
@@ -539,8 +550,8 @@ def _static_feature_checks(repo_dir: Path) -> list[dict[str, Any]]:
         _feature_check(
             "environment_configuration",
             "Environment configuration exists",
-            _env_scene_configured(repo_dir),
-            ".env or .env.example ARCHIVE_SCENE",
+            env_configured,
+            _existence_evidence(".env or .env.example ARCHIVE_SCENE", env_configured),
             [
                 "Environment configuration",
                 "ENV scene configuration",
@@ -550,44 +561,44 @@ def _static_feature_checks(repo_dir: Path) -> list[dict[str, Any]]:
         _feature_check(
             "domain_layer_directory",
             "domain_layer directory exists",
-            (repo_dir / "services" / "domain_layer").is_dir(),
-            "services/domain_layer",
+            domain_layer_exists,
+            _existence_evidence("services/domain_layer", domain_layer_exists),
             ["domain_layer directory created", "domain_layer directory exists"],
         ),
         _feature_check(
             "domain_layer_requirements",
             "domain_layer requirements.txt exists",
-            (repo_dir / "services" / "domain_layer" / "requirements.txt").is_file(),
-            "services/domain_layer/requirements.txt",
+            domain_requirements_exists,
+            _existence_evidence("services/domain_layer/requirements.txt", domain_requirements_exists),
             ["domain_layer requirements.txt created", "domain_layer requirements.txt exists"],
         ),
         _feature_check(
             "api_wrapper_reserved",
             "API call wrapper reserved",
-            any(path.is_file() for path in frontend_api_candidates),
-            "frontend/src api wrapper candidate",
+            api_wrapper_exists,
+            _existence_evidence("frontend/src api wrapper candidate", api_wrapper_exists),
             ["API call encapsulation reserved", "API call wrapper reserved"],
         ),
         _feature_check(
             "harness_readme",
             ".harness README.md exists",
-            (harness / "README.md").is_file(),
-            ".harness/README.md",
+            harness_readme_exists,
+            _existence_evidence(".harness/README.md", harness_readme_exists),
             [".harness README.md created", ".harness/README.md exists"],
         ),
         _feature_check(
             "harness_roadmap",
             ".harness ROADMAP.md exists",
-            (harness / "ROADMAP.md").is_file(),
-            ".harness/ROADMAP.md",
+            harness_roadmap_exists,
+            _existence_evidence(".harness/ROADMAP.md", harness_roadmap_exists),
             [".harness ROADMAP.md created", ".harness/ROADMAP.md exists"],
         ),
         *[
             _feature_check(
                 f"harness_{name}",
                 f".harness {name}/ exists",
-                (harness / name).is_dir(),
-                f".harness/{name}/",
+                harness_dir_exists[name],
+                _existence_evidence(f".harness/{name}/", harness_dir_exists[name]),
                 [
                     f".harness {name} directory created",
                     f".harness {name}/ exists",
