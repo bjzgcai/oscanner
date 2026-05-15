@@ -5,11 +5,14 @@ API routes for Repository Runner
 import asyncio
 import json
 import logging
+import mimetypes
+import re
+from pathlib import Path
 from typing import AsyncGenerator, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger(__name__)
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from repos_runner.schemas import (
     RepoCloneRequest,
     RepoMetadata,
@@ -26,8 +29,54 @@ from repos_runner.services import (
     delete_repo,
 )
 from repos_runner.services.repo_service import fetch_gitee_tag_message
+from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
+from repos_runner.services.repo_service.llm import (
+    reset_token_usage_collection,
+    start_token_usage_collection,
+    summarize_token_usage,
+)
 
 router = APIRouter(prefix="/api/runner")
+
+_ALLOWED_ARTIFACT_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+_SAFE_REPO_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _resolve_runner_artifact_path(
+    repo_url: Optional[str],
+    artifact_path: str,
+    repo_name: Optional[str] = None,
+) -> Path:
+    if repo_url:
+        try:
+            _, _, resolved_repo_name = parse_repo_url(repo_url)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    elif repo_name and _SAFE_REPO_NAME_RE.fullmatch(repo_name):
+        resolved_repo_name = repo_name
+    else:
+        raise HTTPException(status_code=400, detail="repo_url or repo_name is required")
+
+    raw_path = str(artifact_path or "").strip().replace("\\", "/")
+    if not raw_path:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    relative_path = Path(raw_path)
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    parts = relative_path.parts
+    if not parts or not parts[0].startswith("TEST_ARTIFACTS_"):
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    clone_dir = (get_repos_dir() / resolved_repo_name).resolve()
+    candidate = (clone_dir / relative_path).resolve()
+    if not (candidate == clone_dir or clone_dir in candidate.parents):
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    if not candidate.is_file() or candidate.suffix.lower() not in _ALLOWED_ARTIFACT_IMAGE_SUFFIXES:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    return candidate
 
 
 # ---------------------------------------------------------------------------
@@ -223,6 +272,7 @@ async def run_all_stream(request: RunAllRequest):
             await progress_queue.put(message)
 
         async def pipeline_task():
+            usage_token = start_token_usage_collection()
             try:
                 from pathlib import Path
                 from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
@@ -289,12 +339,16 @@ async def run_all_stream(request: RunAllRequest):
                     report_content = _Path(report_path).read_text() if report_path else ""
                 except Exception:
                     report_content = ""
+                token_usage = summarize_token_usage()
+                if token_usage:
+                    result["token_usage"] = token_usage
                 await progress_queue.put({
                     "status": "completed",
                     "clone_metadata": clone_metadata,
                     "overview_path": overview_path,
                     "results": result,
                     "report_content": report_content,
+                    "token_usage": token_usage,
                 })
 
             except asyncio.CancelledError:
@@ -303,6 +357,7 @@ async def run_all_stream(request: RunAllRequest):
             except Exception as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
             finally:
+                reset_token_usage_collection(usage_token)
                 progress_queue.put_nowait(None)
 
         task = asyncio.create_task(pipeline_task())
@@ -491,6 +546,16 @@ async def remove_repo(repo_name: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/artifact")
+async def get_artifact(path: str, repo_url: Optional[str] = None, repo_name: Optional[str] = None):
+    """
+    Serve runtime evidence images from TEST_ARTIFACTS_* for a cloned repository.
+    """
+    artifact_path = _resolve_runner_artifact_path(repo_url, path, repo_name)
+    media_type = mimetypes.guess_type(artifact_path.name)[0] or "application/octet-stream"
+    return FileResponse(artifact_path, media_type=media_type)
 
 
 @router.get("/report")

@@ -7,7 +7,13 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from .llm import _default_requested_model, _get_api_clients, _get_model_candidates
+from .llm import (
+    _default_requested_model,
+    _get_api_clients,
+    _get_model_candidates,
+    record_estimated_token_usage,
+    record_llm_response_usage,
+)
 
 
 def _overview_filename(tag: Optional[str]) -> str:
@@ -88,6 +94,8 @@ async def explore_repository(
         )
 
         char_count = 0
+        assistant_text_parts = []
+        recorded_provider_usage = False
         async for message in query(
             prompt=prompt,
             options=ClaudeCodeOptions(
@@ -96,14 +104,20 @@ async def explore_repository(
                 allowed_tools=["Read", "Write", "Glob", "Bash"],
             ),
         ):
+            if record_llm_response_usage(message):
+                recorded_provider_usage = True
             if isinstance(message, AssistantMessage):
                 for block in message.content:
                     if isinstance(block, TextBlock):
                         char_count += len(block.text)
+                        assistant_text_parts.append(block.text)
                         if progress_callback and char_count % 200 < 20:
                             await progress_callback(
                                 f"Claude exploring... ({char_count} chars processed)"
                             )
+
+        if not recorded_provider_usage:
+            record_estimated_token_usage(prompt, "\n".join(assistant_text_parts))
 
         # If Claude wrote the file, great. Otherwise fall back to context-based approach.
         if not overview_path.exists():
@@ -183,10 +197,12 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
     async def _stream_once(client, model: str) -> str:
         content = ""
         last_progress_length = 0
+        messages = [{"role": "user", "content": prompt}]
+        final_message = None
         with client.messages.stream(
             model=model,
             max_tokens=1500,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
         ) as stream:
             for text in stream.text_stream:
                 content += text
@@ -197,8 +213,12 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
                 ):
                     await progress_callback(f"Generated {current_length} characters...")
                     last_progress_length = current_length
+            get_final_message = getattr(stream, "get_final_message", None)
+            if callable(get_final_message):
+                final_message = get_final_message()
         if not content.strip():
             raise RuntimeError("Response contained no final text blocks")
+        record_llm_response_usage(final_message, messages=messages, content=content)
         return content
 
     clients = _get_api_clients()

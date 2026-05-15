@@ -6,7 +6,7 @@ Forwards requests from evaluator server to repos_runner service
 import os
 import json
 from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, Response
 from pydantic import BaseModel
 import httpx
 
@@ -14,6 +14,25 @@ router = APIRouter(prefix="/api/runner")
 
 # Get runner service URL from environment or use default
 RUNNER_SERVICE_URL = os.getenv("RUNNER_SERVICE_URL", "http://localhost:8001")
+
+_HOP_BY_HOP_HEADERS = {
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+}
+
+
+def _proxied_headers(headers):
+    return {
+        key: value
+        for key, value in headers.items()
+        if key.lower() not in _HOP_BY_HOP_HEADERS | {"content-length"}
+    }
 
 
 class RunAllRequest(BaseModel):
@@ -141,12 +160,19 @@ async def proxy_runner_request(path: str, request: Request):
                         "X-Accel-Buffering": "no"
                     }
                 )
+            elif "application/json" not in content_type:
+                return Response(
+                    content=response.content,
+                    status_code=response.status_code,
+                    media_type=content_type or None,
+                    headers=_proxied_headers(response.headers),
+                )
             else:
                 # Return regular JSON response
                 return JSONResponse(
                     content=response.json(),
                     status_code=response.status_code,
-                    headers=dict(response.headers)
+                    headers=_proxied_headers(response.headers),
                 )
 
         except httpx.ConnectError:

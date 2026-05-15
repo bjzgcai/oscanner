@@ -27,8 +27,8 @@ from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_co
 
 _SHELL_SUCCESS_MASK_RE = re.compile(r"\s*(?:\|\|\s*true|;\s*true)\s*$")
 _PIP_REQUIREMENTS_RE = re.compile(r"(?:^|\s)pip(?:3)?\s+install\s+-r\s+([^;&|]+)")
-MIN_RELEVANT_CODE_TEST_WEIGHT = 30
-MAX_RELEVANT_CODE_TEST_WEIGHT = 40
+TAGGED_CODE_TEST_WEIGHT = 30
+TAGGED_FUNCTIONALITY_WEIGHT = 70
 
 
 def _run_repo_command(execution_session, cmd: str, *, cwd: Path, timeout: int):
@@ -73,11 +73,12 @@ def _score_breakdown(
         }
 
     relevance = _clamp_ratio(code_relevance_ratio)
-    code_weight = MIN_RELEVANT_CODE_TEST_WEIGHT + int(
-        round((MAX_RELEVANT_CODE_TEST_WEIGHT - MIN_RELEVANT_CODE_TEST_WEIGHT) * relevance)
-    )
-    functionality_weight = 100 - code_weight
-    code_score = int(_clamp_ratio(raw_pass_rate) * relevance * code_weight)
+    code_weight = TAGGED_CODE_TEST_WEIGHT
+    functionality_weight = TAGGED_FUNCTIONALITY_WEIGHT
+    # Do not multiply code-test score by feature relevance. Code tests may
+    # intentionally exercise only part of the functional acceptance scope, and
+    # discounting them again would make the tagged report too strict.
+    code_score = int(_clamp_ratio(raw_pass_rate) * code_weight)
     functionality_score = int(_clamp_ratio(coverage_ratio) * functionality_weight)
     return {
         "score": code_score + functionality_score,
@@ -89,9 +90,8 @@ def _score_breakdown(
         "functionality_coverage_ratio": _clamp_ratio(coverage_ratio),
         "code_relevance_ratio": relevance,
         "weight_explanation": (
-            "With tag requirements, code test weight is dynamic: 30% when no relevant "
-            "feature tests are found and up to 40% when tests cover the required features. "
-            "Functionality acceptance receives the remaining weight."
+            "With tag requirements, code tests use pass rate only for a fixed 30% weight. "
+            "Functionality acceptance receives the remaining 70%."
         ),
     }
 
@@ -757,8 +757,7 @@ async def run_tests(
         if feature_coverage:
             await progress_callback(
                 f"Tests completed. Score: {score}/100 "
-                f"(code_tests={raw_pass_rate * 100:.1f}% × relevance "
-                f"{score_breakdown['code_relevance_ratio'] * 100:.0f}% × "
+                f"(code_tests={raw_pass_rate * 100:.1f}% × "
                 f"{score_breakdown['code_weight']} + "
                 f"functionality={coverage_ratio * 100:.0f}% × "
                 f"{score_breakdown['functionality_weight']})"

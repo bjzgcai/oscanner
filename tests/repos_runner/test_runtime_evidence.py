@@ -5,6 +5,22 @@ from pathlib import Path
 
 from repos_runner.services.repo_service import runtime_evidence
 from repos_runner.services.repo_service.report import _generate_test_report
+from repos_runner.services.repo_service.runner import _score_breakdown
+
+
+def test_score_breakdown_does_not_discount_code_tests_by_feature_relevance():
+    breakdown = _score_breakdown(
+        raw_pass_rate=1.0,
+        coverage_ratio=0.0,
+        has_functionality=True,
+        code_relevance_ratio=0.0,
+    )
+
+    assert breakdown["code_weight"] == 30
+    assert breakdown["functionality_weight"] == 70
+    assert breakdown["code_score"] == 30
+    assert breakdown["functionality_score"] == 0
+    assert breakdown["score"] == 30
 
 
 def test_discover_documented_start_commands_prefers_safe_readme_commands(tmp_path):
@@ -323,7 +339,10 @@ python scripts/dev-frontend.py
     ]
     assert ("http://127.0.0.1:8000/health", True) in session.probed
     assert any(check["id"] == "app_backend_starts" and check["passed"] for check in evidence["checks"])
-    assert ("http://127.0.0.1:8000/docs", "docs.png") in session.screenshots
+    docs_check = next(check for check in evidence["checks"] if check["id"] == "docs_accessible")
+    assert docs_check["passed"]
+    assert docs_check["screenshots"] == []
+    assert ("http://127.0.0.1:8000/docs", "docs.png") not in session.screenshots
     assert ("http://127.0.0.1:5173", "homepage.png") in session.screenshots
     assert any(
         check["id"] == "homepage_scene_placeholder"
@@ -373,6 +392,13 @@ def test_generate_test_report_includes_runtime_evidence(tmp_path):
                         "passed": True,
                         "evidence": "http://127.0.0.1:8000/docs",
                         "screenshots": ["TEST_ARTIFACTS/runtime/screenshots/docs.png"],
+                    },
+                    {
+                        "id": "homepage_opens",
+                        "label": "Homepage opens",
+                        "passed": True,
+                        "evidence": "http://127.0.0.1:5173",
+                        "screenshots": ["TEST_ARTIFACTS/runtime/screenshots/homepage.png"],
                     }
                 ],
                 "warnings": [],
@@ -399,9 +425,15 @@ def test_generate_test_report_includes_runtime_evidence(tmp_path):
     assert "## 功能验收" in report
     assert "代码测试权重" in report
     assert "功能验收权重" in report
+    assert "相关度" not in report
     assert "## 运行时功能验证" in report
     assert "1/1 项通过" in report
-    assert "TEST_ARTIFACTS/runtime/screenshots/docs.png" in report
+    assert "TEST_ARTIFACTS/runtime/screenshots/docs.png" not in report
+    assert (
+        "/api/runner/artifact?repo_name=demo&path="
+        "TEST_ARTIFACTS%2Fruntime%2Fscreenshots%2Fhomepage.png"
+    ) in report
+    assert "](TEST_ARTIFACTS/runtime/screenshots/homepage.png)" not in report
 
 
 def test_generate_test_report_marks_missing_static_runtime_paths(tmp_path):
@@ -580,9 +612,9 @@ def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
         )
     )
 
-    assert result["score"] == 82
-    assert result["score_breakdown"]["code_weight"] == 35
-    assert result["score_breakdown"]["functionality_weight"] == 65
+    assert result["score"] == 100
+    assert result["score_breakdown"]["code_weight"] == 30
+    assert result["score_breakdown"]["functionality_weight"] == 70
     assert result["score_breakdown"]["code_relevance_ratio"] == 0.5
     assert result["feature_coverage"]["coverage_ratio"] == 1.0
     assert result["runtime_evidence"]["summary"] == {"passed": 1, "total": 1}

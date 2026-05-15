@@ -561,6 +561,100 @@ def test_ai_native_plugin_reasoning_uses_structured_dimension_evidence(monkeypat
     assert reasoning.rfind("## 结论与建议") > reasoning.rfind("## 工程修养与职业素养")
 
 
+def test_ai_native_structured_reasoning_keeps_dimension_assessments_separate():
+    plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_dimension_reasoning_separation")
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+    evaluator._latest_dimension_evidence = {key: [] for key in evaluator.dimensions.keys()}
+
+    llm_reasoning = (
+        "**提交记录**: ## 规范与内建质量\n"
+        "规范判断：质量门禁较弱。\n\n"
+        "## 云原生与架构演进\n"
+        "云原生判断：没有部署自动化。\n\n"
+        "## AI工程与自动演进\n"
+        "AI判断：已有 agent 规则但缺少评测闭环。\n\n"
+        "## 工程修养与职业素养\n"
+        "职业判断：有 README 但缺少 ADR。\n\n"
+        "## 结论与建议\n"
+        "整体还停留在脚手架阶段，应优先补齐测试、部署和 AI eval。"
+    )
+
+    reasoning = evaluator._format_structured_reasoning(
+        {
+            "spec_quality": 15,
+            "cloud_architecture": 0,
+            "ai_engineering": 38,
+            "mastery_professionalism": 27,
+        },
+        [llm_reasoning],
+        checker_raw_analysis=None,
+    )
+
+    def section(title: str) -> str:
+        start = reasoning.index(f"## {title}")
+        next_start = reasoning.find("\n## ", start + 1)
+        return reasoning[start:] if next_start == -1 else reasoning[start:next_start]
+
+    ai_section = section("AI工程与自动演进")
+    assert "AI判断：已有 agent 规则但缺少评测闭环。" in ai_section
+    assert "规范判断：质量门禁较弱。" not in ai_section
+    assert "云原生判断：没有部署自动化。" not in ai_section
+    assert "职业判断：有 README 但缺少 ADR。" not in ai_section
+    assert reasoning.count("规范判断：质量门禁较弱。") == 1
+    assert reasoning.count("云原生判断：没有部署自动化。") == 1
+    assert reasoning.count("AI判断：已有 agent 规则但缺少评测闭环。") == 1
+    assert reasoning.count("职业判断：有 README 但缺少 ADR。") == 1
+
+    conclusion = reasoning[reasoning.rfind("## 结论与建议"):]
+    assert "脚手架阶段" in conclusion
+    assert "规范判断：质量门禁较弱。" not in conclusion
+
+
+def test_ai_native_structured_reasoning_retains_mid_length_assessments():
+    plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_reasoning_retention_length")
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+    evaluator._latest_dimension_evidence = {key: [] for key in evaluator.dimensions.keys()}
+
+    dimension_detail = "维度细节" * 110
+    conclusion_detail = "结论细节" * 120
+    llm_reasoning = (
+        "## 规范与内建质量\n"
+        f"规范判断：{dimension_detail}。末尾维度保留。\n\n"
+        "## 云原生与架构演进\n"
+        "云原生判断：部署证据不足。\n\n"
+        "## AI工程与自动演进\n"
+        "AI判断：自动化闭环不足。\n\n"
+        "## 工程修养与职业素养\n"
+        "职业判断：文档记录不足。\n\n"
+        "## 结论与建议\n"
+        f"整体总结：{conclusion_detail}。末尾结论保留。"
+    )
+
+    reasoning = evaluator._format_structured_reasoning(
+        {
+            "spec_quality": 15,
+            "cloud_architecture": 0,
+            "ai_engineering": 38,
+            "mastery_professionalism": 27,
+        },
+        [llm_reasoning],
+        checker_raw_analysis=None,
+    )
+
+    assert "末尾维度保留" in reasoning
+    assert "末尾结论保留" in reasoning
+
+
 def test_ai_native_plugin_streaming_evaluation_reports_provider_token_usage(monkeypatch):
     import importlib.util
 

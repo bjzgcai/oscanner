@@ -1017,11 +1017,6 @@ async def collect_runtime_evidence(
             baseline_ports=baseline_ports,
             execution_session=execution_session,
         )
-        docs_screenshots: list[str] = []
-        if docs_ok and docs_url:
-            docs_path = artifact_dir / "screenshots" / "docs.png"
-            if await _capture_screenshot(docs_url, docs_path, execution_session=execution_session):
-                docs_screenshots.append(_relative_artifact(docs_path, clone_dir))
         evidence["checks"].append(
             _feature_check(
                 "docs_accessible",
@@ -1029,7 +1024,6 @@ async def collect_runtime_evidence(
                 docs_ok,
                 docs_url or docs_detail,
                 ["Docs endpoint accessible", "/docs accessible"],
-                docs_screenshots,
             )
         )
 

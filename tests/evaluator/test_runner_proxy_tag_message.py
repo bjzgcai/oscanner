@@ -3,6 +3,8 @@
 import json
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from evaluator.routes import runner_proxy
 
@@ -60,3 +62,41 @@ async def test_run_all_proxy_forwards_tag_message(monkeypatch):
     assert captured["url"] == "http://localhost:8001/api/runner/run-all"
     assert captured["json"]["tag"] == "class-01"
     assert captured["json"]["tag_message"] == "## Course tag requirements\n\n- /health returns JSON"
+
+
+def test_runner_proxy_passes_image_artifacts_without_json_decoding(monkeypatch):
+    class _FakeRunnerResponse:
+        status_code = 200
+        headers = {"content-type": "image/png"}
+        content = b"png"
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def request(self, method, url, headers, content):
+            return _FakeRunnerResponse()
+
+    monkeypatch.setattr(runner_proxy.httpx, "AsyncClient", _FakeClient)
+
+    app = FastAPI()
+    app.include_router(runner_proxy.router)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/runner/artifact",
+        params={
+            "repo_name": "demo-repo",
+            "path": "TEST_ARTIFACTS_class-01/runtime-evidence/screenshots/homepage.png",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"png"
+    assert response.headers["content-type"] == "image/png"

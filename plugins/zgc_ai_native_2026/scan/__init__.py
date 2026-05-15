@@ -157,6 +157,9 @@ class CommitEvaluatorModerate:
     IMPORTANT: this plugin must not import from `evaluator/`.
     """
 
+    DIMENSION_ASSESSMENT_MAX_CHARS = 600
+    CONCLUSION_MAX_CHARS = 600
+
     def __init__(
         self,
         *,
@@ -422,6 +425,156 @@ class CommitEvaluatorModerate:
             return f"- commit `{sha}`：{message}；文件：{files_text}{checker_suffix}"
         return f"- commit `{sha}`: {message}; files: {files_text}{checker_suffix}"
 
+    def _reasoning_heading_labels(self, is_chinese: bool) -> Dict[str, List[str]]:
+        labels: Dict[str, List[str]] = {}
+        for key, english_title in self.dimensions.items():
+            dimension_labels = [english_title]
+            zh_title = self.dimension_titles_zh.get(key)
+            if zh_title:
+                dimension_labels.append(zh_title)
+            labels[key] = dimension_labels
+
+        labels["_conclusion"] = (
+            ["结论与建议", "Conclusion And Suggestions", "Conclusion and Suggestions", "Conclusion"]
+            if is_chinese
+            else ["Conclusion And Suggestions", "Conclusion and Suggestions", "Conclusion", "结论与建议"]
+        )
+        return labels
+
+    def _extract_reasoning_sections(self, reasoning: str, *, is_chinese: bool) -> Dict[str, str]:
+        text = self._format_reasoning(reasoning)
+        if not text:
+            return {}
+
+        labels = self._reasoning_heading_labels(is_chinese)
+        label_to_key = {
+            label.casefold(): key
+            for key, key_labels in labels.items()
+            for label in key_labels
+        }
+        label_pattern = "|".join(
+            re.escape(label)
+            for label in sorted(label_to_key.keys(), key=len, reverse=True)
+        )
+        heading_re = re.compile(
+            rf"(?P<prefix>^|\n|:\s*)"
+            rf"(?P<marker>#{{1,6}}\s*)?"
+            rf"(?:\*\*)?\s*(?P<label>{label_pattern})\s*(?:\*\*)?\s*(?:[:：])?",
+            re.IGNORECASE,
+        )
+
+        matches = []
+        for match in heading_re.finditer(text):
+            label = match.group("label").casefold()
+            key = label_to_key.get(label)
+            if key:
+                matches.append((match.start(), match.end(), key))
+
+        sections: Dict[str, str] = {}
+        for idx, (start, end, key) in enumerate(matches):
+            next_start = matches[idx + 1][0] if idx + 1 < len(matches) else len(text)
+            body = text[end:next_start].strip(" \n\t:-：")
+            if body and key not in sections:
+                sections[key] = body
+        return sections
+
+    @staticmethod
+    def _compact_reasoning_excerpt(text: str, max_chars: int) -> str:
+        cleaned_lines = []
+        for line in (text or "").splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith(("- commit `", "* commit `")):
+                continue
+            cleaned_lines.append(stripped)
+        compact = " ".join(cleaned_lines)
+        compact = re.sub(r"\s+", " ", compact).strip()
+        if len(compact) <= max_chars:
+            return compact
+
+        cut = compact[:max_chars].rstrip()
+        for separator in ("。", "；", ";", "."):
+            pos = cut.rfind(separator)
+            if pos >= max_chars * 0.55:
+                return cut[: pos + 1].strip()
+        return f"{cut.rstrip()}..."
+
+    def _dimension_assessment(
+        self,
+        dimension_key: str,
+        all_reasonings: List[str],
+        *,
+        is_chinese: bool,
+    ) -> str:
+        snippets: List[str] = []
+        seen = set()
+        for reasoning in all_reasonings:
+            section = self._extract_reasoning_sections(reasoning, is_chinese=is_chinese).get(dimension_key, "")
+            excerpt = self._compact_reasoning_excerpt(section, self.DIMENSION_ASSESSMENT_MAX_CHARS)
+            if excerpt and excerpt not in seen:
+                snippets.append(excerpt)
+                seen.add(excerpt)
+            if len(snippets) >= 2:
+                break
+        return "\n\n".join(snippets)
+
+    def _build_conclusion(
+        self,
+        final_scores: Dict[str, Any],
+        all_reasonings: List[str],
+        *,
+        is_chinese: bool,
+    ) -> List[str]:
+        conclusion_snippets: List[str] = []
+        seen = set()
+        for reasoning in all_reasonings:
+            section = self._extract_reasoning_sections(reasoning, is_chinese=is_chinese).get("_conclusion", "")
+            excerpt = self._compact_reasoning_excerpt(section, self.CONCLUSION_MAX_CHARS)
+            if excerpt and excerpt not in seen:
+                conclusion_snippets.append(excerpt)
+                seen.add(excerpt)
+            if len(conclusion_snippets) >= 2:
+                break
+
+        ranked_dimensions = sorted(
+            self.dimensions.keys(),
+            key=lambda key: int(final_scores.get(key, 0) or 0),
+        )
+        low_dimensions = ranked_dimensions[:2]
+        low_text = "、".join(
+            f"{self.dimension_titles_zh.get(key, self.dimensions[key])}（{int(final_scores.get(key, 0) or 0)}/100，{self._score_to_level(final_scores.get(key, 0))}）"
+            for key in low_dimensions
+        )
+        low_text_en = ", ".join(
+            f"{self.dimensions[key]} ({int(final_scores.get(key, 0) or 0)}/100, {self._score_to_level(final_scores.get(key, 0))})"
+            for key in low_dimensions
+        )
+        high_key = ranked_dimensions[-1] if ranked_dimensions else ""
+
+        if is_chinese:
+            title = "## 结论与建议"
+            if conclusion_snippets:
+                summary = " ".join(conclusion_snippets)
+                summary = re.sub(r"^(结论|总结|建议)\s*[:：]\s*", "", summary).strip()
+                conclusion = f"结论：{summary}"
+            else:
+                high_text = self.dimension_titles_zh.get(high_key, self.dimensions.get(high_key, "")) if high_key else "当前证据"
+                conclusion = f"结论：本次评估的主要差距集中在 {low_text}；相对较强的信号来自 {high_text}。"
+            suggestion = f"建议：下一阶段优先围绕 {low_text} 建立可复现的改进闭环，并让后续提交明确呈现验证、自动化和设计取舍。"
+            return [title, "", conclusion, suggestion]
+
+        title = "## Conclusion And Suggestions"
+        if conclusion_snippets:
+            summary = " ".join(conclusion_snippets)
+            summary = re.sub(r"^(conclusion|summary|suggestion)s?\s*:\s*", "", summary, flags=re.IGNORECASE).strip()
+            conclusion = f"Conclusion: {summary}"
+        else:
+            high_text = self.dimensions.get(high_key, "available evidence") if high_key else "available evidence"
+            conclusion = f"Conclusion: The largest gaps are in {low_text_en}; the strongest signal comes from {high_text}."
+        suggestion = f"Suggestion: Prioritize {low_text_en} with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+        return [title, "", conclusion, suggestion]
+
     def _format_structured_reasoning(
         self,
         final_scores: Dict[str, Any],
@@ -447,32 +600,18 @@ class CommitEvaluatorModerate:
             else:
                 sections.append("- 暂无可定位到提交和文件路径的直接证据。" if is_chinese else "- No direct commit/file evidence was available.")
 
-            dimension_reasonings = [r for r in all_reasonings if r.strip()]
-            if dimension_reasonings:
+            dimension_reasoning = self._dimension_assessment(key, all_reasonings, is_chinese=is_chinese)
+            if dimension_reasoning:
                 label = "评估判断" if is_chinese else "Assessment"
                 sections.append("")
-                sections.append(f"{label}：{dimension_reasonings[0][:500]}")
+                sections.append(f"{label}：{dimension_reasoning}")
             if checker_raw_analysis and key == "spec_quality":
                 label = "检查器摘要" if is_chinese else "Checker Summary"
                 sections.append("")
                 sections.append(f"{label}：{checker_raw_analysis[:800]}")
             sections.append("")
 
-        if is_chinese:
-            conclusion = [
-                "## 结论与建议",
-                "",
-                "结论：本次评估已按四个 AI-Native 2026 维度完成，分数和等级反映了提交、文件路径、检查器结果与模型判断的综合结果。",
-                "建议：后续提升应优先补齐低分维度的工程闭环，例如可复现质量门禁、部署自动化、AI 工程可观测性，以及更清晰的设计取舍记录。",
-            ]
-        else:
-            conclusion = [
-                "## Conclusion And Suggestions",
-                "",
-                "Conclusion: This evaluation follows the four AI-Native 2026 dimensions, with scores and levels synthesized from commits, file paths, checker results, and model judgment.",
-                "Suggestion: Prioritize the lowest-scoring dimensions with reproducible quality gates, deployment automation, AI observability, and clearer design trade-off records.",
-            ]
-        sections.extend(conclusion)
+        sections.extend(self._build_conclusion(final_scores, all_reasonings, is_chinese=is_chinese))
         return "\n".join(sections).strip()
 
     def __del__(self):

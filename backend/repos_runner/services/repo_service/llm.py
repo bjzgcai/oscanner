@@ -3,13 +3,18 @@ Anthropic/OpenRouter API client helpers.
 """
 
 import os
-from typing import Dict, Any, List, Tuple
+import contextvars
+from typing import Dict, Any, List, Tuple, Optional
 
 
 OPENROUTER_ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
 DEFAULT_OPENROUTER_PRIMARY_MODEL = "anthropic/claude-sonnet-4.6"
 DEFAULT_OPENROUTER_FALLBACK_MODEL = "anthropic/claude-sonnet-4.6"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
+_TOKEN_USAGE_RECORDS: contextvars.ContextVar[Optional[List[Dict[str, Any]]]] = contextvars.ContextVar(
+    "repos_runner_token_usage_records",
+    default=None,
+)
 
 
 def _is_truthy(value: str) -> bool:
@@ -26,6 +31,172 @@ def _env_first_nonempty(*keys: str) -> str:
 
 def _split_model_list(raw: str) -> List[str]:
     return [part.strip() for part in (raw or "").split(",") if part.strip()]
+
+
+def _token_count(value: Any) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value >= 0:
+        return value
+    if isinstance(value, float) and value >= 0:
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip().replace(",", "")
+        if text.isdigit():
+            return int(text)
+    return None
+
+
+def _first_token_count(*values: Any) -> Optional[int]:
+    for value in values:
+        count = _token_count(value)
+        if count is not None:
+            return count
+    return None
+
+
+def _usage_get(usage: Any, key: str) -> Any:
+    if isinstance(usage, dict):
+        return usage.get(key)
+    return getattr(usage, key, None)
+
+
+def _estimate_token_count(text: Any) -> Optional[int]:
+    value = str(text or "").strip()
+    if not value:
+        return None
+    return max(1, (len(value) + 3) // 4)
+
+
+def _message_parts_to_text(messages: Any) -> str:
+    parts: List[str] = []
+
+    def _push(value: Any) -> None:
+        if isinstance(value, str):
+            if value.strip():
+                parts.append(value.strip())
+            return
+        if isinstance(value, list):
+            for item in value:
+                _push(item)
+            return
+        if isinstance(value, dict):
+            _push(value.get("content"))
+            _push(value.get("text"))
+
+    _push(messages)
+    return "\n\n".join(parts)
+
+
+def normalize_token_usage(usage: Any, source: str = "provider") -> Optional[Dict[str, Any]]:
+    nested = _usage_get(usage, "usage")
+    if nested is not None:
+        normalized = normalize_token_usage(nested, source=source)
+        if normalized:
+            return normalized
+
+    input_tokens = _first_token_count(
+        _usage_get(usage, "input_tokens"),
+        _usage_get(usage, "inputTokens"),
+        _usage_get(usage, "prompt_tokens"),
+        _usage_get(usage, "promptTokens"),
+    )
+    output_tokens = _first_token_count(
+        _usage_get(usage, "output_tokens"),
+        _usage_get(usage, "outputTokens"),
+        _usage_get(usage, "completion_tokens"),
+        _usage_get(usage, "completionTokens"),
+    )
+    total_tokens = _first_token_count(
+        _usage_get(usage, "total_tokens"),
+        _usage_get(usage, "totalTokens"),
+    )
+
+    if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        total_tokens = input_tokens + output_tokens
+    if input_tokens is None and total_tokens is not None and output_tokens is not None:
+        input_tokens = max(total_tokens - output_tokens, 0)
+    if output_tokens is None and total_tokens is not None and input_tokens is not None:
+        output_tokens = max(total_tokens - input_tokens, 0)
+
+    if input_tokens is None and output_tokens is None and total_tokens is None:
+        return None
+
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "source": "provider" if source == "provider" else "estimated",
+    }
+
+
+def start_token_usage_collection() -> contextvars.Token:
+    return _TOKEN_USAGE_RECORDS.set([])
+
+
+def reset_token_usage_collection(token: contextvars.Token) -> None:
+    _TOKEN_USAGE_RECORDS.reset(token)
+
+
+def record_token_usage(usage: Any, source: str = "provider") -> bool:
+    normalized = normalize_token_usage(usage, source=source)
+    records = _TOKEN_USAGE_RECORDS.get()
+    if not normalized or records is None:
+        return False
+    records.append(normalized)
+    return True
+
+
+def record_estimated_token_usage(prompt: Any, content: Any) -> bool:
+    input_tokens = _estimate_token_count(_message_parts_to_text(prompt))
+    output_tokens = _estimate_token_count(content)
+    if input_tokens is None and output_tokens is None:
+        return False
+    return record_token_usage(
+        {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": (input_tokens or 0) + (output_tokens or 0),
+        },
+        source="estimated",
+    )
+
+
+def record_llm_response_usage(response: Any, messages: Any = None, content: Any = None) -> bool:
+    if record_token_usage(response, source="provider"):
+        return True
+    if messages is not None or content is not None:
+        return record_estimated_token_usage(messages, content)
+    return False
+
+
+def summarize_token_usage() -> Optional[Dict[str, Any]]:
+    records = _TOKEN_USAGE_RECORDS.get()
+    if not records:
+        return None
+
+    summary: Dict[str, Any] = {
+        "input_tokens": None,
+        "output_tokens": None,
+        "total_tokens": None,
+        "source": "provider" if all(record.get("source") == "provider" for record in records) else "estimated",
+    }
+
+    for field in ("input_tokens", "output_tokens", "total_tokens"):
+        values = [
+            record.get(field)
+            for record in records
+            if isinstance(record.get(field), int)
+        ]
+        if values:
+            summary[field] = sum(values)
+
+    if summary["total_tokens"] is None and (
+        summary["input_tokens"] is not None or summary["output_tokens"] is not None
+    ):
+        summary["total_tokens"] = (summary["input_tokens"] or 0) + (summary["output_tokens"] or 0)
+
+    return summary
 
 
 def _default_requested_model() -> str:
@@ -311,6 +482,11 @@ def _messages_create_with_fallback(**kwargs):
             response = client.messages.create(model=model, **request_kwargs)
             if require_text and not _message_has_text_content(response):
                 raise RuntimeError("Response contained no final text blocks")
+            record_llm_response_usage(
+                response,
+                messages=request_kwargs.get("messages"),
+                content=_message_text_content(response),
+            )
             return response
         except Exception as error:
             errors.append((provider_name, model, error))

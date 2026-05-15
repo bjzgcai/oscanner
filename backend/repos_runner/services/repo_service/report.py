@@ -3,9 +3,11 @@ Test report generation (TEST_REPORT.md).
 """
 
 from datetime import datetime
+import os
 from pathlib import Path
 import re
 from typing import Optional, Dict, Any, List
+from urllib.parse import urlencode
 
 DEFAULT_CODE_TEST_WEIGHT = 30
 DEFAULT_FUNCTIONALITY_WEIGHT = 70
@@ -77,6 +79,12 @@ def _format_fenced_block(content: str) -> str:
     return f"{fence}\n{content.rstrip()}\n{fence}\n"
 
 
+def _artifact_image_url(repo_name: str, artifact_path: str) -> str:
+    query = urlencode({"repo_name": repo_name, "path": artifact_path})
+    base_url = os.getenv("RUNNER_PUBLIC_BASE_URL", "http://localhost:8001").rstrip("/")
+    return f"{base_url}/api/runner/artifact?{query}"
+
+
 async def _generate_test_report(
     report_path: Path,
     repo_name: str,
@@ -108,15 +116,11 @@ async def _generate_test_report(
         functionality_max = int(score_breakdown.get("functionality_weight", 0 if not has_functionality_score else DEFAULT_FUNCTIONALITY_WEIGHT))
         code_score = int(score_breakdown.get("code_score", 0))
         functionality_score = int(score_breakdown.get("functionality_score", 0))
-        code_relevance_ratio = float(score_breakdown.get("code_relevance_ratio", 1.0))
         weight_explanation = str(score_breakdown.get("weight_explanation") or "").strip()
     else:
         code_max = 100 if not has_functionality_score else DEFAULT_CODE_TEST_WEIGHT
         functionality_max = 0 if not has_functionality_score else DEFAULT_FUNCTIONALITY_WEIGHT
-        code_relevance_ratio = 1.0 if not has_functionality_score else float(
-            (feature_coverage or {}).get("code_relevance_ratio", 0.0)
-        )
-        code_score = int((passed / total if total > 0 else 0) * code_max * code_relevance_ratio)
+        code_score = int((passed / total if total > 0 else 0) * code_max)
         functionality_score = int(coverage_ratio * functionality_max)
         weight_explanation = ""
 
@@ -140,7 +144,7 @@ async def _generate_test_report(
 - **失败**：{failed}（{fail_rate:.1f}%）
 - **跳过**：0（0%）
 - **得分**：{score}/100
-- **代码测试分数**：{code_score}/{code_max}（通过 {passed} / 失败 {failed}，相关度 {code_relevance_ratio * 100:.0f}%）
+- **代码测试分数**：{code_score}/{code_max}（通过 {passed} / 失败 {failed}）
 
 """
 
@@ -148,8 +152,8 @@ async def _generate_test_report(
         report += (
             f"- **功能测试分数**：{functionality_score}/{functionality_max}\n"
             f"- **总分**：代码测试 {code_score} + 功能测试 {functionality_score} = {score}/100\n"
-            f"- **动态权重说明**：代码测试权重 {code_max}%，功能验收权重 {functionality_max}%。"
-            f"{weight_explanation or '代码测试权重按测试与待测功能的相关度动态分配，功能验收获得剩余权重。'}\n\n"
+            f"- **权重说明**：代码测试权重 {code_max}%，功能验收权重 {functionality_max}%。"
+            f"{weight_explanation or '代码测试按通过率计分；功能验收按功能覆盖率计分。'}\n\n"
         )
     else:
         report += "- **功能测试分数**：未启用（未提供标签要求）\n"
@@ -164,7 +168,6 @@ async def _generate_test_report(
 - **代码测试权重**：{code_max}/100
 - **代码测试得分**：{code_score}/{code_max}
 - **代码测试通过率**：{pass_rate:.1f}%（{passed}/{total}）
-- **待测功能相关度**：{code_relevance_ratio * 100:.0f}%
 
 """
 
@@ -239,7 +242,7 @@ async def _generate_test_report(
         report += f"- **功能验收权重**：{functionality_max}/100\n"
         report += f"- **功能验收得分**：0/{functionality_max}\n\n"
         report += "> ⚠️ 无法从标签说明中提取可测试的功能点。\n\n"
-        report += "> 功能验收部分计为 0 分；代码测试部分仍按相关测试通过率计分。\n\n"
+        report += "> 功能验收部分计为 0 分；代码测试部分仍按通过率计分。\n\n"
 
     if runtime_evidence:
         checks = runtime_evidence.get("checks", [])
@@ -270,23 +273,24 @@ async def _generate_test_report(
                 evidence = str(check.get("evidence") or "").strip()
                 if evidence:
                     report += f"- 证据：{evidence}\n"
-                for screenshot in check.get("screenshots") or []:
-                    report += f"- 截图：![{check.get('id', 'screenshot')}]({screenshot})\n"
+                if group_name == "UI Evidence":
+                    for screenshot in check.get("screenshots") or []:
+                        image_url = _artifact_image_url(repo_name, str(screenshot))
+                        report += f"- 截图：![{check.get('id', 'screenshot')}]({image_url})\n"
                 report += "\n"
 
     report += "## 得分明细\n\n"
     if has_functionality_score:
         report += (
             f"- **代码测试得分**：{code_score}/{code_max} "
-            f"（通过率 {pass_rate:.1f}% × 相关度 {code_relevance_ratio * 100:.0f}% × 权重 {code_max}）\n"
+            f"（通过率 {pass_rate:.1f}% × 权重 {code_max}）\n"
             f"- **功能验收得分**：{functionality_score}/{functionality_max} "
             f"（功能覆盖率 {coverage_ratio * 100:.0f}% × 权重 {functionality_max}）\n"
             f"- **最终得分**：{score}/100\n"
             f"- **评分公式**：代码测试 × 代码测试权重 + 功能验收 × 功能验收权重 = "
             f"{code_score} + {functionality_score} = {score}/100\n\n"
-            f"> 动态权重：代码测试权重 {code_max}%，功能验收权重 {functionality_max}%。"
-            f"代码测试相关度越高，代码测试权重越接近 40%；相关度为 0 时，"
-            f"功能验收最高可得 70 分，代码测试不得分。\n\n"
+            f"> 权重：代码测试权重 {code_max}%，功能验收权重 {functionality_max}%。"
+            f"代码测试按通过率计分，功能验收按功能覆盖率计分。\n\n"
         )
     else:
         report += (
