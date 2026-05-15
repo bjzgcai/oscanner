@@ -30,7 +30,6 @@ DOC_CANDIDATES = (
 )
 
 DEFAULT_SERVICE_TIMEOUT_SECONDS = 75.0
-PROBED_PORTS = {8000, 8100, 8200, 5173, 3000, 3003}
 DEFAULT_RUNTIME_COMPAT_MODEL = "deepseek/deepseek-v4-pro"
 SHELL_CONTROL_TOKENS = (" && ", " || ", ";")
 
@@ -136,8 +135,6 @@ def _canonical_uvicorn_command(line: str, repo_dir: Path, cwd: str) -> tuple[str
     if not port_match:
         return None
     port = int(port_match.group(1))
-    if port not in PROBED_PORTS:
-        return None
     package_dir = (repo_dir / cwd).resolve()
     try:
         package_dir.relative_to(repo_dir.resolve())
@@ -288,6 +285,53 @@ def _repo_path_sample(repo_dir: Path, limit: int = 250) -> list[str]:
     return paths
 
 
+def _docs_text_sample(repo_dir: Path, limit: int = 20000) -> str:
+    doc_parts: list[str] = []
+    for doc_path in _iter_doc_files(repo_dir):
+        try:
+            text = doc_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        doc_parts.append(f"--- {doc_path.relative_to(repo_dir)} ---\n{text[:5000]}")
+    return "\n\n".join(doc_parts)[:limit]
+
+
+def _safe_relative_path(repo_dir: Path, raw_path: Any) -> Path | None:
+    text = str(raw_path or "").strip().strip("'\"`")
+    if not text:
+        return None
+    path = Path(text)
+    if path.is_absolute() or ".." in path.parts:
+        return None
+    resolved = (repo_dir / path).resolve()
+    try:
+        resolved.relative_to(repo_dir.resolve())
+    except ValueError:
+        return None
+    return resolved
+
+
+def _ports_from_commands(commands: list[dict[str, str]]) -> list[int]:
+    ports: list[int] = []
+    for item in commands:
+        for match in re.finditer(r"(?:^|\s)(?:--port(?:=|\s+)|-p\s+)(\d{2,5})(?:\s|$)", item.get("command", "")):
+            port = int(match.group(1))
+            if 1 <= port <= 65535 and port not in ports:
+                ports.append(port)
+    return ports
+
+
+def _ports_from_runtime_plan(plan: dict[str, list[dict[str, Any]]]) -> list[int]:
+    ports: list[int] = []
+    for group_name in ["http_checks", "ui_checks"]:
+        for item in plan.get(group_name) or []:
+            for url in item.get("urls") or []:
+                port = urlparse(str(url)).port
+                if port and port not in ports:
+                    ports.append(port)
+    return ports
+
+
 def _extract_json_array(text: str) -> list[Any]:
     match = re.search(r"\[.*\]", text or "", flags=re.DOTALL)
     if not match:
@@ -297,6 +341,17 @@ def _extract_json_array(text: str) -> list[Any]:
     except json.JSONDecodeError:
         return []
     return data if isinstance(data, list) else []
+
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    match = re.search(r"\{.*\}", text or "", flags=re.DOTALL)
+    if not match:
+        return {}
+    try:
+        data = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _discover_llm_compatible_start_commands(
@@ -322,7 +377,7 @@ def _discover_llm_compatible_start_commands(
     prompt = f"""You are helping normalize repository startup instructions for a Linux/Docker test runner.
 
 Return ONLY a JSON array of objects with this shape:
-[{{"command": "uvicorn app.main:app --port 8000", "cwd": "services/app_backend", "source": "README.md"}}]
+[{{"command": "uvicorn package.main:app --port 12345", "cwd": "relative/service", "source": "README.md"}}]
 
 Allowed command families:
 - uvicorn <module>:<app> --port <port>
@@ -336,8 +391,6 @@ Allowed command families:
 Rules:
 - Use only relative cwd values that exist in the repository.
 - Do not include install, activate, rm, curl, shell redirection, secrets, or arbitrary commands.
-- Prefer app_backend on port 8000, agent_gateway on 8100, domain_layer on 8200, and frontend on 5173/3000/3003 when documented.
-
 Repository paths:
 {repo_paths_json}
 
@@ -440,6 +493,7 @@ def _feature_check(
     evidence: str,
     features: list[str],
     screenshots: list[str] | None = None,
+    details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "id": check_id,
@@ -448,6 +502,7 @@ def _feature_check(
         "evidence": evidence,
         "features": features,
         "screenshots": screenshots or [],
+        "details": details or {},
     }
 
 
@@ -471,142 +526,18 @@ def _is_truthy(value: str) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _env_scene_configured(repo_dir: Path) -> bool:
-    for name in [".env", ".env.example"]:
-        env_path = repo_dir / name
-        if not env_path.is_file():
-            continue
-        try:
-            content = env_path.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            continue
-        for line in content.splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#") or "=" not in stripped:
-                continue
-            key, value = stripped.split("=", 1)
-            if key.strip() == "ARCHIVE_SCENE" and value.strip().strip("'\""):
-                return True
-    return False
-
-
 def _static_feature_checks(repo_dir: Path) -> list[dict[str, Any]]:
-    harness = repo_dir / ".harness"
-    harness_dirs = ["rules", "specs", "datasets", "eval", "logs"]
-    project_skeleton_ok = all(
-        path.exists()
-        for path in [
-            repo_dir / "README.md",
-            repo_dir / "frontend",
-            repo_dir / "services" / "app_backend",
-            repo_dir / "services" / "domain_layer",
-            repo_dir / "scripts",
-            harness,
-        ]
-    )
-    harness_setup_ok = (
-        (harness / "README.md").is_file()
-        and (harness / "ROADMAP.md").is_file()
-        and all((harness / name).is_dir() for name in harness_dirs)
-    )
-    frontend_api_candidates = [
-        repo_dir / "frontend" / "src" / "api.js",
-        repo_dir / "frontend" / "src" / "api.ts",
-        repo_dir / "frontend" / "src" / "lib" / "api.js",
-        repo_dir / "frontend" / "src" / "lib" / "api.ts",
-        repo_dir / "frontend" / "src" / "services" / "api.js",
-        repo_dir / "frontend" / "src" / "services" / "api.ts",
-    ]
-    env_configured = _env_scene_configured(repo_dir)
-    domain_layer_exists = (repo_dir / "services" / "domain_layer").is_dir()
-    domain_requirements_exists = (repo_dir / "services" / "domain_layer" / "requirements.txt").is_file()
-    api_wrapper_exists = any(path.is_file() for path in frontend_api_candidates)
-    harness_readme_exists = (harness / "README.md").is_file()
-    harness_roadmap_exists = (harness / "ROADMAP.md").is_file()
-    harness_dir_exists = {name: (harness / name).is_dir() for name in harness_dirs}
+    """Collect generic static facts; course semantics are handled later."""
+    repo_paths = _repo_path_sample(repo_dir)
     return [
         _feature_check(
-            "project_skeleton",
-            "Project skeleton initialized",
-            project_skeleton_ok,
-            "README.md, frontend/, services/, scripts/, .harness/",
-            [
-                "Project skeleton initialization",
-                "Project unified skeleton initialization",
-                "Project scaffold initialized",
-            ],
-        ),
-        _feature_check(
-            "harness_setup",
-            ".harness key files and directories exist",
-            harness_setup_ok,
-            ".harness README.md, ROADMAP.md, rules/, specs/, datasets/, eval/, logs/",
-            [
-                "Harness directory setup",
-                "Harness file setup",
-                ".harness key files and directories established",
-            ],
-        ),
-        _feature_check(
-            "environment_configuration",
-            "Environment configuration exists",
-            env_configured,
-            _existence_evidence(".env or .env.example ARCHIVE_SCENE", env_configured),
-            [
-                "Environment configuration",
-                "ENV scene configuration",
-                ".env main scene configuration",
-            ],
-        ),
-        _feature_check(
-            "domain_layer_directory",
-            "domain_layer directory exists",
-            domain_layer_exists,
-            _existence_evidence("services/domain_layer", domain_layer_exists),
-            ["domain_layer directory created", "domain_layer directory exists"],
-        ),
-        _feature_check(
-            "domain_layer_requirements",
-            "domain_layer requirements.txt exists",
-            domain_requirements_exists,
-            _existence_evidence("services/domain_layer/requirements.txt", domain_requirements_exists),
-            ["domain_layer requirements.txt created", "domain_layer requirements.txt exists"],
-        ),
-        _feature_check(
-            "api_wrapper_reserved",
-            "API call wrapper reserved",
-            api_wrapper_exists,
-            _existence_evidence("frontend/src api wrapper candidate", api_wrapper_exists),
-            ["API call encapsulation reserved", "API call wrapper reserved"],
-        ),
-        _feature_check(
-            "harness_readme",
-            ".harness README.md exists",
-            harness_readme_exists,
-            _existence_evidence(".harness/README.md", harness_readme_exists),
-            [".harness README.md created", ".harness/README.md exists"],
-        ),
-        _feature_check(
-            "harness_roadmap",
-            ".harness ROADMAP.md exists",
-            harness_roadmap_exists,
-            _existence_evidence(".harness/ROADMAP.md", harness_roadmap_exists),
-            [".harness ROADMAP.md created", ".harness/ROADMAP.md exists"],
-        ),
-        *[
-            _feature_check(
-                f"harness_{name}",
-                f".harness {name}/ exists",
-                harness_dir_exists[name],
-                _existence_evidence(f".harness/{name}/", harness_dir_exists[name]),
-                [
-                    f".harness {name} directory created",
-                    f".harness {name}/ exists",
-                    f".harness/{name}/ exists",
-                ],
-            )
-            for name in ["rules", "specs", "datasets", "eval", "logs"]
-        ],
+            "repository_static_inventory",
+            "Repository static file inventory",
+            True,
+            f"{len(repo_paths)} repository paths captured",
+            [],
+            details={"paths": repo_paths},
+        )
     ]
 
 
@@ -899,14 +830,328 @@ async def _dump_dom(url: str, execution_session=None) -> str:
         return ""
 
 
+def _safe_local_url(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    parsed = urlparse(text)
+    if parsed.scheme not in {"http", "https"}:
+        return ""
+    if parsed.hostname not in {"127.0.0.1", "localhost"}:
+        return ""
+    if parsed.port is not None and not (1 <= parsed.port <= 65535):
+        return ""
+    return text
+
+
+def _feature_allowed(feature: Any, required_features: list[str]) -> str:
+    norm = _normalize_feature(feature)
+    by_norm = {_normalize_feature(item): item for item in required_features}
+    return by_norm.get(norm, "")
+
+
+def _normalize_runtime_plan(
+    raw_plan: dict[str, Any],
+    repo_dir: Path,
+    required_features: list[str],
+    command_ports: list[int],
+) -> dict[str, list[dict[str, Any]]]:
+    plan: dict[str, list[dict[str, Any]]] = {
+        "static_checks": [],
+        "http_checks": [],
+        "ui_checks": [],
+    }
+    if not isinstance(raw_plan, dict) or not required_features:
+        return plan
+
+    for item in raw_plan.get("static_checks") or []:
+        if not isinstance(item, dict):
+            continue
+        feature = _feature_allowed(item.get("feature"), required_features)
+        if not feature:
+            continue
+        paths: list[str] = []
+        for raw_path in item.get("paths") or []:
+            path = _safe_relative_path(repo_dir, raw_path)
+            if path is None:
+                continue
+            paths.append(path.relative_to(repo_dir.resolve()).as_posix())
+        if paths:
+            plan["static_checks"].append({
+                "feature": feature,
+                "paths": paths,
+                "mode": "any" if str(item.get("mode") or "").lower() == "any" else "all",
+            })
+
+    for item in raw_plan.get("http_checks") or []:
+        if not isinstance(item, dict):
+            continue
+        feature = _feature_allowed(item.get("feature"), required_features)
+        if not feature:
+            continue
+        urls: list[str] = []
+        for raw_url in item.get("urls") or []:
+            url = _safe_local_url(raw_url)
+            if url and url not in urls:
+                urls.append(url)
+        path = str(item.get("path") or "").strip()
+        if path.startswith("/") and not path.startswith("//"):
+            ports = []
+            for raw_port in item.get("ports") or command_ports:
+                try:
+                    port = int(raw_port)
+                except (TypeError, ValueError):
+                    continue
+                if 1 <= port <= 65535:
+                    ports.append(port)
+            for port in ports:
+                url = f"http://127.0.0.1:{port}{path}"
+                if url not in urls:
+                    urls.append(url)
+        if urls:
+            plan["http_checks"].append({
+                "feature": feature,
+                "urls": urls[:8],
+                "expect_json": bool(item.get("expect_json")),
+            })
+
+    for item in raw_plan.get("ui_checks") or []:
+        if not isinstance(item, dict):
+            continue
+        feature = _feature_allowed(item.get("feature"), required_features)
+        if not feature:
+            continue
+        urls = [
+            url
+            for url in (_safe_local_url(raw_url) for raw_url in item.get("urls") or [])
+            if url
+        ]
+        keywords = [
+            str(keyword).strip()
+            for keyword in item.get("keywords") or []
+            if str(keyword).strip()
+        ]
+        if urls:
+            plan["ui_checks"].append({
+                "feature": feature,
+                "urls": urls[:5],
+                "keywords": keywords[:12],
+            })
+
+    return plan
+
+
+def _fallback_runtime_evidence_plan(
+    tag_message: str,
+    required_features: list[str],
+    command_ports: list[int],
+) -> dict[str, Any]:
+    static_checks: list[dict[str, Any]] = []
+    http_checks: list[dict[str, Any]] = []
+    ui_checks: list[dict[str, Any]] = []
+    text = str(tag_message or "")
+
+    code_spans = re.findall(r"`([^`]+)`", text)
+    path_spans = [
+        span.strip()
+        for span in code_spans
+        if span.strip() and not span.strip().startswith("/") and ("/" in span or "." in span)
+    ]
+    for feature in required_features:
+        feature_text = _normalize_feature(feature)
+        paths = [
+            path
+            for path in path_spans
+            if any(part and part in feature_text for part in _normalize_feature(path).split())
+        ]
+        if paths:
+            static_checks.append({"feature": feature, "paths": paths, "mode": "all"})
+
+    endpoint_paths = sorted(set(re.findall(r"`(/[A-Za-z0-9_./-]+)`|(?<!\w)(/[A-Za-z0-9_./-]+)", text)))
+    flattened_paths = [first or second for first, second in endpoint_paths if (first or second)]
+    for feature in required_features:
+        for path in flattened_paths:
+            if path.lower() in str(feature).lower() or path.lower().strip("/") in str(feature).lower():
+                http_checks.append({
+                    "feature": feature,
+                    "path": path,
+                    "ports": command_ports,
+                    "expect_json": "json" in str(feature).lower() or "JSON" in text,
+                })
+
+    return {
+        "static_checks": static_checks,
+        "http_checks": http_checks,
+        "ui_checks": ui_checks,
+    }
+
+
+def _llm_runtime_evidence_plan(
+    repo_dir: Path,
+    tag_message: str,
+    required_features: list[str],
+    commands: list[dict[str, str]],
+) -> dict[str, Any]:
+    if not required_features or not str(tag_message or "").strip():
+        return {}
+
+    prompt = f"""Create a safe runtime-evidence plan for an automated repository evaluator.
+
+Merged course/repository tag message:
+{tag_message}
+
+Required features extracted from that tag:
+{json.dumps(required_features, ensure_ascii=False)}
+
+Repository path sample:
+{json.dumps(_repo_path_sample(repo_dir), ensure_ascii=False)}
+
+README/docs sample:
+{_docs_text_sample(repo_dir)}
+
+Documented commands that the runner can start:
+{json.dumps(commands, ensure_ascii=False)}
+
+Return ONLY a JSON object with this shape:
+{{
+  "static_checks": [
+    {{"feature": "exact required feature", "paths": ["relative/path"], "mode": "all"}}
+  ],
+  "http_checks": [
+    {{"feature": "exact required feature", "path": "/health", "ports": [8000], "expect_json": true}}
+  ],
+  "ui_checks": [
+    {{"feature": "exact required feature", "urls": ["http://127.0.0.1:5173"], "keywords": ["visible text"]}}
+  ]
+}}
+
+Rules:
+- Use only exact feature strings from the required features list.
+- Use static_checks for file/directory requirements.
+- Use http_checks for API/endpoint requirements.
+- Use ui_checks for browser-visible page requirements.
+- Use only relative repository paths.
+- Use only localhost/127.0.0.1 URLs or endpoint paths plus ports found in the docs/commands.
+- Omit a check when the tag does not provide enough information to verify it safely.
+"""
+    try:
+        message = _messages_create_with_fallback(
+            model=os.getenv("REPOS_RUNNER_EVIDENCE_PLAN_MODEL", "").strip() or _runtime_compat_model(),
+            require_text=True,
+            max_tokens=1200,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception:
+        return {}
+    return _extract_json_object(_message_text_content(message))
+
+
+def _build_runtime_evidence_plan(
+    repo_dir: Path,
+    tag_message: str = "",
+    required_features: list[str] | None = None,
+    commands: list[dict[str, str]] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    features = [str(feature) for feature in (required_features or []) if str(feature).strip()]
+    command_list = commands or []
+    command_ports = _ports_from_commands(command_list)
+    raw_plan = _llm_runtime_evidence_plan(repo_dir, tag_message, features, command_list)
+    if not raw_plan:
+        raw_plan = _fallback_runtime_evidence_plan(tag_message, features, command_ports)
+    return _normalize_runtime_plan(raw_plan, repo_dir, features, command_ports)
+
+
+def _run_dynamic_static_check(repo_dir: Path, item: dict[str, Any]) -> dict[str, Any]:
+    paths = [str(path) for path in item.get("paths") or []]
+    mode = item.get("mode") or "all"
+    existing = [path for path in paths if (repo_dir / path).exists()]
+    passed = bool(paths) and (bool(existing) if mode == "any" else len(existing) == len(paths))
+    missing = [path for path in paths if path not in existing]
+    evidence = ", ".join(existing) if passed else f"missing: {', '.join(missing)}"
+    feature = str(item.get("feature") or "Static requirement")
+    return _feature_check(
+        f"dynamic_static_{_slug(feature)}",
+        feature,
+        passed,
+        evidence,
+        [feature],
+        details={"paths": paths, "mode": mode},
+    )
+
+
+async def _run_dynamic_http_check(
+    item: dict[str, Any],
+    baseline_ports: dict[int, set[int]] | None,
+    execution_session=None,
+) -> dict[str, Any]:
+    feature = str(item.get("feature") or "HTTP requirement")
+    ok, url, detail = await _wait_http(
+        list(item.get("urls") or []),
+        expect_json=bool(item.get("expect_json")),
+        timeout=8.0,
+        baseline_ports=baseline_ports,
+        execution_session=execution_session,
+    )
+    return _feature_check(
+        f"dynamic_http_{_slug(feature)}",
+        feature,
+        ok,
+        url or detail,
+        [feature],
+        details={"urls": item.get("urls") or [], "expect_json": bool(item.get("expect_json"))},
+    )
+
+
+async def _run_dynamic_ui_check(
+    item: dict[str, Any],
+    artifact_dir: Path,
+    clone_dir: Path,
+    baseline_ports: dict[int, set[int]] | None,
+    execution_session=None,
+) -> dict[str, Any]:
+    feature = str(item.get("feature") or "UI requirement")
+    urls = list(item.get("urls") or [])
+    ok, url, detail = await _wait_http(
+        urls,
+        timeout=8.0,
+        baseline_ports=baseline_ports,
+        execution_session=execution_session,
+    )
+    screenshots: list[str] = []
+    passed = False
+    evidence = url or detail
+    if ok and url:
+        screenshot_path = artifact_dir / "screenshots" / f"{_slug(feature)}.png"
+        if await _capture_screenshot(url, screenshot_path, execution_session=execution_session):
+            screenshots.append(_relative_artifact(screenshot_path, clone_dir))
+        dom_text = await _dump_dom(url, execution_session=execution_session)
+        keywords = [str(keyword) for keyword in item.get("keywords") or [] if str(keyword).strip()]
+        if keywords:
+            passed = any(keyword.lower() in dom_text.lower() for keyword in keywords)
+            evidence = "DOM contains requested text" if passed else "requested UI text not found"
+        else:
+            passed = True
+    return _feature_check(
+        f"dynamic_ui_{_slug(feature)}",
+        feature,
+        passed,
+        evidence,
+        [feature],
+        screenshots,
+        details={"urls": urls, "keywords": item.get("keywords") or []},
+    )
+
+
 async def collect_runtime_evidence(
     clone_dir: Path | str,
     tag: str = "",
+    tag_message: str = "",
+    required_features: list[str] | None = None,
     progress_callback=None,
     service_timeout: float = DEFAULT_SERVICE_TIMEOUT_SECONDS,
     execution_session=None,
 ) -> dict[str, Any]:
-    """Start documented services and collect runtime/static feature evidence."""
+    """Start documented services and collect tag-driven runtime/static evidence."""
     clone_dir = Path(clone_dir)
     artifact_dir = _artifact_dir(clone_dir, tag)
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -929,8 +1174,18 @@ async def collect_runtime_evidence(
     commands = discover_documented_start_commands(clone_dir)
     evidence["commands"] = commands
     evidence["checks"].extend(_static_feature_checks(clone_dir))
+    evidence["plan"] = _build_runtime_evidence_plan(
+        clone_dir,
+        tag_message=tag_message,
+        required_features=required_features or [],
+        commands=commands,
+    )
+    ports_to_track = sorted({
+        *_ports_from_commands(commands),
+        *_ports_from_runtime_plan(evidence["plan"]),
+    })
     baseline_ports = None if getattr(execution_session, "is_docker", False) else {
-        port: _listening_pids(port) for port in PROBED_PORTS
+        port: _listening_pids(port) for port in ports_to_track
     }
 
     processes: list[subprocess.Popen] = []
@@ -956,125 +1211,27 @@ async def collect_runtime_evidence(
             except Exception as error:
                 evidence["warnings"].append(f"Failed to start '{command}': {error}")
 
-        health_ok, health_url, health_detail = await _wait_http(
-            [
-                "http://127.0.0.1:8000/health",
-                "http://127.0.0.1:8200/health",
-                "http://127.0.0.1:8100/health",
-            ],
-            expect_json=True,
-            timeout=service_timeout,
-            baseline_ports=baseline_ports,
-            execution_session=execution_session,
-        )
-        evidence["checks"].append(
-            _feature_check(
-                "health_json",
-                "/health returns JSON",
-                health_ok,
-                health_url or health_detail,
-                ["Health endpoint returns JSON", "/health returns valid JSON"],
+        plan = evidence.get("plan") or {}
+        for item in plan.get("static_checks") or []:
+            evidence["checks"].append(_run_dynamic_static_check(clone_dir, item))
+        for item in plan.get("http_checks") or []:
+            evidence["checks"].append(
+                await _run_dynamic_http_check(
+                    item,
+                    baseline_ports=baseline_ports,
+                    execution_session=execution_session,
+                )
             )
-        )
-
-        app_ok, app_url, app_detail = await _wait_http(
-            ["http://127.0.0.1:8000/health"],
-            expect_json=True,
-            timeout=2.0,
-            baseline_ports=baseline_ports,
-            execution_session=execution_session,
-        )
-        evidence["checks"].append(
-            _feature_check(
-                "app_backend_starts",
-                "app_backend starts",
-                app_ok,
-                app_url or app_detail,
-                ["app_backend starts", "app_backend service starts"],
+        for item in plan.get("ui_checks") or []:
+            evidence["checks"].append(
+                await _run_dynamic_ui_check(
+                    item,
+                    artifact_dir=artifact_dir,
+                    clone_dir=clone_dir,
+                    baseline_ports=baseline_ports,
+                    execution_session=execution_session,
+                )
             )
-        )
-
-        domain_ok, domain_url, domain_detail = await _wait_http(
-            ["http://127.0.0.1:8200/health"],
-            expect_json=True,
-            timeout=2.0,
-            baseline_ports=baseline_ports,
-            execution_session=execution_session,
-        )
-        evidence["checks"].append(
-            _feature_check(
-                "domain_unified_port",
-                "domain_layer uses one service port",
-                domain_ok,
-                domain_url or domain_detail,
-                ["Domain service unified port", "Domain layer single port"],
-            )
-        )
-
-        docs_ok, docs_url, docs_detail = await _wait_http(
-            ["http://127.0.0.1:8000/docs", "http://127.0.0.1:8200/docs"],
-            timeout=8.0,
-            baseline_ports=baseline_ports,
-            execution_session=execution_session,
-        )
-        evidence["checks"].append(
-            _feature_check(
-                "docs_accessible",
-                "/docs accessible",
-                docs_ok,
-                docs_url or docs_detail,
-                ["Docs endpoint accessible", "/docs accessible"],
-            )
-        )
-
-        frontend_ok, frontend_url, frontend_detail = await _wait_http(
-            [
-                "http://127.0.0.1:5173",
-                "http://127.0.0.1:3000",
-                "http://127.0.0.1:3003",
-            ],
-            timeout=12.0,
-            baseline_ports=baseline_ports,
-            execution_session=execution_session,
-        )
-        frontend_screenshots: list[str] = []
-        dom_text = ""
-        if frontend_ok and frontend_url:
-            homepage_path = artifact_dir / "screenshots" / "homepage.png"
-            if await _capture_screenshot(frontend_url, homepage_path, execution_session=execution_session):
-                frontend_screenshots.append(_relative_artifact(homepage_path, clone_dir))
-            dom_text = await _dump_dom(frontend_url, execution_session=execution_session)
-        evidence["checks"].append(
-            _feature_check(
-                "frontend_dev_server",
-                "Frontend dev server starts",
-                frontend_ok,
-                frontend_url or frontend_detail,
-                ["Frontend npm run dev starts"],
-                frontend_screenshots,
-            )
-        )
-        evidence["checks"].append(
-            _feature_check(
-                "homepage_opens",
-                "Homepage opens",
-                frontend_ok,
-                frontend_url or frontend_detail,
-                ["Homepage opens", "Homepage loads"],
-                frontend_screenshots,
-            )
-        )
-        scene_placeholder = bool(re.search(r"(场景|选择|scene)", dom_text, flags=re.IGNORECASE))
-        evidence["checks"].append(
-            _feature_check(
-                "homepage_scene_placeholder",
-                "Homepage scene selection placeholder",
-                frontend_ok and scene_placeholder,
-                "DOM contains scene placeholder text" if scene_placeholder else "Scene placeholder text not found",
-                ["Homepage scene selection placeholder", "Homepage shows scene selection"],
-                frontend_screenshots,
-            )
-        )
     finally:
         _stop_processes(processes)
 
@@ -1115,6 +1272,18 @@ def merge_runtime_feature_coverage(
             moved.append(feature)
         else:
             remaining.append(feature)
+
+    llm_moved = _llm_match_runtime_feature_coverage(remaining, evidence)
+    if llm_moved:
+        llm_norms = {_normalize_feature(feature) for feature in llm_moved}
+        next_remaining: list[str] = []
+        for feature in remaining:
+            if _normalize_feature(feature) in llm_norms:
+                moved.append(feature)
+            else:
+                next_remaining.append(feature)
+        remaining = next_remaining
+
     for feature in moved:
         if feature not in covered:
             covered.append(feature)
@@ -1125,3 +1294,87 @@ def merge_runtime_feature_coverage(
     merged["coverage_ratio"] = (len(covered) / total) if total else 1.0
     merged["runtime_covered"] = moved
     return merged
+
+
+def _llm_match_runtime_feature_coverage(
+    remaining_features: list[str],
+    evidence: dict[str, Any],
+) -> list[str]:
+    """Use passed runtime evidence to match required-feature paraphrases."""
+    if not remaining_features:
+        return []
+
+    passed_checks: list[dict[str, Any]] = []
+    failed_norms: set[str] = set()
+    failed_checks: list[dict[str, Any]] = []
+    for check in evidence.get("checks") or []:
+        check_features = check.get("features") or []
+        if check.get("passed"):
+            passed_checks.append(
+                {
+                    "id": check.get("id"),
+                    "label": check.get("label"),
+                    "features": check_features,
+                    "evidence": check.get("evidence"),
+                    "details": check.get("details") or {},
+                }
+            )
+            continue
+
+        failed_norms.update(_normalize_feature(feature) for feature in check_features)
+        failed_norms.add(_normalize_feature(check.get("label")))
+        failed_checks.append(
+            {
+                "id": check.get("id"),
+                "label": check.get("label"),
+                "features": check_features,
+                "evidence": check.get("evidence"),
+            }
+        )
+    if not passed_checks and not evidence.get("covered_features"):
+        return []
+
+    prompt = f"""Match required features to runtime evidence from an automated repository test report.
+
+Required features still marked uncovered:
+{json.dumps(remaining_features, ensure_ascii=False)}
+
+Passed runtime/static evidence:
+{json.dumps({"covered_features": evidence.get("covered_features") or [], "checks": passed_checks}, ensure_ascii=False)}
+
+Failed runtime checks that must not be used as positive evidence:
+{json.dumps(failed_checks, ensure_ascii=False)}
+
+Return ONLY a JSON object:
+{{"covered": ["feature from required list"]}}
+
+Rules:
+- Only include exact strings copied from the required features list.
+- Mark a feature covered when the passed evidence clearly proves the same requirement, even if wording differs.
+- Do not include features that are absent, ambiguous, or only supported by failed checks.
+"""
+    try:
+        message = _messages_create_with_fallback(
+            model=os.getenv("REPOS_RUNNER_FEATURE_MATCH_MODEL", "").strip() or _runtime_compat_model(),
+            require_text=True,
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception:
+        return []
+
+    data = _extract_json_object(_message_text_content(message))
+    covered = data.get("covered")
+    if not isinstance(covered, list):
+        return []
+
+    by_norm = {_normalize_feature(feature): feature for feature in remaining_features}
+    matched: list[str] = []
+    seen: set[str] = set()
+    for item in covered:
+        norm = _normalize_feature(item)
+        feature = by_norm.get(norm)
+        if feature and norm not in seen and norm not in failed_norms:
+            matched.append(feature)
+            seen.add(norm)
+    return matched

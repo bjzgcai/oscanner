@@ -222,30 +222,153 @@ def test_merge_runtime_feature_coverage_moves_proven_features():
     ]
 
 
-def test_static_runtime_checks_cover_broad_scaffold_harness_and_env_features(tmp_path):
+def test_static_runtime_checks_collect_generic_repo_inventory(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / "README.md").write_text("# Demo\n", encoding="utf-8")
-    (repo / ".env").write_text("ARCHIVE_SCENE=college\n", encoding="utf-8")
-    (repo / "frontend").mkdir()
-    (repo / "services" / "app_backend").mkdir(parents=True)
-    (repo / "services" / "domain_layer").mkdir(parents=True)
-    (repo / "scripts").mkdir()
-    harness = repo / ".harness"
-    harness.mkdir()
-    (harness / "README.md").write_text("harness\n", encoding="utf-8")
-    (harness / "ROADMAP.md").write_text("roadmap\n", encoding="utf-8")
-    for dirname in ["rules", "specs", "datasets", "eval", "logs"]:
-        (harness / dirname).mkdir()
+    (repo / "custom").mkdir()
+    (repo / "custom" / "feature.txt").write_text("ok\n", encoding="utf-8")
+
+    checks = runtime_evidence._static_feature_checks(repo)
+    inventory = checks[0]
+
+    assert [check["id"] for check in checks] == ["repository_static_inventory"]
+    assert inventory["passed"]
+    assert "custom/feature.txt" in inventory["details"]["paths"]
+    assert inventory["features"] == []
+
+
+def test_merge_runtime_feature_coverage_uses_llm_for_passed_evidence_paraphrases(monkeypatch):
+    class _Message:
+        content = [
+            {
+                "text": """
+{
+  "covered": [
+    "Domain service single port",
+    "harness README.md exists",
+    "harness rules directory exists",
+    "Homepage scene selection placeholder"
+  ]
+}
+"""
+            }
+        ]
+
+    feature_coverage = {
+        "covered": [],
+        "not_covered": [
+            "Domain service single port",
+            "harness README.md exists",
+            "harness rules directory exists",
+            "Homepage scene selection placeholder",
+        ],
+        "coverage_ratio": 0.0,
+        "test_files_found": [],
+    }
+    evidence = {
+        "covered_features": [],
+        "checks": [
+            {
+                "id": "domain_unified_port",
+                "label": "domain_layer uses one service port",
+                "passed": True,
+                "evidence": "http://127.0.0.1:8200/health",
+                "features": ["Domain service unified port", "Domain layer single port"],
+                "screenshots": [],
+            },
+            {
+                "id": "harness_readme",
+                "label": ".harness README.md exists",
+                "passed": True,
+                "evidence": ".harness/README.md",
+                "features": [".harness README.md created", ".harness/README.md exists"],
+                "screenshots": [],
+            },
+            {
+                "id": "harness_rules",
+                "label": ".harness rules/ exists",
+                "passed": True,
+                "evidence": ".harness/rules/",
+                "features": [
+                    ".harness rules directory created",
+                    ".harness rules/ exists",
+                    ".harness/rules/ exists",
+                ],
+                "screenshots": [],
+            },
+            {
+                "id": "homepage_scene_placeholder",
+                "label": "Homepage scene selection placeholder",
+                "passed": False,
+                "evidence": "Scene placeholder text not found",
+                "features": ["Homepage scene selection placeholder"],
+                "screenshots": [],
+            },
+        ],
+    }
+
+    monkeypatch.setattr(runtime_evidence, "_messages_create_with_fallback", lambda **_kwargs: _Message())
+
+    merged = runtime_evidence.merge_runtime_feature_coverage(feature_coverage, evidence)
+
+    assert merged["covered"] == [
+        "Domain service single port",
+        "harness README.md exists",
+        "harness rules directory exists",
+    ]
+    assert merged["not_covered"] == ["Homepage scene selection placeholder"]
+    assert merged["coverage_ratio"] == 0.75
+    assert merged["runtime_covered"] == [
+        "Domain service single port",
+        "harness README.md exists",
+        "harness rules directory exists",
+    ]
+
+
+def test_runtime_match_uses_generic_repo_inventory_for_tag_requirements(monkeypatch, tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    domain = repo / "services" / "domain_layer"
+    (domain / "app" / "routers").mkdir(parents=True)
+    (domain / "app" / "main.py").write_text(
+        "from fastapi import FastAPI\napp = FastAPI()\n",
+        encoding="utf-8",
+    )
+    (domain / "app" / "routers" / "archive.py").write_text(
+        "from fastapi import APIRouter\nrouter = APIRouter()\n",
+        encoding="utf-8",
+    )
+
+    class _Message:
+        content = [
+            {
+                "text": """
+{
+  "covered": [
+    "domain_layer entry file exists",
+    "domain_layer module routing exists"
+  ]
+}
+"""
+            }
+        ]
+
+    captured = {}
+
+    def _fake_llm_call(**kwargs):
+        captured["prompt"] = kwargs["messages"][0]["content"]
+        return _Message()
+
+    monkeypatch.setattr(runtime_evidence, "_messages_create_with_fallback", _fake_llm_call)
 
     checks = runtime_evidence._static_feature_checks(repo)
     evidence = {"covered_features": [], "checks": checks}
     feature_coverage = {
         "covered": [],
         "not_covered": [
-            "Project skeleton initialization",
-            "Harness directory setup",
-            "Environment configuration",
+            "domain_layer entry file exists",
+            "domain_layer module routing exists",
         ],
         "coverage_ratio": 0.0,
         "test_files_found": [],
@@ -253,11 +376,13 @@ def test_static_runtime_checks_cover_broad_scaffold_harness_and_env_features(tmp
 
     merged = runtime_evidence.merge_runtime_feature_coverage(feature_coverage, evidence)
 
+    assert "domain_layer entry file exists" in captured["prompt"]
+    assert "services/domain_layer/app/main.py" in captured["prompt"]
+    assert "services/domain_layer/app/routers/archive.py" in captured["prompt"]
     assert merged["not_covered"] == []
     assert merged["runtime_covered"] == [
-        "Project skeleton initialization",
-        "Harness directory setup",
-        "Environment configuration",
+        "domain_layer entry file exists",
+        "domain_layer module routing exists",
     ]
 
 
@@ -323,10 +448,41 @@ python scripts/dev-frontend.py
         lambda _port: (_ for _ in ()).throw(AssertionError("host ports should not be probed")),
     )
 
+    class _PlanMessage:
+        content = [
+            {
+                "text": """
+{
+  "http_checks": [
+    {
+      "feature": "Health endpoint returns JSON",
+      "urls": ["http://127.0.0.1:8000/health"],
+      "expect_json": true
+    }
+  ],
+  "ui_checks": [
+    {
+      "feature": "Homepage scene selection placeholder",
+      "urls": ["http://127.0.0.1:5173"],
+      "keywords": ["scene selection"]
+    }
+  ]
+}
+"""
+            }
+        ]
+
+    monkeypatch.setattr(runtime_evidence, "_messages_create_with_fallback", lambda **_kwargs: _PlanMessage())
+
     evidence = asyncio.run(
         runtime_evidence.collect_runtime_evidence(
             repo,
             tag="v1",
+            tag_message="- /health returns JSON\n- homepage shows scene selection",
+            required_features=[
+                "Health endpoint returns JSON",
+                "Homepage scene selection placeholder",
+            ],
             service_timeout=0.1,
             execution_session=session,
         )
@@ -338,14 +494,14 @@ python scripts/dev-frontend.py
         "python scripts/dev-frontend.py",
     ]
     assert ("http://127.0.0.1:8000/health", True) in session.probed
-    assert any(check["id"] == "app_backend_starts" and check["passed"] for check in evidence["checks"])
-    docs_check = next(check for check in evidence["checks"] if check["id"] == "docs_accessible")
-    assert docs_check["passed"]
-    assert docs_check["screenshots"] == []
-    assert ("http://127.0.0.1:8000/docs", "docs.png") not in session.screenshots
-    assert ("http://127.0.0.1:5173", "homepage.png") in session.screenshots
     assert any(
-        check["id"] == "homepage_scene_placeholder"
+        check["id"] == "dynamic_http_health_endpoint_returns_json"
+        and check["passed"]
+        for check in evidence["checks"]
+    )
+    assert any(item[0] == "http://127.0.0.1:5173" for item in session.screenshots)
+    assert any(
+        check["id"] == "dynamic_ui_homepage_scene_selection_placeholder"
         and check["passed"]
         and check["screenshots"]
         for check in evidence["checks"]
@@ -439,11 +595,16 @@ def test_generate_test_report_includes_runtime_evidence(tmp_path):
 def test_generate_test_report_marks_missing_static_runtime_paths(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
-    (repo / ".harness").mkdir()
 
     report_path = tmp_path / "TEST_REPORT.md"
-    checks = runtime_evidence._static_feature_checks(repo)
-    datasets_check = next(check for check in checks if check["id"] == "harness_datasets")
+    datasets_check = runtime_evidence._run_dynamic_static_check(
+        repo,
+        {
+            "feature": "Dataset directory exists",
+            "paths": ["datasets"],
+            "mode": "all",
+        },
+    )
 
     asyncio.run(
         _generate_test_report(
@@ -464,8 +625,8 @@ def test_generate_test_report_marks_missing_static_runtime_paths(tmp_path):
 
     report = report_path.read_text(encoding="utf-8")
 
-    assert "#### ❌ .harness datasets/ exists" in report
-    assert "- 证据：.harness/datasets/ 不存在" in report
+    assert "#### ❌ Dataset directory exists" in report
+    assert "- 证据：missing: datasets" in report
 
 
 def test_run_tests_scores_code_and_functionality_independently(monkeypatch, tmp_path):
@@ -510,7 +671,14 @@ def test_run_tests_scores_code_and_functionality_independently(monkeypatch, tmp_
             "test_files_found": [],
         }
 
-    async def _fake_collect_runtime_evidence(_clone_dir, tag="", progress_callback=None, execution_session=None):
+    async def _fake_collect_runtime_evidence(
+        _clone_dir,
+        tag="",
+        tag_message="",
+        required_features=None,
+        progress_callback=None,
+        execution_session=None,
+    ):
         return {
             "summary": {"passed": 2, "total": 2},
             "covered_features": ["Health endpoint returns JSON", "Docs endpoint accessible"],
@@ -582,7 +750,14 @@ def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
             "test_files_found": ["tests/test_app.py"],
         }
 
-    async def _fake_collect_runtime_evidence(_clone_dir, tag="", progress_callback=None, execution_session=None):
+    async def _fake_collect_runtime_evidence(
+        _clone_dir,
+        tag="",
+        tag_message="",
+        required_features=None,
+        progress_callback=None,
+        execution_session=None,
+    ):
         return {
             "summary": {"passed": 1, "total": 1},
             "covered_features": ["Docs endpoint accessible"],

@@ -718,6 +718,8 @@ async def run_tests(
                 runtime_evidence = await collect_runtime_evidence(
                     clone_dir,
                     tag=tag or "",
+                    tag_message=tag_message or "",
+                    required_features=features,
                     progress_callback=progress_callback,
                     execution_session=execution_session,
                 )

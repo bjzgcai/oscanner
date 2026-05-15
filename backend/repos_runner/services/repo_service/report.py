@@ -59,15 +59,9 @@ def _format_features_to_test_section(tag_message: Optional[str]) -> str:
 
 def _check_group(check: Dict[str, Any]) -> str:
     check_id = str(check.get("id") or "")
-    if check_id.startswith("harness_") or check_id in {
-        "project_skeleton",
-        "environment_configuration",
-        "domain_layer_directory",
-        "domain_layer_requirements",
-        "api_wrapper_reserved",
-    }:
+    if check_id == "repository_static_inventory" or check_id.startswith("dynamic_static_"):
         return "静态功能检查"
-    if check_id in {"frontend_dev_server", "homepage_opens", "homepage_scene_placeholder"}:
+    if check_id.startswith("dynamic_ui_"):
         return "UI Evidence"
     return "API / 服务运行验证"
 
@@ -273,10 +267,9 @@ async def _generate_test_report(
                 evidence = str(check.get("evidence") or "").strip()
                 if evidence:
                     report += f"- 证据：{evidence}\n"
-                if group_name == "UI Evidence":
-                    for screenshot in check.get("screenshots") or []:
-                        image_url = _artifact_image_url(repo_name, str(screenshot))
-                        report += f"- 截图：![{check.get('id', 'screenshot')}]({image_url})\n"
+                for screenshot in check.get("screenshots") or []:
+                    image_url = _artifact_image_url(repo_name, str(screenshot))
+                    report += f"- 截图：![{check.get('id', 'screenshot')}]({image_url})\n"
                 report += "\n"
 
     report += "## 得分明细\n\n"
