@@ -644,12 +644,14 @@ async def run_tests(
         total_tests = 0
         all_test_cases: List[Dict[str, Any]] = []
         command_results = []
+        execution_process: List[str] = []
 
         venv_python = None if using_docker else ensure_repo_venv(clone_path)
         language = test_info.get("language", "")
 
         for idx, cmd in enumerate(test_commands):
             cmd = _strip_shell_success_mask(cmd)
+            execution_process.append(f"Running test {idx + 1}/{num_commands}: {cmd}")
             if progress_callback:
                 await progress_callback(f"Running test {idx + 1}/{num_commands}: {cmd}")
 
@@ -678,7 +680,7 @@ async def run_tests(
                     cmd_passed = structured["passed"]
                     cmd_failed = structured["failed"]
                     cmd_total = structured["total"]
-                    status = "passed" if cmd_failed == 0 else "failed"
+                    status = "no_tests" if cmd_total == 0 else ("passed" if cmd_failed == 0 else "failed")
                     all_test_cases.extend(structured.get("test_cases", []))
                 else:
                     # Fall back to regex / LLM parsing of stdout
@@ -705,12 +707,13 @@ async def run_tests(
                     "output": output,
                 })
 
+                result_message = f"Test {idx + 1}: {cmd_passed} passed, {cmd_failed} failed"
+                execution_process.append(result_message)
                 if progress_callback:
-                    await progress_callback(
-                        f"Test {idx + 1}: {cmd_passed} passed, {cmd_failed} failed"
-                    )
+                    await progress_callback(result_message)
 
             except subprocess.TimeoutExpired:
+                timeout_message = f"Test {idx + 1} timed out after {test_timeout}s"
                 command_results.append({
                     "name": cmd,
                     "status": "failed",
@@ -719,10 +722,12 @@ async def run_tests(
                 })
                 total_failed += 1
                 total_tests += 1
+                execution_process.append(timeout_message)
                 if progress_callback:
-                    await progress_callback(f"Test {idx + 1} timed out after {test_timeout}s")
+                    await progress_callback(timeout_message)
 
             except Exception as e:
+                error_message = f"Test {idx + 1} error: {str(e)}"
                 command_results.append({
                     "name": cmd,
                     "status": "failed",
@@ -731,8 +736,9 @@ async def run_tests(
                 })
                 total_failed += 1
                 total_tests += 1
+                execution_process.append(error_message)
                 if progress_callback:
-                    await progress_callback(f"Test {idx + 1} error: {str(e)}")
+                    await progress_callback(error_message)
 
         raw_pass_rate = (total_passed / total_tests) if total_tests > 0 else 0
 
@@ -799,19 +805,19 @@ async def run_tests(
     )
     score = int(score_breakdown["score"])
 
+    if feature_coverage:
+        completion_message = (
+            f"Tests completed. Score: {score}/100 "
+            f"(code_tests={raw_pass_rate * 100:.1f}% × "
+            f"{score_breakdown['code_weight']} + "
+            f"functionality={coverage_ratio * 100:.0f}% × "
+            f"{score_breakdown['functionality_weight']})"
+        )
+    else:
+        completion_message = f"Tests completed. Score: {score}/100 ({total_passed}/{total_tests} passed)"
+    execution_process.append(completion_message)
     if progress_callback:
-        if feature_coverage:
-            await progress_callback(
-                f"Tests completed. Score: {score}/100 "
-                f"(code_tests={raw_pass_rate * 100:.1f}% × "
-                f"{score_breakdown['code_weight']} + "
-                f"functionality={coverage_ratio * 100:.0f}% × "
-                f"{score_breakdown['functionality_weight']})"
-            )
-        else:
-            await progress_callback(
-                f"Tests completed. Score: {score}/100 ({total_passed}/{total_tests} passed)"
-            )
+        await progress_callback(completion_message)
 
     # Merge command-level and individual test-case results for the report
     report_items = all_test_cases if all_test_cases else command_results
@@ -830,6 +836,7 @@ async def run_tests(
         tag_message=tag_message,
         runtime_evidence=runtime_evidence,
         score_breakdown=score_breakdown,
+        execution_process=execution_process,
     )
 
     if progress_callback:

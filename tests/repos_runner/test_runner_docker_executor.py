@@ -137,6 +137,66 @@ def test_run_tests_strips_shell_success_mask_and_counts_import_error_as_failure(
     assert result["details"][0]["status"] == "failed"
 
 
+def test_run_tests_marks_zero_collected_structured_report_as_no_tests(monkeypatch, tmp_path):
+    from repos_runner.services.repo_service import runner as runner_service
+
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+    overview = clone_dir / "REPO_OVERVIEW_v1.md"
+    overview.write_text("overview", encoding="utf-8")
+
+    class _Result:
+        returncode = 0
+        stdout = "collected 0 items"
+        stderr = ""
+
+    class _FakeSession:
+        is_docker = True
+
+        def __init__(self, repo_dir):
+            self.repo_dir = Path(repo_dir)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def run(self, cmd, *, cwd, timeout, env=None):
+            return _Result()
+
+    monkeypatch.setattr(runner_service, "create_execution_session", lambda repo_dir: _FakeSession(repo_dir))
+    monkeypatch.setattr(
+        runner_service,
+        "_detect_frameworks_statically",
+        lambda _clone_dir: {
+            "language": "python",
+            "setup_commands": [],
+            "test_commands": ["pytest services/domain_layer/tests -v"],
+        },
+    )
+    monkeypatch.setattr(runner_service, "_find_test_files", lambda _clone_dir, _language: [])
+    monkeypatch.setattr(
+        runner_service,
+        "_parse_json_report",
+        lambda _clone_dir: {"passed": 0, "failed": 0, "total": 0, "test_cases": []},
+    )
+
+    result = asyncio.run(
+        runner_service.run_tests(
+            str(clone_dir),
+            str(overview),
+            tag="v1",
+        )
+    )
+
+    assert result["total"] == 0
+    assert result["passed"] == 0
+    assert result["failed"] == 0
+    assert result["score"] == 0
+    assert result["details"][0]["status"] == "no_tests"
+
+
 def test_run_tests_installs_nested_python_requirements(monkeypatch, tmp_path):
     from repos_runner.services.repo_service import runner as runner_service
 

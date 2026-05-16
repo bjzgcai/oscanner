@@ -73,6 +73,23 @@ def _format_fenced_block(content: str) -> str:
     return f"{fence}\n{content.rstrip()}\n{fence}\n"
 
 
+def _format_execution_process_section(lines: Optional[List[str]]) -> str:
+    clean_lines = []
+    for line in lines or []:
+        clean_line = str(line or "").strip()
+        if clean_line:
+            clean_lines.append(clean_line)
+    if not clean_lines:
+        return ""
+    process_body = "\n".join(clean_lines)
+    return (
+        "## 执行过程\n\n"
+        "```text\n"
+        f"{process_body}\n"
+        "```\n\n"
+    )
+
+
 def _artifact_image_url(repo_name: str, artifact_path: str) -> str:
     query = urlencode({"repo_name": repo_name, "path": artifact_path})
     base_url = os.getenv("RUNNER_PUBLIC_BASE_URL", "http://localhost:8001").rstrip("/")
@@ -91,6 +108,7 @@ async def _generate_test_report(
     tag_message: Optional[str] = None,
     runtime_evidence: Optional[Dict[str, Any]] = None,
     score_breakdown: Optional[Dict[str, Any]] = None,
+    execution_process: Optional[List[str]] = None,
 ) -> None:
     """Generate TEST_REPORT.md for analyzed repository."""
     pass_rate = (passed / total * 100) if total > 0 else 0
@@ -154,6 +172,7 @@ async def _generate_test_report(
         report += f"- **总分**：代码测试 {code_score} = {score}/100\n\n"
 
     report += _format_features_to_test_section(tag_message)
+    report += _format_execution_process_section(execution_process)
 
     report += f"""
 
@@ -174,6 +193,7 @@ async def _generate_test_report(
 
     passed_tests = [t for t in test_results if t["status"] == "passed"]
     failed_tests = [t for t in test_results if t["status"] == "failed"]
+    no_test_commands = [t for t in test_results if t["status"] == "no_tests"]
 
     if passed_tests:
         report += f"### ✅ 通过的测试（{len(passed_tests)}）\n\n"
@@ -185,6 +205,17 @@ async def _generate_test_report(
     if failed_tests:
         report += f"### ❌ 失败的测试（{len(failed_tests)}）\n\n"
         for t in failed_tests:
+            duration = t.get("duration", 0)
+            report += f"- `{t['name']}` （{duration:.2f}s）\n"
+            output = t.get("output", "")
+            if output:
+                truncated_output = output[-500:] if len(output) > 500 else output
+                report += f"\n{_format_fenced_block(truncated_output)}"
+        report += "\n"
+
+    if no_test_commands:
+        report += f"### ⚠️ 未收集到测试用例的命令（{len(no_test_commands)}）\n\n"
+        for t in no_test_commands:
             duration = t.get("duration", 0)
             report += f"- `{t['name']}` （{duration:.2f}s）\n"
             output = t.get("output", "")

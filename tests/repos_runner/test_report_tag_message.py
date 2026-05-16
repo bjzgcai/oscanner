@@ -93,6 +93,74 @@ def test_generate_test_report_keeps_failed_output_fence_before_functionality_sec
     assert "\n  ```\n" not in failed_section
 
 
+def test_generate_test_report_lists_zero_collected_commands_separately(tmp_path):
+    report_path = tmp_path / "TEST_REPORT_class-01.md"
+
+    asyncio.run(
+        _generate_test_report(
+            report_path=report_path,
+            repo_name="demo",
+            total=0,
+            passed=0,
+            failed=0,
+            score=70,
+            test_results=[
+                {
+                    "name": "pytest services/domain_layer/tests",
+                    "status": "no_tests",
+                    "duration": 0.68,
+                    "output": "collected 0 items",
+                }
+            ],
+            feature_coverage={
+                "covered": ["Create"],
+                "not_covered": [],
+                "coverage_ratio": 1.0,
+                "test_files_found": ["services/domain_layer/tests/test_person_api.py"],
+            },
+            tag_message="## Course tag requirements\n\n- Create",
+        )
+    )
+
+    report = report_path.read_text(encoding="utf-8")
+
+    assert "### ✅ 通过的测试" not in report
+    assert "### ⚠️ 未收集到测试用例的命令（1）" in report
+    assert "`pytest services/domain_layer/tests`" in report
+
+
+def test_generate_test_report_writes_execution_process_section(tmp_path):
+    report_path = tmp_path / "TEST_REPORT_class-01.md"
+
+    asyncio.run(
+        _generate_test_report(
+            report_path=report_path,
+            repo_name="demo",
+            total=1,
+            passed=1,
+            failed=0,
+            score=100,
+            test_results=[
+                {
+                    "name": "pytest",
+                    "status": "passed",
+                    "duration": 0.1,
+                    "output": "",
+                }
+            ],
+            execution_process=[
+                "Running test 1/1: pytest",
+                "Test 1: 1 passed, 0 failed",
+            ],
+        )
+    )
+
+    report = report_path.read_text(encoding="utf-8")
+
+    assert "## 执行过程" in report
+    assert "```text\nRunning test 1/1: pytest\nTest 1: 1 passed, 0 failed\n```" in report
+
+
 def test_generate_test_report_uses_absolute_runtime_artifact_urls(tmp_path, monkeypatch):
     report_path = tmp_path / "TEST_REPORT_class-01.md"
     monkeypatch.setenv("RUNNER_PUBLIC_BASE_URL", "http://localhost:8001/")
