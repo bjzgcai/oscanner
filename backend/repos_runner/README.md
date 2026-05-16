@@ -1,11 +1,11 @@
 ## Repository Runner
 
-This service provides automated repository cloning, exploration, and testing using Claude Code SDK.
+This service provides automated repository cloning, exploration, and testing using opencode.
 
 ## Features
 
 - **Clone Repository**: Shallow clone of GitHub/Gitee repositories
-- **Explore & Document**: Generate REPO_OVERVIEW.md using Claude AI
+- **Explore & Document**: Generate REPO_OVERVIEW.md using opencode, with messages API fallback
 - **Run Tests**: Automatically identify and run test suites
 - **Real-time Streaming**: Progress updates via Server-Sent Events (SSE)
 
@@ -16,7 +16,12 @@ This service provides automated repository cloning, exploration, and testing usi
 pip install -r requirements.txt
 ```
 
-2. Set up environment variables:
+2. Install opencode for agentic repository exploration:
+```bash
+npm install -g opencode-ai
+```
+
+3. Set up environment variables:
 ```bash
 # Required: direct Anthropic API key
 export ANTHROPIC_API_KEY="your-api-key"
@@ -34,6 +39,10 @@ export OPEN_ROUTER_FALLBACK_MODEL="anthropic/claude-sonnet-4.6"
 export OPEN_ROUTER_FALLBACK_MODELS="anthropic/claude-sonnet-4.6"
 # Optional override for repos_runner task prompts (if unset, uses provider defaults above)
 export REPOS_RUNNER_LLM_MODEL="claude-sonnet-4-6"
+# Optional opencode model override in provider/model format; otherwise opencode uses its config
+export REPOS_RUNNER_OPENCODE_MODEL="anthropic/claude-sonnet-4-6"
+# Optional timeout for opencode exploration (seconds, default: 600)
+export REPOS_RUNNER_OPENCODE_TIMEOUT=600
 # Optional: also try direct Anthropic credential if OpenRouter attempts fail
 export OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
 
@@ -164,10 +173,8 @@ For more control or real-time progress updates, use the individual endpoints:
 **Event Format:**
 ```
 data: {"event":"progress","data":{"message":"Starting repository exploration..."}}
-data: {"event":"progress","data":{"message":"Analyzing repository structure..."}}
-data: {"event":"progress","data":{"message":"Generating overview with Claude..."}}
-data: {"event":"progress","data":{"message":"Generated 200 characters..."}}
-data: {"event":"progress","data":{"message":"Generated 400 characters..."}}
+data: {"event":"progress","data":{"message":"Starting repository exploration with opencode..."}}
+data: {"event":"progress","data":{"message":"opencode is exploring the repository structure..."}}
 data: {"event":"progress","data":{"message":"Writing REPO_OVERVIEW.md..."}}
 data: {"event":"status","data":{"status":"completed","overview_path":"/path/to/REPO_OVERVIEW.md"}}
 ```
@@ -247,11 +254,11 @@ This isolated structure ensures:
 ### Repository Exploration
 - Analyzes repository structure and files
 - Reads README, package files, and directory tree
-- Uses Claude Sonnet 4.5 to generate comprehensive overview
+- Uses opencode to generate a concise test-focused overview
 - Includes: purpose, components, features, setup instructions
 
 ### Test Running
-- Uses Claude to identify test commands from REPO_OVERVIEW.md
+- Uses static detection first, then configured messages API fallback to identify test commands from REPO_OVERVIEW.md
 - Creates isolated virtual environment per repository at `{repo_path}/.venv`
 - Executes setup commands if needed (installs dependencies in repo's venv)
 - Runs all identified test commands in isolated environment
@@ -399,10 +406,8 @@ This script will:
 📡 Receiving SSE stream (events shown as they arrive):
 
 [0.45s] 📝 Progress: Starting repository exploration...
-[0.67s] 📝 Progress: Analyzing repository structure...
-[0.89s] 📝 Progress: Generating overview with Claude...
-[1.23s] 📝 Progress: Generated 200 characters...
-[1.56s] 📝 Progress: Generated 400 characters...
+[0.67s] 📝 Progress: Starting repository exploration with opencode...
+[0.89s] 📝 Progress: opencode is exploring the repository structure...
 [2.34s] 📝 Progress: Writing REPO_OVERVIEW.md...
 [2.45s] ✅ Completed!
 

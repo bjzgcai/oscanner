@@ -101,7 +101,7 @@ async def clone_repo(request: RepoCloneRequest):
 async def explore_repo_stream(clone_path: str):
     """
     Explore repository and generate REPO_OVERVIEW.md with streaming progress.
-    Uses Claude Code SDK for agentic exploration (falls back to messages API).
+    Uses opencode for agentic exploration (falls back to messages API).
     """
     async def event_generator() -> AsyncGenerator[str, None]:
         progress_queue: asyncio.Queue = asyncio.Queue()

@@ -387,7 +387,7 @@ export const zhCN: Messages = {
 
   // Repository Runner
   'runner.title': '测试运行器',
-  'runner.description': '使用 Claude Code SDK 自动克隆、探索和测试仓库。',
+  'runner.description': '使用 opencode 自动克隆、探索和测试仓库。',
   'runner.error': '错误',
   'runner.step1.title': '输入仓库',
   'runner.step2.title': '探索与文档',
@@ -419,5 +419,4 @@ export const zhCN: Messages = {
   'runner.step4.run_another': '运行另一个仓库',
   'runner.progress': '进度',
 };
-
 

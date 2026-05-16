@@ -391,7 +391,7 @@ export const enUS: Messages = {
 
   // Repository Runner
   'runner.title': 'Repository Tester',
-  'runner.description': 'Clone, explore, and test repositories automatically using Claude Code SDK.',
+  'runner.description': 'Clone, explore, and test repositories automatically using opencode.',
   'runner.error': 'Error',
   'runner.step1.title': 'Input Repository',
   'runner.step2.title': 'Explore & Document',

@@ -1,8 +1,10 @@
 """
-Repository exploration using Claude Code SDK (with messages API fallback).
+Repository exploration using opencode (with messages API fallback).
 """
 
 import asyncio
+import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -24,6 +26,143 @@ def _overview_filename(tag: Optional[str]) -> str:
     return "REPO_OVERVIEW.md"
 
 
+def _opencode_timeout_seconds() -> int:
+    raw_value = os.getenv("REPOS_RUNNER_OPENCODE_TIMEOUT", "600").strip()
+    try:
+        timeout = int(raw_value)
+    except ValueError:
+        return 600
+    return max(timeout, 1)
+
+
+def _opencode_requested_model() -> str:
+    for key in ("REPOS_RUNNER_OPENCODE_MODEL", "OPENCODE_MODEL"):
+        value = os.getenv(key)
+        if value and value.strip():
+            return value.strip()
+    return ""
+
+
+def _build_overview_prompt(
+    repo_name: str,
+    overview_filename: str,
+    tag_message: Optional[str] = None,
+) -> str:
+    tag_section = (
+        "\n\nThe repository is tagged with the following target features/requirements:\n"
+        f"{tag_message}\n"
+        "Pay attention to these when identifying test coverage and setup."
+        if tag_message else ""
+    )
+    tag_output_section = (
+        "## Tag Message\n"
+        f"{tag_message}\n\n"
+        if tag_message else ""
+    )
+    return (
+        "You are analyzing a software repository to understand how to run its tests. "
+        "Explore the repository files, README, package/config files, and existing test files. "
+        "Do not modify files. Return only the final markdown content, with no commentary "
+        "before or after it."
+        f"{tag_section}\n\n"
+        f"The markdown will be saved as {overview_filename}. Use this exact structure:\n\n"
+        f"# {repo_name}\n\n"
+        f"{tag_output_section}"
+        "## Project Type\n"
+        "<1-2 sentences: language, framework, purpose>\n\n"
+        "## Test Framework\n"
+        "<name of test framework(s) found, or 'None detected'>\n\n"
+        "## Setup Commands\n"
+        "```\n"
+        "<commands to install dependencies, one per line>\n"
+        "```\n\n"
+        "## Test Commands\n"
+        "```\n"
+        "<commands to run tests, one per line>\n"
+        "```\n\n"
+        "Be concise. Only include what is needed to run tests."
+    )
+
+
+def _extract_markdown_from_opencode_output(output: str) -> str:
+    content = (output or "").strip()
+    if not content:
+        return ""
+
+    heading_index = content.find("# ")
+    if heading_index >= 0:
+        return content[heading_index:].strip()
+    return content
+
+
+async def _explore_via_opencode(
+    clone_path: str,
+    progress_callback=None,
+    tag_message: Optional[str] = None,
+    tag: Optional[str] = None,
+) -> str:
+    clone_dir = Path(clone_path)
+    overview_filename = _overview_filename(tag)
+    overview_path = clone_dir / overview_filename
+
+    if not shutil.which("opencode"):
+        raise FileNotFoundError("opencode CLI not available")
+
+    if progress_callback:
+        await progress_callback("Starting repository exploration with opencode...")
+
+    prompt = _build_overview_prompt(clone_dir.name, overview_filename, tag_message)
+    command = ["opencode", "run", "--agent", "plan", "--dir", str(clone_dir)]
+    requested_model = _opencode_requested_model()
+    if requested_model:
+        command.extend(["--model", requested_model])
+    command.append(prompt)
+
+    if progress_callback:
+        await progress_callback("opencode is exploring the repository structure...")
+
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        cwd=str(clone_dir),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        env={**os.environ, "NO_COLOR": "1"},
+    )
+
+    try:
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+            process.communicate(),
+            timeout=_opencode_timeout_seconds(),
+        )
+    except asyncio.TimeoutError as exc:
+        kill = getattr(process, "kill", None)
+        if callable(kill):
+            kill()
+        raise TimeoutError("opencode repository exploration timed out") from exc
+
+    stdout = stdout_bytes.decode("utf-8", errors="replace")
+    stderr = stderr_bytes.decode("utf-8", errors="replace").strip()
+
+    if process.returncode != 0:
+        detail = stderr or stdout.strip() or f"exit code {process.returncode}"
+        raise RuntimeError(f"opencode repository exploration failed: {detail}")
+
+    overview_content = _extract_markdown_from_opencode_output(stdout)
+    if not overview_content:
+        raise RuntimeError("opencode did not return overview content")
+
+    if progress_callback:
+        await progress_callback(f"Writing {overview_filename}...")
+
+    overview_path.write_text(overview_content, encoding="utf-8")
+    record_estimated_token_usage(prompt, overview_content)
+
+    if progress_callback:
+        await progress_callback("Repository exploration completed!")
+
+    return str(overview_path)
+
+
 async def explore_repository(
     clone_path: str,
     progress_callback=None,
@@ -31,11 +170,7 @@ async def explore_repository(
     tag: Optional[str] = None,
 ) -> str:
     """
-    Explore repository and generate REPO_OVERVIEW_{tag}.md using the Claude Code SDK.
-
-    The SDK runs Claude as an agentic loop with shell-tool access so it can
-    actually read files, list directories, and understand the project structure
-    rather than just receiving a pre-built context string.
+    Explore repository and generate REPO_OVERVIEW_{tag}.md using opencode.
 
     Args:
         tag_message: Optional annotation describing target features to focus on.
@@ -44,107 +179,15 @@ async def explore_repository(
     Returns:
         Path to generated REPO_OVERVIEW_{tag}.md (or REPO_OVERVIEW.md if no tag)
     """
-    clone_dir = Path(clone_path)
-    overview_path = clone_dir / _overview_filename(tag)
-
-    if progress_callback:
-        await progress_callback("Starting repository exploration with Claude Code SDK...")
-
     try:
-        from claude_code_sdk import query, ClaudeCodeOptions, AssistantMessage, TextBlock
-
+        return await _explore_via_opencode(clone_path, progress_callback, tag_message, tag)
+    except FileNotFoundError:
         if progress_callback:
-            await progress_callback("Claude is exploring the repository structure...")
-
-        tag_section = (
-            f"\n\nThe repository is tagged with the following target features/requirements:\n"
-            f"{tag_message}\n"
-            f"Pay attention to these when identifying test coverage and setup."
-            if tag_message else ""
-        )
-
-        overview_filename = _overview_filename(tag)
-        prompt = (
-            "You are analyzing a software repository to understand how to run its tests. "
-            "Explore the repository files, read the README, config files (package.json, "
-            "pyproject.toml, Cargo.toml, go.mod, etc.), and any existing test files. "
-            f"{tag_section}"
-            f"\n\nThen produce a file called {overview_filename} in the current directory with "
-            "this exact structure:\n\n"
-            "# {repo_name}\n\n"
-            + (
-                "## Tag Message\n"
-                f"{tag_message}\n\n"
-                if tag_message else ""
-            )
-            + "## Project Type\n"
-            "<1-2 sentences: language, framework, purpose>\n\n"
-            "## Test Framework\n"
-            "<name of test framework(s) found, or 'None detected'>\n\n"
-            "## Setup Commands\n"
-            "```\n"
-            "<commands to install dependencies, one per line>\n"
-            "```\n\n"
-            "## Test Commands\n"
-            "```\n"
-            "<commands to run tests, one per line>\n"
-            "```\n\n"
-            "Be concise. Only include what is needed to run tests. "
-            "Write the file when done."
-        )
-
-        char_count = 0
-        assistant_text_parts = []
-        recorded_provider_usage = False
-        async for message in query(
-            prompt=prompt,
-            options=ClaudeCodeOptions(
-                cwd=str(clone_dir),
-                # Allow file reads and writes but no network calls
-                allowed_tools=["Read", "Write", "Glob", "Bash"],
-            ),
-        ):
-            if record_llm_response_usage(message):
-                recorded_provider_usage = True
-            if isinstance(message, AssistantMessage):
-                for block in message.content:
-                    if isinstance(block, TextBlock):
-                        char_count += len(block.text)
-                        assistant_text_parts.append(block.text)
-                        if progress_callback and char_count % 200 < 20:
-                            await progress_callback(
-                                f"Claude exploring... ({char_count} chars processed)"
-                            )
-
-        if not recorded_provider_usage:
-            record_estimated_token_usage(prompt, "\n".join(assistant_text_parts))
-
-        # If Claude wrote the file, great. Otherwise fall back to context-based approach.
-        if not overview_path.exists():
-            if progress_callback:
-                await progress_callback(
-                    "SDK did not write the file directly; using context fallback..."
-                )
-            overview_path = Path(
-                await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
-            )
-
-        if progress_callback:
-            await progress_callback("Repository exploration completed!")
-
-        return str(overview_path)
-
-    except ImportError:
-        # claude-code-sdk not installed, fall back to messages API
-        if progress_callback:
-            await progress_callback(
-                "claude-code-sdk not available; falling back to messages API..."
-            )
+            await progress_callback("opencode CLI not available; falling back to messages API...")
         return await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
-
     except Exception as e:
         if progress_callback:
-            await progress_callback(f"SDK error ({e}); falling back to messages API...")
+            await progress_callback(f"opencode error ({e}); falling back to messages API...")
         return await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
 
 
@@ -154,7 +197,7 @@ async def _explore_via_messages_api(
     tag_message: Optional[str] = None,
     tag: Optional[str] = None,
 ) -> str:
-    """Fallback: build context manually and call the Anthropic messages API."""
+    """Fallback: build context manually and call the configured messages API."""
     clone_dir = Path(clone_path)
     overview_path = clone_dir / _overview_filename(tag)
 
@@ -164,7 +207,7 @@ async def _explore_via_messages_api(
     context = await _build_repo_context(clone_dir)
 
     if progress_callback:
-        await progress_callback("Generating overview with Claude...")
+        await progress_callback("Generating overview with AI...")
 
     tag_section = (
         f"\nThe repository is tagged with the following target features/requirements:\n{tag_message}\n"
