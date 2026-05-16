@@ -27,6 +27,22 @@ from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_co
 
 _SHELL_SUCCESS_MASK_RE = re.compile(r"\s*(?:\|\|\s*true|;\s*true)\s*$")
 _PIP_REQUIREMENTS_RE = re.compile(r"(?:^|\s)pip(?:3)?\s+install\s+-r\s+([^;&|]+)")
+_LONG_LIVED_SERVICE_COMMAND_RE = re.compile(
+    r"("
+    r"\b(?:bash|sh|python|python3)\s+scripts/dev-[\w.-]+"
+    r"|\bnpm\s+run\s+dev\b"
+    r"|\byarn\s+dev\b"
+    r"|\bpnpm\s+(?:run\s+)?dev\b"
+    r"|\bnpx\s+vite\b"
+    r"|\bvite(?:\s|$)"
+    r"|\b(?:python|python3)\s+-m\s+uvicorn\b"
+    r"|\buvicorn\s+[\w.:-]+"
+    r"|\bfastapi\s+run\b"
+    r"|\bflask\s+run\b"
+    r"|\bnext\s+dev\b"
+    r")",
+    re.IGNORECASE,
+)
 TAGGED_CODE_TEST_WEIGHT = 30
 TAGGED_FUNCTIONALITY_WEIGHT = 70
 
@@ -46,6 +62,28 @@ def _strip_shell_success_mask(cmd: str) -> str:
         if next_cleaned == cleaned:
             return cleaned
         cleaned = next_cleaned
+
+
+def _is_long_lived_service_command(cmd: str) -> bool:
+    """Return True for documented dev-server commands that should be runtime evidence."""
+    text = str(cmd or "").strip()
+    if not text:
+        return False
+    if re.search(r"\b(pytest|jest|vitest|mocha|rspec|phpunit|go\s+test|cargo\s+test|mvn\s+test|gradle\s+test|dotnet\s+test)\b", text):
+        return False
+    return bool(_LONG_LIVED_SERVICE_COMMAND_RE.search(text))
+
+
+def _filter_code_test_commands(commands: List[str]) -> tuple[List[str], List[str]]:
+    code_tests: List[str] = []
+    service_commands: List[str] = []
+    for command in commands or []:
+        cleaned = _strip_shell_success_mask(command)
+        if _is_long_lived_service_command(cleaned):
+            service_commands.append(cleaned)
+        else:
+            code_tests.append(cleaned)
+    return code_tests, service_commands
 
 
 def _clamp_ratio(value: float) -> float:
@@ -571,11 +609,18 @@ async def run_tests(
                     if progress_callback:
                         await progress_callback(f"Service env setup failed: {str(e)}")
 
-        # Run test commands
-        test_commands = test_info.get("test_commands", [])
+        # Run test commands. Long-lived documented service launchers are handled
+        # by runtime evidence, where they can be health-checked and stopped.
+        test_commands, service_commands = _filter_code_test_commands(test_info.get("test_commands", []))
+        if service_commands and progress_callback:
+            await progress_callback(
+                "Treating long-lived service command(s) as runtime evidence, not code tests: "
+                + "; ".join(service_commands)
+            )
         num_commands = len(test_commands)
+        has_functionality_score = bool(tag_message and tag_message.strip())
 
-        if num_commands == 0:
+        if num_commands == 0 and not has_functionality_score:
             if progress_callback:
                 await progress_callback("No tests found in repository")
 
@@ -697,7 +742,6 @@ async def run_tests(
         coverage_ratio = 1.0
         code_relevance_ratio = 1.0
 
-        has_functionality_score = bool(tag_message and tag_message.strip())
         if has_functionality_score:
             code_relevance_ratio = 0.0
             if progress_callback:
