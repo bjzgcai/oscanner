@@ -18,13 +18,13 @@ import evaluator.config.env as env_config
 from evaluator.config.env import get_project_env_paths, load_runtime_env
 
 
-def test_get_project_env_paths_prefers_server_dir_and_deduplicates(tmp_path):
-    """Server-local .env.local should be found even when launched from repo root."""
+def test_get_project_env_paths_prefers_server_dir_env_and_deduplicates(tmp_path):
+    """Server-local .env should be found even when launched from repo root."""
     repo_root = tmp_path / "repo"
     server_dir = repo_root / "backend" / "evaluator"
     server_dir.mkdir(parents=True)
 
-    server_env = server_dir / ".env.local"
+    server_env = server_dir / ".env"
     server_env.write_text("OPEN_ROUTER_KEY=test\n", encoding="utf-8")
 
     paths = get_project_env_paths(
@@ -36,13 +36,13 @@ def test_get_project_env_paths_prefers_server_dir_and_deduplicates(tmp_path):
 
 
 def test_get_project_env_paths_includes_distinct_cwd_env_after_server_env(tmp_path):
-    """A root-level .env.local should still be loaded after the evaluator-local one."""
+    """A root-level .env should still be loaded after the evaluator-local one."""
     repo_root = tmp_path / "repo"
     server_dir = repo_root / "backend" / "evaluator"
     server_dir.mkdir(parents=True)
 
-    server_env = server_dir / ".env.local"
-    root_env = repo_root / ".env.local"
+    server_env = server_dir / ".env"
+    root_env = repo_root / ".env"
     server_env.write_text("OPEN_ROUTER_KEY=server\n", encoding="utf-8")
     root_env.write_text("OPEN_ROUTER_KEY=root\n", encoding="utf-8")
 
@@ -55,12 +55,12 @@ def test_get_project_env_paths_includes_distinct_cwd_env_after_server_env(tmp_pa
 
 
 def test_load_runtime_env_restores_non_empty_file_value_over_empty_process_var(tmp_path, monkeypatch):
-    """Empty inherited vars should not block non-empty values from .env.local."""
+    """Empty inherited vars should not block non-empty values from .env."""
     repo_root = tmp_path / "repo"
     server_dir = repo_root / "backend" / "evaluator"
     server_dir.mkdir(parents=True)
 
-    server_env = server_dir / ".env.local"
+    server_env = server_dir / ".env"
     server_env.write_text("OPEN_ROUTER_KEY=server-key\n", encoding="utf-8")
 
     monkeypatch.setenv("OPEN_ROUTER_KEY", "")

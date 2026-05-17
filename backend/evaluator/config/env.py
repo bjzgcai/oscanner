@@ -18,17 +18,21 @@ def get_project_env_paths(server_file: Path | None = None, cwd: Path | None = No
     Return project env files in load order.
 
     Priority:
-    1) Server-directory `.env.local`
-    2) Current working directory `.env.local` (when different)
+    1) Server-directory `.env`
+    2) Server-directory `.env.local` (legacy)
+    3) Current working directory `.env` (when different)
+    4) Current working directory `.env.local` (legacy, when different)
     """
     paths: List[Path] = []
     seen: set[Path] = set()
 
     candidates: Iterable[Path] = []
     if server_file is not None:
-        candidates = [server_file.resolve().parent / ".env.local"]
+        server_dir = server_file.resolve().parent
+        candidates = [server_dir / ".env", server_dir / ".env.local"]
     if cwd is not None:
-        candidates = [*candidates, cwd.resolve() / ".env.local"]
+        cwd_dir = cwd.resolve()
+        candidates = [*candidates, cwd_dir / ".env", cwd_dir / ".env.local"]
 
     for path in candidates:
         resolved = path.resolve()

@@ -17,6 +17,8 @@ from .llm import (
     record_llm_response_usage,
 )
 
+DEFAULT_OPENCODE_MODEL = "openrouter/deepseek/deepseek-v4-pro"
+
 
 def _overview_filename(tag: Optional[str]) -> str:
     """Return the REPO_OVERVIEW filename for the given tag (or default)."""
@@ -40,7 +42,57 @@ def _opencode_requested_model() -> str:
         value = os.getenv(key)
         if value and value.strip():
             return value.strip()
+    return DEFAULT_OPENCODE_MODEL
+
+
+def _opencode_model_requires_openrouter_key(model: str) -> bool:
+    return (model or "").strip().startswith("openrouter/")
+
+
+def _project_env_fallback_paths() -> list[Path]:
+    backend_dir = Path(__file__).resolve().parents[3]
+    return [
+        backend_dir / "repos_runner" / ".env",
+        backend_dir / "repos_runner" / ".env.local",
+        backend_dir / "evaluator" / ".env",
+        backend_dir / "evaluator" / ".env.local",
+    ]
+
+
+def _read_env_file_value(path: Path, key: str) -> str:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return ""
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        if name.strip() == key:
+            return value.strip().strip('"').strip("'")
     return ""
+
+
+def _configured_openrouter_key() -> str:
+    for key in ("OPEN_ROUTER_KEY", "OPENROUTER_API_KEY"):
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    for path in _project_env_fallback_paths():
+        value = _read_env_file_value(path, "OPEN_ROUTER_KEY")
+        if value:
+            return value
+    return ""
+
+
+def _build_opencode_env() -> dict[str, str]:
+    env = {**os.environ, "NO_COLOR": "1"}
+    openrouter_key = _configured_openrouter_key()
+    if openrouter_key and not env.get("OPENROUTER_API_KEY", "").strip():
+        env["OPEN_ROUTER_KEY"] = openrouter_key
+        env["OPENROUTER_API_KEY"] = openrouter_key
+    return env
 
 
 def _build_overview_prompt(
@@ -114,6 +166,8 @@ async def _explore_via_opencode(
     prompt = _build_overview_prompt(clone_dir.name, overview_filename, tag_message)
     command = ["opencode", "run", "--agent", "plan", "--dir", str(clone_dir)]
     requested_model = _opencode_requested_model()
+    if _opencode_model_requires_openrouter_key(requested_model) and not _configured_openrouter_key():
+        raise RuntimeError("OPEN_ROUTER_KEY is empty; cannot use OpenRouter opencode model")
     if requested_model:
         command.extend(["--model", requested_model])
     command.append(prompt)
@@ -126,7 +180,7 @@ async def _explore_via_opencode(
         cwd=str(clone_dir),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
-        env={**os.environ, "NO_COLOR": "1"},
+        env=_build_opencode_env(),
     )
 
     try:

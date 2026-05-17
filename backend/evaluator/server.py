@@ -46,10 +46,11 @@ from evaluator.routes import plugins, config, data, evaluation, batch, benchmark
 # Load environment variables
 #
 # Order:
-# 1) Evaluator server directory `.env.local`
-# 2) CWD `.env.local` (when different)
-# 3) User config dotfile (~/.local/share/oscanner/.env.local by default)
-# 4) Default dotenv behavior (`.env` if present)
+# 1) Evaluator server directory `.env`
+# 2) Evaluator server directory `.env.local` (legacy)
+# 3) CWD `.env` / `.env.local` (when different)
+# 4) User config dotfile (~/.local/share/oscanner/.env.local by default)
+# 5) Default dotenv behavior (`.env` if present)
 load_runtime_env(server_file=Path(__file__), cwd=Path.cwd())
 
 app = FastAPI(title="Engineer Skill Evaluator API")

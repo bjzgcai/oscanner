@@ -39,8 +39,9 @@ export OPEN_ROUTER_FALLBACK_MODEL="anthropic/claude-sonnet-4.6"
 export OPEN_ROUTER_FALLBACK_MODELS="anthropic/claude-sonnet-4.6"
 # Optional override for repos_runner task prompts (if unset, uses provider defaults above)
 export REPOS_RUNNER_LLM_MODEL="claude-sonnet-4-6"
-# Optional opencode model override in provider/model format; otherwise opencode uses its config
-export REPOS_RUNNER_OPENCODE_MODEL="anthropic/claude-sonnet-4-6"
+# Optional opencode model override in provider/model format
+# Defaults to OpenRouter DeepSeek V4 Pro when unset
+export REPOS_RUNNER_OPENCODE_MODEL="openrouter/deepseek/deepseek-v4-pro"
 # Optional timeout for opencode exploration (seconds, default: 600)
 export REPOS_RUNNER_OPENCODE_TIMEOUT=600
 # Optional: also try direct Anthropic credential if OpenRouter attempts fail
