@@ -19,7 +19,6 @@ def create_commit_evaluator(
     data_dir: str,
     api_key: str,
     model: str | None = None,
-    mode: str = "moderate",
 ):
     ...
 ```
@@ -27,7 +26,6 @@ def create_commit_evaluator(
 - **data_dir**: absolute path to this repo's local data directory (commits, files, repo_structure, etc).
 - **api_key**: OpenAI-compatible bearer token (already resolved by backend; do not print it).
 - **model**: per-request override (may be None).
-- **mode**: evaluation mode (currently `"moderate"` is the common default).
 
 Return value: an **evaluator object** that provides `evaluate_engineer(...)` (next section).
 
@@ -95,4 +93,3 @@ Your plugin does **not** need to set them, but it may if it wants (backend will 
 - If LLM is not configured, either:
   - raise a clear error, or
   - (if you support fallback) return a conservative heuristic `scores`.
-

@@ -186,6 +186,42 @@ class TestGiteeExtraction:
             assert first_call_url is not None
             assert "gitee.com" in first_call_url
 
+    def test_extract_gitee_data_writes_latest_repo_snapshot(self, temp_data_dir):
+        """Successful Gitee extraction should store complete filtered repo files for latest SHA."""
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_requests_session') as mock_session, \
+             patch('evaluator.services.extraction_service.get_gitee_token') as mock_token, \
+             patch('evaluator.services.extraction_service._try_write_latest_repo_snapshot') as mock_snapshot:
+
+            mock_get_dir.return_value = temp_data_dir
+            mock_token.return_value = "fake_token_for_test"
+            mock_snapshot.return_value = True
+
+            commits_resp = Mock()
+            commits_resp.status_code = 200
+            commits_resp.json.return_value = [{"sha": "abc123"}]
+
+            detail_resp = Mock()
+            detail_resp.status_code = 200
+            detail_resp.json.return_value = {
+                "sha": "abc123",
+                "commit": {"author": {"name": "Ada", "date": "2026-01-01T00:00:00+00:00"}, "message": "feat"},
+                "files": [{"filename": "src/app.py"}],
+            }
+
+            file_resp = Mock()
+            file_resp.status_code = 200
+            file_resp.json.return_value = {"content": "cHJpbnQoJ29rJykK", "size": 12}
+
+            mock_sess = Mock()
+            mock_sess.get.side_effect = [commits_resp, detail_resp, file_resp]
+            mock_session.return_value = mock_sess
+
+            result = extract_gitee_data("test_owner", "test_repo", max_commits=1)
+
+            assert result is True
+            mock_snapshot.assert_called_once_with("gitee", "test_owner", "test_repo", temp_data_dir)
+
     def test_sync_gitee_data_incremental_fetches_only_missing_latest_commits(self, temp_data_dir):
         """Existing Gitee data should be extended by fetching only the latest missing commits."""
         repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"

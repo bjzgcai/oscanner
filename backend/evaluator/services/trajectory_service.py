@@ -24,6 +24,7 @@ from evaluator.services.extraction_service import (
     extract_gitee_data,
     sync_gitee_data_incremental,
     sync_gitee_commits_by_sha,
+    extract_repo_files_at_commit_via_git,
 )
 from evaluator.plugin_registry import load_scan_module
 
@@ -72,7 +73,8 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
 def ensure_repo_data_synced(
     repo_url: str,
     max_commits: int = 500,
-    force_sync: bool = False
+    force_sync: bool = False,
+    snapshot_sha: Optional[str] = None,
 ) -> Tuple[str, str, str, bool]:
     """
     Ensure repository data is synced locally. If not present or stale, extract it.
@@ -81,6 +83,7 @@ def ensure_repo_data_synced(
         repo_url: Repository URL
         max_commits: Maximum commits to fetch
         force_sync: Force fresh extraction even if local data already exists
+        snapshot_sha: Optional commit SHA to use for the complete filtered repo_files snapshot
 
     Returns:
         Tuple of (platform, owner, repo, was_synced)
@@ -100,7 +103,13 @@ def ensure_repo_data_synced(
         print(f"[Trajectory] Found existing data for {platform}/{owner}/{repo}")
         if platform == "gitee":
             was_synced = sync_gitee_data_incremental(owner, repo, max_commits=max_commits)
+            if snapshot_sha:
+                snapshot_synced = extract_repo_files_at_commit_via_git(platform, owner, repo, data_dir, snapshot_sha)
+                was_synced = was_synced or snapshot_synced
             return platform, owner, repo, was_synced
+        if snapshot_sha:
+            snapshot_synced = extract_repo_files_at_commit_via_git(platform, owner, repo, data_dir, snapshot_sha)
+            return platform, owner, repo, snapshot_synced
         return platform, owner, repo, False
 
     # Extract data
@@ -119,6 +128,8 @@ def ensure_repo_data_synced(
 
         if not success:
             raise Exception(f"Failed to extract data from {repo_url}")
+        if snapshot_sha:
+            extract_repo_files_at_commit_via_git(platform, owner, repo, data_dir, snapshot_sha)
     except Exception as e:
         error_msg = str(e)
         # Enhance error message for common network issues
@@ -350,6 +361,38 @@ def _sync_gitee_boundary_commits(
         }, False
 
 
+def _refresh_group_repo_snapshot_for_end_sha(
+    repo_url: str,
+    item: Dict[str, Any],
+    sync_result: Dict[str, Any],
+    data_dir: Path,
+) -> Tuple[Dict[str, Any], bool]:
+    end_sha = str(item.get("end_sha") or "").strip()
+    if not end_sha:
+        return sync_result, False
+
+    try:
+        platform = str(sync_result.get("platform") or "").strip()
+        owner = str(sync_result.get("owner") or "").strip()
+        repo = str(sync_result.get("repo") or "").strip()
+        if not platform or not owner or not repo:
+            platform, owner, repo = parse_repo_url(repo_url)
+
+        refreshed = extract_repo_files_at_commit_via_git(platform, owner, repo, data_dir, end_sha)
+        return {
+            **sync_result,
+            "snapshot_sha": end_sha,
+            "snapshot_refreshed": refreshed,
+        }, refreshed
+    except Exception as e:
+        return {
+            **sync_result,
+            "snapshot_sha": end_sha,
+            "snapshot_refreshed": False,
+            "snapshot_error": str(e),
+        }, False
+
+
 def _is_llm_parse_failure(error: Exception) -> bool:
     return "LLM response parsing failed" in str(error)
 
@@ -565,11 +608,12 @@ def analyze_group_repositories(
                 })
                 continue
 
+            sync_result, _ = _refresh_group_repo_snapshot_for_end_sha(repo_url, item, sync_result, data_dir)
+
             evaluator_kwargs = {
                 "data_dir": str(data_dir),
                 "api_key": get_llm_api_key(),
                 "model": model,
-                "mode": "moderate",
                 "language": language,
                 "forced_checker_id": forced_checker_id,
                 "worktree_base": worktree_base,
@@ -841,7 +885,6 @@ def create_checkpoint_evaluation(
         data_dir=str(get_platform_data_dir(platform, owner, repo)),
         api_key=get_llm_api_key(),
         model=model,
-        mode="moderate",
         language=language,
         previous_checkpoint_scores=previous_scores,
         forced_checker_id=forced_checker_id,
@@ -1462,6 +1505,7 @@ def analyze_growth_trajectory(
                 repo_url,
                 max_commits=500,
                 force_sync=True,
+                snapshot_sha=end_sha if checkpoint_strategy == "none" and end_sha else None,
             )
             if was_synced:
                 print(f"[Trajectory] Extracted fresh data for {platform}/{owner}/{repo}")

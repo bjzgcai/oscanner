@@ -67,7 +67,6 @@ def load_commits_from_local(data_dir: Path, limit: int = 30) -> list:
 def evaluate_from_local_data(
     data_dir: str,
     username: str,
-    mode: str = "moderate",
     max_commits: int = 30
 ):
     """
@@ -76,7 +75,6 @@ def evaluate_from_local_data(
     Args:
         data_dir: Path to extracted data (e.g., "data/shuxueshuxue/ink-and-memory")
         username: Username to evaluate
-        mode: "conservative" or "moderate"
         max_commits: Maximum commits to analyze
     """
     data_path = Path(data_dir)
@@ -87,7 +85,6 @@ def evaluate_from_local_data(
 
     print("=" * 80)
     print(f"Evaluating {username} from local data")
-    print(f"Mode: {mode}")
     print(f"Data: {data_dir}")
     print("=" * 80)
 
@@ -98,7 +95,6 @@ def evaluate_from_local_data(
         data_dir=str(data_path),
         api_key=api_key,
         model=os.getenv("OSCANNER_LLM_MODEL") or None,
-        mode=mode,
     )
     print(f"[Plugin] example uses plugin={meta.plugin_id} scan={scan_path}")
 
@@ -115,12 +111,12 @@ def evaluate_from_local_data(
     # Or filter by author name if needed
 
     # Evaluate
-    print(f"\n[2/3] Evaluating with {mode} mode...")
+    print("\n[2/3] Evaluating...")
     result = evaluator.evaluate_engineer(
         commits=commits,
         username=username,
         max_commits=max_commits,
-        load_files=(mode == "moderate")
+        load_files=True,
     )
 
     # Display results
@@ -152,7 +148,7 @@ def evaluate_from_local_data(
     output_dir = get_home_dir() / "evaluations" / "examples"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    output_file = output_dir / f"{username}_{mode}_evaluation.json"
+    output_file = output_dir / f"{username}_evaluation.json"
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
@@ -161,73 +157,13 @@ def evaluate_from_local_data(
     return result
 
 
-def compare_modes(data_dir: str, username: str, max_commits: int = 30):
-    """
-    Compare conservative vs moderate evaluation modes
-
-    Args:
-        data_dir: Path to extracted data
-        username: Username to evaluate
-        max_commits: Maximum commits to analyze
-    """
-    print("\n" + "=" * 80)
-    print("COMPARING EVALUATION MODES")
-    print("=" * 80)
-
-    # Run conservative evaluation
-    print("\n### Conservative Mode (Diffs Only) ###")
-    conservative_result = evaluate_from_local_data(
-        data_dir=data_dir,
-        username=username,
-        mode="conservative",
-        max_commits=max_commits
-    )
-
-    # Run moderate evaluation
-    print("\n### Moderate Mode (Diffs + Files) ###")
-    moderate_result = evaluate_from_local_data(
-        data_dir=data_dir,
-        username=username,
-        mode="moderate",
-        max_commits=max_commits
-    )
-
-    # Compare results
-    if conservative_result and moderate_result:
-        print("\n" + "=" * 80)
-        print("COMPARISON")
-        print("=" * 80)
-
-        print("\nScore Differences:")
-        for dim in conservative_result['scores']:
-            if dim != "reasoning":
-                cons_score = conservative_result['scores'][dim]
-                mod_score = moderate_result['scores'][dim]
-                diff = mod_score - cons_score
-                symbol = "+" if diff > 0 else ""
-                print(f"  {dim}: {cons_score} -> {mod_score} ({symbol}{diff})")
-
-        print("\nFiles Loaded:")
-        print(f"  Conservative: {conservative_result['files_loaded']}")
-        print(f"  Moderate: {moderate_result['files_loaded']}")
-
-
 if __name__ == "__main__":
-    # Example: Evaluate from the ink-and-memory moderate dataset
+    # Example: Evaluate from the ink-and-memory dataset
     DATA_DIR = "data/shuxueshuxue/ink-and-memory"
     USERNAME = "shuxueshuxue"  # Replace with actual contributor username
 
-    # Option 1: Single evaluation (moderate mode)
     evaluate_from_local_data(
         data_dir=DATA_DIR,
         username=USERNAME,
-        mode="moderate",
         max_commits=30
     )
-
-    # Option 2: Compare modes (uncomment to run)
-    # compare_modes(
-    #     data_dir=DATA_DIR,
-    #     username=USERNAME,
-    #     max_commits=30
-    # )

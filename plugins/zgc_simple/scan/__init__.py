@@ -41,7 +41,6 @@ class CommitEvaluatorModerate:
         api_key: Optional[str] = None,
         max_input_tokens: int = 190000,
         data_dir: Optional[str] = None,
-        mode: str = "moderate",
         model: Optional[str] = None,
         api_base_url: Optional[str] = None,
         chat_completions_url: Optional[str] = None,
@@ -73,7 +72,6 @@ class CommitEvaluatorModerate:
         )
         self.max_input_tokens = int(max_input_tokens)
         self.data_dir = Path(data_dir) if data_dir else None
-        self.mode = mode
         self.model = model or os.getenv("OSCANNER_LLM_MODEL") or "deepseek/deepseek-v4-pro"
         self.fallback_models = fallback_models
 
@@ -160,8 +158,8 @@ class CommitEvaluatorModerate:
     def _commits_exceed_prompt_budget(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> bool:
         file_contents: Dict[str, str] = {}
         repo_structure: Optional[Dict[str, Any]] = None
-        if self.mode == "moderate" and load_files and self.data_dir:
-            file_contents = self._load_relevant_files(commits)
+        if load_files and self.data_dir:
+            file_contents = self._load_context_files(commits)
             repo_structure = self._load_repo_structure()
         context = self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure)
         prompt = self._build_evaluation_prompt(context, username)
@@ -284,8 +282,8 @@ class CommitEvaluatorModerate:
     def _evaluate_engineer_standard(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
         file_contents: Dict[str, str] = {}
         repo_structure: Optional[Dict[str, Any]] = None
-        if self.mode == "moderate" and load_files and self.data_dir:
-            file_contents = self._load_relevant_files(commits)
+        if load_files and self.data_dir:
+            file_contents = self._load_context_files(commits)
             repo_structure = self._load_repo_structure()
 
         context = self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure)
@@ -294,7 +292,7 @@ class CommitEvaluatorModerate:
             "username": username,
             "total_commits_analyzed": len(commits),
             "files_loaded": len(file_contents),
-            "mode": self.mode,
+            "mode": "moderate",
             "scores": scores,
             "commits_summary": self._summarize_commits(commits),
         }
@@ -307,8 +305,8 @@ class CommitEvaluatorModerate:
             candidate = [*current, commit]
             file_contents: Dict[str, str] = {}
             repo_structure: Optional[Dict[str, Any]] = None
-            if self.mode == "moderate" and load_files and self.data_dir:
-                file_contents = self._load_relevant_files(candidate)
+            if load_files and self.data_dir:
+                file_contents = self._load_context_files(candidate)
                 repo_structure = self._load_repo_structure()
             context = self._build_commit_context(candidate, username, file_contents=file_contents, repo_structure=repo_structure)
             prompt = self._build_evaluation_prompt(context, username, chunk_idx=len(chunks) + 1)
@@ -320,8 +318,8 @@ class CommitEvaluatorModerate:
                 current = [commit]
                 single_files: Dict[str, str] = {}
                 single_structure: Optional[Dict[str, Any]] = None
-                if self.mode == "moderate" and load_files and self.data_dir:
-                    single_files = self._load_relevant_files(current)
+                if load_files and self.data_dir:
+                    single_files = self._load_context_files(current)
                     single_structure = self._load_repo_structure()
                 single_context = self._build_commit_context(
                     current,
@@ -350,15 +348,15 @@ class CommitEvaluatorModerate:
             chunks.append(current)
 
         repo_structure = None
-        if self.mode == "moderate" and load_files and self.data_dir:
+        if load_files and self.data_dir:
             repo_structure = self._load_repo_structure()
 
         accumulated = None
         all_files: Dict[str, str] = {}
         for idx, chunk in enumerate(chunks, 1):
             chunk_files: Dict[str, str] = {}
-            if self.mode == "moderate" and load_files and self.data_dir and not self._commit_has_input_truncation(chunk):
-                chunk_files = self._load_relevant_files(chunk)
+            if load_files and self.data_dir and not self._commit_has_input_truncation(chunk):
+                chunk_files = self._load_context_files(chunk)
                 all_files.update(chunk_files)
             context = self._build_chunked_context(
                 chunk,
@@ -382,7 +380,7 @@ class CommitEvaluatorModerate:
             "username": username,
             "total_commits_analyzed": len(commits),
             "files_loaded": len(all_files),
-            "mode": self.mode,
+            "mode": "moderate",
             "scores": accumulated,
             "commits_summary": self._summarize_commits(commits),
             "chunked": True,
@@ -696,6 +694,40 @@ class CommitEvaluatorModerate:
                 continue
         return out
 
+    def _load_repo_snapshot_files(self) -> Dict[str, str]:
+        if not self.data_dir:
+            return {}
+        repo_files_dir = self.data_dir / "repo_files"
+        manifest_path = self.data_dir / "repo_files_manifest.json"
+        if not repo_files_dir.exists() or not repo_files_dir.is_dir() or not manifest_path.exists():
+            return {}
+
+        out: Dict[str, str] = {}
+        for abs_path in sorted(repo_files_dir.rglob("*")):
+            if not abs_path.is_file():
+                continue
+            try:
+                rel = abs_path.relative_to(repo_files_dir).as_posix()
+            except ValueError:
+                continue
+            cache_key = f"repo_files/{rel}"
+            if cache_key in self._file_cache:
+                out[rel] = self._file_cache[cache_key]
+                continue
+            try:
+                content = abs_path.read_text(encoding="utf-8", errors="ignore")
+                self._file_cache[cache_key] = content
+                out[rel] = content
+            except Exception:
+                continue
+        return out
+
+    def _load_context_files(self, commits: List[Dict[str, Any]]) -> Dict[str, str]:
+        repo_snapshot = self._load_repo_snapshot_files()
+        if repo_snapshot:
+            return repo_snapshot
+        return self._load_relevant_files(commits)
+
     def _load_repo_structure(self) -> Optional[Dict[str, Any]]:
         if self._repo_structure is not None:
             return self._repo_structure
@@ -772,9 +804,7 @@ class CommitEvaluatorModerate:
         # Language-specific instructions
         if is_chinese:
             base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的数据，并对每个维度评分（0-100分）。'
-            mode_note = ""
-            if self.mode == "moderate":
-                mode_note = "\n注意：你可能会看到提交差异（commit diffs）和文件内容。在有帮助的情况下请使用文件内容。"
+            mode_note = "\n注意：你可能会看到提交差异（commit diffs）和文件内容。在有帮助的情况下请使用文件内容。"
             chunked_instruction = ""
             if chunk_idx:
                 chunked_instruction = "\n分块评估：基于之前的评分和新证据更新分数；提供完整的推理过程。"
@@ -783,9 +813,7 @@ class CommitEvaluatorModerate:
             return_json_instruction = "仅返回有效的JSON格式"
         else:
             base_instruction = f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
-            mode_note = ""
-            if self.mode == "moderate":
-                mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
+            mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
             chunked_instruction = ""
             if chunk_idx:
                 chunked_instruction = "\nCHUNKED: Update scores based on previous + new evidence; provide full reasoning."
@@ -1037,7 +1065,7 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
             "username": username,
             "total_commits_analyzed": 0,
             "files_loaded": 0,
-            "mode": self.mode,
+            "mode": "moderate",
             "scores": scores,
             "commits_summary": {"total_additions": 0, "total_deletions": 0, "files_changed": 0, "languages": []},
         }
@@ -1048,7 +1076,6 @@ def create_commit_evaluator(
     data_dir: str,
     api_key: str,
     model: Optional[str] = None,
-    mode: str = "moderate",
     language: str = "en-US",
     previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
     forced_checker_id: Optional[str] = None,
@@ -1059,7 +1086,6 @@ def create_commit_evaluator(
         data_dir=data_dir,
         api_key=api_key,
         model=model,
-        mode=mode,
         language=language,
         previous_checkpoint_scores=previous_checkpoint_scores,
         forced_checker_id=forced_checker_id,

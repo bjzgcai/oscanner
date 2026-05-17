@@ -64,7 +64,7 @@ oscanner --help         # Show all available commands
 
 ### Web Dashboard Features
 
-The Next.js dashboard provides three analysis modes:
+The Next.js dashboard provides three evaluation workflows:
 
 1. **Single Repository Analysis** (`/`)
    - Enter GitHub/Gitee repository URL
@@ -110,7 +110,7 @@ The Next.js dashboard provides three analysis modes:
   - OpenAI-compatible APIs (Azure, LocalAI, custom endpoints)
   - Automatic fallback chain (primary → fallback → keyword-based)
 - **Dynamic Plugin UI**: React components loaded at runtime from plugin directories
-- **Interactive Web Dashboard**: Next.js app with three analysis modes:
+- **Interactive Web Dashboard**: Next.js app with three evaluation workflows:
   - Single-repo author evaluation
   - Multi-repo common contributor analysis
   - Cross-repo contributor comparison with visualization
@@ -758,8 +758,11 @@ Data is stored in XDG-compliant paths: `~/.local/share/oscanner/`
 │               ├── commits/
 │               │   ├── {sha}.json           # Commit metadata + diff
 │               │   └── {sha}.diff           # Commit diff (separate)
-│               └── files/
-│                   └── {filepath}           # Current file contents
+│               ├── files/
+│               │   └── {filepath}           # Current contents for files mentioned in diffs
+│               ├── repo_files/
+│               │   └── {filepath}           # Complete filtered repo snapshot at end/latest SHA
+│               └── repo_files_manifest.json # Included/skipped snapshot files
 │
 └── evaluations/                             # Cached evaluations
     └── {platform}/
@@ -1110,8 +1113,11 @@ All data is stored locally following XDG Base Directory specification:
 │   │           ├── commits/
 │   │           │   ├── {sha}.json           # Commit metadata + diff
 │   │           │   └── {sha}.diff           # Commit diff (separate file)
-│   │           └── files/
-│   │               └── {filepath}           # File contents at HEAD
+│   │           ├── files/
+│   │           │   └── {filepath}           # Current contents for files mentioned in diffs
+│   │           ├── repo_files/
+│   │           │   └── {filepath}           # Complete filtered repo snapshot at end/latest SHA
+│   │           └── repo_files_manifest.json
 │   └── gitee/                               # Gitee repositories (same structure)
 │
 ├── evaluations/                             # Cached evaluation results
@@ -1404,13 +1410,13 @@ default: true                           # Mark as default plugin
 Backend evaluator (`scan/__init__.py`) must export:
 ```python
 def create_commit_evaluator(
+    *,
+    data_dir: str,
     api_key: str,
-    model: str,
-    base_url: str,
-    **kwargs
+    model: str | None = None,
 ) -> CommitEvaluator:
     """Factory function to create evaluator instance."""
-    return MyEvaluator(api_key, model, base_url)
+    return MyEvaluator(data_dir=data_dir, api_key=api_key, model=model)
 ```
 
 Frontend components (`view/`) must export:

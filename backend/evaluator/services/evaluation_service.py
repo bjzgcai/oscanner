@@ -59,7 +59,6 @@ def get_or_create_evaluator(
         data_dir=str(data_dir),
         api_key=api_key,
         model=model,
-        mode="moderate",
     )
     print(f"✓ Created evaluator for {owner}/{repo} via plugin={pid} scan={scan_path}")
     _ = meta

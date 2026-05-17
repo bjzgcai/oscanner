@@ -107,7 +107,6 @@ async def evaluation_function_wrapper(repo_url: str, author: str, plugin_id: str
             data_dir=str(data_dir),
             api_key=api_key,
             model=model,
-            mode="moderate",
         )
 
     # Run evaluation

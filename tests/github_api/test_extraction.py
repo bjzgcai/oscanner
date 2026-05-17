@@ -20,7 +20,9 @@ if str(backend_dir) not in sys.path:
 
 from evaluator.services.extraction_service import (
     extract_github_data,
+    extract_repo_files_at_commit_via_git,
     fetch_github_commits,
+    _write_filtered_repo_snapshot,
 )
 
 
@@ -63,6 +65,63 @@ class TestGitHubExtraction:
             assert "--token" in call_args[0][0]
             assert "fake_github_token" in call_args[0][0]
 
+    def test_write_filtered_repo_snapshot_excludes_dependencies_binary_and_large_files(self, temp_data_dir):
+        """Complete repo snapshots should keep only evaluation-relevant text files."""
+        checkout_dir = temp_data_dir / "checkout"
+        output_dir = temp_data_dir / "out"
+        (checkout_dir / "src").mkdir(parents=True)
+        (checkout_dir / "node_modules" / "pkg").mkdir(parents=True)
+        (checkout_dir / "assets").mkdir(parents=True)
+        (checkout_dir / "src" / "app.py").write_text("print('useful')\n", encoding="utf-8")
+        (checkout_dir / "README.md").write_text("# Useful\n", encoding="utf-8")
+        (checkout_dir / ".env").write_text("TOKEN=secret\n", encoding="utf-8")
+        (checkout_dir / "node_modules" / "pkg" / "index.js").write_text("module.exports = 1\n", encoding="utf-8")
+        (checkout_dir / "assets" / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        (checkout_dir / "src" / "large.py").write_text("x" * 20, encoding="utf-8")
+
+        manifest = _write_filtered_repo_snapshot(
+            checkout_dir,
+            output_dir,
+            end_sha="end123",
+            max_file_bytes=18,
+        )
+
+        assert sorted(item["path"] for item in manifest["included_files"]) == ["README.md", "src/app.py"]
+        assert (output_dir / "repo_files" / "src" / "app.py").read_text(encoding="utf-8") == "print('useful')\n"
+        assert not (output_dir / "repo_files" / "node_modules").exists()
+        skipped = {item["path"]: item["reason"] for item in manifest["skipped_files"]}
+        assert skipped[".env"] == "excluded_path"
+        assert skipped["node_modules/pkg/index.js"] == "excluded_path"
+        assert skipped["assets/logo.png"] == "excluded_path"
+        assert skipped["src/large.py"] == "too_large"
+
+    def test_extract_repo_files_at_commit_uses_shallow_commit_fetch(self, temp_data_dir):
+        """Snapshot extraction should first try fetching exactly the requested commit."""
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+        with patch('evaluator.services.extraction_service.get_gitee_token') as mock_token, \
+             patch('evaluator.services.extraction_service._run_git') as mock_run_git, \
+             patch('evaluator.services.extraction_service._write_filtered_repo_snapshot') as mock_write_snapshot:
+
+            mock_token.return_value = None
+            mock_run_git.return_value = completed
+            mock_write_snapshot.return_value = {"included_count": 2, "skipped_count": 1}
+
+            result = extract_repo_files_at_commit_via_git(
+                "gitee",
+                "test_owner",
+                "test_repo",
+                temp_data_dir,
+                "abcdef1234567890",
+            )
+
+            assert result is True
+            git_commands = [call.args[0] for call in mock_run_git.call_args_list]
+            assert git_commands[0] == ["git", "init"]
+            assert git_commands[1] == ["git", "remote", "add", "origin", "https://gitee.com/test_owner/test_repo.git"]
+            assert git_commands[2] == ["git", "fetch", "--depth", "1", "--no-tags", "origin", "abcdef1234567890"]
+            assert git_commands[3] == ["git", "checkout", "--detach", "abcdef1234567890"]
+            mock_write_snapshot.assert_called_once()
+
     def test_extract_github_data_no_token(self, temp_data_dir):
         """Test GitHub extraction without token."""
         with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
@@ -88,6 +147,33 @@ class TestGitHubExtraction:
             # Verify command does not include token
             call_args = mock_subprocess.call_args
             assert "--token" not in call_args[0][0]
+
+    def test_extract_github_data_writes_latest_repo_snapshot(self, temp_data_dir):
+        """Successful GitHub extraction should store complete filtered repo files for latest SHA."""
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_github_token') as mock_token, \
+             patch('evaluator.services.extraction_service._try_write_latest_repo_snapshot') as mock_snapshot, \
+             patch('subprocess.run') as mock_subprocess:
+
+            mock_get_dir.return_value = temp_data_dir
+            mock_token.return_value = None
+            mock_snapshot.return_value = True
+
+            mock_result = Mock()
+            mock_result.returncode = 0
+            mock_result.stdout = "Extraction completed"
+            mock_result.stderr = ""
+            mock_subprocess.return_value = mock_result
+
+            commits_dir = temp_data_dir / "commits"
+            commits_dir.mkdir(parents=True, exist_ok=True)
+            (commits_dir / "abc123.json").write_text("{}", encoding="utf-8")
+            (temp_data_dir / "commits_index.json").write_text('[{"sha": "abc123"}]', encoding="utf-8")
+
+            result = extract_github_data("test_owner", "test_repo")
+
+            assert result is True
+            mock_snapshot.assert_called_once_with("github", "test_owner", "test_repo", temp_data_dir)
 
     def test_extract_github_data_subprocess_failure(self, temp_data_dir):
         """Test GitHub extraction when subprocess fails."""

@@ -16,13 +16,17 @@ EXCLUDED_PATH_PARTS = {
     "__pycache__",
     "build",
     "coverage",
+    "dataset",
+    "datasets",
     "dist",
     "dist-packages",
     "env",
+    "external",
     "htmlcov",
     "node_modules",
     "site-packages",
     "target",
+    "third_party",
     "venv",
     "vendor",
 }
@@ -82,8 +86,15 @@ EXCLUDED_EXTENSIONS = {
 }
 EXCLUDED_FILENAMES = {
     ".DS_Store",
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".npmrc",
+    ".pypirc",
     "Desktop.ini",
     "Thumbs.db",
+    "id_rsa",
+    "id_rsa.pub",
 }
 
 

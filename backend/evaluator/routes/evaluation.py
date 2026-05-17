@@ -85,7 +85,6 @@ async def evaluate_author(
                         data_dir=str(data_dir),
                         api_key=api_key,
                         model=model,
-                        mode="moderate",
                         language=language,
                     )
 
@@ -142,7 +141,6 @@ async def evaluate_author(
                 data_dir=str(data_dir),
                 api_key=api_key,
                 model=model,
-                mode="moderate",
                 language=language,
             )
 
@@ -223,7 +221,6 @@ async def evaluate_gitee_contributor(
             data_dir=str(get_repo_data_dir(platform, owner, repo)),
             api_key=api_key,
             model=DEFAULT_LLM_MODEL,
-            mode="moderate",
         )
 
         # Evaluate

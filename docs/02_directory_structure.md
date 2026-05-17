@@ -118,8 +118,7 @@ oscanner/
 
 - `tools/` - 数据提取工具
   - `extract_repo_data.py` - 仓库数据提取主工具
-  - `extract_repo_data_moderate.py` - 中等模式提取
-  - `extract_repo_data_conservative.py` - 保守模式提取
+  - `extract_repo_data_moderate.py` - 提取提交差异和相关文件上下文
   - `extract_repo_data_api.py` - API 模式提取
 
 - `analyzers/` - 代码分析器

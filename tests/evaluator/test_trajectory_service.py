@@ -206,6 +206,64 @@ class TestEnsureRepoDataSynced:
             assert success is False
             mock_extract.assert_not_called()
 
+    def test_ensure_repo_data_synced_refreshes_snapshot_for_requested_end_sha(self, temp_data_dir):
+        """A requested end_sha should refresh complete repo files even when commit data exists."""
+        from evaluator.services.trajectory_service import ensure_repo_data_synced
+
+        repo_dir = temp_data_dir / "github" / "test_owner" / "test_repo"
+        repo_dir.mkdir(parents=True)
+        (repo_dir / "commits_index.json").write_text('[{"sha": "latest"}]', encoding="utf-8")
+
+        with patch('evaluator.services.trajectory_service.parse_repo_url') as mock_parse, \
+             patch('evaluator.services.trajectory_service.get_platform_data_dir') as mock_data_dir, \
+             patch('evaluator.services.trajectory_service.extract_repo_files_at_commit_via_git') as mock_snapshot, \
+             patch('evaluator.services.trajectory_service.extract_github_data') as mock_extract:
+
+            mock_parse.return_value = ("github", "test_owner", "test_repo")
+            mock_data_dir.return_value = repo_dir
+            mock_snapshot.return_value = True
+
+            platform, owner, repo, success = ensure_repo_data_synced(
+                "https://github.com/test_owner/test_repo",
+                force_sync=False,
+                snapshot_sha="end123",
+            )
+
+            assert platform == "github"
+            assert owner == "test_owner"
+            assert repo == "test_repo"
+            assert success is True
+            mock_snapshot.assert_called_once_with("github", "test_owner", "test_repo", repo_dir, "end123")
+            mock_extract.assert_not_called()
+
+    def test_refresh_group_repo_snapshot_for_item_end_sha(self, temp_data_dir):
+        """Group repo items should refresh repo_files at each item's end_sha."""
+        from evaluator.services.trajectory_service import _refresh_group_repo_snapshot_for_end_sha
+
+        repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"
+        repo_dir.mkdir(parents=True)
+        sync_result = {
+            "success": True,
+            "platform": "gitee",
+            "owner": "test_owner",
+            "repo": "test_repo",
+        }
+
+        with patch('evaluator.services.trajectory_service.extract_repo_files_at_commit_via_git') as mock_snapshot:
+            mock_snapshot.return_value = True
+
+            updated_sync, refreshed = _refresh_group_repo_snapshot_for_end_sha(
+                "https://gitee.com/test_owner/test_repo",
+                {"end_sha": "end123"},
+                sync_result,
+                repo_dir,
+            )
+
+            assert refreshed is True
+            assert updated_sync["snapshot_sha"] == "end123"
+            assert updated_sync["snapshot_refreshed"] is True
+            mock_snapshot.assert_called_once_with("gitee", "test_owner", "test_repo", repo_dir, "end123")
+
     def test_ensure_repo_data_synced_force_sync_reextracts_when_data_exists(self, temp_data_dir):
         """Test that force_sync=True triggers re-extraction even with existing local data."""
         from evaluator.services.trajectory_service import ensure_repo_data_synced

@@ -71,7 +71,6 @@ evaluator = scan_mod.create_commit_evaluator(
     data_dir=str(get_platform_data_dir(platform, owner, repo)),
     api_key=get_llm_api_key(),
     model=model,
-    mode="moderate",
     previous_checkpoint_scores=previous_scores,
 )
 ```

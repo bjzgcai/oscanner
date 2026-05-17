@@ -4,11 +4,13 @@ import sys
 import subprocess
 import json
 import os
+import re
 import socket
 import base64
 import shutil
 import tempfile
 import requests
+import urllib.parse
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
@@ -17,6 +19,10 @@ from fastapi import HTTPException
 from evaluator.paths import get_platform_data_dir
 from evaluator.config import get_github_token, get_gitee_token
 from evaluator.utils import get_author_from_commit
+from evaluator.utils.data_loader import is_eval_relevant_path
+
+
+DEFAULT_REPO_SNAPSHOT_MAX_FILE_BYTES = 1_000_000
 
 
 def get_requests_session() -> requests.Session:
@@ -322,6 +328,7 @@ def sync_gitee_commits_by_sha(owner: str, repo: str, shas: List[str]) -> bool:
             ],
         },
     )
+    _try_write_latest_repo_snapshot("gitee", owner, repo, data_dir)
     return True
 
 
@@ -379,6 +386,203 @@ def _run_git(cmd: List[str], cwd: Optional[Path] = None, timeout: int = 120) -> 
     )
 
 
+def _is_probably_binary_file(path: Path, sample_size: int = 8192) -> bool:
+    try:
+        sample = path.read_bytes()[:sample_size]
+    except Exception:
+        return True
+    if b"\x00" in sample:
+        return True
+    if not sample:
+        return False
+    decoded = sample.decode("utf-8", errors="ignore")
+    return len(decoded) < max(1, int(len(sample) * 0.7))
+
+
+def _safe_repo_relative_path(root: Path, path: Path) -> Optional[str]:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return None
+
+
+def _write_filtered_repo_snapshot(
+    checkout_dir: Path,
+    output_dir: Path,
+    *,
+    end_sha: str,
+    max_file_bytes: int = DEFAULT_REPO_SNAPSHOT_MAX_FILE_BYTES,
+) -> Dict[str, Any]:
+    """Copy all evaluation-relevant text files from a checked-out repo snapshot."""
+    repo_files_dir = output_dir / "repo_files"
+    shutil.rmtree(repo_files_dir, ignore_errors=True)
+    repo_files_dir.mkdir(parents=True, exist_ok=True)
+
+    included: List[Dict[str, Any]] = []
+    skipped: List[Dict[str, str]] = []
+    total_bytes = 0
+
+    for path in sorted(checkout_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = _safe_repo_relative_path(checkout_dir, path)
+        if not rel:
+            continue
+        if rel.startswith(".git/") or rel == ".git":
+            continue
+        if not is_eval_relevant_path(rel):
+            skipped.append({"path": rel, "reason": "excluded_path"})
+            continue
+        try:
+            size = path.stat().st_size
+        except OSError:
+            skipped.append({"path": rel, "reason": "stat_failed"})
+            continue
+        if size > max_file_bytes:
+            skipped.append({"path": rel, "reason": "too_large"})
+            continue
+        if _is_probably_binary_file(path):
+            skipped.append({"path": rel, "reason": "binary"})
+            continue
+
+        dest = repo_files_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, dest)
+        included.append({"path": rel, "size": size})
+        total_bytes += size
+
+    manifest = {
+        "snapshot_type": "complete_filtered_repo_files",
+        "end_sha": end_sha,
+        "max_file_bytes": max_file_bytes,
+        "included_count": len(included),
+        "skipped_count": len(skipped),
+        "total_bytes": total_bytes,
+        "included_files": included,
+        "skipped_files": skipped,
+    }
+    _save_json(output_dir / "repo_files_manifest.json", manifest)
+    return manifest
+
+
+def _repo_git_url(platform: str, owner: str, repo: str) -> str:
+    if platform == "github":
+        return f"https://github.com/{owner}/{repo}.git"
+    if platform == "gitee":
+        return f"https://gitee.com/{owner}/{repo}.git"
+    raise ValueError(f"Unsupported platform: {platform}")
+
+
+def _inject_git_token(repo_url: str, platform: str) -> str:
+    token = None
+    if platform == "github":
+        token = get_github_token()
+    elif platform == "gitee":
+        token = get_gitee_token()
+    if not token:
+        return repo_url
+
+    parsed = urllib.parse.urlsplit(repo_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc or "@" in parsed.netloc:
+        return repo_url
+    quoted_token = urllib.parse.quote(token, safe="")
+    auth_netloc = f"oauth2:{quoted_token}@{parsed.netloc}"
+    return urllib.parse.urlunsplit((parsed.scheme, auth_netloc, parsed.path, parsed.query, parsed.fragment))
+
+
+def _mask_url_credentials(text: str) -> str:
+    try:
+        return re.sub(r"(https?://)[^/@\s]+@([^/\s]+)", r"\1***@\2", text or "")
+    except Exception:
+        return text or ""
+
+
+def extract_repo_files_at_commit_via_git(
+    platform: str,
+    owner: str,
+    repo: str,
+    output_dir: Path,
+    end_sha: str,
+    *,
+    max_file_bytes: int = DEFAULT_REPO_SNAPSHOT_MAX_FILE_BYTES,
+) -> bool:
+    """Fetch and store complete filtered repo files for a specific commit SHA."""
+    end_sha = str(end_sha or "").strip()
+    if not end_sha:
+        return False
+
+    repo_url = _inject_git_token(_repo_git_url(platform, owner, repo), platform)
+    try:
+        with tempfile.TemporaryDirectory(prefix=f"{platform}_{owner}_{repo}_snapshot_") as tmpdir:
+            checkout_dir = Path(tmpdir) / "repo"
+            checkout_dir.mkdir(parents=True, exist_ok=True)
+            init_result = _run_git(["git", "init"], cwd=checkout_dir, timeout=30)
+            if init_result.returncode != 0:
+                print(f"⚠ Repo snapshot git init failed: {_mask_url_credentials(init_result.stderr)}")
+                return False
+            remote_result = _run_git(["git", "remote", "add", "origin", repo_url], cwd=checkout_dir, timeout=30)
+            if remote_result.returncode != 0:
+                print(f"⚠ Repo snapshot git remote failed: {_mask_url_credentials(remote_result.stderr)}")
+                return False
+
+            fetch_attempts = [
+                ["git", "fetch", "--depth", "1", "--no-tags", "origin", end_sha],
+                ["git", "fetch", "--depth", "500", "--no-tags", "origin"],
+                ["git", "fetch", "--no-tags", "origin"],
+            ]
+            last_error = ""
+            fetched = False
+            for fetch_cmd in fetch_attempts:
+                fetch_result = _run_git(fetch_cmd, cwd=checkout_dir, timeout=600)
+                if fetch_result.returncode == 0:
+                    fetched = True
+                    break
+                last_error = fetch_result.stderr
+
+            if not fetched:
+                print(f"⚠ Repo snapshot fetch failed for {end_sha[:8]}: {_mask_url_credentials(last_error)}")
+                return False
+
+            checkout_result = _run_git(["git", "checkout", "--detach", end_sha], cwd=checkout_dir, timeout=120)
+            if checkout_result.returncode != 0:
+                checkout_result = _run_git(["git", "checkout", "--detach", "FETCH_HEAD"], cwd=checkout_dir, timeout=120)
+            if checkout_result.returncode != 0:
+                print(f"⚠ Repo snapshot checkout failed for {end_sha[:8]}: {_mask_url_credentials(checkout_result.stderr)}")
+                return False
+
+            manifest = _write_filtered_repo_snapshot(
+                checkout_dir,
+                output_dir,
+                end_sha=end_sha,
+                max_file_bytes=max_file_bytes,
+            )
+            print(
+                f"✓ Repo snapshot files stored for {platform}/{owner}/{repo}@{end_sha[:8]} "
+                f"({manifest['included_count']} files, {manifest['skipped_count']} skipped)"
+            )
+            return True
+    except subprocess.TimeoutExpired as e:
+        print(f"⚠ Repo snapshot git timeout: {e}")
+        return False
+    except Exception as e:
+        print(f"⚠ Repo snapshot extraction failed: {e}")
+        return False
+
+
+def _latest_index_sha(output_dir: Path) -> str:
+    index = _load_json_list(output_dir / "commits_index.json")
+    if not index:
+        return ""
+    return _get_commit_sha(index[0])
+
+
+def _try_write_latest_repo_snapshot(platform: str, owner: str, repo: str, output_dir: Path) -> bool:
+    latest_sha = _latest_index_sha(output_dir)
+    if not latest_sha:
+        return False
+    return extract_repo_files_at_commit_via_git(platform, owner, repo, output_dir, latest_sha)
+
+
 def _map_git_status(status_code: str) -> str:
     if not status_code:
         return "modified"
@@ -424,7 +628,7 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
     Fallback extractor that uses git CLI instead of GitHub API.
     Useful when GitHub REST API is unavailable (e.g., rate limit).
     """
-    repo_url = f"https://github.com/{owner}/{repo}.git"
+    repo_url = _inject_git_token(f"https://github.com/{owner}/{repo}.git", "github")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     commits_dir = output_dir / "commits"
@@ -633,21 +837,12 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
                 )
             _save_json(output_dir / "repo_structure.json", repo_structure)
 
-            files_fetched = 0
-            max_files = 100
-            for path, _count in sorted(files_context.items(), key=lambda kv: -kv[1])[:max_files]:
-                src_path = (clone_dir / path).resolve()
-                dst_path = (files_dir / path).resolve()
-                try:
-                    if not src_path.exists() or not src_path.is_file():
-                        continue
-                    if files_dir.resolve() not in dst_path.parents and dst_path != files_dir.resolve():
-                        continue
-                    dst_path.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(src_path, dst_path)
-                    files_fetched += 1
-                except Exception:
-                    continue
+            snapshot_manifest = _write_filtered_repo_snapshot(
+                clone_dir,
+                output_dir,
+                end_sha=shas[0],
+            )
+            files_fetched = int(snapshot_manifest.get("included_count") or 0)
 
             first_commit = commits_index[0]
             sync_state = {
@@ -735,6 +930,7 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500) -> bool:
             print("⚠ API extraction produced no commits, trying git-based fallback...")
             return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
 
+        _try_write_latest_repo_snapshot("github", owner, repo, output_dir)
         return True
 
     except subprocess.TimeoutExpired:
@@ -923,6 +1119,7 @@ def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -
         f"[Gitee Incremental] Added {len(new_details)} commits, "
         f"updated {files_fetched} file contents"
     )
+    _try_write_latest_repo_snapshot("gitee", owner, repo, data_dir)
     return True
 
 
@@ -1115,6 +1312,8 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
         repo_info = {"name": f"{owner}/{repo}", "full_name": f"{owner}/{repo}", "owner": owner, "platform": "gitee"}
         with open(data_dir / "repo_info.json", "w", encoding="utf-8") as f:
             json.dump(repo_info, f, indent=2, ensure_ascii=False)
+
+        _try_write_latest_repo_snapshot("gitee", owner, repo, data_dir)
 
         print(f"\n✓ Gitee extraction complete:")
         print(f"  - {len(commits_index)} commits")

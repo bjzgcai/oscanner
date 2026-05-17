@@ -801,6 +801,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 
 def cmd_extract(args: argparse.Namespace) -> int:
+    out_dir = Path(args.out).expanduser().resolve()
     # We run the extractor as a module so it works post-install and doesn't rely on CWD.
     cmd = [
         sys.executable,
@@ -809,13 +810,36 @@ def cmd_extract(args: argparse.Namespace) -> int:
         "--repo-url",
         args.repo_url,
         "--out",
-        str(Path(args.out).expanduser().resolve()),
+        str(out_dir),
         "--max-commits",
         str(args.max_commits),
     ]
     if args.token:
         cmd.extend(["--token", args.token])
-    return os.spawnv(os.P_WAIT, sys.executable, cmd)
+    rc = os.spawnv(os.P_WAIT, sys.executable, cmd)
+    if rc != 0:
+        return rc
+
+    try:
+        from backend.evaluator.services.trajectory_service import parse_repo_url
+        from backend.evaluator.services.extraction_service import _try_write_latest_repo_snapshot
+
+        platform, owner, repo = parse_repo_url(args.repo_url)
+        if platform == "github":
+            previous_token = os.environ.get("GITHUB_TOKEN")
+            if args.token:
+                os.environ["GITHUB_TOKEN"] = args.token
+            try:
+                _try_write_latest_repo_snapshot(platform, owner, repo, out_dir)
+            finally:
+                if args.token:
+                    if previous_token is None:
+                        os.environ.pop("GITHUB_TOKEN", None)
+                    else:
+                        os.environ["GITHUB_TOKEN"] = previous_token
+    except Exception as exc:
+        sys.stderr.write(f"[extract] Warning: repo snapshot extraction skipped: {exc}\n")
+    return 0
 
 
 def cmd_dashboard(args: argparse.Namespace) -> int:
@@ -1283,7 +1307,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_serve.set_defaults(func=cmd_serve)
 
-    p_extract = sub.add_parser("extract", help="Extract repo data (moderate mode)")
+    p_extract = sub.add_parser("extract", help="Extract repo data with diffs, file context, and filtered repo snapshot")
     p_extract.add_argument("repo_url", help="GitHub repository URL, e.g. https://github.com/owner/repo")
     p_extract.add_argument("--out", required=True, help="Output directory for extracted data")
     p_extract.add_argument("--token", help="GitHub token (or set GITHUB_TOKEN env var)")
@@ -1434,6 +1458,4 @@ def _get_distribution_version() -> str:
         return str(_PACKAGE_FALLBACK_VERSION)
     except Exception:
         return str(_PACKAGE_FALLBACK_VERSION)
-
-
 

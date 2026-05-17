@@ -43,7 +43,7 @@ class EvaluationSchema(BaseModel):
     username: str = Field(..., description="Author username or alias")
     total_commits_analyzed: int = Field(..., ge=0, description="Number of commits analyzed in this run")
     files_loaded: int = Field(0, ge=0, description="Number of file diffs loaded for analysis")
-    mode: str = Field("moderate", description="Evaluation mode (e.g., moderate, detailed)")
+    mode: str = Field("moderate", description="Evaluation context profile; currently always moderate")
 
     # Evaluation results
     scores: ScoresSchema = Field(..., description="Dimensional scores and reasoning")
