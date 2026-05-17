@@ -22,7 +22,7 @@ import math
 import os
 import re
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import httpx
 
@@ -250,7 +250,7 @@ class CommitEvaluatorModerate:
                 "\n\n期望实现功能（评价基线）:\n"
                 f"{self.expected_feature}\n"
                 "请把上面的期望实现功能作为本次整体评估的核心基线："
-                "检查提交、文件内容和仓库结构是否真正实现该功能。"
+                "只根据提交信息和提交差异检查是否真正实现该功能；仓库快照文件和仓库结构只能作为理解提交的背景。"
                 "如果实现缺失、不完整或只有表面痕迹，必须降低评分（相关维度分数），"
                 "并在 reasoning 中明确写出 **期望实现功能**、**缺失功能** 和扣分原因。"
             )
@@ -259,7 +259,8 @@ class CommitEvaluatorModerate:
             "\n\nEXPECTED FEATURE BASELINE:\n"
             f"{self.expected_feature}\n"
             "Use this expected feature as a core baseline for the overall evaluation. "
-            "Check whether the commits, file contents, and repository structure actually implement it. "
+            "Check whether the commit messages and commit diffs actually implement it. "
+            "Use repository snapshot files and repo structure only as background for understanding those commits. "
             "If the implementation is missing, incomplete, or only superficial, score lower on the relevant dimensions "
             "and explicitly report the expected feature, lacking feature, and scoring rationale in reasoning."
         )
@@ -823,7 +824,12 @@ class CommitEvaluatorModerate:
         if not commits:
             return self._get_empty_evaluation(repo_label)
         analyzed_commits = commits if max_commits is None else commits[: int(max_commits)]
-        if self._commits_exceed_prompt_budget(analyzed_commits, repo_label, load_files=load_files):
+        if self._commits_exceed_prompt_budget(
+            analyzed_commits,
+            repo_label,
+            load_files=load_files,
+            include_all_repo_snapshot=True,
+        ):
             return self._evaluate_engineer_chunked(analyzed_commits, repo_label, load_files=load_files)
         return self._evaluate_repository_standard(analyzed_commits, repo_label, load_files=load_files)
 
@@ -832,7 +838,7 @@ class CommitEvaluatorModerate:
         file_contents: Dict[str, str] = {}
         repo_structure: Optional[Dict[str, Any]] = None
         if load_files and self.data_dir:
-            file_contents = self._load_context_files(commits)
+            file_contents = self._load_context_files(commits, include_all_repo_snapshot=True)
             repo_structure = self._load_repo_structure()
 
         context_parts, checker_raw_analysis = self._build_context_parts(
@@ -929,11 +935,21 @@ class CommitEvaluatorModerate:
         prompt = self._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)
         return self._estimate_tokens(prompt)
 
-    def _commits_exceed_prompt_budget(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> bool:
+    def _commits_exceed_prompt_budget(
+        self,
+        commits: List[Dict[str, Any]],
+        username: str,
+        *,
+        load_files: bool,
+        include_all_repo_snapshot: bool = False,
+    ) -> bool:
         file_contents: Dict[str, str] = {}
         repo_structure: Optional[Dict[str, Any]] = None
         if load_files and self.data_dir:
-            file_contents = self._load_context_files(commits)
+            file_contents = self._load_context_files(
+                commits,
+                include_all_repo_snapshot=include_all_repo_snapshot,
+            )
             repo_structure = self._load_repo_structure()
         context = self._build_commit_context(
             commits,
@@ -1410,29 +1426,23 @@ class CommitEvaluatorModerate:
                                 all_python_files.add(filename)
                 
                 # Use the last commit SHA as the commit_sha (for API compatibility)
-                # Pass all Python files from checkpoint, or None to let checker scan entire repo
                 last_commit = commits[-1]
                 last_sha = last_commit.get("sha") or last_commit.get("hash") or ""
-                if last_sha:
-                    # Pass all Python files from checkpoint to checker
-                    # If no Python files found in commits, pass None to let checker scan entire repository
-                    python_files_list = list(all_python_files) if all_python_files else None
+                if last_sha and all_python_files:
+                    python_files_list = sorted(all_python_files)
                     result = self._run_checker(
                         self.forced_checker_id, 
                         platform, 
                         owner, 
                         repo, 
                         last_sha,
-                        files=python_files_list,  # Pass all Python files from checkpoint, or None for full repo scan
+                        files=python_files_list,
                         worktree_base=self.worktree_base
                     )
                     if result:  # Include result even if success=False, so frontend can display error info
                         # Update message to indicate checkpoint scope
                         message = result.get("message", "")
-                        if all_python_files:
-                            message = f"Checked {len(all_python_files)} Python files across {len(commits)} commits in checkpoint. {message}"
-                        else:
-                            message = f"Checked entire repository (no Python files in {len(commits)} commits). {message}"
+                        message = f"Checked {len(all_python_files)} Python files across {len(commits)} commits in checkpoint. {message}"
                         checker_results_summary.append({
                             "checker": self.forced_checker_id,
                             "commit": last_sha[:8],
@@ -1474,6 +1484,15 @@ class CommitEvaluatorModerate:
         
         # Build commits part
         commits_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
+        if repo_structure:
+            commits_parts.append("BACKGROUND REPO STRUCTURE (not scoring evidence; use only to understand commit diffs/messages):")
+            commits_parts.append(json.dumps(repo_structure, ensure_ascii=False)[:8000])
+            commits_parts.append("")
+        if file_contents:
+            commits_parts.append("BACKGROUND REPOSITORY FILES (not scoring evidence; use only to understand files referenced by commit diffs/messages):")
+            for p, content in file_contents.items():
+                commits_parts.append(f"\n--- FILE: {p} ---\n{content}")
+            commits_parts.append("")
         commits_parts.append("COMMITS:")
         commits_for_context = commits if commit_limit is None else commits[:commit_limit]
         for c in commits_for_context:
@@ -1486,22 +1505,7 @@ class CommitEvaluatorModerate:
                     patch = f.get("patch") or ""
                     commits_parts.append(f"  * {fn}\n{patch}")
         parts["commits"] = "\n".join(commits_parts)
-        
-        # Build file contents part
-        if file_contents:
-            files_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
-            files_parts.append("RELEVANT FILE CONTENTS:")
-            for p, content in file_contents.items():
-                files_parts.append(f"\n--- FILE: {p} ---\n{content}")
-            parts["file_contents"] = "\n".join(files_parts)
-        
-        # Build repo structure part
-        if repo_structure:
-            repo_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
-            repo_parts.append("REPO STRUCTURE (truncated):")
-            repo_parts.append(json.dumps(repo_structure, ensure_ascii=False)[:8000])
-            parts["repo_structure"] = "\n".join(repo_parts)
-        
+
         return parts, checker_raw_analysis
 
     def _build_commit_context(
@@ -1558,18 +1562,36 @@ class CommitEvaluatorModerate:
                                 "success": result.get("success", False),  # Include success status
                             })
             
-            # Force checker on last commit if forced_checker_id is set
+            # Force checker only on changed Python files; whole-repo checker output is not valid author/range evidence.
             if self.forced_checker_id and commits:
+                all_python_files = set()
+                for commit in commits:
+                    commit_files = commit.get("files", [])
+                    if isinstance(commit_files, list):
+                        for f in commit_files:
+                            filename = f.get("filename", "") if isinstance(f, dict) else str(f)
+                            if filename.endswith(".py"):
+                                all_python_files.add(filename)
                 last_commit = commits[-1]  # Last commit in the checkpoint
                 last_sha = last_commit.get("sha") or last_commit.get("hash") or ""
-                if last_sha:
-                    result = self._run_checker(self.forced_checker_id, platform, owner, repo, last_sha, worktree_base=self.worktree_base)
+                if last_sha and all_python_files:
+                    result = self._run_checker(
+                        self.forced_checker_id,
+                        platform,
+                        owner,
+                        repo,
+                        last_sha,
+                        files=sorted(all_python_files),
+                        worktree_base=self.worktree_base,
+                    )
                     if result:  # Include result even if success=False
+                        message = result.get("message", "")
+                        message = f"Checked {len(all_python_files)} Python files across {len(commits)} commits in checkpoint. {message}"
                         checker_results_summary.append({
                             "checker": self.forced_checker_id,
                             "commit": last_sha[:8],
                             "score": result.get("score", 0),
-                            "message": result.get("message", ""),
+                            "message": message,
                             "analysis": result.get("analysis", "") or result.get("error", ""),  # Include error if analysis is empty
                             "details": result.get("details", []),  # Function-level details
                             "success": result.get("success", False),  # Include success status
@@ -1600,11 +1622,11 @@ class CommitEvaluatorModerate:
                 parts.append("")  # Empty line between checkers
         
         if repo_structure:
-            parts.append("REPO STRUCTURE (truncated):")
+            parts.append("BACKGROUND REPO STRUCTURE (not scoring evidence; use only to understand commit diffs/messages):")
             parts.append(json.dumps(repo_structure, ensure_ascii=False)[:8000])
             parts.append("")
         if file_contents:
-            parts.append("RELEVANT FILE CONTENTS:")
+            parts.append("BACKGROUND REPOSITORY FILES (not scoring evidence; use only to understand files referenced by commit diffs/messages):")
             for p, content in file_contents.items():
                 parts.append(f"\n--- FILE: {p} ---\n{content}")
             parts.append("")
@@ -1672,21 +1694,39 @@ class CommitEvaluatorModerate:
                 continue
         return out
 
-    def _load_repo_snapshot_files(self) -> Dict[str, str]:
+    def _repo_snapshot_root(self) -> Optional[Path]:
         if not self.data_dir:
-            return {}
+            return None
         repo_files_dir = self.data_dir / "repo_files"
         manifest_path = self.data_dir / "repo_files_manifest.json"
         if not repo_files_dir.exists() or not repo_files_dir.is_dir() or not manifest_path.exists():
-            return {}
+            return None
+        return repo_files_dir
 
-        out: Dict[str, str] = {}
+    def _list_repo_snapshot_paths(self) -> List[str]:
+        repo_files_dir = self._repo_snapshot_root()
+        if not repo_files_dir:
+            return []
+        out: List[str] = []
         for abs_path in sorted(repo_files_dir.rglob("*")):
             if not abs_path.is_file():
                 continue
             try:
-                rel = abs_path.relative_to(repo_files_dir).as_posix()
+                out.append(abs_path.relative_to(repo_files_dir).as_posix())
             except ValueError:
+                continue
+        return out
+
+    def _load_repo_snapshot_files(self, selected_paths: Optional[Set[str]] = None) -> Dict[str, str]:
+        repo_files_dir = self._repo_snapshot_root()
+        if not repo_files_dir:
+            return {}
+
+        out: Dict[str, str] = {}
+        paths = self._list_repo_snapshot_paths() if selected_paths is None else sorted(selected_paths)
+        for rel in paths:
+            abs_path = repo_files_dir / rel
+            if not abs_path.is_file():
                 continue
             cache_key = f"repo_files/{rel}"
             if cache_key in self._file_cache:
@@ -1700,10 +1740,115 @@ class CommitEvaluatorModerate:
                 continue
         return out
 
-    def _load_context_files(self, commits: List[Dict[str, Any]]) -> Dict[str, str]:
-        repo_snapshot = self._load_repo_snapshot_files()
-        if repo_snapshot:
-            return repo_snapshot
+    def _changed_file_paths(self, commits: List[Dict[str, Any]]) -> List[str]:
+        paths: List[str] = []
+        for commit in commits:
+            for file_item in commit.get("files") or []:
+                if not isinstance(file_item, dict):
+                    continue
+                filename = str(file_item.get("filename") or "").strip()
+                if filename:
+                    paths.append(filename)
+        seen: Set[str] = set()
+        return [p for p in paths if not (p in seen or seen.add(p))]
+
+    def _root_context_paths_for_changes(self, changed_paths: Set[str], available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        root_candidates: Dict[str, Tuple[str, ...]] = {
+            "python": ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "tox.ini", "pytest.ini"),
+            "node": ("package.json", "tsconfig.json", "jsconfig.json", "vite.config.ts", "vite.config.js", "next.config.js", "next.config.mjs"),
+            "container": ("Dockerfile", "docker-compose.yml", "compose.yml", ".github/workflows/ci.yml"),
+        }
+
+        has_python = any(path.endswith((".py", ".pyi")) for path in changed_paths)
+        has_node = any(path.endswith((".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")) for path in changed_paths)
+        has_container = any(
+            path == "Dockerfile"
+            or path.endswith(("Dockerfile", "docker-compose.yml", "compose.yml"))
+            or path.startswith(".github/workflows/")
+            for path in changed_paths
+        )
+
+        groups: List[str] = []
+        if has_python:
+            groups.append("python")
+        if has_node:
+            groups.append("node")
+        if has_container:
+            groups.append("container")
+
+        for group in groups:
+            selected.update(path for path in root_candidates[group] if path in available_paths)
+        return selected
+
+    def _python_import_candidates(self, source_path: str, content: str, available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        source_dir = Path(source_path).parent
+        modules: List[str] = []
+        for match in re.finditer(r"^\s*from\s+([.\w]+)\s+import\s+[\w*({]", content, flags=re.MULTILINE):
+            modules.append(match.group(1))
+        for match in re.finditer(r"^\s*import\s+([.\w]+)", content, flags=re.MULTILINE):
+            modules.extend(part.strip().split(" as ")[0] for part in match.group(1).split(","))
+
+        for module in modules:
+            if not module:
+                continue
+            if module.startswith("."):
+                rel_parts = [part for part in module.lstrip(".").split(".") if part]
+                module_path = source_dir.joinpath(*rel_parts).as_posix() if rel_parts else source_dir.as_posix()
+            else:
+                module_path = "/".join(part for part in module.split(".") if part)
+            for candidate in (f"{module_path}.py", f"{module_path}/__init__.py"):
+                if candidate in available_paths:
+                    selected.add(candidate)
+        return selected
+
+    def _js_import_candidates(self, source_path: str, content: str, available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        source_dir = Path(source_path).parent
+        imports = re.findall(r"(?:from\s+|import\s*\(|require\()\s*['\"]([^'\"]+)['\"]", content)
+        extensions = ("", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css")
+        for specifier in imports:
+            if not specifier.startswith("."):
+                continue
+            base = source_dir.joinpath(specifier).as_posix()
+            candidates: List[str] = []
+            for ext in extensions:
+                candidates.append(f"{base}{ext}")
+            for ext in extensions[1:]:
+                candidates.append(f"{base}/index{ext}")
+            selected.update(candidate for candidate in candidates if candidate in available_paths)
+        return selected
+
+    def _related_context_paths(self, changed_paths: Set[str], changed_contents: Dict[str, str], available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        for path, content in changed_contents.items():
+            if path.endswith((".py", ".pyi")):
+                selected.update(self._python_import_candidates(path, content, available_paths))
+            elif path.endswith((".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")):
+                selected.update(self._js_import_candidates(path, content, available_paths))
+        selected.difference_update(changed_paths)
+        return selected
+
+    def _select_repo_context_paths(self, commits: List[Dict[str, Any]]) -> Set[str]:
+        available_paths = set(self._list_repo_snapshot_paths())
+        if not available_paths:
+            return set()
+
+        changed_paths = {path for path in self._changed_file_paths(commits) if path in available_paths}
+        changed_contents = self._load_repo_snapshot_files(changed_paths)
+
+        selected = set(changed_paths)
+        selected.update(self._related_context_paths(changed_paths, changed_contents, available_paths))
+        selected.update(self._root_context_paths_for_changes(changed_paths, available_paths))
+        return selected
+
+    def _load_context_files(self, commits: List[Dict[str, Any]], *, include_all_repo_snapshot: bool = False) -> Dict[str, str]:
+        if self._repo_snapshot_root():
+            if include_all_repo_snapshot:
+                return self._load_repo_snapshot_files()
+            selected_paths = self._select_repo_context_paths(commits)
+            return self._load_repo_snapshot_files(selected_paths)
         return self._load_relevant_files(commits)
 
     def _load_repo_structure(self) -> Optional[Dict[str, Any]]:
@@ -1747,7 +1892,10 @@ class CommitEvaluatorModerate:
         # Language-specific instructions
         if is_chinese:
             base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的{part_label}数据，并对每个维度评分（0-100分）。'
-            mode_note = "\n注意：这是多阶段评估的一部分，请基于这部分数据给出初步评分。"
+            mode_note = (
+                "\n注意：这是多阶段评估的一部分。只有提交信息、提交差异（commit diffs）和代码检查器结果可以作为评分证据。"
+                "仓库快照文件和仓库结构只能作为背景帮助理解提交，不得单独用于评分或作为证据引用。"
+            )
             chunked_instruction = ""
             if chunk_idx:
                 chunked_instruction = "\n分块评估：基于之前的评分和新证据更新分数。"
@@ -1756,7 +1904,12 @@ class CommitEvaluatorModerate:
             return_json_instruction = "重要：必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON，格式如下："
         else:
             base_instruction = f'You are an expert engineering evaluator. Analyze {part_label} data from user "{username}" and score each dimension 0-100.'
-            mode_note = "\nNOTE: This is part of a multi-stage evaluation. Provide preliminary scores based on this part of the data."
+            mode_note = (
+                "\nNOTE: This is part of a multi-stage evaluation. "
+                "Only commit messages, commit diffs, and checker results are scoring evidence. "
+                "Repository snapshot files and repo structure are background only. "
+                "Do not cite repository snapshot files or repo structure as evidence unless the same path appears in a commit message or diff."
+            )
             chunked_instruction = ""
             if chunk_idx:
                 chunked_instruction = "\nCHUNKED: Revise the previous assessment by incorporating new evidence."
@@ -1784,7 +1937,7 @@ class CommitEvaluatorModerate:
             reasoning_example = (
                 f"基于{part_label}数据，按四个维度组织 reasoning："
                 "**规范与内建质量**、**云原生与架构演进**、**AI工程与自动演进**、**工程修养与职业素养**。"
-                "每个维度写出评分对应的 L1-L5 等级，并引用可见证据（commit sha、commit message、文件名/路径）。"
+                "每个维度写出评分对应的 L1-L5 等级，并引用来自 commit sha、commit message 和 commit diff 的可见证据（文件名/路径必须来自提交差异或提交信息）。"
                 "最后写 **结论与建议**，该部分只给总结和建议，不重复证明细节。"
             )
             format_note = "每个维度评分范围：0-100"
@@ -1793,7 +1946,7 @@ class CommitEvaluatorModerate:
                 f"Based on {part_label} data, structure reasoning by the four dimensions: "
                 "**Specification & Built-in Quality**, **Cloud-Native & Architecture Evolution**, "
                 "**AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. "
-                "For each dimension include the L1-L5 level and visible evidence (commit sha, commit message, file names/paths). "
+                "For each dimension include the L1-L5 level and visible evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). "
                 "End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details."
             )
             format_note = "Each dimension: score 0-100"
@@ -1842,8 +1995,6 @@ class CommitEvaluatorModerate:
         part_weights = {
             "checker_results": 2.0,  # Checker results are most important
             "commits": 1.5,           # Commits are important
-            "file_contents": 1.0,     # File contents provide context
-            "repo_structure": 0.5,    # Repo structure is less important
         }
         
         # Collect all scores with weights
@@ -1856,6 +2007,11 @@ class CommitEvaluatorModerate:
             part_name = "unknown"
             if hasattr(result, 'get') and isinstance(result, dict):
                 part_name = result.get("_part_name", "unknown")
+            if part_name == "unknown":
+                part_name = "commits"
+
+            if part_name not in part_weights:
+                continue
             
             weight = part_weights.get(part_name, 1.0)
             
@@ -1870,8 +2026,6 @@ class CommitEvaluatorModerate:
                 part_label = {
                     "checker_results": "代码质量检查器" if is_chinese else "Code Quality Checker",
                     "commits": "提交记录" if is_chinese else "Commits",
-                    "file_contents": "文件内容" if is_chinese else "File Contents",
-                    "repo_structure": "仓库结构" if is_chinese else "Repository Structure",
                 }.get(part_name, part_name)
                 all_reasonings.append(f"**{part_label}**: {result['reasoning']}")
         
@@ -1955,7 +2109,10 @@ class CommitEvaluatorModerate:
         # Language-specific instructions
         if is_chinese:
             base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的数据，并对每个维度评分（0-100分）。'
-            mode_note = "\n注意：你可能会看到提交差异（commit diffs）和文件内容。在有帮助的情况下请使用文件内容。"
+            mode_note = (
+                "\n注意：只有提交信息、提交差异（commit diffs）和代码检查器结果可以作为评分证据。"
+                "仓库快照文件和仓库结构只能作为背景帮助理解提交，不得单独用于评分或作为证据引用。"
+            )
             chunked_instruction = ""
             if chunk_idx:
                 chunked_instruction = "\n分块评估：基于之前的评分和新证据更新分数。提供完整的推理过程，包括**主要优势**、**改进空间**、**整体评估**部分（不要重复部分）。"
@@ -1964,7 +2121,11 @@ class CommitEvaluatorModerate:
             return_json_instruction = "仅返回有效的JSON格式"
         else:
             base_instruction = f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
-            mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
+            mode_note = (
+                "\nNOTE: Only commit messages, commit diffs, and checker results are scoring evidence. "
+                "Repository snapshot files and repo structure are background only. "
+                "Do not cite repository snapshot files or repo structure as evidence unless the same path appears in a commit message or diff."
+            )
             chunked_instruction = ""
             if chunk_idx:
                 chunked_instruction = "\nCHUNKED: Revise the previous assessment by incorporating new evidence. Provide ONE consolidated reasoning with updated Key Strengths, Areas for Growth, and Overall Assessment sections (do not repeat sections)."
@@ -1992,7 +2153,7 @@ class CommitEvaluatorModerate:
             reasoning_example = (
                 "使用评分标准。reasoning 必须包含四个维度章节："
                 "**规范与内建质量**、**云原生与架构演进**、**AI工程与自动演进**、**工程修养与职业素养**。"
-                "每个章节写明该维度分数、L1-L5 等级，并列出证据（commit sha、commit message、文件名/路径）。"
+                "每个章节写明该维度分数、L1-L5 等级，并列出来自 commit sha、commit message 和 commit diff 的证据（文件名/路径必须来自提交差异或提交信息）。"
                 "最后提供 **结论与建议**，只总结和给建议，不重复证明细节。"
             )
             format_note = "每个维度评分范围：0-100"
@@ -2002,7 +2163,7 @@ class CommitEvaluatorModerate:
                 "Use the rubric. The reasoning must contain four dimension sections: "
                 "**Specification & Built-in Quality**, **Cloud-Native & Architecture Evolution**, "
                 "**AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. "
-                "Each section must include the dimension score, L1-L5 level, and evidence (commit sha, commit message, file names/paths). "
+                "Each section must include the dimension score, L1-L5 level, and evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). "
                 "End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details."
             )
             format_note = "Each dimension: score 0-100"

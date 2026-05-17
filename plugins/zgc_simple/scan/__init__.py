@@ -22,8 +22,9 @@ TRAJECTORY EVALUATION:
 import copy
 import json
 import os
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import httpx
 
@@ -31,7 +32,7 @@ import httpx
 class CommitEvaluatorModerate:
     """
     Self-contained moderate evaluator:
-    - Uses commit diffs + optional local file contents under data_dir
+    - Uses commit diffs as evidence + optional local file contents as background
     - Calls OpenAI-compatible chat completions endpoint via requests
     """
 
@@ -116,14 +117,16 @@ class CommitEvaluatorModerate:
             return (
                 "\n\n期望实现功能（评价基线）:\n"
                 f"{self.expected_feature}\n"
-                "请检查提交和文件内容是否真正实现该功能；如缺失或不完整，请降低相关维度评分，"
+                "请只根据提交信息和提交差异判断该功能是否真正实现；文件内容只能作为理解提交的背景。"
+                "如缺失或不完整，请降低相关维度评分，"
                 "并在 reasoning 中说明 **期望实现功能** 和 **缺失功能**。"
             )
 
         return (
             "\n\nEXPECTED FEATURE BASELINE:\n"
             f"{self.expected_feature}\n"
-            "Check whether the commits and file contents actually implement this feature. "
+            "Check whether the commit messages and commit diffs actually implement this feature. "
+            "Use repository files only as background for understanding those commits. "
             "If it is missing or incomplete, score lower on relevant dimensions and report the expected feature and lacking feature in reasoning."
         )
 
@@ -570,28 +573,22 @@ class CommitEvaluatorModerate:
                                 all_python_files.add(filename)
                 
                 # Use the last commit SHA as the commit_sha (for API compatibility)
-                # Pass all Python files from checkpoint, or None to let checker scan entire repo
                 last_commit = commits[-1]
                 last_sha = last_commit.get("sha") or last_commit.get("hash") or ""
-                if last_sha:
-                    # Pass all Python files from checkpoint to checker
-                    # If no Python files found in commits, pass None to let checker scan entire repository
-                    python_files_list = list(all_python_files) if all_python_files else None
+                if last_sha and all_python_files:
+                    python_files_list = sorted(all_python_files)
                     result = self._run_checker(
                         self.forced_checker_id, 
                         platform, 
                         owner, 
                         repo, 
                         last_sha,
-                        files=python_files_list  # Pass all Python files from checkpoint, or None for full repo scan
+                        files=python_files_list
                     )
                     if result and result.get("success"):
                         # Update message to indicate checkpoint scope
                         message = result.get("message", "")
-                        if all_python_files:
-                            message = f"Checked {len(all_python_files)} Python files across {len(commits)} commits in checkpoint. {message}"
-                        else:
-                            message = f"Checked entire repository (no Python files in {len(commits)} commits). {message}"
+                        message = f"Checked {len(all_python_files)} Python files across {len(commits)} commits in checkpoint. {message}"
                         checker_results_summary.append({
                             "checker": self.forced_checker_id,
                             "commit": last_sha[:8],
@@ -621,11 +618,11 @@ class CommitEvaluatorModerate:
                 parts.append("")  # Empty line between checkers
         
         if repo_structure:
-            parts.append("REPO STRUCTURE (truncated):")
+            parts.append("BACKGROUND REPO STRUCTURE (not scoring evidence; use only to understand commit diffs/messages):")
             parts.append(json.dumps(repo_structure, ensure_ascii=False)[:8000])
             parts.append("")
         if file_contents:
-            parts.append("RELEVANT FILE CONTENTS:")
+            parts.append("BACKGROUND REPOSITORY FILES (not scoring evidence; use only to understand files referenced by commit diffs/messages):")
             for p, content in file_contents.items():
                 parts.append(f"\n--- FILE: {p} ---\n{content}")
             parts.append("")
@@ -694,21 +691,39 @@ class CommitEvaluatorModerate:
                 continue
         return out
 
-    def _load_repo_snapshot_files(self) -> Dict[str, str]:
+    def _repo_snapshot_root(self) -> Optional[Path]:
         if not self.data_dir:
-            return {}
+            return None
         repo_files_dir = self.data_dir / "repo_files"
         manifest_path = self.data_dir / "repo_files_manifest.json"
         if not repo_files_dir.exists() or not repo_files_dir.is_dir() or not manifest_path.exists():
-            return {}
+            return None
+        return repo_files_dir
 
-        out: Dict[str, str] = {}
+    def _list_repo_snapshot_paths(self) -> List[str]:
+        repo_files_dir = self._repo_snapshot_root()
+        if not repo_files_dir:
+            return []
+        out: List[str] = []
         for abs_path in sorted(repo_files_dir.rglob("*")):
             if not abs_path.is_file():
                 continue
             try:
-                rel = abs_path.relative_to(repo_files_dir).as_posix()
+                out.append(abs_path.relative_to(repo_files_dir).as_posix())
             except ValueError:
+                continue
+        return out
+
+    def _load_repo_snapshot_files(self, selected_paths: Optional[Set[str]] = None) -> Dict[str, str]:
+        repo_files_dir = self._repo_snapshot_root()
+        if not repo_files_dir:
+            return {}
+
+        out: Dict[str, str] = {}
+        paths = self._list_repo_snapshot_paths() if selected_paths is None else sorted(selected_paths)
+        for rel in paths:
+            abs_path = repo_files_dir / rel
+            if not abs_path.is_file():
                 continue
             cache_key = f"repo_files/{rel}"
             if cache_key in self._file_cache:
@@ -722,10 +737,115 @@ class CommitEvaluatorModerate:
                 continue
         return out
 
-    def _load_context_files(self, commits: List[Dict[str, Any]]) -> Dict[str, str]:
-        repo_snapshot = self._load_repo_snapshot_files()
-        if repo_snapshot:
-            return repo_snapshot
+    def _changed_file_paths(self, commits: List[Dict[str, Any]]) -> List[str]:
+        paths: List[str] = []
+        for commit in commits:
+            for file_item in commit.get("files") or []:
+                if not isinstance(file_item, dict):
+                    continue
+                filename = str(file_item.get("filename") or "").strip()
+                if filename:
+                    paths.append(filename)
+        seen: Set[str] = set()
+        return [p for p in paths if not (p in seen or seen.add(p))]
+
+    def _root_context_paths_for_changes(self, changed_paths: Set[str], available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        root_candidates: Dict[str, Tuple[str, ...]] = {
+            "python": ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "tox.ini", "pytest.ini"),
+            "node": ("package.json", "tsconfig.json", "jsconfig.json", "vite.config.ts", "vite.config.js", "next.config.js", "next.config.mjs"),
+            "container": ("Dockerfile", "docker-compose.yml", "compose.yml", ".github/workflows/ci.yml"),
+        }
+
+        has_python = any(path.endswith((".py", ".pyi")) for path in changed_paths)
+        has_node = any(path.endswith((".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")) for path in changed_paths)
+        has_container = any(
+            path == "Dockerfile"
+            or path.endswith(("Dockerfile", "docker-compose.yml", "compose.yml"))
+            or path.startswith(".github/workflows/")
+            for path in changed_paths
+        )
+
+        groups: List[str] = []
+        if has_python:
+            groups.append("python")
+        if has_node:
+            groups.append("node")
+        if has_container:
+            groups.append("container")
+
+        for group in groups:
+            selected.update(path for path in root_candidates[group] if path in available_paths)
+        return selected
+
+    def _python_import_candidates(self, source_path: str, content: str, available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        source_dir = Path(source_path).parent
+        modules: List[str] = []
+        for match in re.finditer(r"^\s*from\s+([.\w]+)\s+import\s+[\w*({]", content, flags=re.MULTILINE):
+            modules.append(match.group(1))
+        for match in re.finditer(r"^\s*import\s+([.\w]+)", content, flags=re.MULTILINE):
+            modules.extend(part.strip().split(" as ")[0] for part in match.group(1).split(","))
+
+        for module in modules:
+            if not module:
+                continue
+            if module.startswith("."):
+                rel_parts = [part for part in module.lstrip(".").split(".") if part]
+                module_path = source_dir.joinpath(*rel_parts).as_posix() if rel_parts else source_dir.as_posix()
+            else:
+                module_path = "/".join(part for part in module.split(".") if part)
+            for candidate in (f"{module_path}.py", f"{module_path}/__init__.py"):
+                if candidate in available_paths:
+                    selected.add(candidate)
+        return selected
+
+    def _js_import_candidates(self, source_path: str, content: str, available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        source_dir = Path(source_path).parent
+        imports = re.findall(r"(?:from\s+|import\s*\(|require\()\s*['\"]([^'\"]+)['\"]", content)
+        extensions = ("", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css")
+        for specifier in imports:
+            if not specifier.startswith("."):
+                continue
+            base = source_dir.joinpath(specifier).as_posix()
+            candidates: List[str] = []
+            for ext in extensions:
+                candidates.append(f"{base}{ext}")
+            for ext in extensions[1:]:
+                candidates.append(f"{base}/index{ext}")
+            selected.update(candidate for candidate in candidates if candidate in available_paths)
+        return selected
+
+    def _related_context_paths(self, changed_paths: Set[str], changed_contents: Dict[str, str], available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        for path, content in changed_contents.items():
+            if path.endswith((".py", ".pyi")):
+                selected.update(self._python_import_candidates(path, content, available_paths))
+            elif path.endswith((".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")):
+                selected.update(self._js_import_candidates(path, content, available_paths))
+        selected.difference_update(changed_paths)
+        return selected
+
+    def _select_repo_context_paths(self, commits: List[Dict[str, Any]]) -> Set[str]:
+        available_paths = set(self._list_repo_snapshot_paths())
+        if not available_paths:
+            return set()
+
+        changed_paths = {path for path in self._changed_file_paths(commits) if path in available_paths}
+        changed_contents = self._load_repo_snapshot_files(changed_paths)
+
+        selected = set(changed_paths)
+        selected.update(self._related_context_paths(changed_paths, changed_contents, available_paths))
+        selected.update(self._root_context_paths_for_changes(changed_paths, available_paths))
+        return selected
+
+    def _load_context_files(self, commits: List[Dict[str, Any]], *, include_all_repo_snapshot: bool = False) -> Dict[str, str]:
+        if self._repo_snapshot_root():
+            if include_all_repo_snapshot:
+                return self._load_repo_snapshot_files()
+            selected_paths = self._select_repo_context_paths(commits)
+            return self._load_repo_snapshot_files(selected_paths)
         return self._load_relevant_files(commits)
 
     def _load_repo_structure(self) -> Optional[Dict[str, Any]]:
@@ -804,7 +924,10 @@ class CommitEvaluatorModerate:
         # Language-specific instructions
         if is_chinese:
             base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的数据，并对每个维度评分（0-100分）。'
-            mode_note = "\n注意：你可能会看到提交差异（commit diffs）和文件内容。在有帮助的情况下请使用文件内容。"
+            mode_note = (
+                "\n注意：只有提交信息、提交差异（commit diffs）和代码检查器结果可以作为评分证据。"
+                "仓库快照文件和仓库结构只能作为背景帮助理解提交，不得单独用于评分或作为证据引用。"
+            )
             chunked_instruction = ""
             if chunk_idx:
                 chunked_instruction = "\n分块评估：基于之前的评分和新证据更新分数；提供完整的推理过程。"
@@ -813,7 +936,11 @@ class CommitEvaluatorModerate:
             return_json_instruction = "仅返回有效的JSON格式"
         else:
             base_instruction = f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
-            mode_note = "\nNOTE: You may see both commit diffs AND file contents. Use file contents when helpful."
+            mode_note = (
+                "\nNOTE: Only commit messages, commit diffs, and checker results are scoring evidence. "
+                "Repository snapshot files and repo structure are background only. "
+                "Do not cite repository snapshot files or repo structure as evidence unless the same path appears in a commit message or diff."
+            )
             chunked_instruction = ""
             if chunk_idx:
                 chunked_instruction = "\nCHUNKED: Update scores based on previous + new evidence; provide full reasoning."
@@ -838,11 +965,15 @@ class CommitEvaluatorModerate:
         dims_text = "\n".join(dim_lines)
 
         if is_chinese:
-            reasoning_example = "提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。如期望实现功能缺失，请说明缺失功能。"
+            reasoning_example = "提供包含 **主要优势**、**改进空间**、**整体评估** 的推理过程。证据必须来自 commit sha、commit message 和 commit diff 中的文件路径/改动；如期望实现功能缺失，请说明缺失功能。"
             format_note = "每个维度评分范围：0-100"
             json_instruction = "重要：必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON，格式如下："
         else:
-            reasoning_example = "Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**. If the expected feature is lacking, describe the lacking feature."
+            reasoning_example = (
+                "Provide sections with **Key Strengths**, **Areas for Growth**, **Overall Assessment**. "
+                "Evidence must come from commit sha, commit message, and file paths/changes visible in commit diffs. "
+                "If the expected feature is lacking, describe the lacking feature."
+            )
             format_note = "Each dimension: score 0-100"
             json_instruction = "IMPORTANT: Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly in this format:"
 
