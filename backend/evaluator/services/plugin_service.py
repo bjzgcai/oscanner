@@ -1,6 +1,5 @@
 """Plugin discovery and management service."""
 
-from pathlib import Path
 from typing import Optional
 from fastapi import HTTPException
 
@@ -44,27 +43,3 @@ def resolve_plugin_id(requested: Optional[str]) -> str:
     if default_id:
         return default_id
     raise HTTPException(status_code=500, detail="No plugins discovered (plugins/ directory missing?)")
-
-
-def get_evaluation_cache_path(eval_dir: Path, author: str, plugin_id: str, default_id: Optional[str]) -> Path:
-    """
-    Construct cache file path for evaluation results.
-
-    Args:
-        eval_dir: Evaluation directory
-        author: Author name
-        plugin_id: Plugin ID
-        default_id: Default plugin ID (for legacy compatibility)
-
-    Returns:
-        Path to cache file
-    """
-    safe_author = (author or "").strip().lower()
-    if not safe_author:
-        safe_author = "unknown"
-    # Keep legacy path for default plugin to preserve existing caches.
-    if default_id and plugin_id == default_id:
-        return eval_dir / f"{safe_author}.json"
-    if plugin_id in ("", "builtin"):
-        return eval_dir / f"{safe_author}.json"
-    return eval_dir / f"{safe_author}__{plugin_id}.json"

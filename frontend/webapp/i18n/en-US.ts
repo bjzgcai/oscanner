@@ -6,10 +6,6 @@ export const enUS: Messages = {
   'nav.analysis': 'Analysis',
   'nav.validation': 'Validation',
   'nav.api': 'API',
-  'nav.cache.tooltip':
-    'When enabled, evaluations may reuse cached results + latest commits; when disabled, it forces a fresh evaluation (requires LLM key).',
-  'nav.cache.on': 'cache',
-  'nav.cache.off': 'no cache',
   'nav.plugin': 'Plugin',
   'nav.model': 'Model',
   'nav.language': 'Language',
@@ -186,7 +182,6 @@ export const enUS: Messages = {
   // Settings
   'validation.settings.model': 'Model',
   'validation.settings.plugin': 'Plugin',
-  'validation.settings.cache': 'Cache',
   'validation.settings.enabled': 'Enabled',
   'validation.settings.disabled': 'Disabled',
 
@@ -294,7 +289,7 @@ export const enUS: Messages = {
   'trajectory.error.llm_failed': 'LLM request failed. Please check your LLM API key configuration in Settings.',
   'trajectory.error.retry_suggestion': 'You can try: 1) Check LLM Settings, 2) Retry the analysis, 3) Check network connection',
   'trajectory.new_checkpoint': 'New checkpoint created! Analyzed 3 new commits.',
-  'trajectory.insufficient_commits': 'Less than 3 new commits (currently {pending}). Showing cached trajectory.',
+  'trajectory.insufficient_commits': 'Less than 3 new commits (currently {pending}).',
   'trajectory.no_data': 'No trajectory data yet. Click analyze to start tracking.',
   'trajectory.no_checkpoints': 'No checkpoints yet. Need at least 3 commits to create the first checkpoint.',
   'trajectory.username': 'Username',

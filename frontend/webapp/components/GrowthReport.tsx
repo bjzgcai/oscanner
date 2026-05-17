@@ -3,10 +3,10 @@
 import { Card, Button, Space, Divider } from 'antd';
 import { DownloadOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useI18n } from './I18nContext';
-import { TrajectoryCache, TrajectoryCheckpoint } from '@/types/trajectory';
+import { TrajectoryData, TrajectoryCheckpoint } from '@/types/trajectory';
 
 interface GrowthReportProps {
-  trajectory: TrajectoryCache;
+  trajectory: TrajectoryData;
 }
 
 export default function GrowthReport({ trajectory }: GrowthReportProps) {

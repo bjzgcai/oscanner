@@ -18,7 +18,7 @@ export default function ValidationRunner({
   onLog,
 }: ValidationRunnerProps) {
   const { t } = useI18n();
-  const { model, pluginId, useCache } = useAppSettings();
+  const { model, pluginId } = useAppSettings();
   const [isRunning, setIsRunning] = useState(false);
   const [subset, setSubset] = useState<string | undefined>(undefined);
   const [quickMode, setQuickMode] = useState(true);
@@ -166,9 +166,6 @@ export default function ValidationRunner({
         <Descriptions column={2} size="small">
           <Descriptions.Item label={t('validation.settings.model')}>{model}</Descriptions.Item>
           <Descriptions.Item label={t('validation.settings.plugin')}>{pluginId}</Descriptions.Item>
-          <Descriptions.Item label={t('validation.settings.cache')}>
-            {useCache ? t('validation.settings.enabled') : t('validation.settings.disabled')}
-          </Descriptions.Item>
         </Descriptions>
       </Card>
     </div>

@@ -7,9 +7,7 @@ import tempfile
 import shutil
 import sys
 import json
-import inspect
 from datetime import datetime, timedelta
-from fastapi.params import Query
 
 # Add project root to path if not already there
 project_root = Path(__file__).parent.parent.parent
@@ -22,92 +20,8 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 from evaluator.services.trajectory_service import (
-    load_trajectory_cache,
-    save_trajectory_cache,
     get_commits_by_date,
 )
-
-
-class TestTrajectoryCache:
-    """Test trajectory cache functionality."""
-
-    @pytest.fixture
-    def temp_cache_dir(self):
-        """Create a temporary directory for cache."""
-        temp_dir = tempfile.mkdtemp()
-        yield Path(temp_dir)
-        shutil.rmtree(temp_dir)
-
-    def test_load_trajectory_cache_not_exists(self, temp_cache_dir):
-        """Test loading non-existent cache."""
-        with patch('evaluator.services.trajectory_service.get_trajectory_cache_path') as mock_path:
-            mock_path.return_value = temp_cache_dir / "nonexistent.json"
-            
-            result = load_trajectory_cache("test_user")
-            
-            assert result is None
-
-    def test_load_trajectory_cache_exists(self, temp_cache_dir):
-        """Test loading existing cache."""
-        cache_file = temp_cache_dir / "test_user.json"
-        cache_data = {
-            "username": "test_user",
-            "repo_urls": ["https://github.com/test/repo"],
-            "checkpoints": [],
-            "last_synced_sha": None,
-            "last_synced_at": None,
-            "total_checkpoints": 0
-        }
-        
-        with open(cache_file, 'w', encoding='utf-8') as f:
-            json.dump(cache_data, f)
-        
-        with patch('evaluator.services.trajectory_service.get_trajectory_cache_path') as mock_path:
-            mock_path.return_value = cache_file
-            
-            result = load_trajectory_cache("test_user")
-            
-            assert result is not None
-            assert result.username == "test_user"
-            assert len(result.repo_urls) == 1
-
-    def test_load_trajectory_cache_invalid_json(self, temp_cache_dir):
-        """Test loading invalid cache file."""
-        cache_file = temp_cache_dir / "test_user.json"
-        with open(cache_file, 'w', encoding='utf-8') as f:
-            f.write("invalid json content")
-        
-        with patch('evaluator.services.trajectory_service.get_trajectory_cache_path') as mock_path:
-            mock_path.return_value = cache_file
-            
-            result = load_trajectory_cache("test_user")
-            
-            # Should return None on error
-            assert result is None
-
-    def test_save_trajectory_cache(self, temp_cache_dir):
-        """Test saving trajectory cache."""
-        from evaluator.schemas.trajectory import TrajectoryCache
-        
-        cache_file = temp_cache_dir / "test_user.json"
-        trajectory = TrajectoryCache(
-            username="test_user",
-            repo_urls=["https://github.com/test/repo"],
-            checkpoints=[],
-            last_synced_sha=None,
-            last_synced_at=None,
-            total_checkpoints=0
-        )
-        
-        with patch('evaluator.services.trajectory_service.get_trajectory_cache_path') as mock_path:
-            mock_path.return_value = cache_file
-            
-            save_trajectory_cache(trajectory)
-            
-            assert cache_file.exists()
-            with open(cache_file, 'r', encoding='utf-8') as f:
-                saved_data = json.load(f)
-            assert saved_data["username"] == "test_user"
 
 
 class TestGetCommitsByDate:
@@ -319,7 +233,7 @@ class TestEnsureRepoDataSynced:
             assert success is True
             mock_extract.assert_called_once_with("test_owner", "test_repo", max_commits=500)
 
-    def test_ensure_repo_data_synced_gitee_uses_incremental_sync_when_cached(self, temp_data_dir):
+    def test_ensure_repo_data_synced_gitee_uses_incremental_sync_when_not_forced(self, temp_data_dir):
         """Existing Gitee data should use the fast incremental sync path instead of full extraction."""
         from evaluator.services.trajectory_service import ensure_repo_data_synced
 
@@ -348,26 +262,14 @@ class TestEnsureRepoDataSynced:
             mock_incremental.assert_called_once_with("test_owner", "test_repo", max_commits=500)
             mock_extract.assert_not_called()
 
-    def test_analyze_growth_trajectory_one_off_ignores_cached_last_synced_sha(self, temp_data_dir):
-        """save_to_cache=False should use cached repo data without narrowing commits by old trajectory state."""
-        from evaluator.schemas.trajectory import TrajectoryCache
+    def test_analyze_growth_trajectory_uses_fresh_repo_data_and_all_commits(self, temp_data_dir):
+        """Trajectory analysis should force sync and evaluate without previous trajectory state."""
         from evaluator.services.trajectory_service import analyze_growth_trajectory
 
-        cached_trajectory = TrajectoryCache(
-            username="Alice",
-            repo_urls=["https://gitee.com/test_owner/test_repo"],
-            checkpoints=[],
-            last_synced_sha="oldsha",
-            last_synced_at=None,
-            total_checkpoints=0,
-        )
-
-        with patch('evaluator.services.trajectory_service.load_trajectory_cache') as mock_load_cache, \
-             patch('evaluator.services.trajectory_service.ensure_repo_data_synced') as mock_sync, \
+        with patch('evaluator.services.trajectory_service.ensure_repo_data_synced') as mock_sync, \
              patch('evaluator.services.trajectory_service.get_new_commits_from_repos') as mock_new_commits, \
              patch('evaluator.services.trajectory_service.get_repo_start_date') as mock_start_date:
 
-            mock_load_cache.return_value = cached_trajectory
             mock_sync.return_value = ("gitee", "test_owner", "test_repo", False)
             mock_new_commits.return_value = (0, [], ["https://gitee.com/test_owner/test_repo"])
             mock_start_date.return_value = datetime(2026, 1, 1)
@@ -379,22 +281,19 @@ class TestEnsureRepoDataSynced:
                 plugin_id="zgc_ai_native_2026",
                 model="deepseek/deepseek-v4-pro",
                 language="zh-CN",
-                use_cache=True,
                 checkpoint_strategy="none",
-                save_to_cache=False,
             )
 
             assert response.success is True
+            assert mock_sync.call_args.kwargs["force_sync"] is True
             assert mock_new_commits.call_args.kwargs["last_synced_sha"] is None
 
-    def test_one_off_route_defaults_to_use_cache_true(self):
-        """The public one-off trajectory route should default to the fast cached sync mode."""
+    def test_one_off_route_has_no_cache_parameter(self):
+        """The public one-off trajectory route should not expose cache strategy."""
+        import inspect
         from evaluator.routes.trajectory import analyze_trajectory_one_off
 
-        default = inspect.signature(analyze_trajectory_one_off).parameters["use_cache"].default
-
-        assert isinstance(default, Query)
-        assert default.default is True
+        assert "use_cache" not in inspect.signature(analyze_trajectory_one_off).parameters
 
     def test_ensure_repo_data_synced_extraction_failure(self, temp_data_dir):
         """Test repo data sync when extraction fails."""

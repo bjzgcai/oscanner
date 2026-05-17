@@ -24,7 +24,7 @@ _backend_dir = Path(__file__).resolve().parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
-from evaluator.paths import ensure_dirs, get_data_dir, get_home_dir, get_platform_data_dir, get_platform_eval_dir
+from evaluator.paths import ensure_dirs, get_data_dir, get_home_dir, get_platform_data_dir
 from evaluator.plugin_registry import discover_plugins, get_default_plugin_id, load_scan_module, PluginLoadError
 from evaluator.config import (
     get_github_token, get_gitee_token, get_llm_api_key, mask_secret, DEFAULT_LLM_MODEL,
@@ -36,7 +36,7 @@ from evaluator.utils import (
     load_commits_from_local
 )
 from evaluator.services import (
-    get_plugins_snapshot, resolve_plugin_id, get_evaluation_cache_path,
+    get_plugins_snapshot, resolve_plugin_id,
     extract_github_data, extract_gitee_data, fetch_github_commits, fetch_gitee_commits, get_repo_data_dir,
     get_or_create_evaluator, evaluate_author_incremental, get_empty_evaluation,
     merge_evaluations_logic
@@ -105,21 +105,6 @@ def _try_mount_bundled_dashboard() -> Optional[Path]:
 
 # Data directory (default: user data dir)
 DATA_DIR = get_data_dir()
-
-
-# NOTE: Cache endpoints disabled (cache functionality removed)
-# @app.get("/api/evaluation-cache/status/{owner}/{repo}")
-# async def evaluation_cache_status(owner: str, repo: str):
-#     """
-#     Return whether evaluation cache file exists for this repo, and how many authors are cached.
-#     Never returns any evaluation contents.
-#     """
-#     return {
-#         "exists": False,
-#         "authors_cached": 0,
-#         "path": "",
-#     }
-
 
 @app.get("/health")
 async def health_check():

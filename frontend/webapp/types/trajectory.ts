@@ -63,7 +63,6 @@ export interface EvaluationSchema {
 }
 
 export interface EvaluationMetadata {
-  cached: boolean;
   timestamp: string;
   source?: string | null;
 }
@@ -110,7 +109,7 @@ export interface PeriodAccumulationState {
   repo_start_date: string;
 }
 
-export interface TrajectoryCache {
+export interface TrajectoryData {
   username: string;
   repo_urls: string[];
   checkpoints: TrajectoryCheckpoint[];
@@ -123,7 +122,7 @@ export interface TrajectoryCache {
 
 export interface TrajectoryResponse {
   success: boolean;
-  trajectory?: TrajectoryCache | null;
+  trajectory?: TrajectoryData | null;
   new_checkpoint_created: boolean;
   message: string;
   commits_pending?: number | null;

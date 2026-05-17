@@ -743,8 +743,8 @@ benchmark_dataset = BenchmarkDataset()
 # ========== Helper Functions for API Routes ==========
 
 def get_benchmark_dataset_path() -> Path:
-    """Get the path to the benchmark dataset cache directory"""
-    return Path.home() / ".local/share/oscanner/validation_cache"
+    """Get the path to the benchmark validation storage directory."""
+    return Path.home() / ".local/share/oscanner/validation"
 
 
 def get_benchmark_repos_list() -> List[Dict[str, Any]]:
@@ -772,40 +772,3 @@ def get_benchmark_repos_list() -> List[Dict[str, Any]]:
         }
         for repo in repos
     ]
-
-
-def load_benchmark_evaluation(
-    platform: str,
-    owner: str,
-    repo: str,
-    author: str,
-    plugin_id: str = ""
-) -> Optional[Dict[str, Any]]:
-    """
-    Load cached benchmark evaluation for a specific repo/author
-
-    Args:
-        platform: Platform (github/gitee)
-        owner: Repository owner
-        repo: Repository name
-        author: Author name
-        plugin_id: Optional plugin ID (not currently used)
-
-    Returns:
-        Evaluation data dictionary or None if not found
-    """
-    import json
-
-    cache_dir = get_benchmark_dataset_path()
-    safe_name = f"{platform}_{owner}_{repo}_{author}.json"
-    cache_path = cache_dir / safe_name
-
-    if not cache_path.exists():
-        return None
-
-    try:
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading cached evaluation: {e}")
-        return None

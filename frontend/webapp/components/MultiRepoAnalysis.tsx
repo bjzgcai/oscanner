@@ -73,7 +73,7 @@ interface CommonContributorsResult {
 export default function MultiRepoAnalysis() {
   const [repoUrls, setRepoUrls] = useState('');
   const [loading, setLoading] = useState(false);
-  const { model, pluginId, useCache, llmModalOpen, setLlmModalOpen } = useAppSettings();
+  const { model, pluginId, llmModalOpen, setLlmModalOpen } = useAppSettings();
   const userSettings = useUserSettings();
   const { t, locale, messages } = useI18n();
   const [isInitialized, setIsInitialized] = useState(false);
@@ -416,7 +416,7 @@ export default function MultiRepoAnalysis() {
       try {
         setEvaluationProgress(10);
         const response = await fetch(
-          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}&language=${encodeURIComponent(locale)}`,
+          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&language=${encodeURIComponent(locale)}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -450,7 +450,7 @@ export default function MultiRepoAnalysis() {
         setIsExecuting(false);
       }
     },
-    [appendLog, authorsData, model, authorAliases, singleRepo?.platform, pluginId, useCache]
+    [appendLog, authorsData, model, authorAliases, singleRepo?.platform, pluginId]
   );
 
   const compareContributor = useCallback(
@@ -469,7 +469,6 @@ export default function MultiRepoAnalysis() {
             repos: reposToCompare,
             model,
             plugin: pluginId || undefined,
-            use_cache: useCache,
             author_aliases: authorAliases.trim() ? authorAliases : undefined,
           }),
         });
@@ -502,7 +501,7 @@ export default function MultiRepoAnalysis() {
         setIsExecuting(false);
       }
     },
-    [appendLog, model, authorAliases, pluginId, useCache]
+    [appendLog, model, authorAliases, pluginId]
   );
 
   const handleEvaluateContributor = useCallback(() => {
@@ -1160,5 +1159,4 @@ export default function MultiRepoAnalysis() {
     </div>
   );
 }
-
 

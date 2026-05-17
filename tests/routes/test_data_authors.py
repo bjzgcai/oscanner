@@ -86,29 +86,31 @@ async def test_get_authors_returns_gitee_contributors_without_extraction(monkeyp
     result = await data.get_authors("zgcai", "oscanner", Response(), platform="gitee")
 
     assert result["data"]["authors"] == authors
-    assert result["data"]["cached"] is False
 
 
 @pytest.mark.anyio
-async def test_get_authors_uses_local_cache_when_contributors_empty(monkeypatch, tmp_path):
-    """A contributors miss should not force full extraction when local cache exists."""
+async def test_get_authors_refreshes_when_contributors_empty(monkeypatch, tmp_path):
+    """A contributors miss should refresh repository data before reading authors."""
     commits_dir = tmp_path / "commits"
     commits_dir.mkdir()
-    (commits_dir / "abc.json").write_text(
-        '{"commit": {"author": {"name": "Cached Author", "email": "cached@example.com"}}}',
-        encoding="utf-8",
-    )
+    extraction_calls = []
 
     monkeypatch.setattr(data, "get_platform_data_dir", lambda platform, owner, repo: tmp_path)
     monkeypatch.setattr(data, "_fetch_gitee_contributors_authors", lambda owner, repo: [])
-    monkeypatch.setattr(
-        data,
-        "_extract_platform_data",
-        lambda platform, owner, repo: (_ for _ in ()).throw(AssertionError("should not extract")),
-    )
 
-    result = await data.get_authors("zgcai", "oscanner", Response(), platform="gitee", use_cache=True)
+    def fake_extract(platform, owner, repo):
+        extraction_calls.append((platform, owner, repo))
+        (commits_dir / "abc.json").write_text(
+            '{"commit": {"author": {"name": "Fresh Author", "email": "fresh@example.com"}}}',
+            encoding="utf-8",
+        )
+        return True
 
+    monkeypatch.setattr(data, "_extract_platform_data", fake_extract)
+
+    result = await data.get_authors("zgcai", "oscanner", Response(), platform="gitee")
+
+    assert extraction_calls == [("gitee", "zgcai", "oscanner")]
     assert result["data"]["authors"] == [
-        {"author": "Cached Author", "email": "cached@example.com", "commits": 1}
+        {"author": "Fresh Author", "email": "fresh@example.com", "commits": 1}
     ]

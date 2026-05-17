@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions, Input, Switch, Tooltip, Dropdown, Table, Radio } from 'antd';
+import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions, Input, Dropdown, Table, Radio } from 'antd';
 import { RiseOutlined, LoadingOutlined, CheckCircleOutlined, GithubOutlined, UserOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons';
 import { useUserSettings } from './UserSettingsContext';
 import { useAppSettings } from './AppSettingsContext';
@@ -11,12 +11,12 @@ import GrowthReport from './GrowthReport';
 import LlmConfigModal from './LlmConfigModal';
 import PluginCheckpointRenderer from './PluginCheckpointRenderer';
 import { getApiBaseUrl } from '@/utils/apiBase';
-import { TrajectoryCache, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
+import { TrajectoryData, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
 import { LOCALES } from '../i18n';
 
 export default function TrajectoryAnalysis() {
   const [loading, setLoading] = useState(false);
-  const [trajectory, setTrajectory] = useState<TrajectoryCache | null>(null);
+  const [trajectory, setTrajectory] = useState<TrajectoryData | null>(null);
   const [repoUrl, setRepoUrl] = useState('');
   const [isRepoUrlValid, setIsRepoUrlValid] = useState(false);
   const [authors, setAuthors] = useState<Array<{ author: string; email: string; commits: number }>>([]);
@@ -24,7 +24,7 @@ export default function TrajectoryAnalysis() {
   const [fetchingAuthors, setFetchingAuthors] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { defaultUsername, repoUrls, usernameGroups } = useUserSettings();
-  const { model, setModel, pluginId, setPluginId, plugins, useCache, setUseCache, locale, setLocale, setLlmModalOpen, forcedCheckerId, setForcedCheckerId, checkers, worktreeBase, setWorktreeBase } = useAppSettings();
+  const { model, setModel, pluginId, setPluginId, plugins, locale, setLocale, setLlmModalOpen, forcedCheckerId, setForcedCheckerId, checkers, worktreeBase, setWorktreeBase } = useAppSettings();
   const { t } = useI18n();
 
   // Helper function to format error messages with user-friendly text
@@ -249,7 +249,7 @@ export default function TrajectoryAnalysis() {
         pluginId
       )}&model=${encodeURIComponent(model)}&language=${encodeURIComponent(
         locale
-      )}&use_cache=${useCache}${forcedCheckerId ? `&forced_checker=${encodeURIComponent(forcedCheckerId)}` : ''}&worktree_base=${worktreeBase}`;
+      )}${forcedCheckerId ? `&forced_checker=${encodeURIComponent(forcedCheckerId)}` : ''}&worktree_base=${worktreeBase}`;
 
       console.log('[Trajectory] Starting analysis:', { url, username: groupedUsername, repoUrl: repoUrl.trim() });
 
@@ -385,15 +385,6 @@ export default function TrajectoryAnalysis() {
         borderRadius: '8px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'flex-end' }}>
-          <Tooltip title={t('nav.cache.tooltip')}>
-            <Switch
-              checked={useCache}
-              onChange={setUseCache}
-              checkedChildren={t('nav.cache.on')}
-              unCheckedChildren={t('nav.cache.off')}
-            />
-          </Tooltip>
-
           <Dropdown
             menu={{
               items: LOCALES.map((l) => ({ key: l.key, label: l.label })),

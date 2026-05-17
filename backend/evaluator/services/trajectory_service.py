@@ -7,10 +7,10 @@ from typing import Callable, Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from evaluator.paths import get_trajectory_cache_path, get_platform_data_dir
+from evaluator.paths import get_platform_data_dir
 from evaluator.config import get_llm_api_key
 from evaluator.schemas import (
-    TrajectoryCache,
+    TrajectoryData,
     TrajectoryCheckpoint,
     CommitsRange,
     TrajectoryResponse,
@@ -28,61 +28,6 @@ from evaluator.services.extraction_service import (
 from evaluator.plugin_registry import load_scan_module
 
 ProgressCallback = Callable[[str, Dict[str, Any]], None]
-
-
-def load_trajectory_cache(username: str) -> Optional[TrajectoryCache]:
-    """
-    Load trajectory cache from disk.
-
-    Args:
-        username: Username or comma-separated list of usernames to load trajectory for.
-                 If comma-separated, authors will be sorted alphabetically for consistent caching.
-
-    Returns:
-        TrajectoryCache if exists, None otherwise
-    """
-    # Normalize username (sort if comma-separated)
-    if ',' in username:
-        authors = [a.strip() for a in username.split(',')]
-        username = ','.join(sorted(authors))
-
-    cache_path = get_trajectory_cache_path(username)
-
-    if not cache_path.exists():
-        return None
-
-    try:
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return TrajectoryCache(**data)
-    except Exception as e:
-        print(f"[Trajectory] Failed to load cache for {username}: {e}")
-        return None
-
-
-def save_trajectory_cache(trajectory: TrajectoryCache) -> None:
-    """
-    Save trajectory cache to disk with atomic write.
-
-    Args:
-        trajectory: TrajectoryCache to save
-    """
-    cache_path = get_trajectory_cache_path(trajectory.username)
-    tmp_path = cache_path.with_suffix('.json.tmp')
-
-    try:
-        # Write to temp file first
-        with open(tmp_path, 'w', encoding='utf-8') as f:
-            json.dump(trajectory.model_dump(), f, indent=2, ensure_ascii=False)
-
-        # Atomic rename
-        tmp_path.rename(cache_path)
-        print(f"[Trajectory] Saved cache for {trajectory.username} with {trajectory.total_checkpoints} checkpoints")
-    except Exception as e:
-        print(f"[Trajectory] Failed to save cache: {e}")
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
 
 
 def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
@@ -203,12 +148,12 @@ def ensure_repo_data_synced(
     return platform, owner, repo, True
 
 
-def _sync_repo_for_group_eval(repo_url: str, use_cache: bool) -> Tuple[str, str, str, bool]:
+def _sync_repo_for_group_eval(repo_url: str) -> Tuple[str, str, str, bool]:
     """Sync one repository for full-repo group evaluation."""
     return ensure_repo_data_synced(
         repo_url,
         max_commits=0,
-        force_sync=not use_cache,
+        force_sync=True,
     )
 
 
@@ -415,7 +360,6 @@ def analyze_group_repositories(
     plugin_id: str,
     model: str,
     language: str,
-    use_cache: bool = True,
     max_fetch_workers: int = 4,
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
@@ -459,7 +403,7 @@ def analyze_group_repositories(
     sync_results: Dict[str, Dict[str, Any]] = {}
     with ThreadPoolExecutor(max_workers=min(max_workers, len(repo_urls) or 1)) as executor:
         futures = {
-            executor.submit(_sync_repo_for_group_eval, repo_url, use_cache): repo_url
+            executor.submit(_sync_repo_for_group_eval, repo_url): repo_url
             for repo_url in repo_urls
         }
         for future in as_completed(futures):
@@ -534,14 +478,13 @@ def analyze_group_repositories(
                 isinstance(filtered_commits, dict)
                 and not filtered_commits.get("success", True)
                 and sync_result.get("platform") == "gitee"
-                and use_cache
             ):
                 print(
-                    "[Trajectory] Requested group SHA was missing after incremental sync; "
-                    f"forcing refresh for {repo_url} and retrying once"
+                    "[Trajectory] Requested group SHA was missing after sync; "
+                    f"refreshing {repo_url} and retrying once"
                 )
                 try:
-                    platform, owner, repo, was_synced = _sync_repo_for_group_eval(repo_url, use_cache=False)
+                    platform, owner, repo, was_synced = _sync_repo_for_group_eval(repo_url)
                     sync_result = {
                         "success": True,
                         "platform": platform,
@@ -1468,7 +1411,6 @@ def analyze_growth_trajectory(
     plugin_id: str,
     model: str,
     language: str,
-    use_cache: bool = True,
     parallel_chunking: bool = True,
     max_parallel_workers: int = 3,
     forced_checker_id: Optional[str] = None,
@@ -1476,7 +1418,6 @@ def analyze_growth_trajectory(
     checkpoint_strategy: str = "period",
     start_sha: Optional[str] = None,
     end_sha: Optional[str] = None,
-    save_to_cache: bool = True,
     expected_feature: Optional[str] = None,
     progress_callback: Optional[ProgressCallback] = None,
 ) -> TrajectoryResponse:
@@ -1491,7 +1432,6 @@ def analyze_growth_trajectory(
         plugin_id: Plugin to use for evaluation
         model: LLM model to use
         language: Language for evaluation
-        use_cache: Whether to use cached trajectory
         parallel_chunking: Enable parallel chunking
         max_parallel_workers: Max parallel workers
         checkpoint_strategy: Strategy for grouping commits ('period' or 'none')
@@ -1501,7 +1441,6 @@ def analyze_growth_trajectory(
                   Only used when checkpoint_strategy='none'
         end_sha: Optional commit hash to end at (INCLUDED in range)
                 Only used when checkpoint_strategy='none'
-        save_to_cache: Whether to save trajectory to cache (default True)
 
     Returns:
         TrajectoryResponse with analysis results
@@ -1509,45 +1448,20 @@ def analyze_growth_trajectory(
     if progress_callback:
         progress_callback("section", {"title": "准备轨迹分析", "status": "running"})
 
-    # Normalize username for consistent caching (sort if comma-separated)
+    # Normalize grouped usernames so the response is stable across alias order.
     if ',' in username:
         authors = [a.strip() for a in username.split(',')]
         username = ','.join(sorted(authors))
         print(f"[Trajectory] Normalized grouped username: {username}")
 
-    # Load existing trajectory (always load to get commit history, but clear checkpoints if use_cache=False)
-    trajectory = load_trajectory_cache(username)
-    
-    if trajectory is None:
-        print(f"[Trajectory] No cache found for {username}, initializing")
-        trajectory = TrajectoryCache(
-            username=username,
-            repo_urls=repo_urls,
-            checkpoints=[],
-            last_synced_sha=None,
-            last_synced_at=None,
-            total_checkpoints=0
-        )
-    else:
-        # Update repo URLs
-        trajectory.repo_urls = repo_urls
-
-        # If use_cache=False, clear existing checkpoints to force re-evaluation
-        if not use_cache and trajectory.checkpoints:
-            print(f"[Trajectory] use_cache=False: Clearing {len(trajectory.checkpoints)} existing checkpoints for re-evaluation")
-            trajectory.checkpoints = []
-            trajectory.total_checkpoints = 0
-            # Reset last_synced_sha to force re-evaluation of all commits
-            trajectory.last_synced_sha = None
-            trajectory.last_synced_at = None
-
-    if not save_to_cache:
-        if trajectory.checkpoints or trajectory.last_synced_sha:
-            print("[Trajectory] save_to_cache=False: Ignoring cached checkpoint sync state for one-off analysis")
-        trajectory.checkpoints = []
-        trajectory.total_checkpoints = 0
-        trajectory.last_synced_sha = None
-        trajectory.last_synced_at = None
+    trajectory = TrajectoryData(
+        username=username,
+        repo_urls=repo_urls,
+        checkpoints=[],
+        last_synced_sha=None,
+        last_synced_at=None,
+        total_checkpoints=0,
+    )
 
     # Ensure all repos have data synced
     print(f"[Trajectory] Ensuring data is synced for {len(repo_urls)} repositories")
@@ -1563,7 +1477,7 @@ def analyze_growth_trajectory(
             platform, owner, repo, was_synced = ensure_repo_data_synced(
                 repo_url,
                 max_commits=500,
-                force_sync=not use_cache
+                force_sync=True,
             )
             if was_synced:
                 print(f"[Trajectory] Extracted fresh data for {platform}/{owner}/{repo}")
@@ -1585,16 +1499,14 @@ def analyze_growth_trajectory(
             "errors": sync_errors,
         })
 
-    # Get commits (all commits if use_cache=False and checkpoints cleared, only new commits if use_cache=True)
-    # When use_cache=False, last_synced_sha is set to None, so get_new_commits_from_repos will return all commits
     new_commits_count, new_commits, repos_analyzed = get_new_commits_from_repos(
         repo_urls=repo_urls,
         username=username,
         aliases=aliases,
-        last_synced_sha=trajectory.last_synced_sha
+        last_synced_sha=None,
     )
 
-    print(f"[Trajectory] Found {new_commits_count} commits to evaluate (last_synced_sha: {trajectory.last_synced_sha}, use_cache={use_cache})")
+    print(f"[Trajectory] Found {new_commits_count} commits to evaluate")
     if progress_callback:
         progress_callback("section", {
             "title": "筛选提交记录",
@@ -1635,29 +1547,23 @@ def analyze_growth_trajectory(
             commits_pending=0
         )
 
-    # Get or calculate repo start date
-    if trajectory.repo_start_date:
-        repo_start_date = datetime.fromisoformat(trajectory.repo_start_date)
-        print(f"[Trajectory] Using cached repo_start_date: {repo_start_date.date()}")
+    repo_start_date = get_repo_start_date(repo_urls, username, aliases)
+    if repo_start_date:
+        trajectory.repo_start_date = repo_start_date.isoformat()
+        print(f"[Trajectory] Calculated repo_start_date: {repo_start_date.date()}")
     else:
-        repo_start_date = get_repo_start_date(repo_urls, username, aliases)
-        if repo_start_date:
-            trajectory.repo_start_date = repo_start_date.isoformat()
-            print(f"[Trajectory] Calculated repo_start_date: {repo_start_date.date()}")
+        print(f"[Trajectory] Warning: Could not determine repo start date")
+        if sync_errors:
+            error_message = "Could not determine repository start date. " + "; ".join(sync_errors)
         else:
-            print(f"[Trajectory] Warning: Could not determine repo start date")
-            # Provide more context if we had sync errors
-            if sync_errors:
-                error_message = "Could not determine repository start date. " + "; ".join(sync_errors)
-            else:
-                error_message = "Could not determine repository start date. No commits found for the specified author."
-            return TrajectoryResponse(
-                success=False,
-                trajectory=trajectory,
-                new_checkpoint_created=False,
-                message=error_message,
-                commits_pending=new_commits_count
-            )
+            error_message = "Could not determine repository start date. No commits found for the specified author."
+        return TrajectoryResponse(
+            success=False,
+            trajectory=trajectory,
+            new_checkpoint_created=False,
+            message=error_message,
+            commits_pending=new_commits_count
+        )
 
     # Group commits by period with accumulation logic
     accumulated_shas = trajectory.accumulation_state.accumulated_commits if trajectory.accumulation_state else []
@@ -1705,10 +1611,6 @@ def analyze_growth_trajectory(
             accumulated_commits=remaining_shas,
             repo_start_date=repo_start_date.isoformat()
         )
-
-        # Save state
-        if save_to_cache:
-            save_trajectory_cache(trajectory)
 
         # Message depends on checkpoint strategy
         if checkpoint_strategy == "none":
@@ -1777,10 +1679,6 @@ def analyze_growth_trajectory(
             repo_start_date=repo_start_date.isoformat()
         )
 
-        # Save to cache after all checkpoints created
-        if save_to_cache:
-            save_trajectory_cache(trajectory)
-
         pending_count = len(remaining_shas)
         if checkpoints_created == 1:
             message = f"Created checkpoint {trajectory.total_checkpoints} with {commits_processed} commits."
@@ -1802,26 +1700,6 @@ def analyze_growth_trajectory(
         print(f"[Trajectory] Failed to create checkpoint: {e}")
         import traceback
         traceback.print_exc()
-
-        # Save any checkpoints that were successfully created
-        if checkpoints_created > 0 and save_to_cache:
-            try:
-                # Update accumulation state before saving
-                current_period_start = repo_start_date
-                weeks_elapsed = (datetime.now(repo_start_date.tzinfo) - repo_start_date).days // 14
-                current_period_start = repo_start_date + timedelta(weeks=2 * weeks_elapsed)
-                current_period_end = current_period_start + timedelta(weeks=2)
-
-                trajectory.accumulation_state = PeriodAccumulationState(
-                    current_period_start=current_period_start.isoformat(),
-                    current_period_end=current_period_end.isoformat(),
-                    accumulated_commits=remaining_shas,
-                    repo_start_date=repo_start_date.isoformat()
-                )
-
-                save_trajectory_cache(trajectory)
-            except Exception as save_error:
-                print(f"[Trajectory] Failed to save partial progress: {save_error}")
 
         return TrajectoryResponse(
             success=False,

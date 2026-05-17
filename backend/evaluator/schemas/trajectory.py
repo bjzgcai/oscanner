@@ -38,7 +38,7 @@ class PeriodAccumulationState(BaseModel):
     repo_start_date: str = Field(..., description="ISO 8601 timestamp of first commit across all repos")
 
 
-class TrajectoryCache(BaseModel):
+class TrajectoryData(BaseModel):
     """Complete growth trajectory data for a user."""
 
     username: str = Field(..., description="Primary username")
@@ -48,14 +48,14 @@ class TrajectoryCache(BaseModel):
     last_synced_at: Optional[str] = Field(None, description="ISO 8601 timestamp of last sync")
     total_checkpoints: int = Field(0, ge=0, description="Total number of checkpoints created")
     accumulation_state: Optional['PeriodAccumulationState'] = Field(None, description="Current period accumulation state")
-    repo_start_date: Optional[str] = Field(None, description="Cached earliest commit date across all repos")
+    repo_start_date: Optional[str] = Field(None, description="Earliest commit date across all repos")
 
 
 class TrajectoryResponse(BaseModel):
     """API response for trajectory analysis."""
 
     success: bool = Field(..., description="Whether the operation succeeded")
-    trajectory: Optional[TrajectoryCache] = Field(None, description="Trajectory data")
+    trajectory: Optional[TrajectoryData] = Field(None, description="Trajectory data")
     new_checkpoint_created: bool = Field(False, description="Whether a new checkpoint was created")
     message: str = Field(..., description="Human-readable message about the operation")
     commits_pending: Optional[int] = Field(None, description="Number of commits not yet forming a checkpoint")

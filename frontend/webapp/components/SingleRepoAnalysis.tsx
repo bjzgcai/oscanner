@@ -47,9 +47,9 @@ interface RepoData {
 
 export default function SingleRepoAnalysis() {
   const [repoPath, setRepoPath] = useState('');
-  const { model, pluginId, useCache } = useAppSettings();
+  const { model, pluginId } = useAppSettings();
   const { repoUrls } = useUserSettings();
-  const { t, locale, messages } = useI18n();
+  const { t, messages } = useI18n();
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const [progress, setProgress] = useState(0);
@@ -202,7 +202,7 @@ export default function SingleRepoAnalysis() {
     try {
       setProgress(10);
       const response = await fetch(
-        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}&use_cache=${useCache ? 'true' : 'false'}`,
+        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}`,
         { method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to evaluate author');
@@ -388,5 +388,3 @@ export default function SingleRepoAnalysis() {
     </div>
   );
 }
-
-

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Space, Button, Dropdown, Switch, Tooltip } from 'antd';
+import { Space, Button, Dropdown } from 'antd';
 import { HomeOutlined, ApiOutlined, CheckCircleOutlined, SettingOutlined, RiseOutlined, CodeOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
@@ -11,7 +11,7 @@ import { useI18n } from './I18nContext';
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { useCache, setUseCache, model, setModel, pluginId, setPluginId, plugins, locale, setLocale, setLlmModalOpen } = useAppSettings();
+  const { model, setModel, pluginId, setPluginId, plugins, locale, setLocale, setLlmModalOpen } = useAppSettings();
   const { t } = useI18n();
 
   const navItems = [
@@ -124,15 +124,6 @@ export default function Navigation() {
           zIndex: 999
         }}>
           <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'flex-end' }}>
-            <Tooltip title={t('nav.cache.tooltip')}>
-              <Switch
-                checked={useCache}
-                onChange={setUseCache}
-                checkedChildren={t('nav.cache.on')}
-                unCheckedChildren={t('nav.cache.off')}
-              />
-            </Tooltip>
-
             <Dropdown
               menu={{
                 items: LOCALES.map((l) => ({ key: l.key, label: l.label })),

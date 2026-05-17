@@ -20,7 +20,6 @@ def get_or_create_evaluator(
     owner: str,
     repo: str,
     commits: list,
-    use_cache: bool = True,
     plugin_id: str = "",
     model: str = DEFAULT_LLM_MODEL,
     parallel_chunking: bool = True,

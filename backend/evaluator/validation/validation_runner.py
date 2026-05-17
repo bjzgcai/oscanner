@@ -82,18 +82,18 @@ class ValidationRunner:
         self,
         dataset: Optional[BenchmarkDataset] = None,
         evaluation_function=None,
-        cache_dir: Optional[Path] = None,
+        storage_dir: Optional[Path] = None,
     ):
         """
         Args:
             dataset: BenchmarkDataset instance (uses singleton if None)
             evaluation_function: Async function to evaluate repos (repo_url, author) -> eval_result
-            cache_dir: Directory to cache evaluation results
+            storage_dir: Directory to store validation run history
         """
         self.dataset = dataset or benchmark_dataset
         self.evaluation_function = evaluation_function
-        self.cache_dir = cache_dir or Path.home() / ".local/share/oscanner/validation_cache"
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.storage_dir = storage_dir or Path.home() / ".local/share/oscanner/validation"
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize validators
         self.validators = [
@@ -104,61 +104,19 @@ class ValidationRunner:
             OrderingValidator(),
         ]
 
-    def _get_cache_path(self, repo: TestRepository) -> Path:
-        """Get cache file path for a repository evaluation"""
-        safe_name = f"{repo.platform}_{repo.owner}_{repo.repo}_{repo.author}.json"
-        return self.cache_dir / safe_name
-
-    def _load_cached_evaluation(self, repo: TestRepository) -> Optional[BenchmarkEvaluationResult]:
-        """Load cached evaluation result if exists"""
-        cache_path = self._get_cache_path(repo)
-        if cache_path.exists():
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    # Reconstruct result (simplified - just the data)
-                    return data
-            except Exception as e:
-                print(f"Error loading cache for {repo.identifier}: {e}")
-        return None
-
-    def _save_cached_evaluation(self, repo: TestRepository, result: BenchmarkEvaluationResult):
-        """Save evaluation result to cache"""
-        cache_path = self._get_cache_path(repo)
-        try:
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(result.to_dict(), f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving cache for {repo.identifier}: {e}")
-
     async def evaluate_repository(
         self,
         repo: TestRepository,
-        use_cache: bool = True
     ) -> BenchmarkEvaluationResult:
         """
         Evaluate a single benchmark repository
 
         Args:
             repo: TestRepository to evaluate
-            use_cache: Whether to use cached results
 
         Returns:
             BenchmarkEvaluationResult
         """
-        # Check cache first
-        if use_cache:
-            cached = self._load_cached_evaluation(repo)
-            if cached:
-                print(f"Using cached result for {repo.identifier}")
-                return BenchmarkEvaluationResult(
-                    repo=repo,
-                    overall_score=cached.get("overall_score", 0),
-                    dimension_scores=cached.get("dimension_scores", {}),
-                    evaluation_data=cached.get("evaluation_data", {}),
-                    timestamp=cached.get("timestamp", ""),
-                )
-
         # Run evaluation
         if self.evaluation_function is None:
             raise ValueError("No evaluation function provided")
@@ -181,9 +139,6 @@ class ValidationRunner:
                 dimension_scores=dimension_scores,
                 evaluation_data=eval_result,
             )
-
-            # Cache result
-            self._save_cached_evaluation(repo, result)
 
             return result
 
@@ -215,7 +170,7 @@ class ValidationRunner:
             runs = []
             for i in range(num_runs):
                 print(f"  Run {i+1}/{num_runs} for {repo.identifier}")
-                result = await self.evaluate_repository(repo, use_cache=False)
+                result = await self.evaluate_repository(repo)
                 runs.append({
                     "overall_score": result.overall_score,
                     "dimensions": result.dimension_scores,
@@ -447,7 +402,7 @@ class ValidationRunner:
 
     def _save_run_result(self, result: ValidationRunResult):
         """Save validation run result to disk"""
-        results_dir = self.cache_dir / "runs"
+        results_dir = self.storage_dir / "runs"
         results_dir.mkdir(exist_ok=True)
 
         result_path = results_dir / f"{result.run_id}.json"
@@ -460,7 +415,7 @@ class ValidationRunner:
 
     def list_validation_runs(self) -> List[Dict[str, Any]]:
         """List all previous validation runs"""
-        results_dir = self.cache_dir / "runs"
+        results_dir = self.storage_dir / "runs"
         if not results_dir.exists():
             return []
 
@@ -483,7 +438,7 @@ class ValidationRunner:
 
     def get_validation_run(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed results for a specific validation run"""
-        results_dir = self.cache_dir / "runs"
+        results_dir = self.storage_dir / "runs"
         result_path = results_dir / f"{run_id}.json"
 
         if not result_path.exists():

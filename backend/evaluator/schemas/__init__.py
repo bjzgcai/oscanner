@@ -10,7 +10,7 @@ from .evaluation import (
 from .trajectory import (
     CommitsRange,
     TrajectoryCheckpoint,
-    TrajectoryCache,
+    TrajectoryData,
     TrajectoryResponse,
     PeriodAccumulationState,
 )
@@ -23,7 +23,7 @@ __all__ = [
     "EvaluationMetadata",
     "CommitsRange",
     "TrajectoryCheckpoint",
-    "TrajectoryCache",
+    "TrajectoryData",
     "TrajectoryResponse",
     "PeriodAccumulationState",
 ]

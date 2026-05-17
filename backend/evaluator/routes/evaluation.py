@@ -1,21 +1,17 @@
 """Evaluation routes - author evaluation endpoints."""
 
-import json
-from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query
 import asyncio
 
-from evaluator.paths import get_platform_data_dir, get_platform_eval_dir
+from evaluator.paths import get_platform_data_dir
 from evaluator.plugin_registry import load_scan_module, PluginLoadError
 from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL, get_gitee_token
 from evaluator.utils import load_commits_from_local
 from evaluator.schemas import EvaluationResponseSchema
 from evaluator.services import (
     resolve_plugin_id,
-    get_evaluation_cache_path,
-    get_plugins_snapshot,
     evaluate_author_incremental,
     get_repo_data_dir,
     fetch_gitee_commits,
@@ -31,7 +27,6 @@ async def evaluate_author(
     repo: str,
     author: str,
     use_chunking: bool = Query(True),
-    use_cache: bool = Query(True),
     model: str = Query(DEFAULT_LLM_MODEL),
     platform: str = Query("github"),
     plugin: str = Query(""),
@@ -90,25 +85,12 @@ async def evaluate_author(
         if aliases and len(aliases) > 1:
             print(f"[Aliases] Evaluating {len(aliases)} identities separately then merging...")
             evaluations_to_merge = []
-            default_plugin_id = get_plugins_snapshot()[1]
 
             for alias in aliases:
                 print(f"[Aliases] Evaluating identity: {alias}")
                 commits = load_commits_from_local(data_dir, limit=None)
                 if not commits:
                     continue
-
-                # Load previous evaluation
-                eval_dir = get_platform_eval_dir(platform, owner, repo)
-                eval_path = get_evaluation_cache_path(eval_dir, alias, plugin_id, default_plugin_id)
-                previous_evaluation = None
-
-                if use_cache and eval_path.exists():
-                    try:
-                        with open(eval_path, 'r', encoding='utf-8') as f:
-                            previous_evaluation = json.load(f)
-                    except Exception as e:
-                        print(f"[Aliases] ⚠ Failed to load cached evaluation: {e}")
 
                 # Evaluate (api_key already checked at the start)
 
@@ -124,31 +106,23 @@ async def evaluate_author(
                     )
 
                 # Run synchronous blocking operations in thread pool to avoid blocking event loop
-                loop = asyncio.get_event_loop()
-                evaluation = await loop.run_in_executor(
-                    None,
+                evaluation = await asyncio.to_thread(
                     evaluate_author_incremental,
-                    commits,
-                    alias,
-                    previous_evaluation,
-                    data_dir,
-                    model,
-                    use_chunking,
-                    api_key,
-                    [alias],
-                    _factory,
-                    parallel_chunking,
-                    max_parallel_workers,
+                    commits=commits,
+                    author=alias,
+                    previous_evaluation=None,
+                    data_dir=data_dir,
+                    model=model,
+                    use_chunking=use_chunking,
+                    api_key=api_key,
+                    aliases=[alias],
+                    evaluator_factory=_factory,
+                    parallel_chunking=parallel_chunking,
+                    max_parallel_workers=max_parallel_workers,
                 )
                 evaluation["plugin"] = plugin_id
                 if meta:
                     evaluation["plugin_version"] = meta.version
-
-                # Save
-                if use_cache:
-                    eval_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(eval_path, 'w', encoding='utf-8') as f:
-                        json.dump(evaluation, f, indent=2, ensure_ascii=False)
 
                 alias_commits = [c for c in commits if any(a.lower() in str(c.get("author", "")).lower() for a in [alias])]
                 evaluations_to_merge.append({
@@ -163,13 +137,13 @@ async def evaluate_author(
                 return {
                     "success": True,
                     "evaluation": merged_eval,
-                    "metadata": {"cached": False, "timestamp": datetime.now().isoformat(), "source": "merged_aliases"}
+                    "metadata": {"timestamp": datetime.now().isoformat(), "source": "merged_aliases"}
                 }
             elif len(evaluations_to_merge) == 1:
                 return {
                     "success": True,
                     "evaluation": evaluations_to_merge[0]["evaluation"],
-                    "metadata": {"cached": False, "timestamp": datetime.now().isoformat(), "source": "single_alias"}
+                    "metadata": {"timestamp": datetime.now().isoformat(), "source": "single_alias"}
                 }
             else:
                 raise HTTPException(status_code=404, detail="No commits found for any aliases")
@@ -179,19 +153,6 @@ async def evaluate_author(
         commits = load_commits_from_local(data_dir, limit=None)
         if not commits:
             raise HTTPException(status_code=404, detail=f"No commits found in local data for {owner}/{repo}")
-
-        # Load previous evaluation
-        eval_dir = get_platform_eval_dir(platform, owner, repo)
-        default_plugin_id = get_plugins_snapshot()[1]
-        eval_path = get_evaluation_cache_path(eval_dir, author, plugin_id, default_plugin_id)
-        previous_evaluation = None
-
-        if use_cache and eval_path.exists():
-            try:
-                with open(eval_path, 'r', encoding='utf-8') as f:
-                    previous_evaluation = json.load(f)
-            except Exception as e:
-                print(f"[Evaluation] ⚠ Failed to load previous evaluation: {e}")
 
         # Evaluate (api_key already checked at the start)
 
@@ -207,36 +168,28 @@ async def evaluate_author(
             )
 
         # Run synchronous blocking operations in thread pool to avoid blocking event loop
-        loop = asyncio.get_event_loop()
-        evaluation = await loop.run_in_executor(
-            None,
+        evaluation = await asyncio.to_thread(
             evaluate_author_incremental,
-            commits,
-            author,
-            previous_evaluation,
-            data_dir,
-            model,
-            use_chunking,
-            api_key,
-            aliases,
-            _factory,
-            parallel_chunking,
-            max_parallel_workers,
+            commits=commits,
+            author=author,
+            previous_evaluation=None,
+            data_dir=data_dir,
+            model=model,
+            use_chunking=use_chunking,
+            api_key=api_key,
+            aliases=aliases,
+            evaluator_factory=_factory,
+            parallel_chunking=parallel_chunking,
+            max_parallel_workers=max_parallel_workers,
         )
         evaluation["plugin"] = plugin_id
         if meta:
             evaluation["plugin_version"] = meta.version
 
-        # Save
-        if use_cache:
-            eval_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(eval_path, 'w', encoding='utf-8') as f:
-                json.dump(evaluation, f, indent=2, ensure_ascii=False)
-
         return {
             "success": True,
             "evaluation": evaluation,
-            "metadata": {"cached": False, "timestamp": datetime.now().isoformat()}
+            "metadata": {"timestamp": datetime.now().isoformat()}
         }
 
     except HTTPException:
@@ -268,7 +221,6 @@ async def evaluate_gitee_contributor(
     repo: str,
     contributor: str,
     limit: int = Query(150, ge=1, le=200),
-    use_cache: bool = Query(True),
     is_enterprise: bool = Query(False),
     plugin: str = Query(""),
 ):
@@ -324,7 +276,7 @@ async def evaluate_gitee_contributor(
                 "plugin": plugin_id,
                 "plugin_version": meta.version,
             },
-            "metadata": {"cached": False, "timestamp": datetime.now().isoformat()}
+            "metadata": {"timestamp": datetime.now().isoformat()}
         }
 
     except HTTPException:

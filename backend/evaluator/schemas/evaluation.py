@@ -75,7 +75,6 @@ class EvaluationSchema(BaseModel):
 class EvaluationMetadata(BaseModel):
     """Metadata about the evaluation response."""
 
-    cached: bool = Field(False, description="Whether the result was loaded from cache")
     timestamp: str = Field(..., description="ISO 8601 timestamp of the response")
     source: Optional[str] = Field(None, description="Source of evaluation (e.g., merged_aliases, single_alias)")
 
@@ -121,7 +120,6 @@ class EvaluationResponseSchema(BaseModel):
                     "plugin_version": "0.1.0"
                 },
                 "metadata": {
-                    "cached": False,
                     "timestamp": "2026-01-25T11:43:47.360638"
                 }
             }

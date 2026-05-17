@@ -1,6 +1,5 @@
 """Growth trajectory API endpoints."""
 
-from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -11,13 +10,11 @@ import json
 from evaluator.config import DEFAULT_LLM_MODEL, get_llm_api_key, get_github_token, get_gitee_token
 from evaluator.schemas import TrajectoryResponse
 from evaluator.services import (
-    load_trajectory_cache,
     analyze_growth_trajectory,
     analyze_group_repositories,
     resolve_plugin_id,
-    get_commits_by_date
 )
-from evaluator.paths import get_trajectory_cache_path, get_platform_data_dir
+from evaluator.paths import get_platform_data_dir
 from evaluator.services.trajectory_service import ensure_repo_data_synced
 from evaluator.utils import parse_repo_url, load_commits_from_local, get_author_from_commit
 
@@ -261,7 +258,6 @@ async def analyze_trajectory(
     plugin: str = Query(""),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    use_cache: bool = Query(True),
     parallel_chunking: bool = Query(True),
     max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
@@ -280,7 +276,7 @@ async def analyze_trajectory(
 
     Returns TrajectoryResponse with:
     - success: bool
-    - trajectory: TrajectoryCache (if successful)
+    - trajectory: TrajectoryData (if successful)
     - new_checkpoint_created: bool
     - message: str
     - commits_pending: int (commits not yet forming a checkpoint)
@@ -395,7 +391,6 @@ async def analyze_trajectory(
             plugin_id,
             model,
             language,
-            use_cache,
             parallel_chunking,
             max_parallel_workers,
             forced_checker_id,
@@ -403,7 +398,6 @@ async def analyze_trajectory(
             checkpoint_strategy_value,
             None,  # start_sha (not used in regular endpoint)
             None,  # end_sha (not used in regular endpoint)
-            True  # save_to_cache=True
         )
 
         return response.model_dump()
@@ -421,7 +415,6 @@ async def analyze_trajectory_stream(
     plugin: str = Query(""),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    use_cache: bool = Query(True),
     parallel_chunking: bool = Query(True),
     max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
@@ -429,7 +422,7 @@ async def analyze_trajectory_stream(
     checkpoint_strategy: str = Query("period")
 ) -> StreamingResponse:
     """
-    Stream cached trajectory analysis as SSE.
+    Stream trajectory analysis as SSE.
 
     Final `result` event matches /api/trajectory/analyze response shape.
     """
@@ -536,7 +529,6 @@ async def analyze_trajectory_stream(
                 plugin_id,
                 model,
                 language,
-                use_cache,
                 parallel_chunking,
                 max_parallel_workers,
                 forced_checker_id,
@@ -544,7 +536,6 @@ async def analyze_trajectory_stream(
                 checkpoint_strategy_value,
                 None,
                 None,
-                True,
                 None,
                 emit,
             )
@@ -589,7 +580,6 @@ async def group_analyse_code(
     request: Request = None,
     plugin: str = Query("zgc_ai_native_2026"),
     language: str = Query("zh-CN"),
-    use_cache: bool = Query(True),
     max_fetch_workers: int = Query(4),
     forced_checker: str = Query(""),
     worktree_base: str = Query("build"),
@@ -610,7 +600,6 @@ async def group_analyse_code(
                 request_body=request_body,
                 plugin=plugin,
                 language=language,
-                use_cache=use_cache,
                 max_fetch_workers=max_fetch_workers,
                 forced_checker=forced_checker,
                 worktree_base=worktree_base,
@@ -666,7 +655,6 @@ async def group_analyse_code(
                 plugin_id=plugin_id,
                 model=ONE_OFF_PRIMARY_MODEL,
                 language=language,
-                use_cache=use_cache,
                 max_fetch_workers=max_fetch_workers,
                 forced_checker_id=forced_checker_id,
                 worktree_base=worktree_base_value,
@@ -690,7 +678,6 @@ async def _group_analyse_code_event_stream(
     request_body: Dict[str, Any],
     plugin: str,
     language: str,
-    use_cache: bool,
     max_fetch_workers: int,
     forced_checker: str,
     worktree_base: str,
@@ -746,7 +733,6 @@ async def _group_analyse_code_event_stream(
             plugin_id=plugin_id,
             model=ONE_OFF_PRIMARY_MODEL,
             language=language,
-            use_cache=use_cache,
             max_fetch_workers=max_fetch_workers,
             forced_checker_id=forced_checker_id,
             worktree_base=worktree_base_value,
@@ -786,7 +772,6 @@ async def analyze_trajectory_one_off(
     plugin: str = Query("zgc_ai_native_2026"),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    use_cache: bool = Query(True),
     parallel_chunking: bool = Query(True),
     max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
@@ -796,10 +781,10 @@ async def analyze_trajectory_one_off(
     end_sha: str = Query("")  # Optional: commit hash to end at (INCLUDED)
 ) -> Dict[str, Any]:
     """
-    Analyze user growth trajectory (one-off, doesn't save to cache).
+    Analyze user growth trajectory as a one-off request.
 
     This endpoint is for external parties to call. It performs analysis for a specific
-    commit range and returns a SINGLE checkpoint (not saved to cache).
+    commit range and returns a SINGLE checkpoint.
 
     Request body format:
     {
@@ -971,7 +956,7 @@ async def analyze_trajectory_one_off(
         print(f"[Trajectory API One-Off] Repos: {repo_urls}")
         print(f"[Trajectory API One-Off] Aliases: {aliases}")
 
-        # Call trajectory analysis service with save_to_cache=False
+        # Call trajectory analysis service
         # Run synchronous blocking operations in thread pool to avoid blocking event loop
         forced_checker_id = forced_checker.strip() if forced_checker else None
         worktree_base_value = worktree_base.strip() if worktree_base else "build"
@@ -995,7 +980,6 @@ async def analyze_trajectory_one_off(
             plugin_id,
             ONE_OFF_PRIMARY_MODEL,
             language,
-            use_cache,
             parallel_chunking,
             max_parallel_workers,
             forced_checker_id,
@@ -1003,7 +987,6 @@ async def analyze_trajectory_one_off(
             checkpoint_strategy_value,
             start_sha_value,
             end_sha_value,
-            False,  # save_to_cache=False
             expected_feature,
         )
 
@@ -1052,7 +1035,6 @@ async def analyze_trajectory_one_off_stream(
     plugin: str = Query("zgc_ai_native_2026"),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    use_cache: bool = Query(True),
     parallel_chunking: bool = Query(True),
     max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
@@ -1210,7 +1192,6 @@ async def analyze_trajectory_one_off_stream(
                 plugin_id,
                 ONE_OFF_PRIMARY_MODEL,
                 language,
-                use_cache,
                 parallel_chunking,
                 max_parallel_workers,
                 forced_checker_id,
@@ -1218,7 +1199,6 @@ async def analyze_trajectory_one_off_stream(
                 checkpoint_strategy_value,
                 start_sha_value,
                 end_sha_value,
-                False,
                 expected_feature,
                 emit,
             )
@@ -1286,116 +1266,3 @@ async def analyze_trajectory_one_off_stream(
             "X-Accel-Buffering": "no",
         },
     )
-
-
-@router.get("/api/trajectory/{username}")
-async def get_trajectory(username: str) -> Dict[str, Any]:
-    """
-    Get cached trajectory data for a user.
-
-    Returns:
-    {
-        "success": bool,
-        "trajectory": TrajectoryCache or null,
-        "message": str
-    }
-    """
-    try:
-        trajectory = load_trajectory_cache(username)
-
-        if trajectory is None:
-            return {
-                "success": False,
-                "trajectory": None,
-                "message": f"No trajectory data found for {username}"
-            }
-
-        return {
-            "success": True,
-            "trajectory": trajectory.model_dump(),
-            "message": f"Found trajectory with {trajectory.total_checkpoints} checkpoints"
-        }
-
-    except Exception as e:
-        print(f"[Trajectory API] Error loading trajectory: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to load trajectory: {str(e)}")
-
-
-@router.delete("/api/trajectory/{username}")
-async def clear_trajectory(username: str) -> Dict[str, Any]:
-    """
-    Clear trajectory cache for a user (for testing/reset).
-
-    Returns:
-    {
-        "success": bool,
-        "message": str
-    }
-    """
-    try:
-        cache_path = get_trajectory_cache_path(username)
-
-        if not cache_path.exists():
-            return {
-                "success": False,
-                "message": f"No trajectory cache found for {username}"
-            }
-
-        cache_path.unlink()
-
-        return {
-            "success": True,
-            "message": f"Trajectory cache cleared for {username}"
-        }
-
-    except Exception as e:
-        print(f"[Trajectory API] Error clearing trajectory: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to clear trajectory: {str(e)}")
-
-
-@router.get("/api/trajectory/{username}/commits-by-date")
-async def get_commits_by_date_endpoint(username: str) -> Dict[str, Any]:
-    """
-    Get commits grouped by date for visualization.
-
-    Returns:
-    {
-        "success": bool,
-        "data": [{"date": "YYYY-MM-DD", "count": int}, ...],
-        "message": str
-    }
-    """
-    try:
-        # Load trajectory to get repo_urls and aliases
-        trajectory = load_trajectory_cache(username)
-
-        if trajectory is None:
-            return {
-                "success": False,
-                "data": [],
-                "message": f"No trajectory data found for {username}. Please run trajectory analysis first."
-            }
-
-        # Get aliases from latest checkpoint if available
-        aliases = [username]
-        if trajectory.checkpoints:
-            latest_checkpoint = trajectory.checkpoints[-1]
-            if latest_checkpoint.aliases_used:
-                aliases = latest_checkpoint.aliases_used
-
-        # Get commits by date
-        commits_data = get_commits_by_date(
-            username=username,
-            repo_urls=trajectory.repo_urls,
-            aliases=aliases
-        )
-
-        return {
-            "success": True,
-            "data": commits_data,
-            "message": f"Found {len(commits_data)} days with commits"
-        }
-
-    except Exception as e:
-        print(f"[Trajectory API] Error getting commits by date: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get commits by date: {str(e)}")

@@ -469,7 +469,6 @@ async def compare_contributor_across_repos(request: dict):
     """
     contributor = request.get("contributor")
     repos = request.get("repos", [])
-    use_cache = bool(request.get("use_cache", True))
     model = request.get("model") or DEFAULT_LLM_MODEL
     requested_plugin_id = str(request.get("plugin") or "").strip()
     plugin_id = resolve_plugin_id(requested_plugin_id)
@@ -548,7 +547,6 @@ async def compare_contributor_across_repos(request: dict):
                 repo,
                 contributor,
                 use_chunking=True,
-                use_cache=use_cache,
                 model=model,
                 platform=repo_platform,
                 plugin=plugin_id,
@@ -573,7 +571,6 @@ async def compare_contributor_across_repos(request: dict):
                     },
                     "total_commits": evaluation.get("total_commits_analyzed", 0),
                     "commits_summary": evaluation.get("commits_summary", {}),
-                    "cached": eval_result.get("metadata", {}).get("cached", False),
                     "plugin": evaluation.get("plugin", plugin_id),
                     "plugin_version": evaluation.get("plugin_version", ""),
                     "plugin_scan_path": evaluation.get("plugin_scan_path", ""),

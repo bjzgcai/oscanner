@@ -7,8 +7,6 @@ import type { Locale } from '../i18n/types';
 
 const API_SERVER_URL = getApiBaseUrl();
 type AppSettings = {
-  useCache: boolean;
-  setUseCache: (v: boolean) => void;
   model: string;
   setModel: (v: string) => void;
   pluginId: string;
@@ -27,7 +25,6 @@ type AppSettings = {
   setWorktreeBase: (v: 'build' | 'temp') => void;
 };
 
-const STORAGE_KEY_USE_CACHE = 'oscanner_use_cache';
 const STORAGE_KEY_MODEL = 'oscanner_llm_model';
 const STORAGE_KEY_PLUGIN = 'oscanner_plugin_id';
 const STORAGE_KEY_LOCALE = 'oscanner_locale';
@@ -44,7 +41,6 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [model, setModelState] = useState(DEFAULT_MODEL);
   const [pluginId, setPluginIdState] = useState(DEFAULT_PLUGIN);
   const [plugins, setPlugins] = useState<AppSettings['plugins']>([]);
-  const [useCache, setUseCacheState] = useState(true);
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
   const [llmModalOpen, setLlmModalOpen] = useState(false);
   const [forcedCheckerId, setForcedCheckerIdState] = useState<string | null>(null);
@@ -53,16 +49,6 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
 
   // Load from localStorage after hydration is complete
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY_USE_CACHE);
-      if (raw === 'true') {
-        setUseCacheState(true);
-      } else if (raw === 'false') {
-        setUseCacheState(false);
-      }
-    } catch {
-      // ignore
-    }
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY_MODEL);
       if (raw) {
@@ -159,16 +145,6 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const setUseCache = (v: boolean) => {
-    const next = Boolean(v);
-    setUseCacheState(next);
-    try {
-      localStorage.setItem(STORAGE_KEY_USE_CACHE, String(next));
-    } catch {
-      // ignore
-    }
-  };
-
   const setPluginId = (v: string) => {
     const next = (v || '').trim() || DEFAULT_PLUGIN;
     setPluginIdState(next);
@@ -229,8 +205,8 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   }, [refreshPlugins, refreshCheckers]);
 
   const value = useMemo(
-    () => ({ useCache, setUseCache, model, setModel, pluginId, setPluginId, locale, setLocale, plugins, refreshPlugins, llmModalOpen, setLlmModalOpen, forcedCheckerId, setForcedCheckerId, checkers, refreshCheckers, worktreeBase, setWorktreeBase }),
-    [useCache, model, pluginId, locale, plugins, refreshPlugins, llmModalOpen, forcedCheckerId, checkers, refreshCheckers, worktreeBase]
+    () => ({ model, setModel, pluginId, setPluginId, locale, setLocale, plugins, refreshPlugins, llmModalOpen, setLlmModalOpen, forcedCheckerId, setForcedCheckerId, checkers, refreshCheckers, worktreeBase, setWorktreeBase }),
+    [model, pluginId, locale, plugins, refreshPlugins, llmModalOpen, forcedCheckerId, checkers, refreshCheckers, worktreeBase]
   );
 
   return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
@@ -241,5 +217,4 @@ export function useAppSettings(): AppSettings {
   if (!ctx) throw new Error('useAppSettings must be used within AppSettingsProvider');
   return ctx;
 }
-
 

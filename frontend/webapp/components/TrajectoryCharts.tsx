@@ -3,10 +3,10 @@
 import { Card } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { useI18n } from './I18nContext';
-import { TrajectoryCache, TrajectoryCheckpoint } from '@/types/trajectory';
+import { TrajectoryData, TrajectoryCheckpoint } from '@/types/trajectory';
 
 interface TrajectoryChartsProps {
-  trajectory: TrajectoryCache;
+  trajectory: TrajectoryData;
 }
 
 export default function TrajectoryCharts({ trajectory }: TrajectoryChartsProps) {

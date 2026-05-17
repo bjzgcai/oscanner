@@ -8,8 +8,6 @@ from typing import Dict, List, Optional, Any
 import re
 import os
 import json
-import hashlib
-from datetime import datetime
 from pathlib import Path
 
 from evaluator.paths import get_data_dir
@@ -18,14 +16,14 @@ from evaluator.paths import get_data_dir
 class GiteeCollector:
     """Collect data from Gitee"""
 
-    def __init__(self, token: Optional[str] = None, public_token: Optional[str] = None, cache_dir: Optional[str] = None):
+    def __init__(self, token: Optional[str] = None, public_token: Optional[str] = None, data_dir: Optional[str] = None):
         """
         Initialize Gitee collector
 
         Args:
             token: Gitee personal access token for enterprise (z.gitee.cn) API access
             public_token: Gitee personal access token for public (gitee.com) API access
-            cache_dir: Directory to store cached Gitee data
+            data_dir: Directory for collected Gitee data
         """
         self.token = token  # For z.gitee.cn (enterprise)
         self.public_token = public_token  # For gitee.com (public)
@@ -33,29 +31,19 @@ class GiteeCollector:
         self.enterprise_base_url = "https://z.gitee.cn/api/v5"
 
         from evaluator.paths import get_data_dir
-        self.cache_dir = Path(cache_dir).expanduser() if cache_dir else get_data_dir()
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir = Path(data_dir).expanduser() if data_dir else get_data_dir()
+        self.data_dir.mkdir(parents=True, exist_ok=True)
 
-    def collect_user_data(self, username: str, use_cache: bool = True) -> Dict[str, Any]:
+    def collect_user_data(self, username: str) -> Dict[str, Any]:
         """
         Collect comprehensive data for a Gitee user
 
         Args:
             username: Gitee username
-            use_cache: Whether to use cached data if available
 
         Returns:
             Dictionary containing collected data
         """
-        # Create a pseudo-URL for cache key
-        user_url = f"https://gitee.com/{username}"
-
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_from_cache(user_url)
-            if cached_data is not None:
-                return cached_data.get("data", cached_data)
-
         # Fetch data (in real implementation, this would use the Gitee API)
         print(f"[API] Fetching fresh data for user {username}")
 
@@ -113,37 +101,24 @@ class GiteeCollector:
             "generated_code_score": 0.0
         }
 
-        # Save to cache
-        self._save_to_cache(user_url, data)
-
         return data
 
-    def collect_repo_data(self, repo_url: str, use_cache: bool = True) -> Dict[str, Any]:
+    def collect_repo_data(self, repo_url: str) -> Dict[str, Any]:
         """
         Collect data from a specific repository
 
         Args:
             repo_url: Gitee repository URL (supports gitee.com and z.gitee.cn formats)
-            use_cache: Whether to use cached data if available
 
         Returns:
             Dictionary containing repository data
         """
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_from_cache(repo_url)
-            if cached_data is not None:
-                return cached_data.get("data", cached_data)
-
         # Parse owner and repo from URL (supports both gitee.com and z.gitee.cn)
         owner, repo = self._parse_repo_url(repo_url)
 
         # Fetch data (in real implementation, this would use the Gitee API)
         print(f"[API] Fetching fresh data for {owner}/{repo}")
         data = self._analyze_repository(owner, repo)
-
-        # Save to cache
-        self._save_to_cache(repo_url, data)
 
         return data
 
@@ -269,89 +244,6 @@ class GiteeCollector:
 
         return params
 
-    def _get_cache_path(self, url: str) -> Path:
-        """
-        Generate cache file path based on Gitee URL
-
-        Args:
-            url: Gitee repository or user URL
-
-        Returns:
-            Path to cache file
-        """
-        # Try to parse owner/repo from URL
-        try:
-            owner, repo = self._parse_repo_url(url)
-            # Create path-like structure: owner/repo.json
-            cache_path = self.cache_dir / owner / f"{repo}.json"
-            # Ensure parent directory exists
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            return cache_path
-        except ValueError:
-            pass
-
-        # Try to extract user from URL (e.g., https://gitee.com/username)
-        user_match = re.search(r"gitee\.com/([^/]+)$", url)
-        if user_match:
-            username = user_match.group(1)
-            # Create path-like structure: users/username.json
-            cache_path = self.cache_dir / "users" / f"{username}.json"
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            return cache_path
-
-        # Fallback to hashed URL if pattern doesn't match
-        url_hash = hashlib.md5(url.encode()).hexdigest()
-        return self.cache_dir / f"{url_hash}.json"
-
-    def _load_from_cache(self, repo_url: str) -> Optional[Dict[str, Any]]:
-        """
-        Load cached data for a repository
-
-        Args:
-            repo_url: Gitee repository URL
-
-        Returns:
-            Cached data if exists, None otherwise
-        """
-        cache_path = self._get_cache_path(repo_url)
-
-        if cache_path.exists():
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    cached_data = json.load(f)
-                    print(f"[Cache] Loaded data from cache: {cache_path}")
-                    return cached_data
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[Cache] Error loading cache file {cache_path}: {e}")
-                return None
-
-        return None
-
-    def _save_to_cache(self, repo_url: str, data: Dict[str, Any]) -> None:
-        """
-        Save repository data to cache
-
-        Args:
-            repo_url: Gitee repository URL
-            data: Data to cache
-        """
-        cache_path = self._get_cache_path(repo_url)
-
-        try:
-            # Add metadata to cached data
-            cached_data = {
-                "cached_at": datetime.now().isoformat(),
-                "repo_url": repo_url,
-                "data": data
-            }
-
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(cached_data, f, indent=2, ensure_ascii=False)
-
-            print(f"[Cache] Saved data to cache: {cache_path}")
-        except IOError as e:
-            print(f"[Cache] Error saving cache file {cache_path}: {e}")
-
     def fetch_commit_data(self, owner: str, repo: str, commit_sha: str, is_enterprise: bool = False) -> Dict[str, Any]:
         """
         Fetch detailed commit data from Gitee API
@@ -451,140 +343,6 @@ class GiteeCollector:
             print(f"[API] Error fetching commits list: {error_detail}")
             raise Exception(f"Failed to fetch commits list: {error_detail}")
 
-    def _get_commit_cache_path(self, owner: str, repo: str, commit_sha: str) -> Path:
-        """
-        Generate cache file path for a specific commit
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            commit_sha: Commit SHA hash
-
-        Returns:
-            Path to commit cache file
-        """
-        cache_path = self.cache_dir / owner / repo / "commits" / f"{commit_sha}.json"
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        return cache_path
-
-    def _get_commits_list_cache_path(self, owner: str, repo: str) -> Path:
-        """
-        Generate cache file path for commits list
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-
-        Returns:
-            Path to commits list cache file
-        """
-        cache_path = self.cache_dir / owner / repo / "commits_list.json"
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        return cache_path
-
-    def _load_commit_from_cache(self, owner: str, repo: str, commit_sha: str) -> Optional[Dict[str, Any]]:
-        """
-        Load cached commit data
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            commit_sha: Commit SHA hash
-
-        Returns:
-            Cached commit data if exists, None otherwise
-        """
-        cache_path = self._get_commit_cache_path(owner, repo, commit_sha)
-
-        if cache_path.exists():
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    cached_data = json.load(f)
-                    print(f"[Cache] Loaded commit data from cache: {cache_path}")
-                    return cached_data
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[Cache] Error loading cache file {cache_path}: {e}")
-                return None
-
-        return None
-
-    def _load_commits_list_from_cache(self, owner: str, repo: str) -> Optional[Dict[str, Any]]:
-        """
-        Load cached commits list
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-
-        Returns:
-            Cached commits list if exists, None otherwise
-        """
-        cache_path = self._get_commits_list_cache_path(owner, repo)
-
-        if cache_path.exists():
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    cached_data = json.load(f)
-                    print(f"[Cache] Loaded commits list from cache: {cache_path}")
-                    return cached_data
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[Cache] Error loading cache file {cache_path}: {e}")
-                return None
-
-        return None
-
-    def _save_commit_to_cache(self, owner: str, repo: str, commit_sha: str, data: Dict[str, Any]) -> None:
-        """
-        Save commit data to cache
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            commit_sha: Commit SHA hash
-            data: Commit data to cache
-        """
-        cache_path = self._get_commit_cache_path(owner, repo, commit_sha)
-
-        try:
-            cached_data = {
-                "cached_at": datetime.now().isoformat(),
-                "commit_sha": commit_sha,
-                "repo": f"{owner}/{repo}",
-                "data": data
-            }
-
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(cached_data, f, indent=2, ensure_ascii=False)
-
-            print(f"[Cache] Saved commit data to cache: {cache_path}")
-        except IOError as e:
-            print(f"[Cache] Error saving cache file {cache_path}: {e}")
-
-    def _save_commits_list_to_cache(self, owner: str, repo: str, data: List[Dict[str, Any]]) -> None:
-        """
-        Save commits list to cache
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            data: Commits list to cache
-        """
-        cache_path = self._get_commits_list_cache_path(owner, repo)
-
-        try:
-            cached_data = {
-                "cached_at": datetime.now().isoformat(),
-                "repo": f"{owner}/{repo}",
-                "data": data
-            }
-
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(cached_data, f, indent=2, ensure_ascii=False)
-
-            print(f"[Cache] Saved commits list to cache: {cache_path}")
-        except IOError as e:
-            print(f"[Cache] Error saving cache file {cache_path}: {e}")
-
     def fetch_collaborators(self, owner: str, repo: str, is_enterprise: bool = False) -> List[Dict[str, Any]]:
         """
         Fetch list of repository collaborators/members from Gitee API
@@ -597,11 +355,6 @@ class GiteeCollector:
         Returns:
             List of collaborators with their information
         """
-        # Check cache first
-        cached_data = self._load_collaborators_from_cache(owner, repo)
-        if cached_data is not None:
-            return cached_data.get("data", cached_data)
-
         # Make API request
         import requests
 
@@ -625,9 +378,6 @@ class GiteeCollector:
 
             collaborators = response.json()
 
-            # Save to cache
-            self._save_collaborators_to_cache(owner, repo, collaborators)
-
             return collaborators
 
         except requests.exceptions.RequestException as e:
@@ -642,68 +392,3 @@ class GiteeCollector:
 
             print(f"[API] Error fetching collaborators: {error_detail}")
             raise Exception(f"Failed to fetch collaborators: {error_detail}")
-
-    def _get_collaborators_cache_path(self, owner: str, repo: str) -> Path:
-        """
-        Generate cache file path for collaborators list
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-
-        Returns:
-            Path to collaborators cache file
-        """
-        cache_path = self.cache_dir / owner / repo / "collaborators.json"
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        return cache_path
-
-    def _load_collaborators_from_cache(self, owner: str, repo: str) -> Optional[Dict[str, Any]]:
-        """
-        Load cached collaborators list
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-
-        Returns:
-            Cached collaborators list if exists, None otherwise
-        """
-        cache_path = self._get_collaborators_cache_path(owner, repo)
-
-        if cache_path.exists():
-            try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    cached_data = json.load(f)
-                    print(f"[Cache] Loaded collaborators from cache: {cache_path}")
-                    return cached_data
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[Cache] Error loading cache file {cache_path}: {e}")
-                return None
-
-        return None
-
-    def _save_collaborators_to_cache(self, owner: str, repo: str, data: List[Dict[str, Any]]) -> None:
-        """
-        Save collaborators list to cache
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            data: Collaborators list to cache
-        """
-        cache_path = self._get_collaborators_cache_path(owner, repo)
-
-        try:
-            cached_data = {
-                "cached_at": datetime.now().isoformat(),
-                "repo": f"{owner}/{repo}",
-                "data": data
-            }
-
-            with open(cache_path, 'w', encoding='utf-8') as f:
-                json.dump(cached_data, f, indent=2, ensure_ascii=False)
-
-            print(f"[Cache] Saved collaborators to cache: {cache_path}")
-        except IOError as e:
-            print(f"[Cache] Error saving cache file {cache_path}: {e}")

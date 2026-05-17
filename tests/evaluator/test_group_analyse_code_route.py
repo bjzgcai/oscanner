@@ -131,7 +131,7 @@ def test_analyze_group_repositories_bubbles_llm_parse_failure(monkeypatch):
     monkeypatch.setattr(
         trajectory_service,
         "_sync_repo_for_group_eval",
-        lambda repo_url, use_cache: ("gitee", "org", "repo", True),
+        lambda repo_url: ("gitee", "org", "repo", True),
     )
     monkeypatch.setattr(
         trajectory_service,
@@ -156,7 +156,6 @@ def test_analyze_group_repositories_bubbles_llm_parse_failure(monkeypatch):
             plugin_id="zgc_ai_native_2026",
             model="deepseek/deepseek-v4-pro",
             language="zh-CN",
-            use_cache=True,
         )
 
 
@@ -182,7 +181,6 @@ async def test_group_analyse_code_route_returns_500_for_llm_parse_failure(monkey
             },
             plugin="zgc_ai_native_2026",
             language="zh-CN",
-            use_cache=True,
             max_fetch_workers=4,
             forced_checker="",
             worktree_base="build",
@@ -239,7 +237,6 @@ async def test_group_analyse_code_route_batches_repos_without_parallel_chunking(
         },
         plugin="zgc_ai_native_2026",
         language="zh-CN",
-        use_cache=True,
         max_fetch_workers=4,
         forced_checker="",
         worktree_base="build",
@@ -305,7 +302,6 @@ async def test_group_analyse_code_route_streams_progress_and_final_result(monkey
         request=FakeRequest(),
         plugin="zgc_ai_native_2026",
         language="zh-CN",
-        use_cache=True,
         max_fetch_workers=4,
         forced_checker="",
         worktree_base="build",
@@ -754,7 +750,7 @@ def test_analyze_group_repositories_exposes_row_and_total_token_usage(monkeypatc
     monkeypatch.setattr(
         trajectory_service,
         "_sync_repo_for_group_eval",
-        lambda repo_url, use_cache: ("gitee", "org", "repo", False),
+        lambda repo_url: ("gitee", "org", "repo", False),
     )
     monkeypatch.setattr(
         trajectory_service,
@@ -836,7 +832,7 @@ def test_analyze_group_repositories_applies_per_repo_commit_ranges(monkeypatch):
     monkeypatch.setattr(
         trajectory_service,
         "_sync_repo_for_group_eval",
-        lambda repo_url, use_cache: ("gitee", "org", repo_url.rsplit("/", 1)[-1], False),
+        lambda repo_url: ("gitee", "org", repo_url.rsplit("/", 1)[-1], False),
     )
     monkeypatch.setattr(
         trajectory_service,
@@ -895,7 +891,7 @@ def test_analyze_group_repositories_reports_repo_scoped_missing_sha(monkeypatch)
     monkeypatch.setattr(
         trajectory_service,
         "_sync_repo_for_group_eval",
-        lambda repo_url, use_cache: ("gitee", "org", "repo", False),
+        lambda repo_url: ("gitee", "org", "repo", False),
     )
     monkeypatch.setattr(
         trajectory_service,
@@ -958,9 +954,9 @@ def test_analyze_group_repositories_refreshes_and_retries_missing_sha(monkeypatc
                 "commits_summary": {},
             }
 
-    def fake_sync(repo_url, use_cache):
-        sync_calls.append((repo_url, use_cache))
-        return ("gitee", "org", "repo", not use_cache)
+    def fake_sync(repo_url):
+        sync_calls.append(repo_url)
+        return ("gitee", "org", "repo", True)
 
     def fake_load(repo_url):
         load_calls.append(repo_url)
@@ -1008,13 +1004,12 @@ def test_analyze_group_repositories_refreshes_and_retries_missing_sha(monkeypatc
         plugin_id="zgc_ai_native_2026",
         model="deepseek/deepseek-v4-pro",
         language="zh-CN",
-        use_cache=True,
     )
 
     assert result["success"] is True
     assert sync_calls == [
-        ("https://gitee.com/org/repo", True),
-        ("https://gitee.com/org/repo", False),
+        "https://gitee.com/org/repo",
+        "https://gitee.com/org/repo",
     ]
     assert load_calls == [
         "https://gitee.com/org/repo",
@@ -1084,7 +1079,7 @@ def test_analyze_group_repositories_fetches_missing_gitee_boundary_sha(monkeypat
     monkeypatch.setattr(
         trajectory_service,
         "_sync_repo_for_group_eval",
-        lambda repo_url, use_cache: ("gitee", "org", "repo", not use_cache),
+        lambda repo_url: ("gitee", "org", "repo", True),
     )
     monkeypatch.setattr(trajectory_service, "_load_all_repo_commits", fake_load)
     monkeypatch.setattr(trajectory_service, "sync_gitee_commits_by_sha", fake_sync_boundary, raising=False)
@@ -1103,7 +1098,6 @@ def test_analyze_group_repositories_fetches_missing_gitee_boundary_sha(monkeypat
         plugin_id="zgc_ai_native_2026",
         model="deepseek/deepseek-v4-pro",
         language="zh-CN",
-        use_cache=True,
     )
 
     assert result["success"] is True

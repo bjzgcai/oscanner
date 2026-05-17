@@ -38,11 +38,6 @@ export interface ValidationRunDetailResponse {
   run: any;
 }
 
-export interface RepoEvaluationResponse {
-  success: boolean;
-  evaluation: any;
-}
-
 /**
  * Validation API utility functions
  */
@@ -120,30 +115,6 @@ export const validationApi = {
     const response = await fetch(`${API_BASE}/api/benchmark/validation/runs/${runId}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch run details: ${response.statusText}`);
-    }
-    return response.json();
-  },
-
-  /**
-   * Get cached evaluation for a specific repo/author
-   */
-  getRepoEvaluation: async (
-    platform: string,
-    owner: string,
-    repo: string,
-    author: string,
-    pluginId?: string
-  ): Promise<RepoEvaluationResponse> => {
-    const searchParams = new URLSearchParams();
-    if (pluginId) searchParams.set('plugin_id', pluginId);
-    searchParams.set('use_cache', 'true');
-
-    const url = `${API_BASE}/api/benchmark/repo/${platform}/${owner}/${repo}/${encodeURIComponent(
-      author
-    )}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch repo evaluation: ${response.statusText}`);
     }
     return response.json();
   },

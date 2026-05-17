@@ -1,7 +1,5 @@
 """Benchmark and validation routes."""
 
-import json
-from pathlib import Path
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Query
 
@@ -14,14 +12,12 @@ except ImportError:
     VALIDATION_AVAILABLE = False
 
 # Import evaluation dependencies
-from evaluator.paths import get_platform_data_dir, get_platform_eval_dir
+from evaluator.paths import get_platform_data_dir
 from evaluator.plugin_registry import load_scan_module, PluginLoadError
 from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL
 from evaluator.utils import load_commits_from_local
 from evaluator.services import (
     resolve_plugin_id,
-    get_evaluation_cache_path,
-    get_plugins_snapshot,
     evaluate_author_incremental,
     extract_github_data,
     extract_gitee_data,
@@ -100,19 +96,6 @@ async def evaluation_function_wrapper(repo_url: str, author: str, plugin_id: str
             "error": "No commits found"
         }
 
-    # Load previous evaluation (for caching)
-    eval_dir = get_platform_eval_dir(platform, owner, repo)
-    default_plugin_id = get_plugins_snapshot()[1]
-    eval_path = get_evaluation_cache_path(eval_dir, author, plugin_id, default_plugin_id)
-
-    previous_evaluation = None
-    if eval_path.exists():
-        try:
-            with open(eval_path, 'r', encoding='utf-8') as f:
-                previous_evaluation = json.load(f)
-        except Exception as e:
-            print(f"[Benchmark] Failed to load cached evaluation: {e}")
-
     # Get API key
     api_key = get_llm_api_key()
     if not api_key:
@@ -131,7 +114,7 @@ async def evaluation_function_wrapper(repo_url: str, author: str, plugin_id: str
     result = evaluate_author_incremental(
         commits=commits,
         author=author,
-        previous_evaluation=previous_evaluation,
+        previous_evaluation=None,
         data_dir=data_dir,
         model=model,
         use_chunking=True,
@@ -139,11 +122,6 @@ async def evaluation_function_wrapper(repo_url: str, author: str, plugin_id: str
         aliases=None,
         evaluator_factory=evaluator_factory,
     )
-
-    # Save evaluation
-    eval_dir.mkdir(parents=True, exist_ok=True)
-    with open(eval_path, 'w', encoding='utf-8') as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
 
     return result
 
@@ -269,36 +247,3 @@ async def get_validation_run(run_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get run: {str(e)}")
-
-
-@router.get("/api/benchmark/repo/{platform}/{owner}/{repo}/{author}")
-async def get_benchmark_repo_evaluation(
-    platform: str,
-    owner: str,
-    repo: str,
-    author: str,
-    plugin_id: str = Query(""),
-):
-    """Get benchmark evaluation for specific repo/author."""
-    if not VALIDATION_AVAILABLE:
-        raise HTTPException(status_code=501, detail="Validation module not available")
-
-    try:
-        from evaluator.validation.benchmark_dataset import load_benchmark_evaluation
-
-        evaluation = load_benchmark_evaluation(platform, owner, repo, author, plugin_id)
-
-        if not evaluation:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No benchmark evaluation found for {platform}/{owner}/{repo}/{author}"
-            )
-
-        return {
-            "success": True,
-            "evaluation": evaluation
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load evaluation: {str(e)}")

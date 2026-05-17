@@ -8,8 +8,6 @@ from typing import Dict, List, Optional, Any
 import re
 import os
 import json
-import hashlib
-from datetime import datetime, timedelta
 from pathlib import Path
 
 from evaluator.paths import get_data_dir
@@ -18,41 +16,30 @@ from evaluator.paths import get_data_dir
 class GitHubCollector:
     """Collect data from GitHub"""
 
-    def __init__(self, token: Optional[str] = None, cache_dir: Optional[str] = None):
+    def __init__(self, token: Optional[str] = None, data_dir: Optional[str] = None):
         """
         Initialize GitHub collector
 
         Args:
             token: GitHub personal access token for API access
-            cache_dir: Directory to store cached GitHub data
+            data_dir: Directory for collected GitHub data
         """
         self.token = token
         self.base_url = "https://api.github.com"
-        self.cache_dir = Path(cache_dir).expanduser() if cache_dir else get_data_dir()
+        self.data_dir = Path(data_dir).expanduser() if data_dir else get_data_dir()
 
-        # Create cache directory if it doesn't exist
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
 
-    def collect_user_data(self, username: str, use_cache: bool = True) -> Dict[str, Any]:
+    def collect_user_data(self, username: str) -> Dict[str, Any]:
         """
         Collect comprehensive data for a GitHub user
 
         Args:
             username: GitHub username
-            use_cache: Whether to use cached data if available
 
         Returns:
             Dictionary containing collected data
         """
-        # Create a pseudo-URL for cache key
-        user_url = f"https://github.com/{username}"
-
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_from_cache(user_url)
-            if cached_data is not None:
-                return cached_data.get("data", cached_data)
-
         # Fetch data (in real implementation, this would use the GitHub API)
         print(f"[API] Fetching fresh data for user {username}")
 
@@ -110,29 +97,18 @@ class GitHubCollector:
             "generated_code_score": 0.0
         }
 
-        # Save to cache
-        self._save_to_cache(user_url, data)
-
         return data
 
-    def collect_repo_data(self, repo_url: str, use_cache: bool = True) -> Dict[str, Any]:
+    def collect_repo_data(self, repo_url: str) -> Dict[str, Any]:
         """
         Collect data from a specific repository
 
         Args:
             repo_url: GitHub repository URL
-            use_cache: Whether to use cached data if available
 
         Returns:
             Dictionary containing repository data
         """
-        # Check cache first if enabled
-        if use_cache:
-            cached_data = self._load_from_cache(repo_url)
-            if cached_data is not None:
-                # Return the actual data, not the metadata wrapper
-                return cached_data.get("data", cached_data)
-
         # Parse repo URL
         match = re.search(r"github\.com/([^/]+)/([^/]+)", repo_url)
         if not match:
@@ -144,9 +120,6 @@ class GitHubCollector:
         # Fetch data (in real implementation, this would use the GitHub API)
         print(f"[API] Fetching fresh data for {owner}/{repo}")
         data = self._analyze_repository(owner, repo)
-
-        # Save to cache
-        self._save_to_cache(repo_url, data)
 
         return data
 

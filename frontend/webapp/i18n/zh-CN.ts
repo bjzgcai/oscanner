@@ -6,9 +6,6 @@ export const zhCN: Messages = {
   'nav.analysis': '分析',
   'nav.validation': '验证',
   'nav.api': 'API',
-  'nav.cache.tooltip': '启用后 根据历史评估结果和最新代码提交 综合评估；不启用则强制重新评估（需要配置 LLM Key）。',
-  'nav.cache.on': '缓存',
-  'nav.cache.off': '无缓存',
   'nav.plugin': '插件',
   'nav.model': '模型',
   'nav.language': '语言',
@@ -182,7 +179,6 @@ export const zhCN: Messages = {
   // Settings
   'validation.settings.model': '模型',
   'validation.settings.plugin': '插件',
-  'validation.settings.cache': '缓存',
   'validation.settings.enabled': '已启用',
   'validation.settings.disabled': '已禁用',
 
@@ -419,4 +415,3 @@ export const zhCN: Messages = {
   'runner.step4.run_another': '运行另一个仓库',
   'runner.progress': '进度',
 };
-

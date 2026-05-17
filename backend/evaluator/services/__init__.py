@@ -3,7 +3,6 @@
 from evaluator.services.plugin_service import (
     get_plugins_snapshot,
     resolve_plugin_id,
-    get_evaluation_cache_path,
 )
 from evaluator.services.extraction_service import (
     extract_github_data,
@@ -19,8 +18,6 @@ from evaluator.services.evaluation_service import (
 )
 from evaluator.services.merge_service import merge_evaluations_logic
 from evaluator.services.trajectory_service import (
-    load_trajectory_cache,
-    save_trajectory_cache,
     analyze_growth_trajectory,
     analyze_group_repositories,
     get_commits_by_date,
@@ -29,7 +26,6 @@ from evaluator.services.trajectory_service import (
 __all__ = [
     "get_plugins_snapshot",
     "resolve_plugin_id",
-    "get_evaluation_cache_path",
     "extract_github_data",
     "extract_gitee_data",
     "fetch_github_commits",
@@ -39,8 +35,6 @@ __all__ = [
     "evaluate_author_incremental",
     "get_empty_evaluation",
     "merge_evaluations_logic",
-    "load_trajectory_cache",
-    "save_trajectory_cache",
     "analyze_growth_trajectory",
     "analyze_group_repositories",
     "get_commits_by_date",

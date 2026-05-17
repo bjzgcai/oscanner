@@ -154,15 +154,14 @@ def _load_authors_from_commit_files(commits_dir) -> List[Dict[str, Any]]:
     )
 
 
-def _authors_response(owner: str, repo: str, authors_list: List[Dict[str, Any]], cached: bool) -> Dict[str, Any]:
+def _authors_response(owner: str, repo: str, authors_list: List[Dict[str, Any]]) -> Dict[str, Any]:
     return {
         "success": True,
         "data": {
             "owner": owner,
             "repo": repo,
             "authors": authors_list,
-            "total_authors": len(authors_list),
-            "cached": cached
+            "total_authors": len(authors_list)
         }
     }
 
@@ -172,7 +171,6 @@ async def get_gitee_commits(
     owner: str,
     repo: str,
     limit: int = Query(500, ge=1, le=1000),
-    use_cache: bool = Query(True),
     is_enterprise: bool = Query(False)
 ):
     """Fetch commits for a Gitee repository"""
@@ -181,8 +179,7 @@ async def get_gitee_commits(
 
     return {
         "success": True,
-        "data": commits,
-        "cached": False
+        "data": commits
     }
 
 
@@ -192,7 +189,6 @@ async def get_authors(
     repo: str,
     response: Response,
     platform: str = Query("github"),
-    use_cache: bool = Query(True),
 ):
     """
     Get list of authors from commit data
@@ -207,8 +203,6 @@ async def get_authors(
         plat = (platform or "github").strip().lower()
         data_dir = get_platform_data_dir(plat, owner, repo)
         commits_dir = data_dir / "commits"
-        has_local_data = commits_dir.exists() and any(commits_dir.glob("*.json"))
-        used_cached_data = False
 
         # Never allow HTTP-layer caching for this endpoint.
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -218,25 +212,14 @@ async def get_authors(
         if plat == "gitee":
             contributors_authors = _fetch_gitee_contributors_authors(owner, repo)
             if contributors_authors:
-                return _authors_response(owner, repo, contributors_authors, cached=False)
+                return _authors_response(owner, repo, contributors_authors)
 
-        # Step 1 & 2: refresh only when cache cannot satisfy the request.
-        should_refresh = not (use_cache and has_local_data)
-        if not has_local_data:
-            print(f"No local commit data found for {plat}/{owner}/{repo}; will fetch from remote")
-        else:
-            if not use_cache:
-                print(f"use_cache=False for {plat}/{owner}/{repo}; forcing refresh")
-            else:
-                print(f"Using cached commit data for {plat}/{owner}/{repo}")
-
-        if should_refresh:
-            try:
-                success = _extract_platform_data(plat, owner, repo)
-                if not success:
-                    raise HTTPException(status_code=500, detail=f"Failed to extract {plat} data for {owner}/{repo}")
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Failed to extract {plat} data for {owner}/{repo}: {e}")
+        try:
+            success = _extract_platform_data(plat, owner, repo)
+            if not success:
+                raise HTTPException(status_code=500, detail=f"Failed to extract {plat} data for {owner}/{repo}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to extract {plat} data for {owner}/{repo}: {e}")
 
         # Step 3: Load all authors from commits
         if not commits_dir.exists():
@@ -253,7 +236,7 @@ async def get_authors(
                 detail=f"No commit authors found in {commits_dir}"
             )
 
-        return _authors_response(owner, repo, authors_list, used_cached_data)
+        return _authors_response(owner, repo, authors_list)
 
     except HTTPException:
         raise
