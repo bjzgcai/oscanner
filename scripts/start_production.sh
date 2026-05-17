@@ -42,6 +42,10 @@ fi
 EVALUATOR_PORT=${PORT:-8000}
 export EVALUATOR_PORT
 
+# Evaluator .env.local commonly defines PORT=8000. Keep the resolved evaluator
+# port, but do not let that generic PORT leak into repos_runner defaults.
+unset PORT
+
 # Load repos_runner environment variables
 REPOS_RUNNER_PROD_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.prod"
 REPOS_RUNNER_LOCAL_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.local"
@@ -87,6 +91,13 @@ echo -e "  Webapp Port:       ${GREEN}${WEBAPP_PORT}${NC}"
 echo -e "  Rebuild:           ${REBUILD}"
 echo -e "  Daemon Mode:       ${DAEMON}"
 echo ""
+
+if [ "${OSCANNER_START_PRODUCTION_PRINT_CONFIG:-}" = "1" ]; then
+    echo "EVALUATOR_PORT=${EVALUATOR_PORT}"
+    echo "REPOS_RUNNER_PORT=${REPOS_RUNNER_PORT}"
+    echo "WEBAPP_PORT=${WEBAPP_PORT}"
+    exit 0
+fi
 
 # Kill existing processes
 echo -e "${BLUE}Checking for existing processes...${NC}"
