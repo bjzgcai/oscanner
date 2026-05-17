@@ -245,9 +245,9 @@ OPEN_ROUTER_KEY=sk-or-v1-your-key-here
 # OSCANNER_LLM_API_KEY=your-custom-api-key
 
 # Optional: Custom LLM configuration
-OSCANNER_LLM_MODEL=anthropic/claude-sonnet-4.5
+OSCANNER_LLM_MODEL=deepseek/deepseek-v4-pro
 OSCANNER_LLM_BASE_URL=https://openrouter.ai/api/v1
-OSCANNER_LLM_FALLBACK_MODELS=z-ai/glm-4.7,meta-llama/llama-3.3-70b-instruct
+OSCANNER_LLM_FALLBACK_MODELS=another-model-id
 
 # GitHub token (optional, for higher API rate limits: 5000/hr vs 60/hr)
 GITHUB_TOKEN=ghp_your_github_token
@@ -319,7 +319,7 @@ The evaluation system follows this intelligent workflow to minimize API calls an
                                 ▼
                    ┌────────────────────────────┐
                    │ Auto-evaluate first author │
-                   │ with AI (Claude Sonnet 4.5)│
+                   │ with AI (DeepSeek V4 Pro)│
                    └────────────┬───────────────┘
                                 │
                                 ▼
@@ -977,7 +977,7 @@ curl -X POST "http://localhost:8000/api/config/llm" \
   -d '{
     "api_key": "sk-or-v1-your-key",
     "base_url": "https://openrouter.ai/api/v1",
-    "model": "anthropic/claude-sonnet-4.5"
+    "model": "deepseek/deepseek-v4-pro"
   }'
 
 # Get authors list (auto-fetches and caches if needed)
@@ -1166,7 +1166,7 @@ Evaluation results are cached per author per plugin:
   "timestamp": "2026-01-22T15:20:10Z",
   "cached": true,
   "plugin_id": "zgc_simple",
-  "model_used": "anthropic/claude-sonnet-4.5"
+  "model_used": "deepseek/deepseek-v4-pro"
 }
 ```
 
@@ -1217,7 +1217,7 @@ The system uses a **priority-based configuration system** with multiple sources:
 | `OSCANNER_LLM_API_KEY` | Primary LLM API key | Yes* | - |
 | `OPENAI_API_KEY` | Secondary LLM API key | Yes* | - |
 | `OPEN_ROUTER_KEY` | Fallback LLM API key (OpenRouter) | Yes* | - |
-| `OSCANNER_LLM_MODEL` | Default LLM model name | No | `qwen/qwen3-coder-flash` |
+| `OSCANNER_LLM_MODEL` | Default LLM model name | No | `deepseek/deepseek-v4-pro` |
 | `OSCANNER_LLM_BASE_URL` | Custom LLM endpoint base URL | No | `https://openrouter.ai/api/v1` |
 | `OPENAI_BASE_URL` | OpenAI-compatible base URL | No | - |
 | `OSCANNER_LLM_CHAT_COMPLETIONS_URL` | Full chat completions endpoint URL | No | `{base_url}/chat/completions` |
@@ -1258,8 +1258,8 @@ Evaluations directory:
 
 # LLM Configuration (OpenRouter)
 OPEN_ROUTER_KEY=sk-or-v1-your-key-here
-OSCANNER_LLM_MODEL=anthropic/claude-sonnet-4.5
-OSCANNER_LLM_FALLBACK_MODELS=z-ai/glm-4.7,meta-llama/llama-3.3-70b-instruct
+OSCANNER_LLM_MODEL=deepseek/deepseek-v4-pro
+OSCANNER_LLM_FALLBACK_MODELS=another-model-id
 
 # GitHub API (optional, for higher rate limits)
 GITHUB_TOKEN=ghp_your_token_here
@@ -1305,12 +1305,12 @@ The system provides flexible LLM configuration with multiple providers and fallb
    - Or `{base_url}/chat/completions` (constructed)
 
 4. **Model Selection**:
-   - `OSCANNER_LLM_MODEL` (default: `qwen/qwen3-coder-flash`)
+   - `OSCANNER_LLM_MODEL` (default: `deepseek/deepseek-v4-pro`)
    - Model names are provider-specific
 
 5. **Fallback Models**:
    - `OSCANNER_LLM_FALLBACK_MODELS` (comma-separated list)
-   - Example: `anthropic/claude-sonnet-4.5,z-ai/glm-4.7`
+   - Example: `deepseek/deepseek-v4-pro,another-model-id`
 
 **Supported Providers:**
 - OpenRouter (default) - Multi-model gateway
@@ -1328,8 +1328,8 @@ The system provides flexible LLM configuration with multiple providers and fallb
 ```env
 # OpenRouter (default)
 OPEN_ROUTER_KEY=sk-or-v1-your-key-here
-OSCANNER_LLM_MODEL=anthropic/claude-sonnet-4.5
-OSCANNER_LLM_FALLBACK_MODELS=z-ai/glm-4.7,meta-llama/llama-3.3-70b-instruct
+OSCANNER_LLM_MODEL=deepseek/deepseek-v4-pro
+OSCANNER_LLM_FALLBACK_MODELS=another-model-id
 
 # OpenAI
 OPENAI_API_KEY=sk-your-key
@@ -1351,7 +1351,7 @@ curl -X POST "http://localhost:8000/api/config/llm" \
   -d '{
     "api_key": "sk-or-v1-your-key",
     "base_url": "https://openrouter.ai/api/v1",
-    "model": "anthropic/claude-sonnet-4.5"
+    "model": "deepseek/deepseek-v4-pro"
   }'
 
 # Check LLM status

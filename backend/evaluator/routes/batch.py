@@ -546,7 +546,6 @@ async def compare_contributor_across_repos(request: dict):
                 owner,
                 repo,
                 contributor,
-                use_chunking=True,
                 model=model,
                 platform=repo_platform,
                 plugin=plugin_id,

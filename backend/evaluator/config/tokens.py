@@ -4,7 +4,7 @@ import os
 from typing import Optional
 
 # Default model for evaluation (can be overridden per-request by query param `model=...`)
-DEFAULT_LLM_MODEL = os.getenv("OSCANNER_LLM_MODEL", "qwen/qwen3-coder-flash")
+DEFAULT_LLM_MODEL = os.getenv("OSCANNER_LLM_MODEL", "deepseek/deepseek-v4-pro")
 
 
 def get_github_token() -> Optional[str]:

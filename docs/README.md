@@ -48,34 +48,6 @@
 
 ---
 
-### 04_parallel_chunking.md
-**并行分块策略**
-
-说明并行分块功能的策略、使用方法和性能对比。
-
-**主要内容**：
-- 分块模式介绍（顺序 vs 并行）
-- 如何启用并行分块
-- 性能对比
-- 最佳实践
-- 故障排除
-
----
-
-### 05_parallel_chunking_implementation.md
-**并行分块实现总结**
-
-详细说明并行分块功能的实现细节和技术要点。
-
-**主要内容**：
-- 实现的关键变更
-- 代码层面的修改
-- 工作流程说明
-- 监控输出
-- 安全特性
-
----
-
 ### 06_trajectory_evaluation.md
 **轨迹评估增强**
 
@@ -127,9 +99,7 @@
 3. [03_evaluation_architecture.md](03_evaluation_architecture.md) - 了解评估功能
 
 ### 开发者深入
-1. [04_parallel_chunking.md](04_parallel_chunking.md) - 了解并行分块策略
-2. [05_parallel_chunking_implementation.md](05_parallel_chunking_implementation.md) - 了解实现细节
-3. [06_trajectory_evaluation.md](06_trajectory_evaluation.md) - 了解轨迹评估
+1. [06_trajectory_evaluation.md](06_trajectory_evaluation.md) - 了解轨迹评估
 
 ### 项目历史
 1. [07_refactor_summary.md](07_refactor_summary.md) - 了解重构历史
@@ -138,7 +108,7 @@
 ## 文档命名规范
 
 - **编号前缀**：使用 `01_`, `02_`, `03_` 等编号前缀，便于排序和查找
-- **命名风格**：使用小写下划线（snake_case），如 `parallel_chunking.md`
+- **命名风格**：使用小写下划线（snake_case），如 `trajectory_evaluation.md`
 - **描述性**：文件名要有描述性，能清楚表达文档内容
 
 ## 更新文档

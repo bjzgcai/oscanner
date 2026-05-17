@@ -26,13 +26,10 @@ async def evaluate_author(
     owner: str,
     repo: str,
     author: str,
-    use_chunking: bool = Query(True),
     model: str = Query(DEFAULT_LLM_MODEL),
     platform: str = Query("github"),
     plugin: str = Query(""),
     language: str = Query("en-US"),
-    parallel_chunking: bool = Query(True),
-    max_parallel_workers: int = Query(3),
     request_body: Optional[Dict[str, Any]] = None
 ):
     """Evaluate an author with auto-sync and incremental evaluation."""
@@ -62,19 +59,8 @@ async def evaluate_author(
 
         # Normalize parameters (handle Query objects and type conversion)
         # When this function is called programmatically, Query objects aren't resolved by FastAPI
-        from fastapi.params import Query as QueryType
-
         if not isinstance(model, str):
             model = DEFAULT_LLM_MODEL
-
-        # Ensure parallel_chunking and max_parallel_workers are proper types, not Query objects
-        if isinstance(parallel_chunking, QueryType):
-            parallel_chunking = parallel_chunking.default
-        parallel_chunking = bool(parallel_chunking)
-
-        if isinstance(max_parallel_workers, QueryType):
-            max_parallel_workers = max_parallel_workers.default
-        max_parallel_workers = int(max_parallel_workers)
 
         # Check data directory
         data_dir = get_platform_data_dir(platform, owner, repo)
@@ -101,8 +87,6 @@ async def evaluate_author(
                         model=model,
                         mode="moderate",
                         language=language,
-                        parallel_chunking=parallel_chunking,
-                        max_parallel_workers=max_parallel_workers,
                     )
 
                 # Run synchronous blocking operations in thread pool to avoid blocking event loop
@@ -113,12 +97,9 @@ async def evaluate_author(
                     previous_evaluation=None,
                     data_dir=data_dir,
                     model=model,
-                    use_chunking=use_chunking,
                     api_key=api_key,
                     aliases=[alias],
                     evaluator_factory=_factory,
-                    parallel_chunking=parallel_chunking,
-                    max_parallel_workers=max_parallel_workers,
                 )
                 evaluation["plugin"] = plugin_id
                 if meta:
@@ -163,8 +144,6 @@ async def evaluate_author(
                 model=model,
                 mode="moderate",
                 language=language,
-                parallel_chunking=parallel_chunking,
-                max_parallel_workers=max_parallel_workers,
             )
 
         # Run synchronous blocking operations in thread pool to avoid blocking event loop
@@ -175,12 +154,9 @@ async def evaluate_author(
             previous_evaluation=None,
             data_dir=data_dir,
             model=model,
-            use_chunking=use_chunking,
             api_key=api_key,
             aliases=aliases,
             evaluator_factory=_factory,
-            parallel_chunking=parallel_chunking,
-            max_parallel_workers=max_parallel_workers,
         )
         evaluation["plugin"] = plugin_id
         if meta:

@@ -109,7 +109,7 @@ uv run oscanner init \
   --provider openai \
   --base-url https://api.siliconflow.cn/v1 \
   --api-key sk-your-key-here \
-  --model qwen/qwen3-coder-flash \
+  --model deepseek/deepseek-v4-pro \
   --action overwrite \
   --non-interactive
 ```

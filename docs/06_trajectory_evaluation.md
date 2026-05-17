@@ -72,8 +72,6 @@ evaluator = scan_mod.create_commit_evaluator(
     api_key=get_llm_api_key(),
     model=model,
     mode="moderate",
-    parallel_chunking=parallel_chunking,
-    max_parallel_workers=max_parallel_workers,
     previous_checkpoint_scores=previous_scores,
 )
 ```

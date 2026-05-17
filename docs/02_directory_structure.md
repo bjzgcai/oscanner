@@ -296,8 +296,6 @@ oscanner/
 - `01_architecture.md` - 项目架构说明
 - `02_directory_structure.md` - 本文件（目录结构设计）
 - `03_evaluation_architecture.md` - 评估功能架构
-- `04_parallel_chunking.md` - 并行分块策略
-- `05_parallel_chunking_implementation.md` - 并行分块实现总结
 - `06_trajectory_evaluation.md` - 轨迹评估增强
 - `07_refactor_summary.md` - 重构完成总结
 - `08_project_structure_refactor_proposal.md` - 项目目录结构重构方案（历史文档）

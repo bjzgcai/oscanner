@@ -364,7 +364,6 @@ def analyze_group_repositories(
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
     full_repo: bool = True,
-    use_chunking: bool = False,
     expected_feature: Optional[str] = None,
     progress_callback: Optional[ProgressCallback] = None,
 ) -> Dict[str, Any]:
@@ -572,8 +571,6 @@ def analyze_group_repositories(
                 "model": model,
                 "mode": "moderate",
                 "language": language,
-                "parallel_chunking": False,
-                "max_parallel_workers": 1,
                 "forced_checker_id": forced_checker_id,
                 "worktree_base": worktree_base,
                 "expected_feature": expected_feature,
@@ -595,7 +592,6 @@ def analyze_group_repositories(
                     repo_label=repo_url,
                     max_commits=None,
                     load_files=True,
-                    use_chunking=use_chunking,
                 )
             else:
                 evaluation_result = evaluator.evaluate_engineer(
@@ -603,7 +599,6 @@ def analyze_group_repositories(
                     username=repo_url,
                     max_commits=None,
                     load_files=True,
-                    use_chunking=use_chunking,
                 )
 
             evaluation_result["evaluated_at"] = datetime.utcnow().isoformat()
@@ -776,8 +771,6 @@ def create_checkpoint_evaluation(
     aliases_used: List[str],
     repo_start_date: Optional[datetime] = None,
     previous_checkpoint: Optional[TrajectoryCheckpoint] = None,
-    parallel_chunking: bool = True,
-    max_parallel_workers: int = 3,
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
     checkpoint_strategy: str = "period",
@@ -798,8 +791,6 @@ def create_checkpoint_evaluation(
         aliases_used: List of aliases used in filtering
         repo_start_date: Repository start date (for period metadata)
         previous_checkpoint: Previous checkpoint for comparison
-        parallel_chunking: Enable parallel chunking
-        max_parallel_workers: Max parallel workers
         checkpoint_strategy: Strategy for grouping commits ('period' or 'none')
 
     Returns:
@@ -852,8 +843,6 @@ def create_checkpoint_evaluation(
         model=model,
         mode="moderate",
         language=language,
-        parallel_chunking=parallel_chunking,
-        max_parallel_workers=max_parallel_workers,
         previous_checkpoint_scores=previous_scores,
         forced_checker_id=forced_checker_id,
         worktree_base=worktree_base,
@@ -874,7 +863,6 @@ def create_checkpoint_evaluation(
         username=username,
         max_commits=len(commits),
         load_files=True,
-        use_chunking=True
     )
     if progress_callback:
         progress_callback("section", {
@@ -1411,8 +1399,6 @@ def analyze_growth_trajectory(
     plugin_id: str,
     model: str,
     language: str,
-    parallel_chunking: bool = True,
-    max_parallel_workers: int = 3,
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
     checkpoint_strategy: str = "period",
@@ -1432,8 +1418,6 @@ def analyze_growth_trajectory(
         plugin_id: Plugin to use for evaluation
         model: LLM model to use
         language: Language for evaluation
-        parallel_chunking: Enable parallel chunking
-        max_parallel_workers: Max parallel workers
         checkpoint_strategy: Strategy for grouping commits ('period' or 'none')
                            'period': Group commits by 2-week periods (default)
                            'none': Group all commits into a single checkpoint
@@ -1647,8 +1631,6 @@ def analyze_growth_trajectory(
                 repo_start_date=repo_start_date,
                 previous_checkpoint=previous_checkpoint,
                 worktree_base=worktree_base,
-                parallel_chunking=parallel_chunking,
-                max_parallel_workers=max_parallel_workers,
                 forced_checker_id=forced_checker_id,
                 checkpoint_strategy=checkpoint_strategy,
                 expected_feature=expected_feature,

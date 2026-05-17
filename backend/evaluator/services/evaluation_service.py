@@ -22,8 +22,6 @@ def get_or_create_evaluator(
     commits: list,
     plugin_id: str = "",
     model: str = DEFAULT_LLM_MODEL,
-    parallel_chunking: bool = True,
-    max_parallel_workers: int = 3,
 ):
     """
     Legacy helper (kept for compatibility).
@@ -62,8 +60,6 @@ def get_or_create_evaluator(
         api_key=api_key,
         model=model,
         mode="moderate",
-        parallel_chunking=parallel_chunking,
-        max_parallel_workers=max_parallel_workers,
     )
     print(f"✓ Created evaluator for {owner}/{repo} via plugin={pid} scan={scan_path}")
     _ = meta
@@ -76,12 +72,9 @@ def evaluate_author_incremental(
     previous_evaluation: Optional[Dict[str, Any]],
     data_dir: Path,
     model: str,
-    use_chunking: bool,
     api_key: str,
     aliases: Optional[List[str]] = None,
     evaluator_factory=None,
-    parallel_chunking: bool = True,
-    max_parallel_workers: int = 3,
 ) -> Dict[str, Any]:
     """
     Evaluate author incrementally with weighted merge
@@ -92,7 +85,6 @@ def evaluate_author_incremental(
         previous_evaluation: Previous evaluation if exists
         data_dir: Path to repository data directory
         model: LLM model to use
-        use_chunking: Whether to enable chunked evaluation
         api_key: LLM API key
         aliases: Optional list of author name aliases (normalized/lowercase)
 
@@ -128,19 +120,18 @@ def evaluate_author_incremental(
         def _heartbeat():
             while not stop_event.wait(15):
                 elapsed = int(time.time() - started_at)
-                print(f"[LLM] Evaluating... elapsed={elapsed}s (author={author}, commits={len(author_commits)}, chunking={use_chunking})")
+                print(f"[LLM] Evaluating... elapsed={elapsed}s (author={author}, commits={len(author_commits)})")
 
         hb = threading.Thread(target=_heartbeat, daemon=True)
         hb.start()
 
         try:
-            print(f"[LLM] Starting evaluation (author={author}, commits={len(author_commits)}, chunking={use_chunking})")
+            print(f"[LLM] Starting evaluation (author={author}, commits={len(author_commits)})")
             evaluation = evaluator.evaluate_engineer(
                 commits=author_commits,
                 username=author,
                 max_commits=150,
                 load_files=True,
-                use_chunking=use_chunking
             )
         except Exception as e:
             stop_event.set()
@@ -165,7 +156,16 @@ def evaluate_author_incremental(
         # Previous evaluation has no SHA, re-evaluate all
         print(f"[Incremental] No last SHA found, re-evaluating all commits")
         previous_evaluation = None
-        return evaluate_author_incremental(commits, author, None, data_dir, model, use_chunking, api_key)
+        return evaluate_author_incremental(
+            commits=commits,
+            author=author,
+            previous_evaluation=None,
+            data_dir=data_dir,
+            model=model,
+            api_key=api_key,
+            aliases=aliases,
+            evaluator_factory=evaluator_factory,
+        )
 
     # Find new commits
     new_commits = []
@@ -191,19 +191,18 @@ def evaluate_author_incremental(
     def _heartbeat():
         while not stop_event.wait(15):
             elapsed = int(time.time() - started_at)
-            print(f"[LLM] Evaluating incremental... elapsed={elapsed}s (author={author}, new_commits={len(new_commits)}, chunking={use_chunking})")
+            print(f"[LLM] Evaluating incremental... elapsed={elapsed}s (author={author}, new_commits={len(new_commits)})")
 
     hb = threading.Thread(target=_heartbeat, daemon=True)
     hb.start()
 
     try:
-        print(f"[LLM] Starting incremental evaluation (author={author}, new_commits={len(new_commits)}, chunking={use_chunking})")
+        print(f"[LLM] Starting incremental evaluation (author={author}, new_commits={len(new_commits)})")
         new_evaluation = evaluator.evaluate_engineer(
             commits=new_commits,
             username=author,
             max_commits=len(new_commits),
             load_files=True,
-            use_chunking=use_chunking
         )
     except Exception as e:
         stop_event.set()

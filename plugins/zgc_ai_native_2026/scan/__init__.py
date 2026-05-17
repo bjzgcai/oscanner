@@ -16,13 +16,13 @@ Standard reference:
 - engineer_level.md (2026 AI-Native Engineer Practical Competency Standard)
 """
 
+import copy
 import json
 import math
 import os
 import re
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -123,8 +123,6 @@ def create_commit_evaluator(
     model: Optional[str] = None,
     mode: str = "moderate",
     language: str = "en-US",
-    parallel_chunking: bool = False,
-    max_parallel_workers: int = 3,
     previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
@@ -139,8 +137,6 @@ def create_commit_evaluator(
         model=model,
         rubric_text=_RUBRIC_SUMMARY,
         language=language,
-        parallel_chunking=parallel_chunking,
-        max_parallel_workers=max_parallel_workers,
         previous_checkpoint_scores=previous_checkpoint_scores,
         forced_checker_id=forced_checker_id,
         worktree_base=worktree_base,
@@ -173,8 +169,6 @@ class CommitEvaluatorModerate:
         fallback_models: Optional[List[str]] = None,
         rubric_text: Optional[str] = None,
         language: str = "en-US",
-        parallel_chunking: bool = False,
-        max_parallel_workers: int = 3,
         previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
         forced_checker_id: Optional[str] = None,
         worktree_base: str = "build",
@@ -209,12 +203,10 @@ class CommitEvaluatorModerate:
         self.max_input_tokens = int(max_input_tokens)
         self.data_dir = Path(data_dir) if data_dir else None
         self.mode = mode
-        self.model = model or os.getenv("OSCANNER_LLM_MODEL") or "anthropic/claude-sonnet-4.5"
+        self.model = model or os.getenv("OSCANNER_LLM_MODEL") or "deepseek/deepseek-v4-pro"
         self.fallback_models = fallback_models
         self.rubric_text = (rubric_text or "").strip()
         self.language = language
-        self.parallel_chunking = parallel_chunking
-        self.max_parallel_workers = max_parallel_workers
         self.previous_checkpoint_scores = previous_checkpoint_scores
         self.forced_checker_id = forced_checker_id
         self.worktree_base = worktree_base  # 'build' or 'temp'
@@ -806,7 +798,6 @@ class CommitEvaluatorModerate:
         username: str,
         max_commits: Optional[int] = None,
         load_files: bool = True,
-        use_chunking: bool = True,
     ) -> Dict[str, Any]:
         if not commits:
             return self._get_empty_evaluation(username)
@@ -814,7 +805,7 @@ class CommitEvaluatorModerate:
         author_commits = [c for c in analyzed_commits if self._is_commit_by_author(c, username)]
         if not author_commits:
             return self._get_empty_evaluation(username)
-        if use_chunking and len(author_commits) > 20:
+        if self._commits_exceed_prompt_budget(author_commits, username, load_files=load_files):
             return self._evaluate_engineer_chunked(author_commits, username, load_files=load_files)
         return self._evaluate_engineer_standard(author_commits, username, load_files=load_files)
 
@@ -825,7 +816,6 @@ class CommitEvaluatorModerate:
         repo_label: str,
         max_commits: Optional[int] = None,
         load_files: bool = True,
-        use_chunking: bool = False,
     ) -> Dict[str, Any]:
         """
         Evaluate a repository as one unit, without filtering commits by author.
@@ -837,7 +827,7 @@ class CommitEvaluatorModerate:
         if not commits:
             return self._get_empty_evaluation(repo_label)
         analyzed_commits = commits if max_commits is None else commits[: int(max_commits)]
-        if use_chunking:
+        if self._commits_exceed_prompt_budget(analyzed_commits, repo_label, load_files=load_files):
             return self._evaluate_engineer_chunked(analyzed_commits, repo_label, load_files=load_files)
         return self._evaluate_repository_standard(analyzed_commits, repo_label, load_files=load_files)
 
@@ -939,19 +929,213 @@ class CommitEvaluatorModerate:
             result["token_usage"] = token_usage
         return result
 
+    def _prompt_token_count(self, context: str, username: str, *, chunk_idx: Optional[int] = None) -> int:
+        prompt = self._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)
+        return self._estimate_tokens(prompt)
+
+    def _commits_exceed_prompt_budget(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> bool:
+        file_contents: Dict[str, str] = {}
+        repo_structure: Optional[Dict[str, Any]] = None
+        if self.mode == "moderate" and load_files and self.data_dir:
+            file_contents = self._load_relevant_files(commits)
+            repo_structure = self._load_repo_structure()
+        context = self._build_commit_context(
+            commits,
+            username,
+            file_contents=file_contents,
+            repo_structure=repo_structure,
+            commit_limit=None,
+        )
+        prompt_tokens = self._prompt_token_count(context, username)
+        if prompt_tokens > self.max_input_tokens:
+            print(
+                f"[Chunking] Prompt estimate {prompt_tokens} tokens exceeds "
+                f"budget {self.max_input_tokens}; splitting sequentially"
+            )
+            return True
+        return False
+
+    def _commit_has_input_truncation(self, commits: List[Dict[str, Any]]) -> bool:
+        return any(bool(c.get("_oscanner_input_truncated")) for c in commits)
+
+    def _truncate_text_for_budget(self, text: str, max_chars: int) -> str:
+        marker = "\n...[truncated to fit LLM input budget]..."
+        if len(text) <= max_chars:
+            return text
+        if max_chars <= len(marker):
+            compact_marker = "[truncated to fit LLM input budget]"
+            return compact_marker[: max(1, max_chars)]
+        return text[: max_chars - len(marker)] + marker
+
+    def _copy_commit_with_text_limit(self, commit: Dict[str, Any], max_chars: int) -> Dict[str, Any]:
+        truncated = copy.deepcopy(commit)
+        truncated["_oscanner_input_truncated"] = True
+
+        if isinstance(truncated.get("message"), str):
+            truncated["message"] = self._truncate_text_for_budget(truncated["message"], max_chars)
+        nested_commit = truncated.get("commit")
+        if isinstance(nested_commit, dict) and isinstance(nested_commit.get("message"), str):
+            nested_commit["message"] = self._truncate_text_for_budget(nested_commit["message"], max_chars)
+
+        for file_info in truncated.get("files") or []:
+            if isinstance(file_info, dict) and isinstance(file_info.get("patch"), str):
+                file_info["patch"] = self._truncate_text_for_budget(file_info["patch"], max_chars)
+        return truncated
+
+    def _truncate_single_commit_for_prompt_budget(
+        self,
+        commit: Dict[str, Any],
+        username: str,
+        *,
+        chunk_idx: int,
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        original_context = self._build_chunked_context(
+            [commit],
+            username,
+            chunk_idx=chunk_idx,
+            total_chunks=1,
+            file_contents={},
+            repo_structure=None,
+            previous_evaluation=None,
+        )
+        original_tokens = self._prompt_token_count(original_context, username, chunk_idx=chunk_idx)
+
+        text_lengths: List[int] = []
+        if isinstance(commit.get("message"), str):
+            text_lengths.append(len(commit["message"]))
+        nested_commit = commit.get("commit")
+        if isinstance(nested_commit, dict) and isinstance(nested_commit.get("message"), str):
+            text_lengths.append(len(nested_commit["message"]))
+        for file_info in commit.get("files") or []:
+            if isinstance(file_info, dict) and isinstance(file_info.get("patch"), str):
+                text_lengths.append(len(file_info["patch"]))
+
+        high = max(text_lengths or [0])
+        low = 0
+        best: Optional[Dict[str, Any]] = None
+        best_tokens: Optional[int] = None
+
+        while low <= high:
+            mid = (low + high) // 2
+            candidate = self._copy_commit_with_text_limit(commit, mid)
+            context = self._build_chunked_context(
+                [candidate],
+                username,
+                chunk_idx=chunk_idx,
+                total_chunks=1,
+                file_contents={},
+                repo_structure=None,
+                previous_evaluation=None,
+            )
+            prompt_tokens = self._prompt_token_count(context, username, chunk_idx=chunk_idx)
+            if prompt_tokens <= self.max_input_tokens:
+                best = candidate
+                best_tokens = prompt_tokens
+                low = mid + 1
+            else:
+                high = mid - 1
+
+        if best is None:
+            raise RuntimeError(
+                "A single commit exceeds the LLM input budget even after truncating commit and file input."
+            )
+
+        sha = commit.get("sha") or commit.get("hash") or ""
+        message = (
+            "A single commit exceeds the LLM input budget; repo input was truncated so evaluation could continue."
+        )
+        return best, {
+            "type": "single_commit_exceeds_budget",
+            "message": message,
+            "commit": str(sha),
+            "max_input_tokens": self.max_input_tokens,
+            "estimated_tokens_before_truncation": original_tokens,
+            "estimated_tokens_after_truncation": best_tokens,
+            "strategy": "truncate_commit_and_file_input",
+        }
+
+    def _split_commits_for_prompt_budget(
+        self,
+        commits: List[Dict[str, Any]],
+        username: str,
+        *,
+        load_files: bool,
+    ) -> Tuple[List[List[Dict[str, Any]]], List[Dict[str, Any]]]:
+        repo_structure = None
+        if self.mode == "moderate" and load_files and self.data_dir:
+            repo_structure = self._load_repo_structure()
+
+        chunks: List[List[Dict[str, Any]]] = []
+        input_budget_errors: List[Dict[str, Any]] = []
+        current: List[Dict[str, Any]] = []
+        for commit in commits:
+            candidate = [*current, commit]
+            candidate_files: Dict[str, str] = {}
+            if self.mode == "moderate" and load_files and self.data_dir:
+                candidate_files = self._load_relevant_files(candidate)
+            context = self._build_commit_context(
+                candidate,
+                username,
+                file_contents=candidate_files,
+                repo_structure=repo_structure if not chunks else None,
+                commit_limit=None,
+            )
+            if self._prompt_token_count(context, username, chunk_idx=len(chunks) + 1) <= self.max_input_tokens:
+                current = candidate
+                continue
+            if current:
+                chunks.append(current)
+                current = [commit]
+                single_files: Dict[str, str] = {}
+                if self.mode == "moderate" and load_files and self.data_dir:
+                    single_files = self._load_relevant_files(current)
+                single_context = self._build_commit_context(
+                    current,
+                    username,
+                    file_contents=single_files,
+                    repo_structure=None,
+                    commit_limit=None,
+                )
+                if self._prompt_token_count(single_context, username, chunk_idx=len(chunks) + 1) > self.max_input_tokens:
+                    truncated_commit, budget_error = self._truncate_single_commit_for_prompt_budget(
+                        commit,
+                        username,
+                        chunk_idx=len(chunks) + 1,
+                    )
+                    input_budget_errors.append(budget_error)
+                    current = [truncated_commit]
+                continue
+            truncated_commit, budget_error = self._truncate_single_commit_for_prompt_budget(
+                commit,
+                username,
+                chunk_idx=len(chunks) + 1,
+            )
+            input_budget_errors.append(budget_error)
+            current = [truncated_commit]
+
+        if current:
+            chunks.append(current)
+        return chunks, input_budget_errors
+
     def _evaluate_engineer_chunked(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
-        commits_per_chunk = 15 if self.mode == "moderate" else 20
-        chunks = [commits[i : i + commits_per_chunk] for i in range(0, len(commits), commits_per_chunk)]
+        chunks, input_budget_errors = self._split_commits_for_prompt_budget(commits, username, load_files=load_files)
+        print(f"[Chunking] Using token-budget SEQUENTIAL mode with {len(chunks)} chunks")
+        return self._evaluate_chunks_sequential(
+            chunks,
+            username,
+            load_files=load_files,
+            input_budget_errors=input_budget_errors,
+        )
 
-        if self.parallel_chunking:
-            print(f"[Chunking] Using PARALLEL mode with {len(chunks)} chunks (max_workers={self.max_parallel_workers})")
-            return self._evaluate_chunks_parallel(chunks, username, load_files=load_files)
-        else:
-            print(f"[Chunking] Using SEQUENTIAL mode with {len(chunks)} chunks")
-            return self._evaluate_chunks_sequential(chunks, username, load_files=load_files)
-
-    def _evaluate_chunks_sequential(self, chunks: List[List[Dict[str, Any]]], username: str, *, load_files: bool) -> Dict[str, Any]:
-        """Original sequential chunking strategy"""
+    def _evaluate_chunks_sequential(
+        self,
+        chunks: List[List[Dict[str, Any]]],
+        username: str,
+        *,
+        load_files: bool,
+        input_budget_errors: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Evaluate budget-sized chunks in chronological order."""
         repo_structure = None
         if self.mode == "moderate" and load_files and self.data_dir:
             repo_structure = self._load_repo_structure()
@@ -959,7 +1143,7 @@ class CommitEvaluatorModerate:
         all_files: Dict[str, str] = {}
         for idx, chunk in enumerate(chunks, 1):
             chunk_files: Dict[str, str] = {}
-            if self.mode == "moderate" and load_files and self.data_dir:
+            if self.mode == "moderate" and load_files and self.data_dir and not self._commit_has_input_truncation(chunk):
                 chunk_files = self._load_relevant_files(chunk)
                 all_files.update(chunk_files)
             context = self._build_chunked_context(
@@ -982,7 +1166,7 @@ class CommitEvaluatorModerate:
         if accumulated is None:
             raise RuntimeError("LLM evaluation failed: no chunks were evaluated")
 
-        return {
+        result = {
             "username": username,
             "total_commits_analyzed": len(all_commits),
             "files_loaded": len(all_files),
@@ -993,144 +1177,12 @@ class CommitEvaluatorModerate:
             "chunks_processed": len(chunks),
             "chunking_strategy": "sequential",
         }
-
-    def _evaluate_chunks_parallel(self, chunks: List[List[Dict[str, Any]]], username: str, *, load_files: bool) -> Dict[str, Any]:
-        """New parallel chunking strategy with LLM-based merge"""
-        repo_structure = None
-        if self.mode == "moderate" and load_files and self.data_dir:
-            repo_structure = self._load_repo_structure()
-
-        all_files: Dict[str, str] = {}
-        chunk_results: List[Dict[str, Any]] = []
-
-        def evaluate_single_chunk(idx: int, chunk: List[Dict[str, Any]]) -> tuple[int, Dict[str, Any], Dict[str, str]]:
-            """Evaluate a single chunk independently"""
-            chunk_files: Dict[str, str] = {}
-            if self.mode == "moderate" and load_files and self.data_dir:
-                chunk_files = self._load_relevant_files(chunk)
-
-            # Build context WITHOUT previous evaluation (parallel chunks are independent)
-            context = self._build_commit_context(
-                chunk,
-                username,
-                file_contents=chunk_files,
-                repo_structure=repo_structure if idx == 1 else None,
-            )
-
-            # Add chunk metadata to context
-            context_with_meta = f"CHUNK {idx}/{len(chunks)}\n\n{context}"
-
-            chunk_scores = self._evaluate_with_llm(context_with_meta, username, chunk_idx=idx)
-            print(f"[Parallel] Chunk {idx}/{len(chunks)} completed")
-            return idx, chunk_scores, chunk_files
-
-        # Execute chunks in parallel
-        with ThreadPoolExecutor(max_workers=self.max_parallel_workers) as executor:
-            futures = {
-                executor.submit(evaluate_single_chunk, idx, chunk): idx
-                for idx, chunk in enumerate(chunks, 1)
-            }
-
-            for future in as_completed(futures):
-                try:
-                    idx, scores, files = future.result()
-                    chunk_results.append({"chunk_idx": idx, "scores": scores})
-                    all_files.update(files)
-                except Exception as e:
-                    print(f"[Parallel] Chunk evaluation failed: {e}")
-                    raise
-
-        # Sort results by chunk index
-        chunk_results.sort(key=lambda x: x["chunk_idx"])
-
-        # Merge all chunk results using LLM-based intelligent merge
-        print(f"[Parallel] All {len(chunk_results)} chunks completed, merging results...")
-        merged_scores = self._merge_chunk_results_with_llm(chunk_results, username)
-
-        # Flatten all commits for summary
-        all_commits = [c for chunk in chunks for c in chunk]
-        return {
-            "username": username,
-            "total_commits_analyzed": len(all_commits),
-            "files_loaded": len(all_files),
-            "mode": self.mode,
-            "scores": merged_scores,
-            "commits_summary": self._summarize_commits(all_commits),
-            "chunked": True,
-            "chunks_processed": len(chunks),
-            "chunking_strategy": "parallel",
-        }
-
-    def _merge_chunk_results_with_llm(self, chunk_results: List[Dict[str, Any]], username: str) -> Dict[str, Any]:
-        """Use LLM to intelligently merge all parallel chunk evaluations"""
-        is_chinese = self.language == "zh-CN"
-
-        # Build merge prompt
-        chunks_summary = []
-        for result in chunk_results:
-            idx = result["chunk_idx"]
-            scores = result["scores"]
-            chunks_summary.append(f"Chunk {idx}: {json.dumps(scores, ensure_ascii=False, indent=2)}")
-
-        chunks_text = "\n\n".join(chunks_summary)
-
-        if is_chinese:
-            expected_feature_block = self._build_expected_feature_block(is_chinese)
-            merge_instruction = f"""你是一位专业的工程能力评估员。下面是对用户 "{username}" 的 {len(chunk_results)} 个独立评估结果。
-
-请综合所有评估结果，生成一个统一的最终评估：
-1. 对于数值分数：考虑所有评估的整体趋势，给出合理的综合分数（不要简单平均）
-2. 对于推理部分：整合所有评估中的关键发现，提供完整的 **主要优势**、**改进空间**、**整体评估** 部分
-{expected_feature_block}
-
-评估结果：
-{chunks_text}
-
-返回格式与之前相同的JSON格式。"""
-        else:
-            expected_feature_block = self._build_expected_feature_block(is_chinese)
-            merge_instruction = f"""You are an expert engineering evaluator. Below are {len(chunk_results)} independent evaluations for user "{username}".
-
-Synthesize all evaluations into a unified final assessment:
-1. For numeric scores: Consider overall trends across all evaluations, provide reasonable consolidated scores (not simple averaging)
-2. For reasoning: Integrate key findings from all evaluations, provide complete **Key Strengths**, **Areas for Growth**, **Overall Assessment** sections
-{expected_feature_block}
-
-Evaluation Results:
-{chunks_text}
-
-Return the same JSON format as before."""
-
-        # Call LLM for intelligent merge
-        try:
-            merged = self._evaluate_with_llm(merge_instruction, username, chunk_idx=None)
-            print(f"[Parallel] LLM merge completed successfully")
-            return merged
-        except Exception as e:
-            print(f"[Parallel] LLM merge failed, falling back to simple averaging: {e}")
-            # Fallback to simple averaging if LLM merge fails
-            return self._simple_average_merge(chunk_results)
-
-    def _simple_average_merge(self, chunk_results: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Fallback: simple averaging of all chunk scores"""
-        if not chunk_results:
-            return {k: 0 for k in self.dimensions.keys()}
-
-        merged: Dict[str, Any] = {}
-
-        # Average numeric scores
-        for k in self.dimensions.keys():
-            scores = [r["scores"].get(k, 0) for r in chunk_results]
-            merged[k] = int(sum(scores) / len(scores))
-
-        # Concatenate reasoning
-        reasonings = [r["scores"].get("reasoning", "") for r in chunk_results if r["scores"].get("reasoning")]
-        if reasonings:
-            merged["reasoning"] = "\n\n---\n\n".join(f"**Chunk {i+1}:**\n{r}" for i, r in enumerate(reasonings))
-        else:
-            merged["reasoning"] = "Multiple chunks evaluated."
-
-        return merged
+        if input_budget_errors:
+            warnings = [error["message"] for error in input_budget_errors]
+            result["input_truncated"] = True
+            result["warnings"] = warnings
+            result["input_budget_errors"] = input_budget_errors
+        return result
 
     def _extract_checker_keywords(self, commit_message: str) -> List[str]:
         """
@@ -1430,21 +1482,21 @@ Return the same JSON format as before."""
         commits_for_context = commits if commit_limit is None else commits[:commit_limit]
         for c in commits_for_context:
             sha = c.get("sha") or c.get("hash") or ""
-            msg = (c.get("message") or c.get("commit", {}).get("message") or "").split("\n")[0][:160]
+            msg = c.get("message") or c.get("commit", {}).get("message") or ""
             commits_parts.append(f"\n- {sha} {msg}")
-            for f in (c.get("files") or [])[:30]:
+            for f in (c.get("files") or []):
                 if isinstance(f, dict):
                     fn = f.get("filename") or ""
                     patch = f.get("patch") or ""
-                    commits_parts.append(f"  * {fn}\n{patch[:4000]}")
+                    commits_parts.append(f"  * {fn}\n{patch}")
         parts["commits"] = "\n".join(commits_parts)
         
         # Build file contents part
         if file_contents:
             files_parts: List[str] = [f"User: {username}", f"Commits: {len(commits)}", ""]
             files_parts.append("RELEVANT FILE CONTENTS:")
-            for p, content in list(file_contents.items())[:25]:
-                files_parts.append(f"\n--- FILE: {p} ---\n{content[:12000]}")
+            for p, content in file_contents.items():
+                files_parts.append(f"\n--- FILE: {p} ---\n{content}")
             parts["file_contents"] = "\n".join(files_parts)
         
         # Build repo structure part
@@ -1557,21 +1609,21 @@ Return the same JSON format as before."""
             parts.append("")
         if file_contents:
             parts.append("RELEVANT FILE CONTENTS:")
-            for p, content in list(file_contents.items())[:25]:
-                parts.append(f"\n--- FILE: {p} ---\n{content[:12000]}")
+            for p, content in file_contents.items():
+                parts.append(f"\n--- FILE: {p} ---\n{content}")
             parts.append("")
         
         parts.append("COMMITS:")
         commits_for_context = commits if commit_limit is None else commits[:commit_limit]
         for c in commits_for_context:
             sha = c.get("sha") or c.get("hash") or ""
-            msg = (c.get("message") or c.get("commit", {}).get("message") or "").split("\n")[0][:160]
+            msg = c.get("message") or c.get("commit", {}).get("message") or ""
             parts.append(f"\n- {sha} {msg}")
-            for f in (c.get("files") or [])[:30]:
+            for f in (c.get("files") or []):
                 if isinstance(f, dict):
                     fn = f.get("filename") or ""
                     patch = f.get("patch") or ""
-                    parts.append(f"  * {fn}\n{patch[:4000]}")
+                    parts.append(f"  * {fn}\n{patch}")
         
         return "\n".join(parts)
 
@@ -1589,7 +1641,7 @@ Return the same JSON format as before."""
         parts = [f"CHUNK {chunk_idx}/{total_chunks}", ""]
         if previous_evaluation:
             parts.append("PREVIOUS EVALUATION (scores+reasoning):")
-            parts.append(json.dumps(previous_evaluation, ensure_ascii=False)[:12000])
+            parts.append(json.dumps(previous_evaluation, ensure_ascii=False))
             parts.append("")
         parts.append(self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure))
         return "\n".join(parts)
@@ -1610,7 +1662,7 @@ Return the same JSON format as before."""
             seen.add(p)
             uniq.append(p)
         out: Dict[str, str] = {}
-        for rel in uniq[:25]:
+        for rel in uniq:
             if rel in self._file_cache:
                 out[rel] = self._file_cache[rel]
                 continue
@@ -1651,9 +1703,6 @@ Return the same JSON format as before."""
         print(f"[Multi-Stage] Evaluating part: {part_name} ({part_label})")
         
         # Build prompt for this part
-        prompt_template_tokens = 900
-        max_context_tokens = self.max_input_tokens - prompt_template_tokens
-        part_context = self._truncate_context(part_context, max_context_tokens)
         
         # Build previous checkpoint context if available
         previous_scores_block = ""
@@ -1729,6 +1778,11 @@ Return the same JSON format as before."""
             f"{mode_note}{chunked_instruction}{rubric_block}{previous_scores_block}{expected_feature_block}\n\n{data_label}:\n{part_context}\n\n{dimensions_label}:\n{dims_text}\n\n"
             f"{return_json_instruction}\n{fmt_text_with_note}"
         )
+        prompt_tokens = self._estimate_tokens(prompt)
+        if prompt_tokens > self.max_input_tokens:
+            raise RuntimeError(
+                f"LLM input exceeds model budget ({prompt_tokens} > {self.max_input_tokens} estimated tokens)."
+            )
         
         # Call LLM
         models_to_try = [self.model] + (self.fallback_models or [])
@@ -1818,6 +1872,11 @@ Return the same JSON format as before."""
             print("[ERROR] LLM API key not configured")
             raise RuntimeError("LLM not configured (missing API key)")
         prompt = self._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)
+        prompt_tokens = self._estimate_tokens(prompt)
+        if prompt_tokens > self.max_input_tokens:
+            raise RuntimeError(
+                f"LLM input exceeds model budget ({prompt_tokens} > {self.max_input_tokens} estimated tokens)."
+            )
         print(f"[DEBUG] Prompt length: {len(prompt)} chars")
         print(f"[DEBUG] Prompt sample (last 500 chars): {prompt[-500:]}")
 
@@ -1847,19 +1906,9 @@ Return the same JSON format as before."""
         raise RuntimeError(f"LLM request failed for all models. last_error={last_err}")
 
     def _estimate_tokens(self, text: str) -> int:
-        return max(1, len(text) // 4)
-
-    def _truncate_context(self, context: str, max_tokens: int) -> str:
-        cur = self._estimate_tokens(context)
-        if cur <= max_tokens:
-            return context
-        target_chars = max_tokens * 4
-        return context[:target_chars] + "\n\n[... Context truncated ...]"
+        return max(1, len(text))
 
     def _build_evaluation_prompt(self, context: str, username: str, chunk_idx: Optional[int] = None) -> str:
-        prompt_template_tokens = 900
-        max_context_tokens = self.max_input_tokens - prompt_template_tokens
-        context = self._truncate_context(context, max_context_tokens)
 
         is_chinese = self.language == "zh-CN"
 

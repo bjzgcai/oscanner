@@ -30,11 +30,22 @@ const STORAGE_KEY_PLUGIN = 'oscanner_plugin_id';
 const STORAGE_KEY_LOCALE = 'oscanner_locale';
 const STORAGE_KEY_FORCED_CHECKER = 'oscanner_forced_checker_id';
 const STORAGE_KEY_WORKTREE_BASE = 'oscanner_worktree_base';
-const DEFAULT_MODEL = 'qwen/qwen3-coder-flash';
+const DEFAULT_MODEL = 'deepseek/deepseek-v4-pro';
+const LEGACY_MODEL_ALIASES = new Set([
+  'qwen/qwen3-coder-flash',
+]);
 const DEFAULT_PLUGIN = 'zgc_simple';
 const DEFAULT_WORKTREE_BASE: 'build' | 'temp' = 'build';
 
 const AppSettingsContext = createContext<AppSettings | null>(null);
+
+function normalizeModel(value: string | null | undefined): string {
+  const trimmed = (value || '').trim();
+  if (!trimmed || LEGACY_MODEL_ALIASES.has(trimmed)) {
+    return DEFAULT_MODEL;
+  }
+  return trimmed;
+}
 
 export function AppSettingsProvider({ children }: { children: React.ReactNode }) {
   // Always start with default values to prevent hydration mismatch
@@ -51,10 +62,13 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY_MODEL);
-      if (raw) {
-        const trimmed = raw.trim();
-        if (trimmed) {
-          setModelState(trimmed);
+      const trimmed = (raw || '').trim();
+      if (trimmed) {
+        const next = normalizeModel(trimmed);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setModelState(next);
+        if (next !== trimmed) {
+          localStorage.setItem(STORAGE_KEY_MODEL, next);
         }
       }
     } catch {
@@ -136,7 +150,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   };
 
   const setModel = (v: string) => {
-    const next = (v || '').trim() || DEFAULT_MODEL;
+    const next = normalizeModel(v);
     setModelState(next);
     try {
       localStorage.setItem(STORAGE_KEY_MODEL, next);
@@ -200,7 +214,6 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshPlugins();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshCheckers();
   }, [refreshPlugins, refreshCheckers]);
 
@@ -217,4 +230,3 @@ export function useAppSettings(): AppSettings {
   if (!ctx) throw new Error('useAppSettings must be used within AppSettingsProvider');
   return ctx;
 }
-

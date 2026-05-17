@@ -157,7 +157,6 @@ class TestEvaluateAuthorIncremental:
             previous_evaluation=None,
             data_dir=temp_data_dir,
             model="test-model",
-            use_chunking=False,
             api_key="fake_key",
             evaluator_factory=evaluator_factory
         )
@@ -241,7 +240,6 @@ class TestEvaluateAuthorIncremental:
             previous_evaluation=previous_evaluation,
             data_dir=temp_data_dir,
             model="test-model",
-            use_chunking=False,
             api_key="fake_key",
             evaluator_factory=evaluator_factory
         )
@@ -274,7 +272,6 @@ class TestEvaluateAuthorIncremental:
             previous_evaluation=None,
             data_dir=temp_data_dir,
             model="test-model",
-            use_chunking=False,
             api_key="fake_key",
             evaluator_factory=lambda: Mock()
         )
@@ -307,7 +304,6 @@ class TestEvaluateAuthorIncremental:
             previous_evaluation=previous_evaluation,
             data_dir=temp_data_dir,
             model="test-model",
-            use_chunking=False,
             api_key="fake_key",
             evaluator_factory=lambda: Mock()
         )
@@ -326,7 +322,6 @@ class TestEvaluateAuthorIncremental:
                 previous_evaluation=None,
                 data_dir=temp_data_dir,
                 model="test-model",
-                use_chunking=False,
                 api_key="fake_key",
                 evaluator_factory=None
             )
@@ -359,7 +354,6 @@ class TestEvaluateAuthorIncremental:
                 previous_evaluation=None,
                 data_dir=temp_data_dir,
                 model="test-model",
-                use_chunking=False,
                 api_key="fake_key",
                 evaluator_factory=evaluator_factory
             )

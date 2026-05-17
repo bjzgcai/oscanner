@@ -191,7 +191,7 @@ async def test_group_analyse_code_route_returns_500_for_llm_parse_failure(monkey
 
 
 @pytest.mark.anyio
-async def test_group_analyse_code_route_batches_repos_without_parallel_chunking(monkeypatch):
+async def test_group_analyse_code_route_batches_repos_without_chunk_params(monkeypatch):
     from evaluator.routes import trajectory as trajectory_route
 
     captured = {}
@@ -250,7 +250,7 @@ async def test_group_analyse_code_route_batches_repos_without_parallel_chunking(
     assert all("username" not in item for item in captured["repositories"])
     assert captured["model"] == "deepseek/deepseek-v4-pro"
     assert captured["full_repo"] is True
-    assert captured["use_chunking"] is False
+    assert "use_chunking" not in captured
     assert captured["max_fetch_workers"] == 4
 
 
@@ -377,7 +377,6 @@ def test_ai_native_plugin_evaluate_repository_uses_all_commits_without_chunking(
         commits=commits,
         repo_label="https://gitee.com/org/repo",
         load_files=False,
-        use_chunking=False,
     )
 
     assert result["username"] == "https://gitee.com/org/repo"
@@ -452,7 +451,6 @@ def test_ai_native_plugin_evaluate_repository_reports_provider_token_usage(monke
         ],
         repo_label="https://gitee.com/org/repo",
         load_files=False,
-        use_chunking=False,
     )
 
     assert len(calls) == 1
@@ -533,7 +531,6 @@ def test_ai_native_plugin_reasoning_uses_structured_dimension_evidence(monkeypat
         ],
         repo_label="https://gitee.com/org/repo",
         load_files=False,
-        use_chunking=False,
     )
 
     reasoning = result["scores"]["reasoning"]
@@ -702,7 +699,6 @@ def test_ai_native_plugin_streaming_evaluation_reports_provider_token_usage(monk
         ],
         repo_label="https://gitee.com/org/repo",
         load_files=False,
-        use_chunking=False,
     )
 
     assert captured_payloads[0]["stream"] is True

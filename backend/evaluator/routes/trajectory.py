@@ -258,8 +258,6 @@ async def analyze_trajectory(
     plugin: str = Query(""),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    parallel_chunking: bool = Query(True),
-    max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
     worktree_base: str = Query("build"),  # 'build' or 'temp', default 'build'
     checkpoint_strategy: str = Query("period")  # 'period' or 'none', default 'period'
@@ -391,8 +389,6 @@ async def analyze_trajectory(
             plugin_id,
             model,
             language,
-            parallel_chunking,
-            max_parallel_workers,
             forced_checker_id,
             worktree_base_value,
             checkpoint_strategy_value,
@@ -415,8 +411,6 @@ async def analyze_trajectory_stream(
     plugin: str = Query(""),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    parallel_chunking: bool = Query(True),
-    max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
     worktree_base: str = Query("build"),
     checkpoint_strategy: str = Query("period")
@@ -529,8 +523,6 @@ async def analyze_trajectory_stream(
                 plugin_id,
                 model,
                 language,
-                parallel_chunking,
-                max_parallel_workers,
                 forced_checker_id,
                 worktree_base_value,
                 checkpoint_strategy_value,
@@ -659,7 +651,6 @@ async def group_analyse_code(
                 forced_checker_id=forced_checker_id,
                 worktree_base=worktree_base_value,
                 full_repo=True,
-                use_chunking=False,
                 expected_feature=expected_feature,
             ),
         )
@@ -737,7 +728,6 @@ async def _group_analyse_code_event_stream(
             forced_checker_id=forced_checker_id,
             worktree_base=worktree_base_value,
             full_repo=True,
-            use_chunking=False,
             expected_feature=expected_feature,
             progress_callback=emit,
         )
@@ -772,8 +762,6 @@ async def analyze_trajectory_one_off(
     plugin: str = Query("zgc_ai_native_2026"),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    parallel_chunking: bool = Query(True),
-    max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
     worktree_base: str = Query("build"),  # 'build' or 'temp', default 'build'
     checkpoint_strategy: str = Query("none"),  # 'period' or 'none', default 'none' for one-off
@@ -980,8 +968,6 @@ async def analyze_trajectory_one_off(
             plugin_id,
             ONE_OFF_PRIMARY_MODEL,
             language,
-            parallel_chunking,
-            max_parallel_workers,
             forced_checker_id,
             worktree_base_value,
             checkpoint_strategy_value,
@@ -1035,8 +1021,6 @@ async def analyze_trajectory_one_off_stream(
     plugin: str = Query("zgc_ai_native_2026"),
     model: str = Query(DEFAULT_LLM_MODEL),
     language: str = Query("zh-CN"),
-    parallel_chunking: bool = Query(True),
-    max_parallel_workers: int = Query(3),
     forced_checker: str = Query(""),
     worktree_base: str = Query("build"),
     checkpoint_strategy: str = Query("none"),
@@ -1192,8 +1176,6 @@ async def analyze_trajectory_one_off_stream(
                 plugin_id,
                 ONE_OFF_PRIMARY_MODEL,
                 language,
-                parallel_chunking,
-                max_parallel_workers,
                 forced_checker_id,
                 worktree_base_value,
                 checkpoint_strategy_value,

@@ -45,7 +45,6 @@ def evaluate_engineer(
     username: str,
     max_commits: int | None = None,
     load_files: bool = True,
-    use_chunking: bool = True,
 ) -> dict:
     ...
 ```
@@ -96,5 +95,4 @@ Your plugin does **not** need to set them, but it may if it wants (backend will 
 - If LLM is not configured, either:
   - raise a clear error, or
   - (if you support fallback) return a conservative heuristic `scores`.
-
 

@@ -59,4 +59,3 @@ A2: (待补充)
 ## 相关文档
 
 - [06_trajectory_evaluation.md](06_trajectory_evaluation.md) - 轨迹评估增强实现
-- [04_parallel_chunking.md](04_parallel_chunking.md) - 并行分块策略
