@@ -43,11 +43,24 @@ EVALUATOR_PORT=${PORT:-8000}
 export EVALUATOR_PORT
 
 # Load repos_runner environment variables
-REPOS_RUNNER_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.local"
-if [ -f "$REPOS_RUNNER_ENV" ]; then
-    echo -e "${GREEN}✓${NC} Loading repos_runner configuration from .env.local"
-    REPOS_RUNNER_PORT=$(grep "^PORT=" "$REPOS_RUNNER_ENV" | cut -d '=' -f2)
-    REPOS_RUNNER_PORT=${REPOS_RUNNER_PORT:-8001}
+REPOS_RUNNER_PROD_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.prod"
+REPOS_RUNNER_LOCAL_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.local"
+if [ -f "$REPOS_RUNNER_PROD_ENV" ]; then
+    REPOS_RUNNER_ENV="$REPOS_RUNNER_PROD_ENV"
+elif [ -f "$REPOS_RUNNER_LOCAL_ENV" ]; then
+    REPOS_RUNNER_ENV="$REPOS_RUNNER_LOCAL_ENV"
+else
+    REPOS_RUNNER_ENV=""
+fi
+
+if [ -n "$REPOS_RUNNER_ENV" ]; then
+    echo -e "${GREEN}✓${NC} Loading repos_runner configuration from ${REPOS_RUNNER_ENV#${PROJECT_ROOT}/}"
+    set -a
+    # shellcheck disable=SC1090
+    . "$REPOS_RUNNER_ENV"
+    set +a
+    export REPOS_RUNNER_ENV_FILE="$REPOS_RUNNER_ENV"
+    REPOS_RUNNER_PORT=${RUNNER_PORT:-${PORT:-8001}}
 else
     REPOS_RUNNER_PORT=8001
 fi

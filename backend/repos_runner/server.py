@@ -18,21 +18,28 @@ _backend_dir = Path(__file__).resolve().parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
-from repos_runner.routes import runner
-
 # Load environment variables
-# Check server file directory first (repos_runner/.env), then legacy .env.local, then CWD
+# Check an explicit runner env file first, then server/CWD defaults.
 _server_dir = Path(__file__).resolve().parent
-for _env_path in (
-    _server_dir / ".env",
-    _server_dir / ".env.local",
-    Path(".env"),
-    Path(".env.local"),
-):
+_explicit_env = os.getenv("REPOS_RUNNER_ENV_FILE", "").strip()
+_env_candidates = []
+if _explicit_env:
+    _env_candidates.append(Path(_explicit_env).expanduser())
+_env_candidates.extend(
+    (
+        _server_dir / ".env",
+        _server_dir / ".env.local",
+        Path(".env"),
+        Path(".env.local"),
+    )
+)
+for _env_path in _env_candidates:
     if _env_path.exists():
         load_dotenv(_env_path, override=True)
         break
 load_dotenv(override=False)
+
+from repos_runner.routes import runner
 
 app = FastAPI(title="Repository Runner API")
 
