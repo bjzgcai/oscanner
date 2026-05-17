@@ -15,6 +15,74 @@ from evaluator.services.plugin_service import resolve_plugin_id
 from evaluator.services.extraction_service import get_repo_data_dir
 
 
+MAX_REPO_EVALUATION_INPUT_TOKENS = 10_000_000
+REPO_TOO_BIG_MESSAGE = "the repo is too big exceeding 10M tokens!"
+
+
+def _estimate_text_tokens(text: str) -> int:
+    return len(text or "")
+
+
+def _commit_message(commit: Dict[str, Any]) -> str:
+    raw = commit.get("message")
+    if raw is None and isinstance(commit.get("commit"), dict):
+        raw = commit.get("commit", {}).get("message")
+    return str(raw or "")
+
+
+def _repo_snapshot_file_paths(data_dir: Path):
+    repo_files_dir = data_dir / "repo_files"
+    manifest_path = data_dir / "repo_files_manifest.json"
+    if not repo_files_dir.exists() or not repo_files_dir.is_dir() or not manifest_path.exists():
+        return
+
+    for abs_path in sorted(repo_files_dir.rglob("*")):
+        if abs_path.is_file():
+            yield abs_path
+
+
+def estimate_repo_evaluation_input_tokens(
+    *,
+    commits: List[Dict[str, Any]],
+    data_dir: Path,
+    token_limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Estimate repo snapshot file and commit-message tokens, stopping after the limit."""
+    limit = MAX_REPO_EVALUATION_INPUT_TOKENS if token_limit is None else int(token_limit)
+    total = 0
+
+    for commit in commits:
+        total += _estimate_text_tokens(_commit_message(commit))
+        if total > limit:
+            return {"tokens": total, "limit": limit, "exceeded": True}
+
+    for file_path in _repo_snapshot_file_paths(data_dir):
+        try:
+            with file_path.open("r", encoding="utf-8", errors="ignore") as handle:
+                while True:
+                    chunk = handle.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += _estimate_text_tokens(chunk)
+                    if total > limit:
+                        return {"tokens": total, "limit": limit, "exceeded": True}
+        except OSError:
+            continue
+
+    return {"tokens": total, "limit": limit, "exceeded": False}
+
+
+def ensure_repo_evaluation_input_within_limit(
+    *,
+    commits: List[Dict[str, Any]],
+    data_dir: Path,
+) -> Dict[str, Any]:
+    stats = estimate_repo_evaluation_input_tokens(commits=commits, data_dir=data_dir)
+    if stats["exceeded"]:
+        raise HTTPException(status_code=413, detail=REPO_TOO_BIG_MESSAGE)
+    return stats
+
+
 def get_or_create_evaluator(
     platform: str,
     owner: str,
@@ -103,12 +171,13 @@ def evaluate_author_incremental(
     if not author_commits:
         return get_empty_evaluation(author)
 
-    if evaluator_factory is None:
-        raise HTTPException(status_code=500, detail="Evaluator factory not provided (plugin load failed?)")
-
     # Case 1: No previous evaluation → evaluate all commits
     if not previous_evaluation:
         print(f"[Incremental] First evaluation: {len(author_commits)} commits")
+        ensure_repo_evaluation_input_within_limit(commits=author_commits, data_dir=data_dir)
+
+        if evaluator_factory is None:
+            raise HTTPException(status_code=500, detail="Evaluator factory not provided (plugin load failed?)")
 
         evaluator = evaluator_factory()
 
@@ -179,6 +248,10 @@ def evaluate_author_incremental(
         return previous_evaluation
 
     print(f"[Incremental] Found {len(new_commits)} new commits, evaluating...")
+    ensure_repo_evaluation_input_within_limit(commits=new_commits, data_dir=data_dir)
+
+    if evaluator_factory is None:
+        raise HTTPException(status_code=500, detail="Evaluator factory not provided (plugin load failed?)")
 
     # Evaluate new commits only
     evaluator = evaluator_factory()

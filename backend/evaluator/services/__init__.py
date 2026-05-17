@@ -15,6 +15,7 @@ from evaluator.services.evaluation_service import (
     get_or_create_evaluator,
     evaluate_author_incremental,
     get_empty_evaluation,
+    ensure_repo_evaluation_input_within_limit,
 )
 from evaluator.services.merge_service import merge_evaluations_logic
 from evaluator.services.trajectory_service import (
@@ -34,6 +35,7 @@ __all__ = [
     "get_or_create_evaluator",
     "evaluate_author_incremental",
     "get_empty_evaluation",
+    "ensure_repo_evaluation_input_within_limit",
     "merge_evaluations_logic",
     "analyze_growth_trajectory",
     "analyze_group_repositories",

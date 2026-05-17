@@ -16,6 +16,7 @@ from evaluator.services import (
     get_repo_data_dir,
     fetch_gitee_commits,
     merge_evaluations_logic,
+    ensure_repo_evaluation_input_within_limit,
 )
 
 router = APIRouter()
@@ -212,13 +213,15 @@ async def evaluate_gitee_contributor(
 
         # Get commits
         commits = fetch_gitee_commits(owner, repo, 500, is_enterprise)
+        data_dir = get_repo_data_dir(platform, owner, repo)
+        ensure_repo_evaluation_input_within_limit(commits=commits, data_dir=data_dir)
 
         # Load plugin
         plugin_id = resolve_plugin_id(plugin)
         meta, scan_mod, scan_path = load_scan_module(plugin_id)
 
         evaluator = scan_mod.create_commit_evaluator(
-            data_dir=str(get_repo_data_dir(platform, owner, repo)),
+            data_dir=str(data_dir),
             api_key=api_key,
             model=DEFAULT_LLM_MODEL,
         )

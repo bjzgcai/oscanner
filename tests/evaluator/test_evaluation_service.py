@@ -22,6 +22,7 @@ from evaluator.services.evaluation_service import (
     get_or_create_evaluator,
     evaluate_author_incremental,
     get_empty_evaluation,
+    REPO_TOO_BIG_MESSAGE,
 )
 from fastapi import HTTPException
 
@@ -328,6 +329,44 @@ class TestEvaluateAuthorIncremental:
         
         assert exc_info.value.status_code == 500
         assert "Evaluator factory" in str(exc_info.value.detail)
+
+    def test_evaluate_author_incremental_stops_when_repo_context_exceeds_guardrail(self, temp_data_dir, monkeypatch):
+        """Evaluation should stop before LLM work when repo files plus commit messages exceed the hard limit."""
+        repo_files_dir = temp_data_dir / "repo_files"
+        repo_files_dir.mkdir()
+        (temp_data_dir / "repo_files_manifest.json").write_text("{}", encoding="utf-8")
+        (repo_files_dir / "app.py").write_text("x" * 20, encoding="utf-8")
+        monkeypatch.setattr(
+            "evaluator.services.evaluation_service.MAX_REPO_EVALUATION_INPUT_TOKENS",
+            25,
+        )
+
+        commits = [
+            {
+                "sha": "abc123",
+                "commit": {
+                    "author": {"name": "test_user", "email": "test@example.com"},
+                    "message": "message over limit",
+                },
+            },
+        ]
+
+        def fail_factory():
+            raise AssertionError("evaluator must not be constructed for oversized repo input")
+
+        with pytest.raises(HTTPException) as exc_info:
+            evaluate_author_incremental(
+                commits=commits,
+                author="test_user",
+                previous_evaluation=None,
+                data_dir=temp_data_dir,
+                model="test-model",
+                api_key="fake_key",
+                evaluator_factory=fail_factory,
+            )
+
+        assert exc_info.value.status_code == 413
+        assert exc_info.value.detail == REPO_TOO_BIG_MESSAGE
 
     def test_evaluate_author_incremental_llm_error(self, temp_data_dir):
         """Test incremental evaluation handles LLM errors."""

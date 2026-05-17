@@ -18,7 +18,10 @@ from evaluator.schemas import (
     PeriodAccumulationState,
 )
 from evaluator.utils import load_commits_from_local, is_commit_by_author
-from evaluator.services.evaluation_service import get_or_create_evaluator
+from evaluator.services.evaluation_service import (
+    ensure_repo_evaluation_input_within_limit,
+    get_or_create_evaluator,
+)
 from evaluator.services.extraction_service import (
     extract_github_data,
     extract_gitee_data,
@@ -609,6 +612,7 @@ def analyze_group_repositories(
                 continue
 
             sync_result, _ = _refresh_group_repo_snapshot_for_end_sha(repo_url, item, sync_result, data_dir)
+            ensure_repo_evaluation_input_within_limit(commits=commits, data_dir=data_dir)
 
             evaluator_kwargs = {
                 "data_dir": str(data_dir),
@@ -895,6 +899,10 @@ def create_checkpoint_evaluation(
 
     # Evaluate
     print(f"[Trajectory] Evaluating checkpoint {checkpoint_id} with {len(commits)} commits (previous_checkpoint: {previous_checkpoint.checkpoint_id if previous_checkpoint else 'None'})")
+    ensure_repo_evaluation_input_within_limit(
+        commits=sorted_commits,
+        data_dir=get_platform_data_dir(platform, owner, repo),
+    )
     if progress_callback:
         progress_callback("section", {
             "title": f"评估检查点 #{checkpoint_id}",
