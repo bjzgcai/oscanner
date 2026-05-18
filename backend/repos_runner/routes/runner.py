@@ -12,7 +12,7 @@ from typing import AsyncGenerator, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger(__name__)
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from repos_runner.schemas import (
     RepoCloneRequest,
     RepoMetadata,
@@ -41,6 +41,13 @@ router = APIRouter(prefix="/api/runner")
 
 _ALLOWED_ARTIFACT_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 _SAFE_REPO_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+_ACTIVE_RUN_ALL_REPORTS: set[tuple[str, str]] = set()
+
+
+def _active_report_key(repo_url: str, tag: Optional[str] = None) -> tuple[str, str]:
+    normalized_repo_url = str(repo_url or "").strip().removesuffix(".git").rstrip("/").lower()
+    normalized_tag = str(tag or "").strip()
+    return normalized_repo_url, normalized_tag
 
 
 class _PipelineTimeout(RuntimeError):
@@ -312,108 +319,122 @@ async def run_all_stream(request: RunAllRequest):
 
     async def event_generator() -> AsyncGenerator[str, None]:
         progress_queue: asyncio.Queue = asyncio.Queue()
+        loop = asyncio.get_running_loop()
 
         async def progress_callback(message: str):
             await progress_queue.put(message)
 
-        async def pipeline_task():
-            usage_token = None
+        async def worker_progress_callback(message: str):
+            loop.call_soon_threadsafe(progress_queue.put_nowait, message)
+
+        async def run_pipeline_in_worker_loop():
+            usage_token = start_token_usage_collection()
             try:
-                async with runner_queue.acquire(progress_callback):
-                    usage_token = start_token_usage_collection()
-                    from pathlib import Path
-                    from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
+                from pathlib import Path
+                from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
 
-                    deadline = asyncio.get_running_loop().time() + request.pipeline_timeout
+                deadline = asyncio.get_running_loop().time() + request.pipeline_timeout
 
-                    # -- Clone step --
-                    if request.skip_clone:
-                        _, _, repo_name = parse_repo_url(request.repo_url)
-                        clone_path = str(get_repos_dir() / repo_name)
-                        await progress_callback(f"Skipping clone, reusing {clone_path}")
-                        clone_metadata = {"clone_path": clone_path, "repo_name": repo_name}
-                    else:
-                        await progress_callback("Cloning repository...")
-                        clone_metadata = await _await_pipeline_step(
-                            clone_repository(
-                                request.repo_url,
-                                request.sha,
-                                request.tag,
-                                timeout=request.clone_timeout,
-                            ),
-                            deadline=deadline,
-                        )
-
-                    clone_path = clone_metadata["clone_path"]
-                    _safe_tag = request.tag.replace("/", "_").replace("\\", "_") if request.tag else None
-                    overview_filename = f"REPO_OVERVIEW_{_safe_tag}.md" if _safe_tag else "REPO_OVERVIEW.md"
-                    overview_path = str(Path(clone_path) / overview_filename)
-
-                    # -- Feature requirements / tag message --
-                    tag_message = str(request.tag_message or "").strip() or None
-                    if tag_message:
-                        await progress_callback("Using forwarded feature requirements.")
-                    elif request.tag:
-                        await progress_callback(
-                            f"Fetching tag annotation for '{request.tag}' from Gitee..."
-                        )
-                        tag_message = await _await_pipeline_step(
-                            fetch_gitee_tag_message(request.repo_url, request.tag),
-                            deadline=deadline,
-                        )
-                        if tag_message:
-                            await progress_callback(f"Tag message: {tag_message}")
-                        else:
-                            await progress_callback(
-                                "No tag annotation message found; running standard scoring."
-                            )
-
-                    # -- Explore step --
-                    if request.skip_explore and Path(overview_path).exists():
-                        await progress_callback(
-                            f"Skipping exploration, reusing existing {overview_filename}"
-                        )
-                    else:
-                        await progress_callback("Exploring repository...")
-                        overview_path = await _await_pipeline_step(
-                            explore_repository(
-                                clone_path, progress_callback, tag_message, tag=request.tag
-                            ),
-                            deadline=deadline,
-                        )
-
-                    # -- Test step --
-                    await progress_callback("Running tests...")
-                    result = await _await_pipeline_step(
-                        run_tests(
-                            clone_path,
-                            overview_path,
-                            progress_callback,
-                            setup_timeout=request.setup_timeout,
-                            test_timeout=request.test_timeout,
-                            tag_message=tag_message,
-                            tag=request.tag,
+                # -- Clone step --
+                if request.skip_clone:
+                    _, _, repo_name = parse_repo_url(request.repo_url)
+                    clone_path = str(get_repos_dir() / repo_name)
+                    await worker_progress_callback(f"Skipping clone, reusing {clone_path}")
+                    clone_metadata = {"clone_path": clone_path, "repo_name": repo_name}
+                else:
+                    await worker_progress_callback("Cloning repository...")
+                    clone_metadata = await _await_pipeline_step(
+                        clone_repository(
+                            request.repo_url,
+                            request.sha,
+                            request.tag,
+                            timeout=request.clone_timeout,
                         ),
                         deadline=deadline,
                     )
 
-                    report_path = result.get("report_path", "")
-                    try:
-                        from pathlib import Path as _Path
-                        report_content = _Path(report_path).read_text() if report_path else ""
-                    except Exception:
-                        report_content = ""
-                    token_usage = summarize_token_usage()
-                    if token_usage:
-                        result["token_usage"] = token_usage
-                    await progress_queue.put({
-                        "status": "completed",
-                        "clone_metadata": clone_metadata,
-                        "overview_path": overview_path,
-                        "results": result,
-                        "report_content": report_content,
-                        "token_usage": token_usage,
-                    })
+                clone_path = clone_metadata["clone_path"]
+                _safe_tag = request.tag.replace("/", "_").replace("\\", "_") if request.tag else None
+                overview_filename = f"REPO_OVERVIEW_{_safe_tag}.md" if _safe_tag else "REPO_OVERVIEW.md"
+                overview_path = str(Path(clone_path) / overview_filename)
+
+                # -- Feature requirements / tag message --
+                tag_message = str(request.tag_message or "").strip() or None
+                if tag_message:
+                    await worker_progress_callback("Using forwarded feature requirements.")
+                elif request.tag:
+                    await worker_progress_callback(
+                        f"Fetching tag annotation for '{request.tag}' from Gitee..."
+                    )
+                    tag_message = await _await_pipeline_step(
+                        fetch_gitee_tag_message(request.repo_url, request.tag),
+                        deadline=deadline,
+                    )
+                    if tag_message:
+                        await worker_progress_callback(f"Tag message: {tag_message}")
+                    else:
+                        await worker_progress_callback(
+                            "No tag annotation message found; running standard scoring."
+                        )
+
+                # -- Explore step --
+                if request.skip_explore and Path(overview_path).exists():
+                    await worker_progress_callback(
+                        f"Skipping exploration, reusing existing {overview_filename}"
+                    )
+                else:
+                    await worker_progress_callback("Exploring repository...")
+                    overview_path = await _await_pipeline_step(
+                        explore_repository(
+                            clone_path, worker_progress_callback, tag_message, tag=request.tag
+                        ),
+                        deadline=deadline,
+                    )
+
+                # -- Test step --
+                await worker_progress_callback("Running tests...")
+                result = await _await_pipeline_step(
+                    run_tests(
+                        clone_path,
+                        overview_path,
+                        worker_progress_callback,
+                        setup_timeout=request.setup_timeout,
+                        test_timeout=request.test_timeout,
+                        tag_message=tag_message,
+                        tag=request.tag,
+                    ),
+                    deadline=deadline,
+                )
+
+                report_path = result.get("report_path", "")
+                try:
+                    from pathlib import Path as _Path
+                    report_content = _Path(report_path).read_text() if report_path else ""
+                except Exception:
+                    report_content = ""
+                token_usage = summarize_token_usage()
+                if token_usage:
+                    result["token_usage"] = token_usage
+                return {
+                    "status": "completed",
+                    "clone_metadata": clone_metadata,
+                    "overview_path": overview_path,
+                    "results": result,
+                    "report_content": report_content,
+                    "token_usage": token_usage,
+                }
+            finally:
+                reset_token_usage_collection(usage_token)
+
+        async def pipeline_task():
+            active_key = _active_report_key(request.repo_url, request.tag)
+            _ACTIVE_RUN_ALL_REPORTS.add(active_key)
+            try:
+                async with runner_queue.acquire(progress_callback):
+                    completed = await asyncio.to_thread(
+                        lambda: asyncio.run(run_pipeline_in_worker_loop())
+                    )
+                    await progress_queue.put(completed)
 
             except asyncio.CancelledError:
                 progress_queue.put_nowait({"status": "failed", "error": "Pipeline was cancelled"})
@@ -428,8 +449,7 @@ async def run_all_stream(request: RunAllRequest):
             except Exception as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
             finally:
-                if usage_token is not None:
-                    reset_token_usage_collection(usage_token)
+                _ACTIVE_RUN_ALL_REPORTS.discard(active_key)
                 progress_queue.put_nowait(None)
 
         task = asyncio.create_task(pipeline_task())
@@ -678,13 +698,25 @@ async def get_report(repo_url: str, tag: Optional[str] = None):
     """
     Return the content of TEST_REPORT_{tag}.md (or TEST_REPORT.md) for a cloned repo.
     """
-    from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
     try:
         _, _, repo_name = parse_repo_url(repo_url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     clone_dir = get_repos_dir() / repo_name
+    active_key = _active_report_key(repo_url, tag)
+    if not clone_dir.exists() and active_key in _ACTIVE_RUN_ALL_REPORTS:
+        safe_tag = tag.replace("/", "_").replace(" ", "_") if tag else ""
+        report_name = f"TEST_REPORT_{safe_tag}.md" if safe_tag else "TEST_REPORT.md"
+        return JSONResponse(
+            status_code=202,
+            content={
+                "status": "testing",
+                "message": "正在测试评估中",
+                "filename": report_name,
+            },
+        )
+
     if not clone_dir.exists():
         raise HTTPException(status_code=404, detail=f"Repository '{repo_name}' not found")
 
@@ -695,6 +727,15 @@ async def get_report(repo_url: str, tag: Optional[str] = None):
         report_path = clone_dir / "TEST_REPORT.md"
 
     if not report_path.exists():
+        if active_key in _ACTIVE_RUN_ALL_REPORTS:
+            return JSONResponse(
+                status_code=202,
+                content={
+                    "status": "testing",
+                    "message": "正在测试评估中",
+                    "filename": report_path.name,
+                },
+            )
         raise HTTPException(status_code=404, detail=f"Report not found: {report_path.name}")
 
     return {"content": report_path.read_text(), "filename": report_path.name}

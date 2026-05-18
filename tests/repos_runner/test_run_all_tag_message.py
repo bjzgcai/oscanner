@@ -2,6 +2,9 @@
 
 import asyncio
 import json
+import time
+
+from fastapi.responses import JSONResponse
 
 from repos_runner.routes import runner as runner_route
 from repos_runner.schemas import RunAllRequest
@@ -201,3 +204,82 @@ def test_run_all_times_out_entire_pipeline(monkeypatch):
     failed = asyncio.run(_collect_failed())
 
     assert failed["error"] == "Pipeline timed out after 0.01s"
+
+
+def test_run_all_keeps_event_loop_responsive_during_blocking_test(monkeypatch, tmp_path):
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+    overview_path = clone_dir / "REPO_OVERVIEW.md"
+    overview_path.write_text("overview", encoding="utf-8")
+    report_path = clone_dir / "TEST_REPORT.md"
+    report_path.write_text("report body", encoding="utf-8")
+
+    async def _fake_clone_repository(_repo_url, _sha, _tag, timeout=300):
+        return {"clone_path": str(clone_dir), "repo_name": "repo"}
+
+    async def _fake_explore_repository(_clone_path, _progress_callback, _tag_message, tag=None):
+        return str(overview_path)
+
+    async def _blocking_run_tests(
+        _clone_path,
+        _overview_path,
+        _progress_callback,
+        setup_timeout,
+        test_timeout,
+        tag_message=None,
+        tag=None,
+    ):
+        time.sleep(0.12)
+        return {
+            "repo_name": "org/repo",
+            "passed": 1,
+            "failed": 0,
+            "total": 1,
+            "score": 100,
+            "report_path": str(report_path),
+        }
+
+    monkeypatch.setattr(runner_route, "clone_repository", _fake_clone_repository)
+    monkeypatch.setattr(runner_route, "explore_repository", _fake_explore_repository)
+    monkeypatch.setattr(runner_route, "run_tests", _blocking_run_tests)
+
+    async def _consume_response(response):
+        async for _chunk in response.body_iterator:
+            pass
+
+    async def _assert_responsive():
+        response = await runner_route.run_all_stream(
+            RunAllRequest(repo_url="https://github.com/org/repo")
+        )
+        consumer = asyncio.create_task(_consume_response(response))
+        started_at = time.perf_counter()
+        await asyncio.sleep(0.03)
+        elapsed = time.perf_counter() - started_at
+        await consumer
+        assert elapsed < 0.08
+
+    asyncio.run(_assert_responsive())
+
+
+def test_get_report_returns_testing_status_for_active_run(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+    repos_dir.mkdir()
+
+    monkeypatch.setattr(runner_route, "get_repos_dir", lambda: repos_dir)
+    monkeypatch.setattr(
+        runner_route,
+        "parse_repo_url",
+        lambda _repo_url: ("github", "org", "repo"),
+    )
+
+    key = runner_route._active_report_key("https://github.com/org/repo", "class-01")
+    runner_route._ACTIVE_RUN_ALL_REPORTS.add(key)
+    try:
+        response = asyncio.run(
+            runner_route.get_report("https://github.com/org/repo", tag="class-01")
+        )
+    finally:
+        runner_route._ACTIVE_RUN_ALL_REPORTS.discard(key)
+
+    assert isinstance(response, JSONResponse)
+    assert response.status_code == 202
