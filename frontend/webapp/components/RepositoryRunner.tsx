@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, message, Input, Space, Typography, Steps, Progress, Tag, Collapse, Alert, Dropdown } from 'antd';
+import { Button, Card, message, Input, Space, Typography, Steps, Tag, Collapse, Alert, Dropdown } from 'antd';
 import {
   GithubOutlined,
   LoadingOutlined,
@@ -48,14 +48,70 @@ interface DetectedTests {
   setup_commands: string[];
 }
 
+interface RunnerStreamEvent {
+  event?: string;
+  data?: {
+    message?: string;
+    status?: string;
+    error?: string;
+    overview_path?: string;
+    results?: TestSummary;
+  };
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function readRunnerStream(
+  response: Response,
+  onEvent: (event: RunnerStreamEvent) => void
+) {
+  const reader = response.body?.getReader();
+  const decoder = new TextDecoder();
+
+  if (!reader) {
+    throw new Error('No response body');
+  }
+
+  let buffer = '';
+
+  const processLine = (line: string) => {
+    if (!line.startsWith('data: ')) return;
+    const data = JSON.parse(line.substring(6));
+    onEvent(data);
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      buffer += decoder.decode();
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      processLine(line.trimEnd());
+    }
+  }
+
+  if (buffer.trim()) {
+    for (const line of buffer.split('\n')) {
+      processLine(line.trimEnd());
+    }
+  }
+}
+
 export default function RepositoryRunner() {
   const { t } = useI18n();
   const { locale, setLocale } = useAppSettings();
   const [repoUrl, setRepoUrl] = useState('https://gitee.com/zgcai/eval_test_1');
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [repoMetadata, setRepoMetadata] = useState<RepoMetadata | null>(null);
-  const [overviewPath, setOverviewPath] = useState('');
   const [progressMessages, setProgressMessages] = useState<string[]>([]);
   const [testResults, setTestResults] = useState<TestSummary | null>(null);
   const [detectedTests, setDetectedTests] = useState<DetectedTests | null>(null);
@@ -87,9 +143,9 @@ export default function RepositoryRunner() {
         throw new Error('Failed to detect tests');
       }
 
-      const data = await response.json();
+      const data = await response.json() as DetectedTests;
       setDetectedTests(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to detect tests:', err);
       setDetectedTests({ test_commands: [], setup_commands: [] });
     }
@@ -100,27 +156,22 @@ export default function RepositoryRunner() {
     setProgressMessages([]);
     setCurrentStep(0);
 
-    try {
-      const response = await fetch('/api/runner/clone/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_url: repoUrl })
-      });
+    const response = await fetch('/api/runner/clone/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo_url: repoUrl })
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to clone repository');
-      }
-
-      const metadata = await response.json();
-      setRepoMetadata(metadata);
-      setStep1Output(metadata);
-      setCurrentStep(1);
-      message.success(t('runner.step1.completed'));
-      return metadata;
-    } catch (err: any) {
-      throw err;
+    if (!response.ok) {
+      const errorData = await response.json() as { detail?: string };
+      throw new Error(errorData.detail || 'Failed to clone repository');
     }
+
+    const metadata = await response.json() as RepoMetadata;
+    setStep1Output(metadata);
+    setCurrentStep(1);
+    message.success(t('runner.step1.completed'));
+    return metadata;
   };
 
   // Step 2: Explore repository (internal function)
@@ -128,65 +179,41 @@ export default function RepositoryRunner() {
     setProgressMessages([]);
     const explorationMessages: string[] = [];
 
-    try {
-      const response = await fetch(
-        `/api/runner/explore/?clone_path=${encodeURIComponent(metadata.clone_path)}`,
-        { method: 'POST' }
-      );
+    const response = await fetch(
+      `/api/runner/explore/?clone_path=${encodeURIComponent(metadata.clone_path)}`,
+      { method: 'POST' }
+    );
 
-      if (!response.ok) {
-        throw new Error('Failed to start exploration');
-      }
+    if (!response.ok) {
+      throw new Error('Failed to start exploration');
+    }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error('No response body');
-      }
-
-      let explorationPath = '';
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.substring(6));
-
-              if (data.event === 'progress') {
-                explorationMessages.push(data.data.message);
-                setProgressMessages(prev => [...prev, data.data.message]);
-              } else if (data.event === 'status') {
-                if (data.data.status === 'completed') {
-                  explorationPath = data.data.overview_path;
-                  setOverviewPath(explorationPath);
-                  setStep2Output({ overviewPath: explorationPath, messages: explorationMessages });
-                  setCurrentStep(2);
-                  message.success(t('runner.step2.completed'));
-                } else if (data.data.status === 'failed') {
-                  throw new Error(data.data.error);
-                }
-              }
-            } catch (e) {
-              console.error('Failed to parse SSE event:', line, e);
-            }
-          }
+    let explorationPath = '';
+    await readRunnerStream(response, (data) => {
+      if (data.event === 'progress' && data.data?.message) {
+        const progressMessage = data.data.message;
+        explorationMessages.push(progressMessage);
+        setProgressMessages(prev => [...prev, progressMessage]);
+      } else if (data.event === 'status') {
+        if (data.data?.status === 'completed') {
+          explorationPath = data.data.overview_path || '';
+        } else if (data.data?.status === 'failed') {
+          throw new Error(data.data.error || 'Repository exploration failed');
         }
       }
+    });
 
-      // Fetch detected tests
-      await fetchDetectedTests(explorationPath);
-      return explorationPath;
-    } catch (err: any) {
-      throw err;
+    if (!explorationPath) {
+      throw new Error('No overview path received');
     }
+
+    setStep2Output({ overviewPath: explorationPath, messages: explorationMessages });
+    setCurrentStep(2);
+    message.success(t('runner.step2.completed'));
+
+    // Fetch detected tests
+    await fetchDetectedTests(explorationPath);
+    return explorationPath;
   };
 
   // Step 3: Run tests (internal function)
@@ -195,69 +222,40 @@ export default function RepositoryRunner() {
     setTestResults(null);
     const testMessages: string[] = [];
 
-    try {
-      const response = await fetch(
-        `/api/runner/run-tests/?clone_path=${encodeURIComponent(metadata.clone_path)}&overview_path=${encodeURIComponent(overviewPath)}`,
-        { method: 'POST' }
-      );
+    const response = await fetch(
+      `/api/runner/run-tests/?clone_path=${encodeURIComponent(metadata.clone_path)}&overview_path=${encodeURIComponent(overviewPath)}`,
+      { method: 'POST' }
+    );
 
-      if (!response.ok) {
-        throw new Error('Failed to start tests');
-      }
+    if (!response.ok) {
+      throw new Error('Failed to start tests');
+    }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error('No response body');
-      }
-
-      let results: TestSummary | null = null;
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.substring(6));
-
-              if (data.event === 'progress') {
-                testMessages.push(data.data.message);
-                setProgressMessages(prev => [...prev, data.data.message]);
-              } else if (data.event === 'status') {
-                if (data.data.status === 'completed') {
-                  results = data.data.results;
-                  setTestResults(results);
-                  if (results) {
-                    setStep3Output({ results, messages: testMessages });
-                  }
-                  setCurrentStep(3);
-                  message.success(t('runner.step3.completed'));
-                } else if (data.data.status === 'failed') {
-                  throw new Error(data.data.error);
-                }
-              }
-            } catch (e) {
-              console.error('Failed to parse SSE event:', line, e);
-            }
-          }
+    let results: TestSummary | null = null;
+    await readRunnerStream(response, (data) => {
+      if (data.event === 'progress' && data.data?.message) {
+        const progressMessage = data.data.message;
+        testMessages.push(progressMessage);
+        setProgressMessages(prev => [...prev, progressMessage]);
+      } else if (data.event === 'status') {
+        if (data.data?.status === 'completed') {
+          results = data.data.results || null;
+        } else if (data.data?.status === 'failed') {
+          throw new Error(data.data.error || 'Test run failed');
         }
       }
+    });
 
-      if (!results) {
-        throw new Error('No test results received');
-      }
-
-      return results;
-    } catch (err: any) {
-      throw err;
+    if (!results) {
+      throw new Error('No test results received');
     }
+
+    setTestResults(results);
+    setStep3Output({ results, messages: testMessages });
+    setCurrentStep(3);
+    message.success(t('runner.step3.completed'));
+
+    return results;
   };
 
   // Main handler: Execute all steps automatically
@@ -284,9 +282,10 @@ export default function RepositoryRunner() {
 
       // Step 4: Complete (automatically shown when currentStep = 3)
       message.success(t('runner.step4.title'));
-    } catch (err: any) {
-      setError(err.message);
-      message.error(err.message);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -297,8 +296,6 @@ export default function RepositoryRunner() {
   const handleReset = () => {
     setRepoUrl('');
     setCurrentStep(0);
-    setRepoMetadata(null);
-    setOverviewPath('');
     setProgressMessages([]);
     setTestResults(null);
     setDetectedTests(null);

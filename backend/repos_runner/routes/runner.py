@@ -224,20 +224,29 @@ async def run_tests_stream(
     """
     async def event_generator() -> AsyncGenerator[str, None]:
         progress_queue: asyncio.Queue = asyncio.Queue()
+        loop = asyncio.get_running_loop()
 
         async def progress_callback(message: str):
             await progress_queue.put(message)
+
+        async def worker_progress_callback(message: str):
+            loop.call_soon_threadsafe(progress_queue.put_nowait, message)
+            await asyncio.sleep(0)
 
         async def test_task():
             try:
                 from pathlib import Path
                 async with runner_queue.acquire(progress_callback):
-                    result = await run_tests(
-                        clone_path,
-                        overview_path,
-                        progress_callback,
-                        setup_timeout=setup_timeout,
-                        test_timeout=test_timeout,
+                    result = await asyncio.to_thread(
+                        lambda: asyncio.run(
+                            run_tests(
+                                clone_path,
+                                overview_path,
+                                worker_progress_callback,
+                                setup_timeout=setup_timeout,
+                                test_timeout=test_timeout,
+                            )
+                        )
                     )
                 report_path = result.get("report_path", "")
                 try:

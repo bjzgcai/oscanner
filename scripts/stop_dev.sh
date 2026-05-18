@@ -1,10 +1,10 @@
 #!/bin/bash
 # Development stop script for Engineer Skill Evaluator
-# Stops both the evaluator backend and webapp frontend
+# Stops the evaluator backend, repos runner backend, and webapp frontend.
 
 set -e  # Exit on error
 
-PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Color output
 GREEN='\033[0;32m'
@@ -17,22 +17,47 @@ echo -e "${BLUE}======================================${NC}"
 echo -e "${BLUE}  Stopping Development Services${NC}"
 echo -e "${BLUE}======================================${NC}\n"
 
-# Load environment variables to get ports
-EVALUATOR_ENV="${PROJECT_ROOT}/backend/evaluator/.env.local"
-if [ -f "$EVALUATOR_ENV" ]; then
-    export $(cat "$EVALUATOR_ENV" | grep -v '^#' | grep -v '^$' | xargs)
-fi
+load_env_file() {
+    local env_file=$1
+    if [ -f "$env_file" ]; then
+        set -a
+        # shellcheck disable=SC1090
+        . "$env_file"
+        set +a
+    fi
+}
 
-WEBAPP_ENV="${PROJECT_ROOT}/frontend/webapp/.env.local"
-if [ -f "$WEBAPP_ENV" ]; then
+pick_env_file() {
+    local env_dir=$1
+    if [ -f "${env_dir}/.env.local" ]; then
+        echo "${env_dir}/.env.local"
+    elif [ -f "${env_dir}/.env" ]; then
+        echo "${env_dir}/.env"
+    fi
+}
+
+# Load environment variables to get ports
+EVALUATOR_ENV="$(pick_env_file "${PROJECT_ROOT}/backend/evaluator")"
+if [ -n "$EVALUATOR_ENV" ]; then
+    load_env_file "$EVALUATOR_ENV"
+fi
+EVALUATOR_PORT=${PORT:-8000}
+unset PORT
+
+RUNNER_ENV="$(pick_env_file "${PROJECT_ROOT}/backend/repos_runner")"
+if [ -n "$RUNNER_ENV" ]; then
+    load_env_file "$RUNNER_ENV"
+fi
+RUNNER_PORT=${RUNNER_PORT:-${PORT:-8001}}
+unset PORT
+
+WEBAPP_ENV="$(pick_env_file "${PROJECT_ROOT}/frontend/webapp")"
+if [ -n "$WEBAPP_ENV" ]; then
     WEBAPP_PORT=$(grep "^PORT=" "$WEBAPP_ENV" | cut -d '=' -f2)
     WEBAPP_PORT=${WEBAPP_PORT:-3000}
 else
     WEBAPP_PORT=3000
 fi
-
-EVALUATOR_PORT=${PORT:-8000}
-RUNNER_PORT=${RUNNER_PORT:-8001}
 
 echo -e "${BLUE}Stopping services on ports:${NC}"
 echo -e "  Evaluator: ${YELLOW}${EVALUATOR_PORT}${NC}"
@@ -80,10 +105,10 @@ echo ""
 echo -e "${BLUE}Cleaning up any remaining processes...${NC}"
 
 # Kill any remaining evaluator server processes
-pkill -f "python.*server.py" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up server processes" || true
+pkill -f "backend.evaluator.server|evaluator.server:app|oscanner serve" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up evaluator processes" || true
 
 # Kill any remaining repos_runner server processes
-pkill -f "python.*repos_runner.server" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up repos_runner processes" || true
+pkill -f "backend.repos_runner.server|repos_runner.server" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up repos_runner processes" || true
 
 # Kill any remaining Next.js dev processes
 pkill -f "next dev" 2>/dev/null && echo -e "${GREEN}✓${NC} Cleaned up Next.js processes" || true

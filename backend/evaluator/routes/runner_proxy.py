@@ -26,6 +26,8 @@ _HOP_BY_HOP_HEADERS = {
     "upgrade",
 }
 
+_STREAMING_RUNNER_PATHS = {"explore", "run-tests"}
+
 
 def _proxied_headers(headers):
     return {
@@ -33,6 +35,18 @@ def _proxied_headers(headers):
         for key, value in headers.items()
         if key.lower() not in _HOP_BY_HOP_HEADERS | {"content-length"}
     }
+
+
+def _is_streaming_runner_path(path: str) -> bool:
+    return path.strip("/") in _STREAMING_RUNNER_PATHS
+
+
+def _streaming_error_event(message: str) -> str:
+    error = json.dumps({
+        "event": "status",
+        "data": {"status": "failed", "error": message},
+    })
+    return f"data: {error}\n\n"
 
 
 class RunAllRequest(BaseModel):
@@ -132,6 +146,38 @@ async def proxy_runner_request(path: str, request: Request):
 
     # Get request body if present
     body = await request.body()
+    headers = {
+        key: value
+        for key, value in request.headers.items()
+        if key.lower() not in ["host", "connection"]
+    }
+
+    if _is_streaming_runner_path(path):
+        async def stream_from_runner():
+            try:
+                async with httpx.AsyncClient(timeout=660.0) as client:
+                    async with client.stream(
+                        method=request.method,
+                        url=target_url,
+                        headers=headers,
+                        content=body,
+                    ) as response:
+                        if response.status_code != 200:
+                            await response.aread()
+                            yield _streaming_error_event(response.text)
+                            return
+                        async for chunk in response.aiter_bytes():
+                            yield chunk
+            except httpx.ConnectError:
+                yield _streaming_error_event(f"Repository Runner service unavailable at {RUNNER_SERVICE_URL}")
+            except Exception as e:
+                yield _streaming_error_event(str(e))
+
+        return StreamingResponse(
+            stream_from_runner(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     # Forward the request
     async with httpx.AsyncClient(timeout=660.0) as client:
@@ -140,31 +186,12 @@ async def proxy_runner_request(path: str, request: Request):
             response = await client.request(
                 method=request.method,
                 url=target_url,
-                headers={
-                    key: value
-                    for key, value in request.headers.items()
-                    if key.lower() not in ["host", "connection"]
-                },
+                headers=headers,
                 content=body,
             )
 
-            # Check if this is a streaming response (SSE)
             content_type = response.headers.get("content-type", "")
-            if "text/event-stream" in content_type:
-                # Stream the response
-                async def stream_generator():
-                    async for chunk in response.aiter_bytes():
-                        yield chunk
-
-                return StreamingResponse(
-                    stream_generator(),
-                    media_type="text/event-stream",
-                    headers={
-                        "Cache-Control": "no-cache",
-                        "X-Accel-Buffering": "no"
-                    }
-                )
-            elif "application/json" not in content_type:
+            if "application/json" not in content_type:
                 return Response(
                     content=response.content,
                     status_code=response.status_code,

@@ -104,3 +104,57 @@ def test_runner_proxy_passes_image_artifacts_without_json_decoding(monkeypatch):
     assert response.status_code == 200
     assert response.content == b"png"
     assert response.headers["content-type"] == "image/png"
+
+
+def test_runner_proxy_streams_explore_sse_without_buffering(monkeypatch):
+    captured = {}
+
+    class _FakeRunnerResponse:
+        status_code = 200
+        headers = {"content-type": "text/event-stream"}
+        text = ""
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def aiter_bytes(self):
+            yield b'data: {"event": "progress", "data": {"message": "started"}}\n\n'
+            yield b'data: {"event": "status", "data": {"status": "completed", "overview_path": "/tmp/REPO_OVERVIEW.md"}}\n\n'
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def stream(self, method, url, headers=None, content=None):
+            captured["method"] = method
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["content"] = content
+            return _FakeRunnerResponse()
+
+    monkeypatch.setattr(runner_proxy.httpx, "AsyncClient", _FakeClient)
+
+    app = FastAPI()
+    app.include_router(runner_proxy.router)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/runner/explore/",
+        params={"clone_path": "/tmp/repo"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert captured["method"] == "POST"
+    assert captured["url"] == "http://localhost:8001/api/runner/explore/?clone_path=%2Ftmp%2Frepo"
+    assert b'"message": "started"' in response.content
+    assert b'"overview_path": "/tmp/REPO_OVERVIEW.md"' in response.content
