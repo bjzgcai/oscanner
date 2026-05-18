@@ -43,6 +43,42 @@ _ALLOWED_ARTIFACT_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 _SAFE_REPO_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
+class _PipelineTimeout(RuntimeError):
+    """Raised when a run-all pipeline exceeds its configured deadline."""
+
+
+def _timeout_label(timeout: float) -> str:
+    return f"{timeout:g}"
+
+
+def _pipeline_timeout_message(timeout: float) -> str:
+    return f"Pipeline timed out after {_timeout_label(timeout)}s"
+
+
+def _remaining_pipeline_seconds(deadline: float) -> float:
+    remaining = deadline - asyncio.get_running_loop().time()
+    if remaining <= 0:
+        raise _PipelineTimeout()
+    return remaining
+
+
+async def _await_pipeline_step(awaitable, *, deadline: float):
+    try:
+        timeout = _remaining_pipeline_seconds(deadline)
+    except _PipelineTimeout:
+        close = getattr(awaitable, "close", None)
+        if callable(close):
+            close()
+        raise
+    task = asyncio.create_task(awaitable)
+    try:
+        return await asyncio.wait_for(task, timeout=timeout)
+    except asyncio.TimeoutError as exc:
+        if task.done() and not task.cancelled():
+            return task.result()
+        raise _PipelineTimeout() from exc
+
+
 def _resolve_runner_artifact_path(
     repo_url: Optional[str],
     artifact_path: str,
@@ -88,7 +124,12 @@ def _resolve_runner_artifact_path(
 async def clone_repo(request: RepoCloneRequest):
     """Clone a repository and return metadata."""
     try:
-        metadata = await clone_repository(request.repo_url, request.sha, request.tag)
+        metadata = await clone_repository(
+            request.repo_url,
+            request.sha,
+            request.tag,
+            timeout=request.clone_timeout,
+        )
         return metadata
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -283,6 +324,8 @@ async def run_all_stream(request: RunAllRequest):
                     from pathlib import Path
                     from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
 
+                    deadline = asyncio.get_running_loop().time() + request.pipeline_timeout
+
                     # -- Clone step --
                     if request.skip_clone:
                         _, _, repo_name = parse_repo_url(request.repo_url)
@@ -291,8 +334,14 @@ async def run_all_stream(request: RunAllRequest):
                         clone_metadata = {"clone_path": clone_path, "repo_name": repo_name}
                     else:
                         await progress_callback("Cloning repository...")
-                        clone_metadata = await clone_repository(
-                            request.repo_url, request.sha, request.tag
+                        clone_metadata = await _await_pipeline_step(
+                            clone_repository(
+                                request.repo_url,
+                                request.sha,
+                                request.tag,
+                                timeout=request.clone_timeout,
+                            ),
+                            deadline=deadline,
                         )
 
                     clone_path = clone_metadata["clone_path"]
@@ -308,7 +357,10 @@ async def run_all_stream(request: RunAllRequest):
                         await progress_callback(
                             f"Fetching tag annotation for '{request.tag}' from Gitee..."
                         )
-                        tag_message = await fetch_gitee_tag_message(request.repo_url, request.tag)
+                        tag_message = await _await_pipeline_step(
+                            fetch_gitee_tag_message(request.repo_url, request.tag),
+                            deadline=deadline,
+                        )
                         if tag_message:
                             await progress_callback(f"Tag message: {tag_message}")
                         else:
@@ -323,20 +375,26 @@ async def run_all_stream(request: RunAllRequest):
                         )
                     else:
                         await progress_callback("Exploring repository...")
-                        overview_path = await explore_repository(
-                            clone_path, progress_callback, tag_message, tag=request.tag
+                        overview_path = await _await_pipeline_step(
+                            explore_repository(
+                                clone_path, progress_callback, tag_message, tag=request.tag
+                            ),
+                            deadline=deadline,
                         )
 
                     # -- Test step --
                     await progress_callback("Running tests...")
-                    result = await run_tests(
-                        clone_path,
-                        overview_path,
-                        progress_callback,
-                        setup_timeout=request.setup_timeout,
-                        test_timeout=request.test_timeout,
-                        tag_message=tag_message,
-                        tag=request.tag,
+                    result = await _await_pipeline_step(
+                        run_tests(
+                            clone_path,
+                            overview_path,
+                            progress_callback,
+                            setup_timeout=request.setup_timeout,
+                            test_timeout=request.test_timeout,
+                            tag_message=tag_message,
+                            tag=request.tag,
+                        ),
+                        deadline=deadline,
                     )
 
                     report_path = result.get("report_path", "")
@@ -360,6 +418,11 @@ async def run_all_stream(request: RunAllRequest):
             except asyncio.CancelledError:
                 progress_queue.put_nowait({"status": "failed", "error": "Pipeline was cancelled"})
                 raise
+            except _PipelineTimeout:
+                await progress_queue.put({
+                    "status": "failed",
+                    "error": _pipeline_timeout_message(request.pipeline_timeout),
+                })
             except RunnerQueueFull as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
             except Exception as e:
@@ -425,6 +488,7 @@ async def batch_run_stream(request: BatchRunRequest):
 
                 try:
                     async with runner_queue.acquire(cb):
+                        deadline = asyncio.get_running_loop().time() + repo_req.pipeline_timeout
                         if repo_req.skip_clone:
                             _, _, repo_name = parse_repo_url(repo_url)
                             clone_path = str(get_repos_dir() / repo_name)
@@ -432,7 +496,15 @@ async def batch_run_stream(request: BatchRunRequest):
                             clone_metadata = {"clone_path": clone_path, "repo_name": repo_name}
                         else:
                             await cb("Cloning repository...")
-                            clone_metadata = await clone_repository(repo_url, repo_req.sha, repo_req.tag)
+                            clone_metadata = await _await_pipeline_step(
+                                clone_repository(
+                                    repo_url,
+                                    repo_req.sha,
+                                    repo_req.tag,
+                                    timeout=repo_req.clone_timeout,
+                                ),
+                                deadline=deadline,
+                            )
 
                         clone_path = clone_metadata["clone_path"]
                         _safe_tag = repo_req.tag.replace("/", "_").replace("\\", "_") if repo_req.tag else None
@@ -445,7 +517,10 @@ async def batch_run_stream(request: BatchRunRequest):
                             await cb("Using forwarded feature requirements.")
                         elif repo_req.tag:
                             await cb(f"Fetching tag annotation for '{repo_req.tag}' from Gitee...")
-                            tag_message = await fetch_gitee_tag_message(repo_url, repo_req.tag)
+                            tag_message = await _await_pipeline_step(
+                                fetch_gitee_tag_message(repo_url, repo_req.tag),
+                                deadline=deadline,
+                            )
                             if tag_message:
                                 await cb(f"Tag message: {tag_message}")
                             else:
@@ -457,19 +532,25 @@ async def batch_run_stream(request: BatchRunRequest):
                             await cb(f"Skipping exploration, reusing existing {overview_filename}")
                         else:
                             await cb("Exploring repository...")
-                            overview_path = await explore_repository(
-                                clone_path, cb, tag_message, tag=repo_req.tag
+                            overview_path = await _await_pipeline_step(
+                                explore_repository(
+                                    clone_path, cb, tag_message, tag=repo_req.tag
+                                ),
+                                deadline=deadline,
                             )
 
                         await cb("Running tests...")
-                        result = await run_tests(
-                            clone_path,
-                            overview_path,
-                            cb,
-                            setup_timeout=repo_req.setup_timeout,
-                            test_timeout=repo_req.test_timeout,
-                            tag_message=tag_message,
-                            tag=repo_req.tag,
+                        result = await _await_pipeline_step(
+                            run_tests(
+                                clone_path,
+                                overview_path,
+                                cb,
+                                setup_timeout=repo_req.setup_timeout,
+                                test_timeout=repo_req.test_timeout,
+                                tag_message=tag_message,
+                                tag=repo_req.tag,
+                            ),
+                            deadline=deadline,
                         )
 
                     await event_queue.put({
@@ -486,6 +567,13 @@ async def batch_run_stream(request: BatchRunRequest):
                         "repo": repo_url,
                         "status": "failed",
                         "error": str(e),
+                    })
+                except _PipelineTimeout:
+                    await event_queue.put({
+                        "_type": "repo_done",
+                        "repo": repo_url,
+                        "status": "failed",
+                        "error": _pipeline_timeout_message(repo_req.pipeline_timeout),
                     })
                 except Exception as e:
                     await event_queue.put({

@@ -7,7 +7,7 @@ import os
 import json
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import httpx
 
 router = APIRouter(prefix="/api/runner")
@@ -43,8 +43,10 @@ class RunAllRequest(BaseModel):
     tag_message: str | None = None
     skip_clone: bool = False
     skip_explore: bool = False
-    setup_timeout: int = 300
-    test_timeout: int = 600
+    clone_timeout: int = Field(default=300, gt=0)
+    setup_timeout: int = Field(default=300, gt=0)
+    test_timeout: int = Field(default=600, gt=0)
+    pipeline_timeout: float = Field(default=1800, gt=0)
 
 
 @router.post("/run-all")
@@ -64,13 +66,15 @@ async def run_all_steps(request: RunAllRequest):
         "tag_message": request.tag_message,
         "skip_clone": request.skip_clone,
         "skip_explore": request.skip_explore,
+        "clone_timeout": request.clone_timeout,
         "setup_timeout": request.setup_timeout,
         "test_timeout": request.test_timeout,
+        "pipeline_timeout": request.pipeline_timeout,
     }
 
     async def stream_from_runner():
         try:
-            async with httpx.AsyncClient(timeout=660.0) as client:
+            async with httpx.AsyncClient(timeout=request.pipeline_timeout + 60.0) as client:
                 async with client.stream(
                     "POST",
                     f"{RUNNER_SERVICE_URL}/api/runner/run-all",

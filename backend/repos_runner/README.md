@@ -92,7 +92,11 @@ This is the **simplest way** to analyze a repository. It runs all four steps (cl
 **Request:**
 ```json
 {
-  "repo_url": "https://github.com/owner/repo"
+  "repo_url": "https://github.com/owner/repo",
+  "clone_timeout": 300,
+  "setup_timeout": 300,
+  "test_timeout": 600,
+  "pipeline_timeout": 1800
 }
 ```
 
@@ -482,5 +486,10 @@ host ports.
 - Check network connectivity
 - Ensure sufficient disk space
 
-### Test Execution Timeouts
-Tests are limited to 5 minutes per command. For longer tests, consider adjusting the timeout in `repo_service.py`.
+### Runner Timeouts
+`run-all` accepts timeout fields to keep stuck repositories from occupying the runner indefinitely:
+
+- `clone_timeout`: seconds allowed per git clone/checkout operation, default `300`.
+- `setup_timeout`: seconds allowed per dependency/setup command, default `300`.
+- `test_timeout`: seconds allowed per test command, default `600`.
+- `pipeline_timeout`: seconds allowed for the whole active clone/explore/test pipeline, default `1800`.

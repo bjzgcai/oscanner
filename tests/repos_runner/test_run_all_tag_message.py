@@ -18,6 +18,17 @@ def test_run_all_request_accepts_forwarded_tag_message():
     assert request.tag_message == "Merged course and repository requirements"
 
 
+def test_run_all_request_accepts_runner_timeouts():
+    request = RunAllRequest(
+        repo_url="https://github.com/org/repo",
+        clone_timeout=12,
+        pipeline_timeout=0.05,
+    )
+
+    assert request.clone_timeout == 12
+    assert request.pipeline_timeout == 0.05
+
+
 def test_run_all_uses_forwarded_tag_message(monkeypatch, tmp_path):
     calls = {
         "fetched_remote": 0,
@@ -29,7 +40,7 @@ def test_run_all_uses_forwarded_tag_message(monkeypatch, tmp_path):
     report_path = clone_dir / "TEST_REPORT_class-01.md"
     report_path.write_text("report body", encoding="utf-8")
 
-    async def _fake_clone_repository(_repo_url, _sha, _tag):
+    async def _fake_clone_repository(_repo_url, _sha, _tag, timeout=300):
         return {"clone_path": str(clone_dir), "repo_name": "repo"}
 
     async def _fake_fetch_gitee_tag_message(_repo_url, _tag):
@@ -104,7 +115,7 @@ def test_run_all_reports_accumulated_token_usage(monkeypatch, tmp_path):
     report_path = clone_dir / "TEST_REPORT.md"
     report_path.write_text("report body", encoding="utf-8")
 
-    async def _fake_clone_repository(_repo_url, _sha, _tag):
+    async def _fake_clone_repository(_repo_url, _sha, _tag, timeout=300):
         return {"clone_path": str(clone_dir), "repo_name": "repo"}
 
     async def _fake_explore_repository(_clone_path, _progress_callback, _tag_message, tag=None):
@@ -159,3 +170,34 @@ def test_run_all_reports_accumulated_token_usage(monkeypatch, tmp_path):
         "source": "provider",
     }
     assert completed["results"]["token_usage"] == completed["token_usage"]
+
+
+def test_run_all_times_out_entire_pipeline(monkeypatch):
+    async def _slow_clone_repository(_repo_url, _sha, _tag, timeout=300):
+        await asyncio.sleep(1)
+        return {"clone_path": "/tmp/never", "repo_name": "never"}
+
+    monkeypatch.setattr(runner_route, "clone_repository", _slow_clone_repository)
+
+    response = asyncio.run(
+        runner_route.run_all_stream(
+            RunAllRequest(
+                repo_url="https://github.com/org/repo",
+                pipeline_timeout=0.01,
+            )
+        )
+    )
+
+    async def _collect_failed():
+        async for chunk in response.body_iterator:
+            text = chunk.decode() if isinstance(chunk, bytes) else chunk
+            for line in text.splitlines():
+                if line.startswith("data: "):
+                    event = json.loads(line[6:])
+                    if event["event"] == "status" and event["data"]["status"] == "failed":
+                        return event["data"]
+        raise AssertionError("failed status event not found")
+
+    failed = asyncio.run(_collect_failed())
+
+    assert failed["error"] == "Pipeline timed out after 0.01s"

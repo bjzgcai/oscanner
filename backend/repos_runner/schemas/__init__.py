@@ -2,7 +2,7 @@
 Pydantic schemas for Repository Runner
 """
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
@@ -20,6 +20,7 @@ class RepoCloneRequest(BaseModel):
     repo_url: str
     sha: Optional[str] = None  # Optional SHA to checkout after clone
     tag: Optional[str] = None  # Optional tag to checkout after clone (ignored if sha is set)
+    clone_timeout: int = Field(default=300, gt=0)  # Seconds allowed for git clone/checkout
 
 
 class RunAllRequest(BaseModel):
@@ -30,8 +31,10 @@ class RunAllRequest(BaseModel):
     tag_message: Optional[str] = None  # Merged feature requirements supplied by Courses
     skip_clone: bool = False    # Reuse existing clone
     skip_explore: bool = False  # Reuse existing REPO_OVERVIEW.md
-    setup_timeout: int = 300    # Seconds per setup command
-    test_timeout: int = 600     # Seconds per test command
+    clone_timeout: int = Field(default=300, gt=0)    # Seconds allowed for git clone/checkout
+    setup_timeout: int = Field(default=300, gt=0)    # Seconds per setup command
+    test_timeout: int = Field(default=600, gt=0)     # Seconds per test command
+    pipeline_timeout: float = Field(default=1800, gt=0)  # Seconds for the whole run-all pipeline
 
 
 class BatchRunRequest(BaseModel):

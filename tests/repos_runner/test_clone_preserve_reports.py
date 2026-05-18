@@ -1,40 +1,32 @@
 """Tests for preserving repo artifacts during fresh clone."""
 
 import asyncio
+import subprocess
 from pathlib import Path
 
+from repos_runner.services.repo_service import clone as clone_module
 from repos_runner.services.repo_service.clone import clone_repository
 
 
-class _FakeCommit:
-    hexsha = "abc123"
+class _FakeCompletedProcess:
+    stdout = ""
+    stderr = ""
+    returncode = 0
 
 
-class _FakeHead:
-    commit = _FakeCommit()
-    is_detached = False
-
-
-class _FakeBranch:
-    name = "main"
-
-
-class _FakeRepo:
-    head = _FakeHead()
-    active_branch = _FakeBranch()
-
-
-class _FakeGit:
-    def checkout(self, *_args, **_kwargs):
-        return None
-
-
-def _fake_clone_from(_url: str, clone_path: Path, **_kwargs):
+def _fake_run_git(command, *, timeout, cwd=None):
+    clone_path = Path(command[-1])
     clone_path.mkdir(parents=True, exist_ok=True)
     (clone_path / "README.md").write_text("cloned")
-    repo = _FakeRepo()
-    repo.git = _FakeGit()
-    return repo
+    return _FakeCompletedProcess()
+
+
+def _fake_git_output(command, *, timeout, cwd):
+    if command == ["git", "rev-parse", "HEAD"]:
+        return "abc123"
+    if command == ["git", "rev-parse", "--abbrev-ref", "HEAD"]:
+        return "main"
+    raise AssertionError(f"unexpected git output command: {command}")
 
 
 def test_clone_repository_preserves_existing_reports_and_overviews(monkeypatch, tmp_path):
@@ -66,10 +58,8 @@ def test_clone_repository_preserves_existing_reports_and_overviews(monkeypatch, 
         "repos_runner.services.repo_service.clone._inject_auth_token",
         lambda repo_url: repo_url,
     )
-    monkeypatch.setattr(
-        "repos_runner.services.repo_service.clone.git.Repo.clone_from",
-        _fake_clone_from,
-    )
+    monkeypatch.setattr(clone_module, "_run_git", _fake_run_git)
+    monkeypatch.setattr(clone_module, "_git_output", _fake_git_output)
 
     result = asyncio.run(clone_repository("https://github.com/owner/demo-repo"))
 
@@ -102,12 +92,83 @@ def test_clone_repository_preserves_report_artifact_directories(monkeypatch, tmp
         "repos_runner.services.repo_service.clone._inject_auth_token",
         lambda repo_url: repo_url,
     )
-    monkeypatch.setattr(
-        "repos_runner.services.repo_service.clone.git.Repo.clone_from",
-        _fake_clone_from,
-    )
+    monkeypatch.setattr(clone_module, "_run_git", _fake_run_git)
+    monkeypatch.setattr(clone_module, "_git_output", _fake_git_output)
 
     result = asyncio.run(clone_repository("https://github.com/owner/demo-repo"))
 
     assert result["repo_name"] == "demo-repo"
     assert screenshot.read_bytes() == b"png"
+
+
+def test_clone_repository_times_out_stuck_clone(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.get_repos_dir",
+        lambda: repos_dir,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.parse_repo_url",
+        lambda _repo_url: ("github", "owner", "demo-repo"),
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone._inject_auth_token",
+        lambda repo_url: repo_url,
+    )
+
+    def _timeout_run(cmd, **kwargs):
+        if cmd[:2] == ["git", "clone"]:
+            raise subprocess.TimeoutExpired(cmd=cmd, timeout=kwargs["timeout"])
+        raise AssertionError(f"unexpected command: {cmd}")
+
+    monkeypatch.setattr(clone_module, "subprocess", subprocess, raising=False)
+    monkeypatch.setattr(clone_module.subprocess, "run", _timeout_run)
+
+    try:
+        asyncio.run(clone_repository("https://github.com/owner/demo-repo", timeout=7))
+    except Exception as error:
+        message = str(error)
+    else:
+        raise AssertionError("clone_repository should fail when git clone times out")
+
+    assert "timed out after 7s" in message
+
+
+def test_clone_repository_masks_auth_url_in_git_errors(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.get_repos_dir",
+        lambda: repos_dir,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.parse_repo_url",
+        lambda _repo_url: ("github", "owner", "demo-repo"),
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone._inject_auth_token",
+        lambda _repo_url: "https://oauth2:super-secret-token@github.com/owner/demo-repo.git",
+    )
+
+    def _failed_run(cmd, **_kwargs):
+        raise subprocess.CalledProcessError(
+            returncode=128,
+            cmd=cmd,
+            stderr=(
+                "fatal: unable to access "
+                "'https://oauth2:super-secret-token@github.com/owner/demo-repo.git/'"
+            ),
+        )
+
+    monkeypatch.setattr(clone_module.subprocess, "run", _failed_run)
+
+    try:
+        asyncio.run(clone_repository("https://github.com/owner/demo-repo"))
+    except Exception as error:
+        message = str(error)
+    else:
+        raise AssertionError("clone_repository should fail when git clone fails")
+
+    assert "super-secret-token" not in message
+    assert "https://***:***@github.com/owner/demo-repo.git" in message

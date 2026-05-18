@@ -4,19 +4,20 @@ Repository cloning logic.
 
 import asyncio
 import os
+import re
 import shutil
+import subprocess
 import tempfile
 import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-import git
-
 from .paths import get_repos_dir, parse_repo_url
 
 _PRESERVED_FILE_PATTERNS = ("TEST_REPORT*.md", "REPO_OVERVIEW*.md")
 _PRESERVED_DIR_PATTERNS = ("TEST_ARTIFACTS_*",)
+_AUTH_URL_RE = re.compile(r"(https?://)[^/\s'\"@]+@")
 
 
 @dataclass
@@ -96,10 +97,56 @@ def _restore_preserved_artifacts(repo_dir: Path, artifacts: _PreservedArtifacts)
         (repo_dir / filename).write_bytes(content)
 
 
+def _masked_command(command: list[str]) -> list[str]:
+    masked = []
+    for value in command:
+        parsed = urllib.parse.urlsplit(value)
+        if parsed.scheme in ("http", "https") and "@" in parsed.netloc:
+            netloc = parsed.netloc.split("@", 1)[1]
+            masked.append(
+                urllib.parse.urlunsplit(
+                    (parsed.scheme, f"***:***@{netloc}", parsed.path, parsed.query, parsed.fragment)
+                )
+            )
+        else:
+            masked.append(value)
+    return masked
+
+
+def _masked_git_output(text: str) -> str:
+    return _AUTH_URL_RE.sub(r"\1***:***@", text or "")
+
+
+def _run_git(command: list[str], *, timeout: int, cwd: Optional[Path] = None) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(
+            command,
+            cwd=cwd,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        action = " ".join(_masked_command(command[:3]))
+        raise TimeoutError(f"{action} timed out after {timeout}s") from exc
+    except subprocess.CalledProcessError as exc:
+        stderr = _masked_git_output(exc.stderr or exc.stdout or "").strip()
+        command_text = " ".join(_masked_command(command))
+        detail = f": {stderr}" if stderr else ""
+        raise RuntimeError(f"{command_text} failed{detail}") from exc
+
+
+def _git_output(command: list[str], *, timeout: int, cwd: Path) -> str:
+    return _run_git(command, timeout=timeout, cwd=cwd).stdout.strip()
+
+
 async def clone_repository(
     repo_url: str,
     sha: Optional[str] = None,
     tag: Optional[str] = None,
+    timeout: int = 300,
 ) -> Dict[str, Any]:
     """
     Clone a repository (shallow when no SHA/tag, full clone + checkout when SHA or tag given).
@@ -108,6 +155,7 @@ async def clone_repository(
         repo_url: Repository URL to clone
         sha: Optional commit SHA to checkout (takes priority over tag)
         tag: Optional tag to checkout (used only when sha is not provided)
+        timeout: Seconds allowed per git operation
 
     Returns:
         Dictionary containing repo metadata
@@ -125,25 +173,28 @@ async def clone_repository(
         def _clone_sync():
             auth_url = _inject_auth_token(repo_url)
             if sha:
-                repo = git.Repo.clone_from(auth_url, clone_path)
-                repo.git.checkout(sha)
-                checked_out_sha = repo.head.commit.hexsha
+                _run_git(["git", "clone", auth_url, str(clone_path)], timeout=timeout)
+                _run_git(["git", "checkout", sha], timeout=timeout, cwd=clone_path)
             elif tag:
-                repo = git.Repo.clone_from(auth_url, clone_path)
-                repo.git.fetch("--tags")
-                repo.git.checkout(f"tags/{tag}")
-                checked_out_sha = repo.head.commit.hexsha
+                _run_git(["git", "clone", auth_url, str(clone_path)], timeout=timeout)
+                _run_git(["git", "fetch", "--tags"], timeout=timeout, cwd=clone_path)
+                _run_git(["git", "checkout", f"tags/{tag}"], timeout=timeout, cwd=clone_path)
             else:
-                repo = git.Repo.clone_from(
-                    auth_url, clone_path, depth=1, single_branch=True
+                _run_git(
+                    ["git", "clone", "--depth", "1", "--single-branch", auth_url, str(clone_path)],
+                    timeout=timeout,
                 )
-                checked_out_sha = repo.head.commit.hexsha
 
-            default_branch = (
-                repo.active_branch.name
-                if not repo.head.is_detached
-                else "detached"
+            checked_out_sha = _git_output(
+                ["git", "rev-parse", "HEAD"], timeout=timeout, cwd=clone_path
             )
+            default_branch = _git_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                timeout=timeout,
+                cwd=clone_path,
+            )
+            if default_branch == "HEAD":
+                default_branch = "detached"
             if preserved_artifacts.files or preserved_artifacts.dirs:
                 _restore_preserved_artifacts(clone_path, preserved_artifacts)
 

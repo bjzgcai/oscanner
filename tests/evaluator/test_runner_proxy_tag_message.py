@@ -53,6 +53,8 @@ async def test_run_all_proxy_forwards_tag_message(monkeypatch):
             repo_url="https://gitee.com/org/repo",
             tag="class-01",
             tag_message="## Course tag requirements\n\n- /health returns JSON",
+            clone_timeout=42,
+            pipeline_timeout=123,
         )
     )
 
@@ -62,6 +64,8 @@ async def test_run_all_proxy_forwards_tag_message(monkeypatch):
     assert captured["url"] == "http://localhost:8001/api/runner/run-all"
     assert captured["json"]["tag"] == "class-01"
     assert captured["json"]["tag_message"] == "## Course tag requirements\n\n- /health returns JSON"
+    assert captured["json"]["clone_timeout"] == 42
+    assert captured["json"]["pipeline_timeout"] == 123
 
 
 def test_runner_proxy_passes_image_artifacts_without_json_decoding(monkeypatch):
