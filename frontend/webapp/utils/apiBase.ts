@@ -24,4 +24,10 @@ export function getApiBaseUrl(): string {
   return '';
 }
 
+export function getRunnerApiBaseUrl(): string {
+  const envBase = (process.env.NEXT_PUBLIC_RUNNER_SERVER_URL || '').trim().replace(/\/$/, '');
+  if (envBase) return envBase;
+
+  return getApiBaseUrl();
+}
 

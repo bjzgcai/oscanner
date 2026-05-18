@@ -12,10 +12,12 @@ import {
 import { useI18n } from './I18nContext';
 import { useAppSettings } from './AppSettingsContext';
 import { LOCALES } from '../i18n';
+import { getRunnerApiBaseUrl } from '../utils/apiBase';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Panel } = Collapse;
+const RUNNER_API_BASE = getRunnerApiBaseUrl();
 
 interface RepoMetadata {
   repo_name: string;
@@ -136,7 +138,7 @@ export default function RepositoryRunner() {
   const fetchDetectedTests = async (overviewPath: string) => {
     try {
       const response = await fetch(
-        `/api/runner/detect-tests/?overview_path=${encodeURIComponent(overviewPath)}`
+        `${RUNNER_API_BASE}/api/runner/detect-tests/?overview_path=${encodeURIComponent(overviewPath)}`
       );
 
       if (!response.ok) {
@@ -156,7 +158,7 @@ export default function RepositoryRunner() {
     setProgressMessages([]);
     setCurrentStep(0);
 
-    const response = await fetch('/api/runner/clone/', {
+    const response = await fetch(`${RUNNER_API_BASE}/api/runner/clone/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo_url: repoUrl })
@@ -180,7 +182,7 @@ export default function RepositoryRunner() {
     const explorationMessages: string[] = [];
 
     const response = await fetch(
-      `/api/runner/explore/?clone_path=${encodeURIComponent(metadata.clone_path)}`,
+      `${RUNNER_API_BASE}/api/runner/explore/?clone_path=${encodeURIComponent(metadata.clone_path)}`,
       { method: 'POST' }
     );
 
@@ -223,7 +225,7 @@ export default function RepositoryRunner() {
     const testMessages: string[] = [];
 
     const response = await fetch(
-      `/api/runner/run-tests/?clone_path=${encodeURIComponent(metadata.clone_path)}&overview_path=${encodeURIComponent(overviewPath)}`,
+      `${RUNNER_API_BASE}/api/runner/run-tests/?clone_path=${encodeURIComponent(metadata.clone_path)}&overview_path=${encodeURIComponent(overviewPath)}`,
       { method: 'POST' }
     );
 
