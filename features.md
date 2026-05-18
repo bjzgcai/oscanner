@@ -1,29 +1,176 @@
-# 历史维度如何去做
+# Oscanner / Courses Feature Logic
 
-## 短期活动的历史维度(自定义时间周期)
-短期活动的历史维度主要是指对用户在某一时间段内的活动行为进行记录和分析。通过历史维度，可以了解用户的活跃度、参与度以及行为模式.
+## Core Domain
 
-## 长期用户的历史维度(两周一个时间节点)
-长期用户的历史维度是指对用户在较长时间段内的行为进行记录和分析，通常以两周为一个时间节点，以便观察用户的长期行为趋势和变化。
+Courses manages teaching entities. Oscanner performs scans.
 
-### 用户设计
-1. 使用LocalStorage存储用户信息，确保用户在不同时间节点的数据能够被正确关联。
-2. 默认使用用户CarterWu, 对应的repo urls: https://gitee.com/zgcai/oscanner
-3. 增加一个router用户设置界面，允许用户自定义repo urls和用户名组(以英文逗号分隔)。
+- **Course**: a complete teaching subject.
+- **Session / Cohort**: a concrete course offering.
+- **Student**: a learner with a repository.
+- **Checkpoint**: an assignment/evaluation node.
+- **Tag**: the Git marker for the submitted checkpoint, usually matching the assignment issue title.
+- **V&V scan**: verification plus validation of the tagged code.
+- **Growth trajectory**: score and capability changes across checkpoints.
 
-### 在用户界面增加 成长轨迹 功能和按钮
-通过成长轨迹，可以分析用户的进步情况和行为变化，帮助制定个性化的激励措施。
+## Main Workflows
 
-1. 每3个commits作为一个成长节点，记录用户在该节点的评估evaluation数据.存储在track：`~/.local/share/oscanner/track/cache`目录下，文件命名格式为{username}.json.
-数据结构: 为数组记录每个节点的数据, 每个节点数据结构如:evaluator/schemas/evaluation.py EvaluationSchema
+### 1. Course Code Quality Scan
 
+Courses endpoint:
 
-2. 每次点击"分析成长轨迹"按钮时，查询用户repo urls的最新commit 数据，根据最新commit数据, 如果满足3个commits数量, 则评估最新的这些commits数据. 如果最新commits不满足3个commits数量, 则返回历史缓存数据.
+```text
+POST /api/courses/group_analyse_code
+```
 
-3. 缓存用户的成长轨迹数据，确保在不同时间节点能够快速访问和分析。
+Courses builds a student/repository batch, resolves tag windows, and calls Oscanner:
 
-4. 展示radar图和lidar图，直观展示用户在不同时间节点的评估结果和成长情况。你也可以选择其他4个你觉得合适展示的图表类型(from echarts).
+```text
+POST {oscanner_api_url}/api/courses/group_analyse_code
+```
 
-5. 结合历史评估数据，生成用户的成长报告，帮助用户了解自己的进步情况。
+Accepted Oscanner payload shapes:
 
+```json
+{
+  "students": [
+    {
+      "id": "student-id",
+      "repo_url": "https://gitee.com/org/repo",
+      "tag": "Coursework_Submit_2.3",
+      "start_sha": "optional-inclusive-start",
+      "end_sha": "optional-inclusive-end"
+    }
+  ],
+  "expected_feature": "Optional requirement baseline for scoring"
+}
+```
 
+Oscanner also accepts `repositories`, `repos`, or a single `repo_url` for compatibility.
+
+Current behavior:
+
+- `tag="整体"` triggers full-repository evaluation.
+- Normal assignment tags are narrowed only when Courses resolves and passes `start_sha` / `end_sha`.
+- Gitee tags are resolved by suffix in Courses, then passed as per-repository `start_sha` / `end_sha`.
+- If no SHA boundary is provided, Oscanner evaluates all stored commits for that repository.
+- Repository-scoped group evaluation does not filter by author.
+- Results include `success`, `results`, `summary`, optional `token_usage`, and per-row `checkpoint`.
+
+### 2. Single Checkpoint / Public Evaluation
+
+Courses can call Oscanner one-off analysis for a single repo:
+
+```text
+POST /api/trajectory/analyze_one-off?checkpoint_strategy=none&start_sha=...&end_sha=...
+```
+
+Payload:
+
+```json
+{
+  "username": "CarterWu",
+  "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+  "aliases": ["CarterWu", "wu-yanbiao"],
+  "expected_feature": "Optional feature description"
+}
+```
+
+Rules:
+
+- `username` may be omitted; Oscanner tries to infer it from the first commit author.
+- `username=null` on Gitee can infer all authors and use aliases to approximate whole-repo author coverage.
+- `checkpoint_strategy=none` creates one checkpoint with no minimum commit count.
+- The response contains one final `checkpoint` plus `commits_analyzed`.
+
+### 3. Repository Test Runner
+
+Courses test endpoint calls:
+
+```text
+POST {oscanner_api_url}/api/runner/run-all
+```
+
+Payload:
+
+```json
+{
+  "repo_url": "https://gitee.com/org/repo",
+  "sha": "optional-commit-sha",
+  "tag": "resolved-tag-or-requested-tag",
+  "tag_message": "## Course tag requirements\n\n...\n\n## Repository tag description\n\n..."
+}
+```
+
+Runner logic:
+
+- `sha` has priority over `tag`.
+- `tag_message` is the merged requirement source from Courses and is forwarded into exploration, runtime evidence, feature extraction, and the final report.
+- If no forwarded `tag_message` exists and a Gitee `tag` exists, runner can fetch the tag annotation itself.
+- Output files are tag-scoped:
+  - `REPO_OVERVIEW_{tag}.md`
+  - `TEST_REPORT_{tag}.md`
+  - `TEST_ARTIFACTS_{tag}/...`
+- The SSE stream emits progress events and a final status event with `results`, `report_content`, and `token_usage`.
+
+### 4. Long-Term Growth Trajectory
+
+Oscanner dashboard endpoint:
+
+```text
+POST /api/trajectory/analyze
+```
+
+Behavior:
+
+- Syncs all configured repos.
+- Filters commits by username and aliases.
+- Groups commits into two-week periods from the repository start date.
+- Accumulates periods until at least 10 commits are available.
+- Creates checkpoint evaluations and growth comparisons.
+- Passes previous checkpoint scores into later plugin prompts to reduce noisy score jumps.
+
+## Special Course Tags
+
+- `Coursework_Submit_1.1`, `Coursework_Submit_1.2`, `Coursework_Submit_2.1`: zero checkpoints in Courses.
+- `Coursework_Submit_4.3`: Courses uses CI/CD file audit mode for tests.
+- `整体`: Courses calls Oscanner group repository evaluation for the full repository history.
+
+## Data Persistence
+
+Oscanner stores extracted and generated runtime data under user-local paths:
+
+- data: `~/.local/share/oscanner/data`
+- evaluation cache: `~/.local/share/oscanner/evaluations/cache`
+- trajectory cache/state: `~/.local/share/oscanner/track/cache`
+- cloned runner repos: `~/.local/share/oscanner/repos`
+
+Courses stores course-level results in its own course data files:
+
+- `code_quality.json`: code-quality checkpoints/results.
+- `test.json`: runner/test checkpoints/results.
+
+## Current Feature Status
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Plugin code-quality scoring | Done | `zgc_ai_native_2026` and `zgc_simple` |
+| One-off commit-window scan | Done | Inclusive `start_sha` / `end_sha` |
+| Period growth trajectory | Done | Two-week periods, 10-commit minimum |
+| Course group code scan | Done | Whole-repo group endpoint in Oscanner |
+| Full repo `整体` scan | Done | Uses repository evaluator path |
+| Runner `run-all` pipeline | Done | Clone, explore, tests, evidence, report |
+| Course `tag_message` forwarding | Done | Teacher + repo tag requirements |
+| Runtime screenshots/artifacts | Done | Runner stores artifacts; Courses proxies links |
+| Expected feature scoring baseline | Partly done | Oscanner accepts it; Courses should pass it where needed |
+| API contract docs | Needs work | Main README/docs do not yet describe course endpoints enough |
+
+## Important Implementation Notes
+
+- Keep route handlers thin and preserve service ownership:
+  - API wiring: `backend/evaluator/routes/`
+  - orchestration: `backend/evaluator/services/trajectory_service.py`
+  - runner execution: `backend/repos_runner/services/repo_service/`
+  - course orchestration: sibling `courses/backend/routers/courses/`
+- Do not hand-edit `frontend/webapp/components/generated/pluginViewMap.ts`; update plugin view entries and rerun the generator.
+- Do not log raw tokens or write `.env.local` / `.env.prod` contents into docs or reports.
+- Validate repository URLs and file paths through existing helpers rather than new ad hoc parsing.

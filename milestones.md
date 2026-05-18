@@ -1,110 +1,115 @@
-# v1.0
+# Oscanner / Courses Milestones
 
-## 1. ✅ 提供检测代码质量(使用不同的评价标准)的功能 - **已完成**
-   参数:
-   - 仓库URL
-   - start_sha (可选) **状态**: 
-   - end_sha (可选) **状态**: 
-   - 评价标准(如: PEP8, Google Style Guide)
-   - 中英文
-   - 模型
-   - 检查器
+## v1.0 Current Capability Baseline
 
-    返回:
-    如下所示的JSON格式:
-    ```json
-    {
-          "checkpoint_id": 1,
-          "created_at": "2026-02-05T09:23:03.121410",
-          "commits_range": {
-            "start_sha": "d0f2ea05b086e7cc53107901978272b40893536e",
-            "end_sha": "d0f2ea05b086e7cc53107901978272b40893536e",
-            "commit_count": 1,
-            "period_start": "2026-01-30T05:17:42+00:00",
-            "period_end": "2026-02-13T05:17:42+00:00",
-            "accumulated_from_periods": 1
-          },
-          "evaluation": {
-            "username": "zhenhailiu",
-            "total_commits_analyzed": 1,
-            "files_loaded": 0,
-            "mode": "moderate",
-            "scores": {
-              "spec_quality": null,
-              "cloud_architecture": null,
-              "ai_engineering": null,
-              "mastery_professionalism": null,
-              "ai_fullstack": 0,
-              "ai_architecture": 0,
-              "cloud_native": 0,
-              "open_source": 20,
-              "intelligent_dev": 10,
-              "leadership": 10,
-              "reasoning": "**Key Strengths**: The user has made an initial commit with basic documentation in both English and Chinese, showing awareness of internationalization and contribution guidelines.\n\n**Areas for Growth**: No actual code or implementation is present; the commit only includes placeholder README files with generic content. There is no evidence of AI/ML development, cloud native practices, intelligent tooling, or leadership in engineering decisions.\n\n**Overall Assessment**: This is a very early-stage contribution focused on repository setup and documentation rather than actual software development or engineering practices. It reflects minimal technical depth and lacks any substantial engineering work."
-            },
-            "commits_summary": {
-              "total_additions": 75,
-              "total_deletions": 0,
-              "files_changed": 2,
-              "languages": [
-                "md"
-              ]
-            },
-            "chunked": false,
-            "chunks_processed": 0,
-            "chunking_strategy": null,
-            "last_commit_sha": null,
-            "total_commits_evaluated": 0,
-            "new_commits_count": 0,
-            "evaluated_at": "2026-02-05T09:23:03.119490",
-            "incremental": false,
-            "plugin": "zgc_simple",
-            "plugin_version": "0.1.0",
-            "commit_ids": null
-          },
-          "repos_analyzed": [
-            "https://gitee.com/zhenhailiu/vibecoding-learning"
-          ],
-          "aliases_used": [
-            "zhenhailiu"
-          ],
-          "previous_checkpoint_id": null,
-          "growth_comparison": null
-        }
-    ```
+Oscanner is now the evaluation backend used by the standalone dashboard and by the sibling Courses system. The current logic is split into three major paths:
 
-### 待优化部分:
-      1. 使用不同的代码质量检查器(如: PEP8, Google Style Guide)去检测代码质量
+1. **Read-only code quality evaluation**
+   - API: `POST /api/trajectory/analyze_one-off`
+   - Course batch API: `POST /api/courses/group_analyse_code`
+   - Uses GitHub/Gitee commit data, diffs, repository snapshots, plugin rubrics, optional checkers, and an optional `expected_feature` baseline.
+   - Supports `start_sha` / `end_sha` commit windows. In one-off mode, the range is inclusive and has no 10-commit minimum.
+   - Supports `checkpoint_strategy=period` for long-term growth nodes and `checkpoint_strategy=none` for course/checkpoint scans.
 
-## 2.  提供运行代码功能验证(验证用户提供的测试) - **已完成**
+2. **Repository execution and V&V testing**
+   - Evaluator proxy API: `POST /api/runner/run-all`
+   - Runner API: `POST /api/runner/run-all`
+   - Pipeline: clone repository, checkout `sha` or `tag`, generate `REPO_OVERVIEW_{tag}.md`, run tests, collect runtime/static evidence, and write `TEST_REPORT_{tag}.md`.
+   - Courses can forward a merged `tag_message` so Oscanner tests against both teacher requirements and repository tag/issue descriptions.
+   - Runner emits SSE progress and a final status payload containing scores, report content, token usage, and artifacts.
 
-  **状态**: 🟢 已实现 - 目前使用claude code python sdk 来运行代码
-    参数:
-    - 仓库URL
-    - sha (可选,  默认最新commit的sha) 
-    
-     返回:
-     如下所示的JSON格式:
-     ```json
-     {
-        "username": "zhenhailiu",
-        "repo_url": "https://gitee.com/zhenhailiu/vibecoding-learning",
-        "passed": 0,
-        "failed": 0,
-        "total": 0,
-        "score": 0,
-        "evaluated_at": "2026-02-05T09:30:45.123456"
-     }
-     ```
-### ✅ 已完成
-`/api/runner/run-all` 接口已补充参数:
-    - sha (可选,  默认最新commit的sha),  **已完成**
-可以指定某个commit去运行测试
+3. **Growth trajectory analysis**
+   - API: `POST /api/trajectory/analyze`
+   - Streaming API: `POST /api/trajectory/analyze_stream`
+   - Tracks author or alias groups across one or more repositories.
+   - Default strategy groups commits into two-week periods and creates a checkpoint only when at least 10 commits are accumulated.
+   - Previous checkpoint scores are passed back into plugin prompts so later scores are continuity-aware.
 
-### 待优化部分:
-      1. 目前的测试运行功能不确定性高(使用claude code sdk 去理解和运行测试代码),agent 工作流需要进一步优化
+## Course Integration Contract
 
-## 3.  ✅ 提供历史维度分析功能(长期用户) 
+Courses is the orchestration layer for classes, students, assignments, and reports. Oscanner is the scanner/evaluator layer.
 
-  基于用户在不同时间节点的活动数据，进行历史维度的分析和展示。
+### Courses responsibilities
 
+- Maintains course data, student lists, tags, teacher assignment requirements, and cached `code_quality.json` / `test.json` results.
+- Resolves assignment tags such as `Coursework_Submit_2.3`.
+- For Gitee, matches tag suffixes and resolves the commit window from the previous tag to the current tag when possible.
+- Passes resolved commit boundaries as per-repository `start_sha` / `end_sha`; Oscanner does not narrow group commits from the tag text alone.
+- Handles special course cases:
+  - zero checkpoints: `Coursework_Submit_1.1`, `Coursework_Submit_1.2`, `Coursework_Submit_2.1`
+  - full-repository evaluation: `整体`
+  - CI/CD file audit test mode: `Coursework_Submit_4.3`
+- Calls Oscanner with `oscanner_api_url`, then persists the returned checkpoint/result back into course storage.
+
+### Oscanner responsibilities
+
+- Validates platform tokens and repository URLs.
+- Syncs GitHub/Gitee repository data into XDG/user-local storage.
+- Evaluates code through plugin-defined rubrics:
+  - `zgc_ai_native_2026`: AI-Native 2026 four-dimension rubric.
+  - `zgc_simple`: legacy six-dimension rubric.
+- Supports course-shaped payloads under `/api/courses/group_analyse_code`:
+  - `students`, `repositories`, `repos`, or single `repo_url`
+  - per-repo `start_sha` / `end_sha`
+  - optional `tag`
+  - optional `expected_feature`
+- For `tag="整体"`, evaluates each repository as a whole repo with `evaluate_repository`, not as a single-author trajectory.
+- Proxies test execution to `repos_runner` and preserves tag-specific reports and artifacts.
+
+## Completed
+
+### Code Quality Evaluation
+
+- Plugin-based LLM scoring is implemented.
+- Single-repo and multi-repo contributor evaluation exist.
+- One-off checkpoint scans support optional username inference.
+- `username=null` for Gitee one-off scans can infer all authors and use aliases to avoid single-author filtering.
+- Commit range filtering supports:
+  - no SHA: all commits
+  - only `start_sha`: from start commit to latest
+  - only `end_sha`: first commit to end commit
+  - equal `start_sha` / `end_sha`: single commit
+  - invalid or missing SHAs: clear failure response
+- Course group scans evaluate repositories in a shared batch with a stable model/rubric/runtime setup.
+- Gitee boundary commits can be fetched explicitly when the requested tag SHA is missing from the local branch history.
+- Plugin token usage can be returned and summarized for Courses.
+
+### Test Runner
+
+- `run-all` is implemented with SSE streaming.
+- Runner supports `sha`, `tag`, and `tag_message`.
+- `tag_message` is forwarded from Courses instead of being overwritten by remote tag annotation.
+- Reports are tag-versioned as `TEST_REPORT_{tag}.md`.
+- Repository overviews are tag-versioned as `REPO_OVERVIEW_{tag}.md`.
+- Runtime evidence and screenshots are collected and can be proxied back to Courses.
+- Docker sandbox support exists for safer repository execution.
+
+### Growth Trajectory
+
+- Period-based checkpoints are implemented.
+- One-off checkpoints are implemented for course-style scans.
+- Growth comparison is generated against the previous checkpoint.
+- Frontend trajectory charts and plugin checkpoint renderers are wired.
+- Backend schemas define `TrajectoryCheckpoint`, `CommitsRange`, `TrajectoryData`, and `TrajectoryResponse`.
+
+## Remaining Work
+
+### Course-facing product polish
+
+- Document the `/api/courses/group_analyse_code` request/response contract in the main API docs.
+- Make `expected_feature` available from Courses for group code scans when teacher requirements should affect code-quality scoring, not only runner V&V.
+- Add clearer public examples for `commit_window=previous_tag_to_tag` and `commit_window=from_start_to_tag`.
+- Align UI wording around Course, Session, Student, Checkpoint, Tag, and V&V with `keywords.md`.
+
+### Evaluation quality
+
+- Expand checker integrations beyond the current configured checker list.
+- Add stronger deterministic fallbacks for LLM parse failures without hiding the failure from Courses.
+- Improve scoring calibration between read-only code quality and runtime test evidence.
+- Add more fixtures around missing tags, empty repositories, and multi-author repositories.
+
+### Operations
+
+- Keep the default model path explicit for course scans: `deepseek/deepseek-v4-pro`.
+- Keep token setup visible: `OSCANNER_LLM_API_KEY`, `GITHUB_TOKEN`, `GITEE_TOKEN`.
+- Avoid persisting raw secrets in logs or reports.
