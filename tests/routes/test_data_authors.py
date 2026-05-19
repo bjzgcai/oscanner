@@ -71,6 +71,60 @@ def test_fetch_gitee_contributors_authors_returns_empty_without_token(monkeypatc
     session.get.assert_not_called()
 
 
+def test_fetch_github_contributors_authors_normalizes_users_and_anonymous(monkeypatch):
+    """GitHub contributors should become the existing authors response shape."""
+    response = Mock()
+    response.status_code = 200
+    response.json.return_value = [
+        {
+            "login": "Vincy2021",
+            "html_url": "https://github.com/Vincy2021",
+            "avatar_url": "https://avatars.githubusercontent.com/u/90611146?v=4",
+            "contributions": 1,
+        },
+        {
+            "name": "Liang Dong",
+            "email": "v-ld@zgci.ac.cn",
+            "type": "Anonymous",
+            "contributions": 32,
+        },
+    ]
+
+    session = Mock()
+    session.get.return_value = response
+    monkeypatch.setattr(data, "get_requests_session", lambda: session)
+    monkeypatch.setattr(data, "get_github_token", lambda: "fake-token")
+
+    authors = data._fetch_github_contributors_authors("bjzgcai", "AI-History-Show")
+
+    assert authors == [
+        {
+            "author": "Liang Dong",
+            "email": "v-ld@zgci.ac.cn",
+            "commits": 32,
+            "avatar_url": "",
+            "html_url": "",
+        },
+        {
+            "author": "Vincy2021",
+            "email": "",
+            "commits": 1,
+            "avatar_url": "https://avatars.githubusercontent.com/u/90611146?v=4",
+            "html_url": "https://github.com/Vincy2021",
+        },
+    ]
+    session.get.assert_called_once_with(
+        "https://api.github.com/repos/bjzgcai/AI-History-Show/contributors",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "oscanner-skill-evaluator",
+            "Authorization": "Bearer fake-token",
+        },
+        params={"per_page": 100, "anon": "1", "page": 1},
+        timeout=10,
+    )
+
+
 def test_extract_platform_data_uses_commit_only_github_extraction(monkeypatch):
     """Author discovery should skip file context downloads for GitHub."""
     calls = []
@@ -98,6 +152,23 @@ async def test_get_authors_returns_gitee_contributors_without_extraction(monkeyp
     )
 
     result = await data.get_authors("zgcai", "oscanner", Response(), platform="gitee")
+
+    assert result["data"]["authors"] == authors
+
+
+@pytest.mark.anyio
+async def test_get_authors_returns_github_contributors_without_extraction(monkeypatch, tmp_path):
+    """Fast GitHub contributors should bypass full repository extraction."""
+    authors = [{"author": "Liang Dong", "email": "v-ld@zgci.ac.cn", "commits": 32}]
+    monkeypatch.setattr(data, "get_platform_data_dir", lambda platform, owner, repo: tmp_path)
+    monkeypatch.setattr(data, "_fetch_github_contributors_authors", lambda owner, repo: authors)
+    monkeypatch.setattr(
+        data,
+        "_extract_platform_data",
+        lambda platform, owner, repo: (_ for _ in ()).throw(AssertionError("should not extract")),
+    )
+
+    result = await data.get_authors("bjzgcai", "AI-History-Show", Response(), platform="github")
 
     assert result["data"]["authors"] == authors
 

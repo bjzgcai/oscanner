@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Query, Response
 
-from evaluator.config import get_gitee_token
+from evaluator.config import get_gitee_token, get_github_token
 from evaluator.paths import get_platform_data_dir
 from evaluator.services import (
     extract_github_data,
@@ -79,6 +79,114 @@ def _normalize_gitee_contributors(contributors: Any) -> List[Dict[str, Any]]:
         authors_map[author]["commits"] += commits
 
     return sorted(authors_map.values(), key=lambda x: x["commits"], reverse=True)
+
+
+def _normalize_github_contributors(contributors: Any) -> List[Dict[str, Any]]:
+    if not isinstance(contributors, list):
+        return []
+
+    authors_map: Dict[str, Dict[str, Any]] = {}
+    for item in contributors:
+        if not isinstance(item, dict):
+            continue
+
+        author = (
+            item.get("login")
+            or item.get("name")
+            or item.get("email")
+            or ""
+        )
+        author = str(author).strip()
+        if not author:
+            continue
+
+        email = str(item.get("email") or "")
+        avatar_url = str(item.get("avatar_url") or "")
+        html_url = str(item.get("html_url") or "")
+        commits = _coerce_commit_count(item.get("contributions"))
+
+        if author not in authors_map:
+            authors_map[author] = {
+                "author": author,
+                "email": email,
+                "commits": 0,
+                "avatar_url": avatar_url,
+                "html_url": html_url,
+            }
+        else:
+            if not authors_map[author].get("email") and email:
+                authors_map[author]["email"] = email
+            if not authors_map[author].get("avatar_url") and avatar_url:
+                authors_map[author]["avatar_url"] = avatar_url
+            if not authors_map[author].get("html_url") and html_url:
+                authors_map[author]["html_url"] = html_url
+
+        authors_map[author]["commits"] += commits
+
+    return sorted(authors_map.values(), key=lambda x: x["commits"], reverse=True)
+
+
+def _response_has_next_page(response: Any) -> bool:
+    links = getattr(response, "links", None)
+    if isinstance(links, dict) and links.get("next"):
+        return True
+
+    headers = getattr(response, "headers", None)
+    if isinstance(headers, dict):
+        return 'rel="next"' in str(headers.get("Link", ""))
+
+    return False
+
+
+def _fetch_github_contributors_authors(owner: str, repo: str) -> List[Dict[str, Any]]:
+    """
+    Fetch GitHub contributors through the lightweight contributors API.
+
+    This avoids full repository extraction for author discovery.
+    """
+    contributors_url = f"https://api.github.com/repos/{owner}/{repo}/contributors"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "oscanner-skill-evaluator",
+    }
+    github_token = get_github_token()
+    if github_token:
+        headers["Authorization"] = f"Bearer {github_token}"
+
+    contributors: List[Dict[str, Any]] = []
+    page = 1
+    while True:
+        try:
+            response = get_requests_session().get(
+                contributors_url,
+                headers=headers,
+                params={"per_page": 100, "anon": "1", "page": page},
+                timeout=10,
+            )
+        except Exception as exc:
+            print(f"[GitHub Authors] Contributors API request failed for {owner}/{repo}: {exc}")
+            return [] if page == 1 else _normalize_github_contributors(contributors)
+
+        if response.status_code != 200:
+            print(f"[GitHub Authors] Contributors API returned {response.status_code} for {owner}/{repo}")
+            return [] if page == 1 else _normalize_github_contributors(contributors)
+
+        try:
+            page_contributors = response.json()
+        except Exception as exc:
+            print(f"[GitHub Authors] Failed to parse contributors response for {owner}/{repo}: {exc}")
+            return [] if page == 1 else _normalize_github_contributors(contributors)
+
+        if not isinstance(page_contributors, list):
+            return [] if page == 1 else _normalize_github_contributors(contributors)
+
+        contributors.extend(page_contributors)
+
+        if not page_contributors or not _response_has_next_page(response):
+            break
+        page += 1
+
+    return _normalize_github_contributors(contributors)
 
 
 def _fetch_gitee_contributors_authors(owner: str, repo: str) -> List[Dict[str, Any]]:
@@ -211,6 +319,10 @@ async def get_authors(
 
         if plat == "gitee":
             contributors_authors = _fetch_gitee_contributors_authors(owner, repo)
+            if contributors_authors:
+                return _authors_response(owner, repo, contributors_authors)
+        elif plat == "github":
+            contributors_authors = _fetch_github_contributors_authors(owner, repo)
             if contributors_authors:
                 return _authors_response(owner, repo, contributors_authors)
 
