@@ -886,7 +886,7 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
         return False
 
 
-def extract_github_data(owner: str, repo: str, max_commits: int = 500) -> bool:
+def extract_github_data(owner: str, repo: str, max_commits: int = 500, include_file_context: bool = True) -> bool:
     """Extract GitHub repository data using extraction tool"""
     output_dir = get_platform_data_dir("github", owner, repo)
     try:
@@ -908,6 +908,8 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500) -> bool:
             "--max-commits",
             str(max_commits),  # 0 means all commits in the extractor
         ]
+        if not include_file_context:
+            cmd.append("--skip-file-context")
 
         cmd_env = os.environ.copy()
         gh_token = get_github_token()

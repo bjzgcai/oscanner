@@ -24,7 +24,7 @@ def _extract_platform_data(platform: str, owner: str, repo: str) -> bool:
         print(f"Extracting latest data from Gitee for {owner}/{repo}...")
         return extract_gitee_data(owner, repo)
     print(f"Extracting latest data from GitHub for {owner}/{repo}...")
-    return extract_github_data(owner, repo)
+    return extract_github_data(owner, repo, include_file_context=False)
 
 
 def _coerce_commit_count(value: Any) -> int:

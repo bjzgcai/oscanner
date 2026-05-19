@@ -71,6 +71,20 @@ def test_fetch_gitee_contributors_authors_returns_empty_without_token(monkeypatc
     session.get.assert_not_called()
 
 
+def test_extract_platform_data_uses_commit_only_github_extraction(monkeypatch):
+    """Author discovery should skip file context downloads for GitHub."""
+    calls = []
+
+    def fake_extract_github(owner, repo, *, include_file_context=True):
+        calls.append((owner, repo, include_file_context))
+        return True
+
+    monkeypatch.setattr(data, "extract_github_data", fake_extract_github)
+
+    assert data._extract_platform_data("github", "bjzgcai", "AI-History-Show") is True
+    assert calls == [("bjzgcai", "AI-History-Show", False)]
+
+
 @pytest.mark.anyio
 async def test_get_authors_returns_gitee_contributors_without_extraction(monkeypatch, tmp_path):
     """Fast Gitee contributors should bypass full repository extraction."""

@@ -105,6 +105,8 @@ def main():
     parser.add_argument('--token', help='GitHub token (or set GITHUB_TOKEN env var)')
     parser.add_argument('--max-commits', type=int, default=500, help='Max commits (0=all, recommended: 300-500)')
     parser.add_argument('--platform', default='github', help='Platform (github, gitee, gitlab) - default: github')
+    parser.add_argument('--skip-file-context', action='store_true',
+                        help='Skip current file content downloads after commit extraction')
     args = parser.parse_args()
 
     # Get token from args or environment
@@ -231,58 +233,61 @@ def main():
     save_json(out_dir / 'commits_index.json', commits_index)
     print(f'\n  ✓ Saved {len(commits_index)} commit details')
 
-    # 5. Fetch current file contents for files mentioned in diffs
-    print(f'\n[5/5] Fetching file context for {len(files_context)} unique files...')
-    files_dir = out_dir / 'files'
-    mkdir_p(files_dir)
-
     files_fetched = 0
-    for i, (filepath, mention_count) in enumerate(sorted(files_context.items(), key=lambda x: -x[1])[:100]):  # Top 100 most changed
-        print(f'  [{i+1}/{min(len(files_context), 100)}] {filepath}... ', end='', flush=True)
+    if args.skip_file_context:
+        print('\n[5/5] Skipping file context fetch')
+    else:
+        # 5. Fetch current file contents for files mentioned in diffs
+        print(f'\n[5/5] Fetching file context for {len(files_context)} unique files...')
+        files_dir = out_dir / 'files'
+        mkdir_p(files_dir)
 
-        # Fetch current file content
-        file_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{filepath}'
-        file_data, _ = http_get(file_url, token)
+        for i, (filepath, mention_count) in enumerate(sorted(files_context.items(), key=lambda x: -x[1])[:100]):  # Top 100 most changed
+            print(f'  [{i+1}/{min(len(files_context), 100)}] {filepath}... ', end='', flush=True)
 
-        if file_data is None:
-            print('✗')
-            continue
+            # Fetch current file content
+            file_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{filepath}'
+            file_data, _ = http_get(file_url, token)
 
-        try:
-            file_obj = json.loads(file_data)
+            if file_data is None:
+                print('✗')
+                continue
 
-            # Create directory structure
-            file_path = files_dir / filepath
-            mkdir_p(file_path.parent)
+            try:
+                file_obj = json.loads(file_data)
 
-            # Save file metadata
-            save_json(files_dir / f'{filepath}.json', {
-                'path': filepath,
-                'sha': file_obj.get('sha'),
-                'size': file_obj.get('size'),
-                'mentions': mention_count,
-                'download_url': file_obj.get('download_url')
-            })
+                # Create directory structure
+                file_path = files_dir / filepath
+                mkdir_p(file_path.parent)
 
-            # Download actual file content if available
-            download_url = file_obj.get('download_url')
-            if download_url:
-                content_data, _ = http_get(download_url, token)
-                if content_data:
-                    with open(file_path, 'w', encoding='utf-8', errors='ignore') as f:
-                        f.write(content_data)
-                    files_fetched += 1
-                    print(f'✓ ({file_obj.get("size", 0)} bytes)')
+                # Save file metadata
+                save_json(files_dir / f'{filepath}.json', {
+                    'path': filepath,
+                    'sha': file_obj.get('sha'),
+                    'size': file_obj.get('size'),
+                    'mentions': mention_count,
+                    'download_url': file_obj.get('download_url')
+                })
+
+                # Download actual file content if available
+                download_url = file_obj.get('download_url')
+                if download_url:
+                    content_data, _ = http_get(download_url, token)
+                    if content_data:
+                        with open(file_path, 'w', encoding='utf-8', errors='ignore') as f:
+                            f.write(content_data)
+                        files_fetched += 1
+                        print(f'✓ ({file_obj.get("size", 0)} bytes)')
+                    else:
+                        print('✗ content')
                 else:
-                    print('✗ content')
-            else:
-                print('✗ no URL')
+                    print('✗ no URL')
 
-        except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            print(f'✗ {e}')
-            continue
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                print(f'✗ {e}')
+                continue
 
-    print(f'\n  ✓ Fetched {files_fetched} file contents')
+        print(f'\n  ✓ Fetched {files_fetched} file contents')
 
     # 6. Create summary
     print('\n[Summary] Creating extraction summary...')
