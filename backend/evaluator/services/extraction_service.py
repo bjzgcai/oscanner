@@ -909,12 +909,13 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500) -> bool:
             str(max_commits),  # 0 means all commits in the extractor
         ]
 
+        cmd_env = os.environ.copy()
         gh_token = get_github_token()
         if gh_token:
-            cmd.extend(["--token", gh_token])
+            cmd_env["GITHUB_TOKEN"] = gh_token
 
         # Run extraction tool
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minute timeout
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800, env=cmd_env)  # 30 minute timeout
 
         if result.returncode != 0:
             print(f"✗ Extraction failed: {result.stderr}")

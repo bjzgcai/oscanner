@@ -60,11 +60,12 @@ class TestGitHubExtraction:
             
             assert result is True
             mock_subprocess.assert_called_once()
-            # Verify command includes token
+            # Verify token is passed via env instead of argv so it is not exposed in process listings.
             call_args = mock_subprocess.call_args
             assert "backend.evaluator.tools.extract_repo_data_moderate" in call_args[0][0]
-            assert "--token" in call_args[0][0]
-            assert "fake_github_token" in call_args[0][0]
+            assert "--token" not in call_args[0][0]
+            assert "fake_github_token" not in call_args[0][0]
+            assert call_args.kwargs["env"]["GITHUB_TOKEN"] == "fake_github_token"
 
     def test_write_filtered_repo_snapshot_excludes_dependencies_binary_and_large_files(self, temp_data_dir):
         """Complete repo snapshots should keep only evaluation-relevant text files."""
