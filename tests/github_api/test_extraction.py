@@ -62,6 +62,7 @@ class TestGitHubExtraction:
             mock_subprocess.assert_called_once()
             # Verify command includes token
             call_args = mock_subprocess.call_args
+            assert "backend.evaluator.tools.extract_repo_data_moderate" in call_args[0][0]
             assert "--token" in call_args[0][0]
             assert "fake_github_token" in call_args[0][0]
 

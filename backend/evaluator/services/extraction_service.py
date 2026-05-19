@@ -900,7 +900,7 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500) -> bool:
         cmd = [
             sys.executable,
             "-m",
-            "evaluator.tools.extract_repo_data_moderate",
+            "backend.evaluator.tools.extract_repo_data_moderate",
             "--repo-url",
             repo_url,
             "--out",
