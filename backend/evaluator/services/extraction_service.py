@@ -933,7 +933,8 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500, include_f
             print("⚠ API extraction produced no commits, trying git-based fallback...")
             return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
 
-        _try_write_latest_repo_snapshot("github", owner, repo, output_dir)
+        if include_file_context:
+            _try_write_latest_repo_snapshot("github", owner, repo, output_dir)
         return True
 
     except subprocess.TimeoutExpired:

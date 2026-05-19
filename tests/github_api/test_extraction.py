@@ -154,6 +154,7 @@ class TestGitHubExtraction:
         """Author discovery can extract commits without downloading file context."""
         with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
              patch('evaluator.services.extraction_service.get_github_token') as mock_token, \
+             patch('evaluator.services.extraction_service._try_write_latest_repo_snapshot') as mock_snapshot, \
              patch('subprocess.run') as mock_subprocess:
 
             mock_get_dir.return_value = temp_data_dir
@@ -174,6 +175,7 @@ class TestGitHubExtraction:
             assert result is True
             call_args = mock_subprocess.call_args
             assert "--skip-file-context" in call_args[0][0]
+            mock_snapshot.assert_not_called()
 
     def test_extract_github_data_writes_latest_repo_snapshot(self, temp_data_dir):
         """Successful GitHub extraction should store complete filtered repo files for latest SHA."""
