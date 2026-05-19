@@ -22,6 +22,9 @@ import urllib.error
 from pathlib import Path
 
 
+DEFAULT_HTTP_TIMEOUT_SECONDS = 30
+
+
 def mkdir_p(path):
     os.makedirs(path, exist_ok=True)
 
@@ -36,7 +39,7 @@ def http_get(url, token=None):
 
     req = urllib.request.Request(url, headers=headers)
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=DEFAULT_HTTP_TIMEOUT_SECONDS) as resp:
             data = resp.read().decode()
             return data, resp.getheaders()
     except urllib.error.HTTPError as e:
@@ -46,6 +49,9 @@ def http_get(url, token=None):
             print(err, file=sys.stderr)
         except Exception:
             pass
+        return None, None
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        print(f'HTTPError {type(e).__name__} {url}: {e}', file=sys.stderr)
         return None, None
 
 
