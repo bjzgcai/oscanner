@@ -222,7 +222,7 @@ include = ["cli*", "evaluator*", "repos_runner*"]
 ├── data/                       # 提取的仓库数据
 │   └── {platform}/{owner}/{repo}/
 └── repos/                      # repos_runner 克隆的仓库
-    └── {repo_name}/
+    └── {platform}/{owner}/{repo}/{ref}/source/
 ```
 
 ## 端口分配

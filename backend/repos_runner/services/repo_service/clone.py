@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from .paths import get_repos_dir, parse_repo_url
+from .paths import get_clone_source_dir, get_repos_dir, parse_repo_url, repo_storage_key
 
 _PRESERVED_FILE_PATTERNS = ("TEST_REPORT*.md", "REPO_OVERVIEW*.md")
 _PRESERVED_DIR_PATTERNS = ("TEST_ARTIFACTS_*",)
@@ -163,7 +163,15 @@ async def clone_repository(
     platform, owner, repo_name = parse_repo_url(repo_url)
 
     repos_dir = get_repos_dir()
-    clone_path = repos_dir / repo_name
+    clone_path = get_clone_source_dir(
+        repos_dir,
+        platform=platform,
+        owner=owner,
+        repo=repo_name,
+        sha=sha,
+        tag=tag,
+    )
+    storage_key = repo_storage_key(platform, owner, repo_name, sha=sha, tag=tag)
     preserved_artifacts = _snapshot_preserved_artifacts(clone_path) if clone_path.exists() else _PreservedArtifacts()
 
     if clone_path.exists():
@@ -199,7 +207,8 @@ async def clone_repository(
                 _restore_preserved_artifacts(clone_path, preserved_artifacts)
 
             return {
-                "repo_name": repo_name,
+                "repo_name": storage_key,
+                "display_name": repo_name,
                 "default_branch": default_branch,
                 "latest_commit_id": checked_out_sha,
                 "clone_path": str(clone_path),

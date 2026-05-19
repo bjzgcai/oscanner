@@ -228,11 +228,10 @@ uv run pytest --cov=evaluator --cov-report=html
 
 - **OSCANNER_HOME**：统一根目录（最高优先级）
 - **OSCANNER_DATA_DIR**：抽取数据目录
-- **OSCANNER_CACHE_DIR**：请求/中间缓存目录
 
 默认值（未设置 env 时）：
 - data：`~/.local/share/oscanner/data`（或 `XDG_DATA_HOME/oscanner/data`）
-- cache：`~/.cache/oscanner/cache`（或 `XDG_CACHE_HOME/oscanner/cache`）
+- runner repos：`~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source`
 
 ## Author Aliases (作者别名) - 跨名称贡献聚合
 

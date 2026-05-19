@@ -4,19 +4,141 @@ Path helpers and platform-specific URL/API utilities.
 
 import os
 import asyncio
+import re
 import json
 import urllib.request
 import urllib.parse
-import re
 from pathlib import Path
 from typing import Tuple, Optional, Dict
 
 
+_SAFE_STORAGE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _xdg_dir(env_key: str, fallback: Path) -> Path:
+    value = os.getenv(env_key)
+    if value:
+        return Path(value).expanduser()
+    return fallback
+
+
+def get_home_dir() -> Path:
+    """
+    Base dir for oscanner-related runner state.
+
+    Priority:
+    1) OSCANNER_HOME
+    2) XDG_DATA_HOME/oscanner
+    3) ~/.local/share/oscanner
+    """
+    if os.getenv("OSCANNER_HOME"):
+        return Path(os.environ["OSCANNER_HOME"]).expanduser()
+    data_home = _xdg_dir("XDG_DATA_HOME", Path.home() / ".local" / "share")
+    return data_home / "oscanner"
+
+
 def get_repos_dir() -> Path:
     """Get the directory for storing cloned repositories"""
-    base_dir = Path.home() / ".local" / "share" / "oscanner" / "repos"
+    base_dir = get_home_dir() / "repos"
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
+
+
+def _safe_storage_segment(value: str, *, fallback: str = "default") -> str:
+    segment = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value or "").strip()).strip("._-")
+    return segment or fallback
+
+
+def repo_ref_segment(sha: Optional[str] = None, tag: Optional[str] = None) -> str:
+    if sha:
+        return f"sha-{_safe_storage_segment(sha)}"
+    if tag:
+        return f"tag-{_safe_storage_segment(tag)}"
+    return "default"
+
+
+def repo_storage_key(
+    platform: str,
+    owner: str,
+    repo: str,
+    sha: Optional[str] = None,
+    tag: Optional[str] = None,
+) -> str:
+    """Return the opaque runner key for a stored repository checkout."""
+    return "/".join(
+        [
+            _safe_storage_segment(platform),
+            _safe_storage_segment(owner),
+            _safe_storage_segment(repo),
+            repo_ref_segment(sha=sha, tag=tag),
+        ]
+    )
+
+
+def get_clone_source_dir(
+    repos_dir: Path,
+    *,
+    platform: str,
+    owner: str,
+    repo: str,
+    sha: Optional[str] = None,
+    tag: Optional[str] = None,
+) -> Path:
+    """Return repos/{platform}/{owner}/{repo}/{ref}/source."""
+    return repos_dir / repo_storage_key(platform, owner, repo, sha=sha, tag=tag) / "source"
+
+
+def get_clone_source_dir_for_url(
+    repo_url: str,
+    *,
+    sha: Optional[str] = None,
+    tag: Optional[str] = None,
+    repos_dir: Optional[Path] = None,
+) -> Path:
+    platform, owner, repo = parse_repo_url(repo_url)
+    return get_clone_source_dir(
+        repos_dir or get_repos_dir(),
+        platform=platform,
+        owner=owner,
+        repo=repo,
+        sha=sha,
+        tag=tag,
+    )
+
+
+def source_dir_from_repo_key(repo_key: str, *, repos_dir: Optional[Path] = None) -> Path:
+    """Resolve a stored runner repo key to its source directory."""
+    raw_key = str(repo_key or "").strip().replace("\\", "/")
+    parts = [part for part in raw_key.split("/") if part]
+    if len(parts) == 1 and _SAFE_STORAGE_SEGMENT_RE.fullmatch(parts[0]):
+        return (repos_dir or get_repos_dir()) / parts[0]
+    if len(parts) != 4 or any(not _SAFE_STORAGE_SEGMENT_RE.fullmatch(part) for part in parts):
+        raise ValueError("Invalid repository storage key")
+    return (repos_dir or get_repos_dir()).joinpath(*parts) / "source"
+
+
+def repo_key_from_source_dir(source_dir: Path, *, repos_dir: Optional[Path] = None) -> str:
+    """Return the stored repo key for a source dir, falling back to the dir name."""
+    root = (repos_dir or get_repos_dir()).resolve()
+    source = Path(source_dir).resolve()
+    try:
+        parts = source.relative_to(root).parts
+    except ValueError:
+        return source.name
+    if len(parts) == 5 and parts[-1] == "source":
+        return "/".join(parts[:4])
+    return source.name
+
+
+def workspace_dir_from_repo_key(repo_key: str, *, repos_dir: Optional[Path] = None) -> Path:
+    """Resolve a stored runner repo key to its checkout workspace directory."""
+    raw_key = str(repo_key or "").strip().replace("\\", "/")
+    parts = [part for part in raw_key.split("/") if part]
+    if len(parts) == 1 and _SAFE_STORAGE_SEGMENT_RE.fullmatch(parts[0]):
+        return (repos_dir or get_repos_dir()) / parts[0]
+    if len(parts) != 4 or any(not _SAFE_STORAGE_SEGMENT_RE.fullmatch(part) for part in parts):
+        raise ValueError("Invalid repository storage key")
+    return (repos_dir or get_repos_dir()).joinpath(*parts)
 
 
 _ALLOWED_REPO_HOSTS = {

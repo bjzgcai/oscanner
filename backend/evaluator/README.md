@@ -1339,7 +1339,8 @@ curl -X POST "http://localhost:8000/api/evaluate/owner/repo/author?plugin_id=zgc
 
 **Plugin Isolation:**
 - Plugins are **self-contained** - must not import from main `evaluator/` package
-- Evaluations are cached per plugin: `{author}__{plugin_id}.json`
+- Plugin evaluators compute from local repository data for each request; Oscanner
+  does not persist plugin evaluation-result cache files.
 - UI components loaded dynamically at runtime
 
 ### Full Context Evaluation

@@ -29,7 +29,13 @@ from repos_runner.services import (
     delete_repo,
 )
 from repos_runner.services.repo_service import fetch_gitee_tag_message
-from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
+from repos_runner.services.repo_service import (
+    get_clone_source_dir,
+    get_clone_source_dir_for_url,
+    get_repos_dir,
+    parse_repo_url,
+    source_dir_from_repo_key,
+)
 from repos_runner.services.repo_service.llm import (
     reset_token_usage_collection,
     start_token_usage_collection,
@@ -40,7 +46,6 @@ from repos_runner.services.task_queue import RunnerQueueFull, runner_queue
 router = APIRouter(prefix="/api/runner")
 
 _ALLOWED_ARTIFACT_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
-_SAFE_REPO_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 _ACTIVE_RUN_ALL_REPORTS: set[tuple[str, str]] = set()
 
 
@@ -128,11 +133,20 @@ def _resolve_runner_artifact_path(
 ) -> Path:
     if repo_url:
         try:
-            _, _, resolved_repo_name = parse_repo_url(repo_url)
+            repos_dir = get_repos_dir()
+            clone_dir = get_clone_source_dir_for_url(repo_url, repos_dir=repos_dir)
+            if not clone_dir.exists():
+                _, _, legacy_repo_name = parse_repo_url(repo_url)
+                legacy_clone_dir = repos_dir / legacy_repo_name
+                if legacy_clone_dir.exists():
+                    clone_dir = legacy_clone_dir
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-    elif repo_name and _SAFE_REPO_NAME_RE.fullmatch(repo_name):
-        resolved_repo_name = repo_name
+    elif repo_name:
+        try:
+            clone_dir = source_dir_from_repo_key(repo_name, repos_dir=get_repos_dir())
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     else:
         raise HTTPException(status_code=400, detail="repo_url or repo_name is required")
 
@@ -148,7 +162,7 @@ def _resolve_runner_artifact_path(
     if not parts or not parts[0].startswith("TEST_ARTIFACTS_"):
         raise HTTPException(status_code=404, detail="Artifact not found")
 
-    clone_dir = (get_repos_dir() / resolved_repo_name).resolve()
+    clone_dir = clone_dir.resolve()
     candidate = (clone_dir / relative_path).resolve()
     if not (candidate == clone_dir or clone_dir in candidate.parents):
         raise HTTPException(status_code=404, detail="Artifact not found")
@@ -349,7 +363,8 @@ async def run_all_stream(request: RunAllRequest):
     Combined clone → explore → run-tests pipeline with SSE streaming progress.
 
     Pipeline stages:
-    1. Clone   — shallow clone (depth=1) into ~/.local/share/oscanner/repos/{repo_name}/
+    1. Clone   — shallow clone (depth=1) into
+                 ~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/
                  Optionally checks out a specific SHA or tag.
     2. Explore — generates REPO_OVERVIEW.md via Claude Sonnet LLM to understand
                  project structure, languages, and suggested test commands.
@@ -397,16 +412,40 @@ async def run_all_stream(request: RunAllRequest):
             usage_token = start_token_usage_collection()
             try:
                 from pathlib import Path
-                from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
+                from repos_runner.services.repo_service import (
+                    get_clone_source_dir,
+                    get_repos_dir,
+                    parse_repo_url,
+                    repo_storage_key,
+                )
 
                 deadline = asyncio.get_running_loop().time() + request.pipeline_timeout
 
                 # -- Clone step --
                 if request.skip_clone:
-                    _, _, repo_name = parse_repo_url(request.repo_url)
-                    clone_path = str(get_repos_dir() / repo_name)
+                    platform, owner, repo_name = parse_repo_url(request.repo_url)
+                    clone_path = str(
+                        get_clone_source_dir(
+                            get_repos_dir(),
+                            platform=platform,
+                            owner=owner,
+                            repo=repo_name,
+                            sha=request.sha,
+                            tag=request.tag,
+                        )
+                    )
                     await worker_progress_callback(f"Skipping clone, reusing {clone_path}")
-                    clone_metadata = {"clone_path": clone_path, "repo_name": repo_name}
+                    clone_metadata = {
+                        "clone_path": clone_path,
+                        "repo_name": repo_storage_key(
+                            platform,
+                            owner,
+                            repo_name,
+                            sha=request.sha,
+                            tag=request.tag,
+                        ),
+                        "display_name": repo_name,
+                    }
                 else:
                     await worker_progress_callback("Cloning repository...")
                     clone_metadata = await _await_pipeline_step(
@@ -561,7 +600,12 @@ async def batch_run_stream(request: BatchRunRequest):
 
     async def event_generator() -> AsyncGenerator[str, None]:
         from pathlib import Path
-        from repos_runner.services.repo_service import get_repos_dir, parse_repo_url
+        from repos_runner.services.repo_service import (
+            get_clone_source_dir,
+            get_repos_dir,
+            parse_repo_url,
+            repo_storage_key,
+        )
 
         event_queue: asyncio.Queue = asyncio.Queue()
         semaphore = asyncio.Semaphore(concurrency)
@@ -576,10 +620,29 @@ async def batch_run_stream(request: BatchRunRequest):
                     async with runner_queue.acquire(cb):
                         deadline = asyncio.get_running_loop().time() + repo_req.pipeline_timeout
                         if repo_req.skip_clone:
-                            _, _, repo_name = parse_repo_url(repo_url)
-                            clone_path = str(get_repos_dir() / repo_name)
+                            platform, owner, repo_name = parse_repo_url(repo_url)
+                            clone_path = str(
+                                get_clone_source_dir(
+                                    get_repos_dir(),
+                                    platform=platform,
+                                    owner=owner,
+                                    repo=repo_name,
+                                    sha=repo_req.sha,
+                                    tag=repo_req.tag,
+                                )
+                            )
                             await cb(f"Skipping clone, reusing {clone_path}")
-                            clone_metadata = {"clone_path": clone_path, "repo_name": repo_name}
+                            clone_metadata = {
+                                "clone_path": clone_path,
+                                "repo_name": repo_storage_key(
+                                    platform,
+                                    owner,
+                                    repo_name,
+                                    sha=repo_req.sha,
+                                    tag=repo_req.tag,
+                                ),
+                                "display_name": repo_name,
+                            }
                         else:
                             await cb("Cloning repository...")
                             clone_metadata = await _await_pipeline_step(
@@ -765,11 +828,21 @@ async def get_report(repo_url: str, tag: Optional[str] = None):
     Return the content of TEST_REPORT_{tag}.md (or TEST_REPORT.md) for a cloned repo.
     """
     try:
-        _, _, repo_name = parse_repo_url(repo_url)
+        platform, owner, repo_name = parse_repo_url(repo_url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    clone_dir = get_repos_dir() / repo_name
+    repos_dir = get_repos_dir()
+    clone_dir = get_clone_source_dir(
+        repos_dir,
+        platform=platform,
+        owner=owner,
+        repo=repo_name,
+        tag=tag,
+    )
+    legacy_clone_dir = repos_dir / repo_name
+    if not clone_dir.exists() and legacy_clone_dir.exists():
+        clone_dir = legacy_clone_dir
     active_key = _active_report_key(repo_url, tag)
     if not clone_dir.exists() and active_key in _ACTIVE_RUN_ALL_REPORTS:
         safe_tag = tag.replace("/", "_").replace(" ", "_") if tag else ""

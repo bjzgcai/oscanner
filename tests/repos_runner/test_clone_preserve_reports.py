@@ -31,7 +31,7 @@ def _fake_git_output(command, *, timeout, cwd):
 
 def test_clone_repository_preserves_existing_reports_and_overviews(monkeypatch, tmp_path):
     repos_dir = tmp_path / "repos"
-    clone_path = repos_dir / "demo-repo"
+    clone_path = repos_dir / "github" / "owner" / "demo-repo" / "default" / "source"
     clone_path.mkdir(parents=True)
 
     report_default = clone_path / "TEST_REPORT.md"
@@ -63,7 +63,8 @@ def test_clone_repository_preserves_existing_reports_and_overviews(monkeypatch, 
 
     result = asyncio.run(clone_repository("https://github.com/owner/demo-repo"))
 
-    assert result["repo_name"] == "demo-repo"
+    assert result["repo_name"] == "github/owner/demo-repo/default"
+    assert result["display_name"] == "demo-repo"
     assert report_default.read_text() == "old default report"
     assert report_tagged.read_text() == "old tagged report"
     assert overview_default.read_text() == "old default overview"
@@ -74,7 +75,7 @@ def test_clone_repository_preserves_existing_reports_and_overviews(monkeypatch, 
 
 def test_clone_repository_preserves_report_artifact_directories(monkeypatch, tmp_path):
     repos_dir = tmp_path / "repos"
-    clone_path = repos_dir / "demo-repo"
+    clone_path = repos_dir / "github" / "owner" / "demo-repo" / "default" / "source"
     artifact_dir = clone_path / "TEST_ARTIFACTS_Coursework_Submit_5.2"
     screenshot = artifact_dir / "runtime-evidence" / "screenshots" / "docs.png"
     screenshot.parent.mkdir(parents=True)
@@ -97,7 +98,8 @@ def test_clone_repository_preserves_report_artifact_directories(monkeypatch, tmp
 
     result = asyncio.run(clone_repository("https://github.com/owner/demo-repo"))
 
-    assert result["repo_name"] == "demo-repo"
+    assert result["repo_name"] == "github/owner/demo-repo/default"
+    assert result["display_name"] == "demo-repo"
     assert screenshot.read_bytes() == b"png"
 
 

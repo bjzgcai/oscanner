@@ -2,7 +2,17 @@
 Repository service package.
 """
 
-from .paths import get_repos_dir, parse_repo_url, fetch_gitee_tag_message
+from .paths import (
+    get_clone_source_dir,
+    get_clone_source_dir_for_url,
+    get_repos_dir,
+    parse_repo_url,
+    repo_key_from_source_dir,
+    repo_storage_key,
+    source_dir_from_repo_key,
+    fetch_gitee_tag_message,
+    workspace_dir_from_repo_key,
+)
 from .llm import (
     _get_api_client,
     _message_text_content,
@@ -35,9 +45,15 @@ from .lifecycle import list_repos, delete_repo
 
 __all__ = [
     # paths
+    "get_clone_source_dir",
+    "get_clone_source_dir_for_url",
     "get_repos_dir",
     "parse_repo_url",
+    "repo_key_from_source_dir",
+    "repo_storage_key",
+    "source_dir_from_repo_key",
     "fetch_gitee_tag_message",
+    "workspace_dir_from_repo_key",
     # llm
     "OPENROUTER_ANTHROPIC_BASE_URL",
     "_get_api_client",

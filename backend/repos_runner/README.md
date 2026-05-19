@@ -107,8 +107,8 @@ This is the **simplest way** to analyze a repository. It runs all four steps (cl
   "failed": 2,
   "total": 10,
   "score": 80,
-  "repo_name": "repo",
-  "report_path": "/home/user/.local/share/oscanner/repos/repo/TEST_REPORT.md"
+  "repo_name": "github/owner/repo/default",
+  "report_path": "/home/user/.local/share/oscanner/repos/github/owner/repo/default/source/TEST_REPORT.md"
 }
 ```
 
@@ -154,10 +154,11 @@ For more control or real-time progress updates, use the individual endpoints:
 **Response:**
 ```json
 {
-  "repo_name": "repo",
+  "repo_name": "github/owner/repo/default",
+  "display_name": "repo",
   "default_branch": "main",
   "latest_commit_id": "abc123...",
-  "clone_path": "/home/user/.local/share/oscanner/repos/repo",
+  "clone_path": "/home/user/.local/share/oscanner/repos/github/owner/repo/default/source",
   "platform": "github",
   "owner": "owner"
 }
@@ -224,20 +225,20 @@ The web interface provides:
 Cloned repositories and test environments are stored in:
 ```
 ~/.local/share/oscanner/repos/
-├── repo1/                        # Analyzed repository
-│   ├── REPO_OVERVIEW.md         # Generated documentation
-│   ├── TEST_REPORT.md           # Test results and metrics
-│   ├── .venv/                   # Dedicated virtual environment
-│   │   ├── bin/python          # Isolated Python interpreter
-│   │   └── lib/python3.x/      # Repository-specific packages
-│   └── ... (repository files)
-├── repo2/                        # Another repository
-│   ├── REPO_OVERVIEW.md
-│   ├── TEST_REPORT.md
-│   ├── .venv/                   # Separate environment
-│   └── ...
-└── .pip_cache/                  # Shared package cache (optional)
+└── {platform}/
+    └── {owner}/
+        └── {repo}/
+            └── {ref}/
+                └── source/                 # Cloned repository checkout
+                    ├── REPO_OVERVIEW.md    # Generated documentation
+                    ├── TEST_REPORT.md      # Test results and metrics
+                    ├── .venv_{hash}/       # Dedicated virtual environment
+                    └── ...                 # Repository files
 ```
+
+The default `{ref}` is `default`; SHA and tag checkouts use `sha-{sha}` or
+`tag-{tag}`. The root directory follows `OSCANNER_HOME` first, then
+`XDG_DATA_HOME/oscanner`, then `~/.local/share/oscanner`.
 
 This isolated structure ensures:
 - Your main codebase stays clean
@@ -247,7 +248,7 @@ This isolated structure ensures:
 - **Python version flexibility** (different repos can use different Python versions)
 - **Security isolation** (potentially malicious packages are contained)
 - Each repository has its own test report
-- Easy cleanup (just delete `~/.local/share/oscanner/repos/`)
+- Easy cleanup (use `DELETE /api/runner/repo?repo_name=<key>` or delete `~/.local/share/oscanner/repos/`)
 
 ## Implementation Details
 
@@ -348,7 +349,7 @@ The repos_runner service can be tested using the following approach.
 See [REPOS_RUNNER_TEST_REPORT.md](REPOS_RUNNER_TEST_REPORT.md) for detailed test plan.
 
 **For Analyzed Repositories:**
-- Test reports auto-generated at `~/.local/share/oscanner/repos/{repo_name}/TEST_REPORT.md`
+- Test reports auto-generated at `~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/TEST_REPORT.md`
 - See [TEST_REPORT_EXAMPLE.md](TEST_REPORT_EXAMPLE.md) for sample output
 
 **Testing Focus Areas:**

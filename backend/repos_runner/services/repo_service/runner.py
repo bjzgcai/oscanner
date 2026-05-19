@@ -23,6 +23,7 @@ from .detection import (
 from .parsing import _parse_json_report, _parse_test_output
 from .coverage import _extract_features_from_tag_message, _check_feature_coverage
 from .report import _generate_test_report
+from .paths import repo_key_from_source_dir
 from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_coverage
 
 _SHELL_SUCCESS_MASK_RE = re.compile(r"\s*(?:\|\|\s*true|;\s*true)\s*$")
@@ -626,9 +627,10 @@ async def run_tests(
 
             _safe_tag = tag.replace("/", "_").replace("\\", "_") if tag else None
             test_report_path = clone_dir / (f"TEST_REPORT_{_safe_tag}.md" if _safe_tag else "TEST_REPORT.md")
+            report_repo_name = repo_key_from_source_dir(clone_dir)
             await _generate_test_report(
                 report_path=test_report_path,
-                repo_name=clone_dir.name,
+                repo_name=report_repo_name,
                 total=0, passed=0, failed=0, score=0,
                 test_results=[],
             )
@@ -824,9 +826,10 @@ async def run_tests(
 
     _safe_tag = tag.replace("/", "_").replace("\\", "_") if tag else None
     test_report_path = clone_dir / (f"TEST_REPORT_{_safe_tag}.md" if _safe_tag else "TEST_REPORT.md")
+    report_repo_name = repo_key_from_source_dir(clone_dir)
     await _generate_test_report(
         report_path=test_report_path,
-        repo_name=clone_dir.name,
+        repo_name=report_repo_name,
         total=total_tests,
         passed=total_passed,
         failed=total_failed,

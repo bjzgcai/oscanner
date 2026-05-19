@@ -81,9 +81,8 @@ def _add_common_env_help(parser: argparse.ArgumentParser) -> None:
         "  OPEN_ROUTER_KEY           OpenRouter API key (required for LLM evaluation)\n"
         "  GITHUB_TOKEN              GitHub token (optional, higher rate limits)\n"
         f"{publish_env}"
-        "  OSCANNER_HOME             Base directory for oscanner data/cache\n"
+        "  OSCANNER_HOME             Base directory for oscanner local state\n"
         "  OSCANNER_DATA_DIR         Override data directory\n"
-        "  OSCANNER_CACHE_DIR        Override cache directory\n"
     )
 
 def _print_dashboard_instructions() -> None:
