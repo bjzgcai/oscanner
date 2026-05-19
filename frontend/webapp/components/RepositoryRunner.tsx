@@ -18,6 +18,13 @@ const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Panel } = Collapse;
 const RUNNER_API_BASE = getRunnerApiBaseUrl();
+const GIT_COMMIT_SHA_PATTERN = /^[0-9a-f]{7,40}$/i;
+
+function getVersionRefPayload(versionRef: string): { sha?: string; tag?: string } {
+  const trimmed = versionRef.trim();
+  if (!trimmed) return {};
+  return GIT_COMMIT_SHA_PATTERN.test(trimmed) ? { sha: trimmed } : { tag: trimmed };
+}
 
 interface RepoMetadata {
   repo_name: string;
@@ -43,11 +50,31 @@ interface TestSummary {
   score: number;
   details: TestResult[];
   message?: string;
+  feature_coverage?: FeatureCoverage;
+  score_breakdown?: ScoreBreakdown;
 }
 
 interface DetectedTests {
   test_commands: string[];
   setup_commands: string[];
+  validation_features?: string[];
+}
+
+interface FeatureCoverage {
+  covered: string[];
+  not_covered: string[];
+  runtime_covered?: string[];
+  coverage_ratio: number;
+}
+
+interface ScoreBreakdown {
+  code_score: number;
+  code_weight: number;
+  functionality_score: number;
+  functionality_weight: number;
+  code_pass_rate: number;
+  functionality_coverage_ratio: number;
+  weight_explanation?: string;
 }
 
 interface RunnerStreamEvent {
@@ -112,6 +139,8 @@ export default function RepositoryRunner() {
   const { t } = useI18n();
   const { locale, setLocale } = useAppSettings();
   const [repoUrl, setRepoUrl] = useState('https://gitee.com/zgcai/eval_test_1');
+  const [versionRef, setVersionRef] = useState('');
+  const [featureRequirements, setFeatureRequirements] = useState('');
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<string[]>([]);
@@ -134,11 +163,63 @@ export default function RepositoryRunner() {
     return githubPattern.test(url.trim()) || giteePattern.test(url.trim());
   };
 
+  const featureRequirementsParam = () => featureRequirements.trim();
+
+  const appendFeatureRequirements = (url: string): string => {
+    const requirements = featureRequirementsParam();
+    if (!requirements) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}feature_requirements=${encodeURIComponent(requirements)}`;
+  };
+
+  const getConclusion = (results: TestSummary): { type: 'success' | 'warning' | 'error' | 'info'; title: string; description: string } => {
+    const coverage = results.feature_coverage;
+    const codePassed = results.failed === 0 && results.total > 0;
+
+    if (coverage) {
+      const ratio = Math.round(coverage.coverage_ratio * 100);
+      if (codePassed && coverage.not_covered.length === 0) {
+        return {
+          type: 'success',
+          title: t('runner.step4.conclusion_passed'),
+          description: t('runner.step4.conclusion_passed_desc')
+            .replace('{tests}', `${results.passed}/${results.total}`)
+            .replace('{coverage}', `${ratio}%`),
+        };
+      }
+      if (results.passed > 0 || coverage.covered.length > 0 || (coverage.runtime_covered?.length || 0) > 0) {
+        return {
+          type: 'warning',
+          title: t('runner.step4.conclusion_partial'),
+          description: t('runner.step4.conclusion_partial_desc')
+            .replace('{tests}', `${results.passed}/${results.total}`)
+            .replace('{coverage}', `${ratio}%`),
+        };
+      }
+      return {
+        type: 'error',
+        title: t('runner.step4.conclusion_failed'),
+        description: t('runner.step4.conclusion_failed_desc')
+          .replace('{tests}', `${results.passed}/${results.total}`)
+          .replace('{coverage}', `${ratio}%`),
+      };
+    }
+
+    return {
+      type: codePassed ? 'success' : 'warning',
+      title: codePassed ? t('runner.step4.conclusion_tests_passed') : t('runner.step4.conclusion_tests_attention'),
+      description: t('runner.step4.conclusion_tests_only')
+        .replace('{tests}', `${results.passed}/${results.total}`),
+    };
+  };
+
   // Fetch detected tests
   const fetchDetectedTests = async (overviewPath: string) => {
     try {
       const response = await fetch(
-        `${RUNNER_API_BASE}/api/runner/detect-tests/?overview_path=${encodeURIComponent(overviewPath)}`
+        appendFeatureRequirements(
+          `${RUNNER_API_BASE}/api/runner/detect-tests/?overview_path=${encodeURIComponent(overviewPath)}`
+        )
       );
 
       if (!response.ok) {
@@ -161,7 +242,7 @@ export default function RepositoryRunner() {
     const response = await fetch(`${RUNNER_API_BASE}/api/runner/clone/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repo_url: repoUrl })
+      body: JSON.stringify({ repo_url: repoUrl, ...getVersionRefPayload(versionRef) })
     });
 
     if (!response.ok) {
@@ -182,7 +263,9 @@ export default function RepositoryRunner() {
     const explorationMessages: string[] = [];
 
     const response = await fetch(
-      `${RUNNER_API_BASE}/api/runner/explore/?clone_path=${encodeURIComponent(metadata.clone_path)}`,
+      appendFeatureRequirements(
+        `${RUNNER_API_BASE}/api/runner/explore/?clone_path=${encodeURIComponent(metadata.clone_path)}`
+      ),
       { method: 'POST' }
     );
 
@@ -225,7 +308,9 @@ export default function RepositoryRunner() {
     const testMessages: string[] = [];
 
     const response = await fetch(
-      `${RUNNER_API_BASE}/api/runner/run-tests/?clone_path=${encodeURIComponent(metadata.clone_path)}&overview_path=${encodeURIComponent(overviewPath)}`,
+      appendFeatureRequirements(
+        `${RUNNER_API_BASE}/api/runner/run-tests/?clone_path=${encodeURIComponent(metadata.clone_path)}&overview_path=${encodeURIComponent(overviewPath)}`
+      ),
       { method: 'POST' }
     );
 
@@ -297,6 +382,8 @@ export default function RepositoryRunner() {
   // Reset to start over
   const handleReset = () => {
     setRepoUrl('');
+    setVersionRef('');
+    setFeatureRequirements('');
     setCurrentStep(0);
     setProgressMessages([]);
     setTestResults(null);
@@ -367,6 +454,18 @@ export default function RepositoryRunner() {
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 prefix={<GithubOutlined />}
+              />
+              <Input
+                size="large"
+                placeholder={t('runner.version_ref.placeholder')}
+                value={versionRef}
+                onChange={(e) => setVersionRef(e.target.value)}
+              />
+              <TextArea
+                rows={4}
+                placeholder={t('runner.feature_requirements.placeholder')}
+                value={featureRequirements}
+                onChange={(e) => setFeatureRequirements(e.target.value)}
               />
               <Button
                 type="primary"
@@ -468,6 +567,16 @@ export default function RepositoryRunner() {
                   ) : (
                     <Text type="warning">{t('runner.step3.no_tests')}</Text>
                   )}
+                  {detectedTests.validation_features && detectedTests.validation_features.length > 0 && (
+                    <>
+                      <Text strong style={{ marginTop: '8px' }}>{t('runner.step3.validation_features')}:</Text>
+                      <Space wrap>
+                        {detectedTests.validation_features.map((feature, idx) => (
+                          <Tag key={idx} color="processing">{feature}</Tag>
+                        ))}
+                      </Space>
+                    </>
+                  )}
                 </Space>
               </Card>
             )}
@@ -494,6 +603,11 @@ export default function RepositoryRunner() {
                 <Tag color={step3Output.results.score >= 70 ? 'success' : step3Output.results.score >= 40 ? 'warning' : 'error'}>
                   {t('runner.step4.score')}: {step3Output.results.score}/100
                 </Tag>
+                {step3Output.results.feature_coverage && (
+                  <Tag color={step3Output.results.feature_coverage.not_covered.length === 0 ? 'success' : 'warning'}>
+                    {t('runner.step4.feature_coverage')}: {Math.round(step3Output.results.feature_coverage.coverage_ratio * 100)}%
+                  </Tag>
+                )}
               </div>
               <Collapse ghost>
                 <Panel header={t('runner.step3.view_messages')} key="1">
@@ -512,6 +626,13 @@ export default function RepositoryRunner() {
         {currentStep === 3 && testResults && (
           <Card title={t('runner.step4.title')} type="inner">
             <Space orientation="vertical" style={{ width: '100%' }} size="large">
+              <Alert
+                type={getConclusion(testResults).type}
+                showIcon
+                title={getConclusion(testResults).title}
+                description={getConclusion(testResults).description}
+              />
+
               <div style={{ textAlign: 'center' }}>
                 <Title level={1} style={{ margin: 0, color: testResults.score >= 70 ? '#52c41a' : testResults.score >= 40 ? '#faad14' : '#ff4d4f' }}>
                   {testResults.score}
@@ -530,6 +651,60 @@ export default function RepositoryRunner() {
                   <Tag color="default">{t('runner.step4.total')}: {testResults.total}</Tag>
                 </div>
               </Space>
+
+              {testResults.feature_coverage && (
+                <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 16 }}>
+                  <Space orientation="vertical" style={{ width: '100%' }}>
+                    <Text strong>{t('runner.step4.feature_validation')}</Text>
+                    {testResults.score_breakdown && (
+                      <Space wrap>
+                        <Tag color="blue">
+                          {t('runner.step4.code_score')}: {testResults.score_breakdown.code_score}/{testResults.score_breakdown.code_weight}
+                        </Tag>
+                        <Tag color="purple">
+                          {t('runner.step4.functionality_score')}: {testResults.score_breakdown.functionality_score}/{testResults.score_breakdown.functionality_weight}
+                        </Tag>
+                      </Space>
+                    )}
+                    {testResults.feature_coverage.covered.length > 0 && (
+                      <div>
+                        <Text strong>{t('runner.step4.covered_features')}:</Text>
+                        <div style={{ marginTop: '8px' }}>
+                          <Space wrap>
+                            {testResults.feature_coverage.covered.map((feature, idx) => (
+                              <Tag key={idx} color="success">{feature}</Tag>
+                            ))}
+                          </Space>
+                        </div>
+                      </div>
+                    )}
+                    {(testResults.feature_coverage.runtime_covered || []).length > 0 && (
+                      <div>
+                        <Text strong>{t('runner.step4.runtime_covered_features')}:</Text>
+                        <div style={{ marginTop: '8px' }}>
+                          <Space wrap>
+                            {testResults.feature_coverage.runtime_covered?.map((feature, idx) => (
+                              <Tag key={idx} color="cyan">{feature}</Tag>
+                            ))}
+                          </Space>
+                        </div>
+                      </div>
+                    )}
+                    {testResults.feature_coverage.not_covered.length > 0 && (
+                      <div>
+                        <Text strong>{t('runner.step4.missing_features')}:</Text>
+                        <div style={{ marginTop: '8px' }}>
+                          <Space wrap>
+                            {testResults.feature_coverage.not_covered.map((feature, idx) => (
+                              <Tag key={idx} color="error">{feature}</Tag>
+                            ))}
+                          </Space>
+                        </div>
+                      </div>
+                    )}
+                  </Space>
+                </div>
+              )}
 
               {testResults.message && (
                 <Alert title={testResults.message} type="info" />

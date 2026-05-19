@@ -44,6 +44,41 @@ _SAFE_REPO_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 _ACTIVE_RUN_ALL_REPORTS: set[tuple[str, str]] = set()
 
 
+def _clean_optional_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _extract_validation_features(feature_requirements: Optional[str]) -> list[str]:
+    """Extract a lightweight display list from manually supplied requirements."""
+    text = _clean_optional_text(feature_requirements)
+    if not text:
+        return []
+
+    raw_items: list[str] = []
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) <= 1:
+        raw_items = re.split(r"[,;]+", text)
+    else:
+        raw_items = lines
+
+    features: list[str] = []
+    seen: set[str] = set()
+    for item in raw_items:
+        cleaned = re.sub(r"^\s*(?:[-*•]+|\d+[.)])\s*", "", item).strip()
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        if not cleaned:
+            continue
+        key = cleaned.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        features.append(cleaned)
+    return features[:50]
+
+
 def _active_report_key(repo_url: str, tag: Optional[str] = None) -> tuple[str, str]:
     normalized_repo_url = str(repo_url or "").strip().removesuffix(".git").rstrip("/").lower()
     normalized_tag = str(tag or "").strip()
@@ -147,7 +182,11 @@ async def clone_repo(request: RepoCloneRequest):
 # ---------------------------------------------------------------------------
 
 @router.post("/explore")
-async def explore_repo_stream(clone_path: str):
+async def explore_repo_stream(
+    clone_path: str,
+    feature_requirements: Optional[str] = None,
+    tag: Optional[str] = None,
+):
     """
     Explore repository and generate REPO_OVERVIEW.md with streaming progress.
     Uses opencode for agentic exploration (falls back to messages API).
@@ -160,7 +199,12 @@ async def explore_repo_stream(clone_path: str):
 
         async def explore_task():
             try:
-                result = await explore_repository(clone_path, progress_callback)
+                result = await explore_repository(
+                    clone_path,
+                    progress_callback,
+                    _clean_optional_text(feature_requirements),
+                    tag=_clean_optional_text(tag),
+                )
                 await progress_queue.put({"status": "completed", "overview_path": result})
             except Exception as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
@@ -193,13 +237,17 @@ async def explore_repo_stream(clone_path: str):
 # ---------------------------------------------------------------------------
 
 @router.get("/detect-tests")
-async def detect_tests(overview_path: str):
+async def detect_tests(overview_path: str, feature_requirements: Optional[str] = None):
     """
     Detect test commands from REPO_OVERVIEW.md without running them.
     Uses static analysis first, falls back to LLM, caches result.
     """
     try:
         test_info = await detect_test_commands(overview_path)
+        validation_features = _extract_validation_features(feature_requirements)
+        if validation_features:
+            test_info = dict(test_info)
+            test_info["validation_features"] = validation_features
         return test_info
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -215,16 +263,23 @@ async def run_tests_stream(
     overview_path: str,
     setup_timeout: int = Query(default=300, description="Seconds allowed per setup command"),
     test_timeout: int = Query(default=600, description="Seconds allowed per test command"),
+    feature_requirements: Optional[str] = None,
+    tag_message: Optional[str] = None,
+    tag: Optional[str] = None,
 ):
     """
     Run tests based on REPO_OVERVIEW.md with streaming progress.
 
     - setup_timeout: per-command timeout for dependency installation (default 300s)
     - test_timeout:  per-command timeout for test execution (default 600s)
+    - feature_requirements/tag_message: optional feature requirements to validate
+      alongside code tests
     """
     async def event_generator() -> AsyncGenerator[str, None]:
         progress_queue: asyncio.Queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
+        requirements = _clean_optional_text(feature_requirements) or _clean_optional_text(tag_message)
+        clean_tag = _clean_optional_text(tag)
 
         async def progress_callback(message: str):
             await progress_queue.put(message)
@@ -245,6 +300,8 @@ async def run_tests_stream(
                                 worker_progress_callback,
                                 setup_timeout=setup_timeout,
                                 test_timeout=test_timeout,
+                                tag_message=requirements,
+                                tag=clean_tag,
                             )
                         )
                     )
