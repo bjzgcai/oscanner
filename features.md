@@ -140,8 +140,6 @@ Behavior:
 Oscanner stores extracted and generated runtime data under user-local paths:
 
 - data: `~/.local/share/oscanner/data`
-- evaluation cache: `~/.local/share/oscanner/evaluations/cache`
-- trajectory cache/state: `~/.local/share/oscanner/track/cache`
 - cloned runner repos: `~/.local/share/oscanner/repos`
 
 Courses stores course-level results in its own course data files:

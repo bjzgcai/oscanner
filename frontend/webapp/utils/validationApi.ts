@@ -28,16 +28,6 @@ export interface ValidationRunResponse {
   validation_results?: any[];
 }
 
-export interface ValidationRunsListResponse {
-  success: boolean;
-  runs: any[];
-}
-
-export interface ValidationRunDetailResponse {
-  success: boolean;
-  run: any;
-}
-
 /**
  * Validation API utility functions
  */
@@ -93,28 +83,6 @@ export const validationApi = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || `Validation failed: ${response.statusText}`);
-    }
-    return response.json();
-  },
-
-  /**
-   * List all validation runs
-   */
-  listRuns: async (): Promise<ValidationRunsListResponse> => {
-    const response = await fetch(`${API_BASE}/api/benchmark/validation/runs`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch validation runs: ${response.statusText}`);
-    }
-    return response.json();
-  },
-
-  /**
-   * Get specific validation run details
-   */
-  getRun: async (runId: string): Promise<ValidationRunDetailResponse> => {
-    const response = await fetch(`${API_BASE}/api/benchmark/validation/runs/${runId}`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch run details: ${response.statusText}`);
     }
     return response.json();
   },

@@ -222,20 +222,17 @@ uv run pytest --cov=evaluator --cov-report=html
 
 更多测试相关信息请参阅 [tests/README.md](tests/README.md)。
 
-## 数据/缓存落盘位置（默认策略）
+## 数据落盘位置（默认策略）
 
 为了保证 **pip 安装后在任意目录运行都不会把数据写到当前工作目录**，本仓库已改为默认写入用户目录，并支持环境变量覆盖：
 
 - **OSCANNER_HOME**：统一根目录（最高优先级）
 - **OSCANNER_DATA_DIR**：抽取数据目录
 - **OSCANNER_CACHE_DIR**：请求/中间缓存目录
-- **OSCANNER_EVAL_CACHE_DIR**：评估缓存目录
 
 默认值（未设置 env 时）：
 - data：`~/.local/share/oscanner/data`（或 `XDG_DATA_HOME/oscanner/data`）
 - cache：`~/.cache/oscanner/cache`（或 `XDG_CACHE_HOME/oscanner/cache`）
-- evaluations：`~/.local/share/oscanner/evaluations/cache`
-- track：`~/.local/share/oscanner/track/cache`
 
 ## Author Aliases (作者别名) - 跨名称贡献聚合
 
@@ -286,9 +283,8 @@ CarterWu, wu-yanbiao, 吴衍标
 
 传统方式需要重新评估所有 commits（如 50 个 commits 的总 token 消耗），而采用 **分别评估 + LLM 合并** 的方式：
 
-1. **复用缓存评估**：每个名称独立评估并缓存（`~/.local/share/oscanner/evaluations/cache/<repo>/<author>.json`）
-2. **增量计算**：后续只需评估新增的 commits
-3. **LLM 仅合并摘要**：只调用一次 LLM 来合并已有的分析文本（~1500 tokens），而不是重新分析所有 commits
+1. **按身份独立评估**：每个名称独立过滤 commits 并评估，避免别名之间互相污染证据。
+2. **LLM 仅合并摘要**：只调用一次 LLM 来合并已有的分析文本（~1500 tokens），而不是重新分析所有 commits。
 
 **Token 节省示例**：
 
@@ -543,5 +539,3 @@ render: (author, record) => {
 2. 在 main 分支上直接开发
 3. 提交时在 commit message 中引用 issue：`fix #issue_number` 或 `关闭 #issue_number`
 4. 推送后会自动生成 PR 并关联到 issue
-
-

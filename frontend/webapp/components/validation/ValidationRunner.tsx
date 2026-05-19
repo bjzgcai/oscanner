@@ -6,10 +6,10 @@ import { PlayCircleOutlined } from '@ant-design/icons';
 import { validationApi } from '../../utils/validationApi';
 import { useAppSettings } from '../AppSettingsContext';
 import { useI18n } from '../I18nContext';
-import { LogEntry } from './types';
+import { LogEntry, ValidationRunResult } from './types';
 
 interface ValidationRunnerProps {
-  onValidationComplete?: (runId: string) => void;
+  onValidationComplete?: (result: ValidationRunResult) => void;
   onLog?: (entry: LogEntry) => void;
 }
 
@@ -61,7 +61,7 @@ export default function ValidationRunner({
 
       if (result.success) {
         const score = result.overall_score || result.result?.overall_score || 0;
-        const runId = result.run_id || result.result?.run_id || '';
+        const validationResult = result.result;
 
         appendLog(
           t('validation.log.complete', { score: score.toFixed(1) }),
@@ -69,8 +69,8 @@ export default function ValidationRunner({
         );
         message.success(t('validation.run.complete'));
 
-        if (runId) {
-          onValidationComplete?.(runId);
+        if (validationResult) {
+          onValidationComplete?.(validationResult);
         }
       } else {
         throw new Error(result.message || t('validation.run.failed'));

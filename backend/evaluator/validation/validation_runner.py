@@ -3,8 +3,6 @@ Validation runner - orchestrates benchmark testing and validation
 """
 
 import asyncio
-import json
-from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
@@ -82,18 +80,16 @@ class ValidationRunner:
         self,
         dataset: Optional[BenchmarkDataset] = None,
         evaluation_function=None,
-        storage_dir: Optional[Path] = None,
+        storage_dir=None,
     ):
         """
         Args:
             dataset: BenchmarkDataset instance (uses singleton if None)
             evaluation_function: Async function to evaluate repos (repo_url, author) -> eval_result
-            storage_dir: Directory to store validation run history
+            storage_dir: Ignored. Validation runs are returned to callers and not persisted.
         """
         self.dataset = dataset or benchmark_dataset
         self.evaluation_function = evaluation_function
-        self.storage_dir = storage_dir or Path.home() / ".local/share/oscanner/validation"
-        self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize validators
         self.validators = [
@@ -395,58 +391,4 @@ class ValidationRunner:
         print(f"Tests Run: {len(validation_results)}")
         print(f"Tests Passed: {sum(1 for vr in validation_results if vr.passed)}")
 
-        # Save results
-        self._save_run_result(result)
-
         return result
-
-    def _save_run_result(self, result: ValidationRunResult):
-        """Save validation run result to disk"""
-        results_dir = self.storage_dir / "runs"
-        results_dir.mkdir(exist_ok=True)
-
-        result_path = results_dir / f"{result.run_id}.json"
-        try:
-            with open(result_path, 'w', encoding='utf-8') as f:
-                json.dump(result.to_dict(), f, indent=2, ensure_ascii=False)
-            print(f"\nResults saved to: {result_path}")
-        except Exception as e:
-            print(f"Error saving results: {e}")
-
-    def list_validation_runs(self) -> List[Dict[str, Any]]:
-        """List all previous validation runs"""
-        results_dir = self.storage_dir / "runs"
-        if not results_dir.exists():
-            return []
-
-        runs = []
-        for result_file in sorted(results_dir.glob("*.json"), reverse=True):
-            try:
-                with open(result_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    runs.append({
-                        "run_id": data.get("run_id"),
-                        "timestamp": data.get("timestamp"),
-                        "passed": data.get("overall_passed"),
-                        "score": data.get("overall_score"),
-                        "duration": data.get("duration_seconds"),
-                    })
-            except Exception as e:
-                print(f"Error loading {result_file}: {e}")
-
-        return runs
-
-    def get_validation_run(self, run_id: str) -> Optional[Dict[str, Any]]:
-        """Get detailed results for a specific validation run"""
-        results_dir = self.storage_dir / "runs"
-        result_path = results_dir / f"{run_id}.json"
-
-        if not result_path.exists():
-            return None
-
-        try:
-            with open(result_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error loading run {run_id}: {e}")
-            return None

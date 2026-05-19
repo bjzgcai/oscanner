@@ -85,18 +85,10 @@ export interface ValidationRunResult {
   duration_seconds: number;
 }
 
-export interface ValidationRunSummary {
-  run_id: string;
-  timestamp: string;
-  overall_passed: boolean;
-  overall_score?: number;
-  duration_seconds?: number;
-}
-
 export interface LogEntry {
   message: string;
   type: 'info' | 'error' | 'success' | 'warning';
   timestamp: number;
 }
 
-export type ViewMode = 'dataset' | 'run' | 'history' | 'results';
+export type ViewMode = 'dataset' | 'run' | 'results';

@@ -149,13 +149,7 @@ uv run pytest --cov=evaluator --cov-report=html
 
 ### Trajectory Service Tests (`evaluator/test_trajectory_service.py`)
 
-1. **Trajectory Cache** (`TestTrajectoryCache`)
-   - Loading non-existent cache
-   - Loading existing cache
-   - Invalid JSON handling
-   - Saving cache
-
-2. **Commits by Date** (`TestGetCommitsByDate`)
+1. **Commits by Date** (`TestGetCommitsByDate`)
    - Getting commits grouped by date
    - No matching commits
    - No repository data

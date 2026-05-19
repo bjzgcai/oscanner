@@ -121,7 +121,6 @@ export const enUS: Messages = {
   'validation.title': 'Benchmark Validation',
   'validation.nav.dataset': 'Dataset',
   'validation.nav.run': 'Run Validation',
-  'validation.nav.history': 'History',
   'validation.nav.results': 'Results',
 
   // Dataset
@@ -185,23 +184,6 @@ export const enUS: Messages = {
   'validation.settings.enabled': 'Enabled',
   'validation.settings.disabled': 'Disabled',
 
-  // History
-  'validation.history.title': 'Validation History',
-  'validation.history.run_id': 'Run ID',
-  'validation.history.timestamp': 'Timestamp',
-  'validation.history.score': 'Overall Score',
-  'validation.history.status': 'Status',
-  'validation.history.duration': 'Duration',
-  'validation.history.actions': 'Actions',
-  'validation.history.passed': 'Passed',
-  'validation.history.failed': 'Failed',
-  'validation.history.view_details': 'View Details',
-  'validation.history.refresh': 'Refresh',
-  'validation.history.no_runs': 'No validation runs yet',
-  'validation.history.no_runs_desc': 'Run your first validation test to see results here',
-  'validation.history.total_runs': 'runs',
-  'validation.history.load_error': 'Failed to load validation history',
-
   // Results
   'validation.results.title': 'Validation Results',
   'validation.results.overall_score': 'Overall Score',
@@ -217,7 +199,7 @@ export const enUS: Messages = {
   'validation.results.no_details': 'No additional details available',
   'validation.results.download': 'Download Report',
   'validation.results.download_success': 'Report downloaded successfully',
-  'validation.results.back_to_history': 'Back to History',
+  'validation.results.back_to_run': 'Back to Run',
   'validation.results.no_run_selected': 'No Run Selected',
   'validation.results.no_run_selected_desc': 'Select a validation run from the History tab to view detailed results',
   'validation.results.loading': 'Loading validation results...',

@@ -51,8 +51,6 @@ A comprehensive validation framework for the Engineer Capability Assessment Syst
 GET  /api/benchmark/dataset                          # Dataset info & stats
 GET  /api/benchmark/repos?category=X                 # List test repos
 POST /api/benchmark/validate                         # Run validation
-GET  /api/benchmark/validation/runs                  # List past runs
-GET  /api/benchmark/validation/runs/{run_id}         # Get run details
 GET  /api/benchmark/repo/{platform}/{owner}/{repo}/{author}  # Evaluate single repo
 ```
 
@@ -229,8 +227,6 @@ All endpoints return JSON with `{"success": true/false, ...}` format.
 | GET | `/api/benchmark/dataset` | Get dataset stats |
 | GET | `/api/benchmark/repos` | List test repos (filterable) |
 | POST | `/api/benchmark/validate` | Run validation tests |
-| GET | `/api/benchmark/validation/runs` | List past runs |
-| GET | `/api/benchmark/validation/runs/{id}` | Get run details |
 | GET | `/api/benchmark/repo/{platform}/{owner}/{repo}/{author}` | Evaluate single repo |
 
 ## Key Benefits
@@ -309,8 +305,6 @@ Score: 83.5/100
 Duration: 45.2s
 Tests Run: 3
 Tests Passed: 3
-
-Results saved to: ~/.local/share/oscanner/validation_cache/runs/20260123_143022.json
 ```
 
 ## Future Enhancements

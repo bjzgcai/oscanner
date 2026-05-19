@@ -1,46 +1,19 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Alert, Button, Empty, Spin, message } from 'antd';
+import React from 'react';
+import { Card, Row, Col, Statistic, Alert, Button, Empty, message } from 'antd';
 import { DownloadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-import { validationApi } from '../../utils/validationApi';
 import TestResultCard from './TestResultCard';
 import { ValidationRunResult } from './types';
 import { useI18n } from '../I18nContext';
 
 interface ValidationResultsProps {
-  runId: string | null;
-  onBackToHistory?: () => void;
+  result: ValidationRunResult | null;
+  onBack?: () => void;
 }
 
-export default function ValidationResults({ runId, onBackToHistory }: ValidationResultsProps) {
+export default function ValidationResults({ result, onBack }: ValidationResultsProps) {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ValidationRunResult | null>(null);
-
-  useEffect(() => {
-    if (!runId) {
-      setResult(null);
-      return;
-    }
-
-    const loadRunDetails = async () => {
-      setLoading(true);
-      try {
-        const response = await validationApi.getRun(runId);
-        if (response.success) {
-          setResult(response.run);
-        }
-      } catch (err) {
-        message.error(t('validation.results.load_error'));
-        console.error('Failed to load run details:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadRunDetails();
-  }, [runId, t]);
 
   const handleDownload = () => {
     if (!result) return;
@@ -56,7 +29,7 @@ export default function ValidationResults({ runId, onBackToHistory }: Validation
     message.success(t('validation.results.download_success'));
   };
 
-  if (!runId) {
+  if (!result) {
     return (
       <Card>
         <Empty
@@ -65,25 +38,6 @@ export default function ValidationResults({ runId, onBackToHistory }: Validation
         >
           <p style={{ color: '#666' }}>{t('validation.results.no_run_selected_desc')}</p>
         </Empty>
-      </Card>
-    );
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <Spin size="large" />
-          <p style={{ marginTop: 16 }}>{t('validation.results.loading')}</p>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!result) {
-    return (
-      <Card>
-        <Empty description={t('validation.results.not_found')} />
       </Card>
     );
   }
@@ -110,13 +64,13 @@ export default function ValidationResults({ runId, onBackToHistory }: Validation
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>{t('validation.results.title')}: {result.run_id}</span>
             <div>
-              {onBackToHistory && (
+              {onBack && (
                 <Button
                   icon={<ArrowLeftOutlined />}
-                  onClick={onBackToHistory}
+                  onClick={onBack}
                   style={{ marginRight: 8 }}
                 >
-                  {t('validation.results.back_to_history')}
+                  {t('validation.results.back_to_run')}
                 </Button>
               )}
               <Button icon={<DownloadOutlined />} onClick={handleDownload}>

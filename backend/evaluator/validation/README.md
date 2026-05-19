@@ -174,22 +174,10 @@ Response:
 }
 ```
 
-#### List Validation Runs
-
-```bash
-GET /api/benchmark/validation/runs
-```
-
-#### Get Validation Run Details
-
-```bash
-GET /api/benchmark/validation/runs/20260123_143022
-```
-
 #### Evaluate Single Benchmark Repo
 
 ```bash
-GET /api/benchmark/repo/github/torvalds/linux/torvalds?use_cache=true
+GET /api/benchmark/repo/github/torvalds/linux/torvalds
 ```
 
 ### Python API
@@ -262,20 +250,12 @@ This will:
 - Evaluate all 60+ benchmark repos
 - Run all 5 validators
 - Generate detailed report
-- Save results to `~/.local/share/oscanner/validation_cache/runs/`
+- Return the validation result in the response body
 
 ### 4. Review Results
 
-```python
-python evaluator/validation/run_validation.py --list-runs
-python evaluator/validation/run_validation.py --show-run 20260123_143022
-```
-
-Or via API:
-
-```bash
-curl http://localhost:8000/api/benchmark/validation/runs
-```
+Use the response from `POST /api/benchmark/validate`. Oscanner does not persist
+validation run history.
 
 ## Expected Results
 
@@ -332,18 +312,8 @@ TestRepository(
 
 ## Caching
 
-Evaluation results are cached in:
-```
-~/.local/share/oscanner/validation_cache/
-├── github_owner_repo_author.json   # Individual repo evaluations
-└── runs/
-    └── 20260123_143022.json        # Validation run results
-```
-
-To clear cache:
-```bash
-rm -rf ~/.local/share/oscanner/validation_cache/
-```
+Oscanner does not persist validation run history or validation result cache.
+Callers that need history should store validation responses outside Oscanner.
 
 ## Human Validation Study
 

@@ -269,7 +269,7 @@ oscanner dev  # Backend + Dashboard
 
 ### System Architecture
 
-The evaluation system follows this intelligent workflow to minimize API calls and maximize caching:
+The evaluation system reuses extracted repository data to minimize platform API calls while computing evaluations on request:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -283,49 +283,25 @@ The evaluation system follows this intelligent workflow to minimize API calls an
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Backend: Check evaluation cache at                             │
-│  evaluations/cache/{owner}/{repo}/evaluations.json              │
+│  Backend: Check local data at data/{platform}/{owner}/{repo}/   │
 └────────────────────┬────────────────────────────────────────────┘
                      │
          ┌───────────┴───────────┐
          │                       │
-    Cache Hit               Cache Miss
+    Data Exists            Data Missing
          │                       │
-         ▼                       ▼
-    Return cached     ┌──────────────────────────┐
-    author list       │ Check local data at      │
-    instantly ⚡      │ data/{owner}/{repo}/     │
-                      └──────────┬───────────────┘
-                                 │
-                     ┌───────────┴───────────┐
-                     │                       │
-                Data Exists            Data Missing
-                     │                       │
-                     │                       ▼
-                     │          ┌─────────────────────────────┐
-                     │          │ Extract from GitHub using   │
-                     │          │ extract_repo_data_moderate  │
-                     │          │ (1-2 minutes, once per repo)│
-                     │          └──────────┬──────────────────┘
-                     │                     │
-                     └──────────┬──────────┘
+         │                       ▼
+         │          ┌─────────────────────────────┐
+         │          │ Extract from GitHub/Gitee   │
+         │          │ into local repository data  │
+         │          └──────────┬──────────────────┘
+         │                     │
+         └──────────┬──────────┘
                                 │
                                 ▼
                    ┌────────────────────────────┐
                    │ Load all authors from      │
                    │ commit data                │
-                   └────────────┬───────────────┘
-                                │
-                                ▼
-                   ┌────────────────────────────┐
-                   │ Auto-evaluate first author │
-                   │ with AI (DeepSeek V4 Pro)│
-                   └────────────┬───────────────┘
-                                │
-                                ▼
-                   ┌────────────────────────────┐
-                   │ Cache evaluation result    │
-                   │ in evaluations.json        │
                    └────────────┬───────────────┘
                                 │
                                 ▼
@@ -348,20 +324,9 @@ The evaluation system follows this intelligent workflow to minimize API calls an
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Backend: Check if author exists in evaluation cache            │
+│  Backend: Load commits from local extracted repository data      │
 └────────────────────┬────────────────────────────────────────────┘
-                     │
-         ┌───────────┴───────────┐
-         │                       │
-    Cache Hit               Cache Miss
-         │                       │
-         ▼                       ▼
-    Return cached     ┌──────────────────────────┐
-    evaluation        │ Load commits from local  │
-    instantly ⚡      │ data (up to 30 commits)  │
-                      └──────────┬───────────────┘
-                                 │
-                                 ▼
+                     ▼
                       ┌──────────────────────────┐
                       │ Create evaluator with    │
                       │ repository context       │
@@ -373,11 +338,6 @@ The evaluation system follows this intelligent workflow to minimize API calls an
                       │ - Analyze commit diffs   │
                       │ - Read relevant files    │
                       │ - Score 6 dimensions     │
-                      └──────────┬───────────────┘
-                                 │
-                                 ▼
-                      ┌──────────────────────────┐
-                      │ Cache evaluation result  │
                       └──────────┬───────────────┘
                                  │
                                  ▼
@@ -510,22 +470,21 @@ The chunking algorithm seamlessly integrates with incremental sync:
 
 ```
 Initial Evaluation (100 commits):
-  Chunk 1 (commits 1-25)   → Evaluate → Cache result
-  Chunk 2 (commits 26-50)  → Evaluate → Cache result
-  Chunk 3 (commits 51-75)  → Evaluate → Cache result
-  Chunk 4 (commits 76-100) → Evaluate → Cache result
-  → Final evaluation cached
+  Chunk 1 (commits 1-25)   → Evaluate
+  Chunk 2 (commits 26-50)  → Evaluate with Chunk 1 context
+  Chunk 3 (commits 51-75)  → Evaluate with Chunks 1-2 context
+  Chunk 4 (commits 76-100) → Evaluate with Chunks 1-3 context
+  → Final evaluation returned
 
 After 2 weeks (20 new commits):
-  Chunks 1-4 (cached, reused)
-  Chunk 5 (commits 101-120) → Evaluate with Ch1-4 context
-  → Updated final evaluation cached
+  Local repo data sync fetches new commits
+  Relevant chunks are evaluated in the current request
+  → Updated evaluation returned
 ```
 
 **Key Benefits:**
-- **Incremental cost**: Only evaluate new chunk, reuse previous chunks
-- **Token efficiency**: Previous chunks' results summarized, not re-evaluated
-- **Consistent baseline**: Historical evaluation preserved
+- **Token efficiency**: Earlier chunk results are summarized during the request
+- **Consistent baseline**: Previous in-request results guide later chunks
 - **Growth tracking**: Clear comparison between old and new contributions
 
 #### Implementation Example
@@ -533,22 +492,14 @@ After 2 weeks (20 new commits):
 ```python
 class ChunkedLinearEvaluator:
     def evaluate_with_chunking(self, author: str, commits: list):
-        # 1. Load cached chunk evaluations if available
-        cached_chunks = self.load_cached_chunks(author)
+        # Evaluate chunks for the current request and keep summaries in memory.
+        all_chunk_results = []
+        new_commits = commits
 
-        # 2. Determine which commits are new (incremental sync)
-        if cached_chunks:
-            last_evaluated_sha = cached_chunks[-1]['last_commit_sha']
-            new_commits = [c for c in commits if is_after(c, last_evaluated_sha)]
-            all_chunk_results = cached_chunks
-        else:
-            new_commits = commits
-            all_chunk_results = []
-
-        # 3. Chunk new commits
+        # 1. Chunk commits
         new_chunks = self.chunk_commits(new_commits, max_tokens=190000)
 
-        # 4. Evaluate each new chunk linearly
+        # 2. Evaluate each chunk linearly
         accumulated_context = self.summarize_chunks(all_chunk_results)
 
         for chunk_idx, chunk in enumerate(new_chunks):
@@ -558,9 +509,7 @@ class ChunkedLinearEvaluator:
                 chunk_number=len(all_chunk_results) + chunk_idx + 1
             )
 
-            # Cache chunk result
             all_chunk_results.append(chunk_evaluation)
-            self.cache_chunk(author, chunk_evaluation)
 
             # Update accumulated context for next chunk
             accumulated_context = self.update_context(
@@ -568,7 +517,7 @@ class ChunkedLinearEvaluator:
                 chunk_evaluation
             )
 
-        # 5. Synthesize final evaluation from all chunks
+        # 3. Synthesize final evaluation from all chunks
         final_evaluation = self.synthesize_final(all_chunk_results)
 
         return final_evaluation
@@ -764,18 +713,6 @@ Data is stored in XDG-compliant paths: `~/.local/share/oscanner/`
 │               │   └── {filepath}           # Complete filtered repo snapshot at end/latest SHA
 │               └── repo_files_manifest.json # Included/skipped snapshot files
 │
-└── evaluations/                             # Cached evaluations
-    └── {platform}/
-        └── {owner}/
-            └── {repo}/
-                ├── {author}.json            # Author evaluation (default plugin)
-                └── {author}__{plugin_id}.json  # Plugin-specific evaluation
-                                            # {
-                                            #   "evaluation": {...},
-                                            #   "timestamp": "...",
-                                            #   "cached": true,
-                                            #   "plugin_id": "zgc_simple"
-                                            # }
 ```
 
 ### Performance Benefits
@@ -870,28 +807,24 @@ GET /api/llm/status                      # Check LLM configuration status
 ```
 GET /api/authors/{owner}/{repo}          # List commit authors (auto-extracts if needed)
 ```
-Returns all authors with intelligent caching:
-- Checks evaluation cache first
-- If missing, checks local data
-- If missing, extracts from GitHub/Gitee automatically
-- Auto-evaluates first author with default plugin
+Returns all authors from local extracted data, extracting from GitHub/Gitee
+automatically when local data is missing.
 
 ```
-GET /api/gitee/commits/{owner}/{repo}?limit=100&use_cache=true&is_enterprise=false
+GET /api/gitee/commits/{owner}/{repo}?limit=100&is_enterprise=false
 ```
 Fetch Gitee commits directly from API.
 
 **Evaluation Endpoints:**
 ```
-POST /api/evaluate/{owner}/{repo}/{author}?limit=30&plugin_id=zgc_simple&use_cache=true
+POST /api/evaluate/{owner}/{repo}/{author}?limit=30&plugin_id=zgc_simple
 ```
 **Primary evaluation endpoint** with advanced features:
 - Supports **author aliases**: Pass `{"aliases": ["name1", "name2"]}` in request body
-- Evaluates each alias separately (cached results reused)
+- Evaluates each alias separately and merges the results
 - Weighted merge based on commit count (~88% token savings)
 - LLM-synthesized unified analysis across identities
 - Auto-syncs repository with incremental fetch (only new commits)
-- Returns cached result if available
 - Plugin-specific evaluation (`plugin_id` parameter)
 
 ```
@@ -908,7 +841,7 @@ Merge multiple author evaluations with weighted averaging:
 ```
 
 ```
-POST /api/gitee/evaluate/{owner}/{repo}/{contributor}?limit=30&use_cache=true
+POST /api/gitee/evaluate/{owner}/{repo}/{contributor}?limit=30
 ```
 Gitee-specific evaluation endpoint (legacy compatibility).
 
@@ -991,9 +924,6 @@ curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python
 
 # Evaluate with specific plugin
 curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?plugin_id=zgc_ai_native_2026"
-
-# Force fresh evaluation (ignore cache)
-curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?limit=30&use_cache=false"
 
 # Evaluate author with aliases (multi-identity aggregation)
 curl -X POST "http://localhost:8000/api/evaluate/facebook/react/Dan%20Abramov?limit=30" \
@@ -1081,10 +1011,10 @@ The system implements intelligent caching to optimize performance and reduce cos
 - Commits are cached per repository
 - Cache is automatically checked before making API calls
 
-### 2. Evaluation Result Caching
-- LLM evaluation results are cached to avoid redundant API calls
-- Cache is stored in `evaluations/` subdirectories
-- Use `use_cache=false` to force fresh evaluation
+### 2. Evaluation Results
+- LLM evaluation results are computed for each request.
+- Oscanner does not read or write local evaluation-result cache files.
+- Callers that want result reuse should cache above the Oscanner API.
 
 ### 3. Repository Context Caching
 - Full repository context is cached in-memory during server runtime
@@ -1120,14 +1050,6 @@ All data is stored locally following XDG Base Directory specification:
 │   │           └── repo_files_manifest.json
 │   └── gitee/                               # Gitee repositories (same structure)
 │
-├── evaluations/                             # Cached evaluation results
-│   ├── github/
-│   │   └── {owner}/
-│   │       └── {repo}/
-│   │           ├── {author}.json            # Default plugin evaluation
-│   │           └── {author}__zgc_ai_native_2026.json  # Plugin-specific
-│   └── gitee/
-│
 └── .env.local                               # User-specific configuration
 ```
 
@@ -1148,40 +1070,11 @@ This enables **incremental data fetching**:
 - Dramatically reduces API calls and processing time
 - Atomic writes prevent data corruption
 
-### Evaluation Cache Format
+### Evaluation Cache
 
-Evaluation results are cached per author per plugin:
-
-```json
-{
-  "evaluation": {
-    "overall_score": 85,
-    "dimension_scores": {
-      "ai_model_fullstack": 90,
-      "ai_native_architecture": 85,
-      "cloud_native": 80,
-      "collaboration": 88,
-      "intelligent_development": 82,
-      "leadership": 85
-    },
-    "strengths": ["..."],
-    "weaknesses": ["..."],
-    "summary": "...",
-    "commit_count": 45
-  },
-  "timestamp": "2026-01-22T15:20:10Z",
-  "cached": true,
-  "plugin_id": "zgc_simple",
-  "model_used": "deepseek/deepseek-v4-pro"
-}
-```
-
-### Cache Invalidation
-
-Caches are automatically invalidated when:
-- New commits are fetched (sync_state changes)
-- Plugin is updated (different plugin_id)
-- Manual cache clear requested
+Oscanner no longer owns evaluation-result cache invalidation. It computes from
+the current local repository data and returns fresh results. Consumer
+applications may store returned results if they need reuse.
 
 ### Storage Management
 
@@ -1195,12 +1088,8 @@ Caches are automatically invalidated when:
 # Clear all data
 rm -rf ~/.local/share/oscanner/data
 
-# Clear evaluations only (keep extracted data)
-rm -rf ~/.local/share/oscanner/evaluations
-
 # Clear specific repository
 rm -rf ~/.local/share/oscanner/data/github/owner/repo
-rm -rf ~/.local/share/oscanner/evaluations/github/owner/repo
 ```
 
 ## Configuration
@@ -1254,9 +1143,6 @@ Data directory:
 1. `$OSCANNER_DATA_DIR` (if set)
 2. `{OSCANNER_HOME}/data` (default)
 
-Evaluations directory:
-1. `{OSCANNER_HOME}/evaluations` (fixed)
-
 **Example Configuration:**
 
 ```env
@@ -1287,8 +1173,6 @@ LOG_LEVEL=DEBUG
 
 - `max_commits`: Maximum commits to analyze (default varies by evaluator)
 - `max_input_tokens`: Maximum tokens for LLM input (default: 190,000)
-- `use_cache`: Enable/disable caching (default: true)
-- `force_refresh`: Force re-evaluation ignoring cache (default: false)
 
 ### LLM Model Configuration
 
@@ -1460,19 +1344,16 @@ curl -X POST "http://localhost:8000/api/evaluate/owner/repo/author?plugin_id=zgc
 
 ### Full Context Evaluation
 
-The `FullContextCachedEvaluator` provides the most comprehensive evaluation:
+Plugin evaluators compute fresh results from local repository data:
 
 ```python
-from evaluator.full_context_cached_evaluator import FullContextCachedEvaluator
+from evaluator.plugin_registry import load_scan_module
 
-evaluator = FullContextCachedEvaluator(
-    data_dir="data/owner/repo",
-    api_key="your_openrouter_key"
-)
+meta, scan_mod, scan_path = load_scan_module("zgc_simple")
+evaluator = scan_mod.create_commit_evaluator(data_dir="data/github/owner/repo", api_key="your_key")
 
 result = evaluator.evaluate_contributor(
-    contributor_name="Author Name",
-    use_cache=True
+    contributor_name="Author Name"
 )
 ```
 

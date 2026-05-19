@@ -5,23 +5,20 @@ import { Tabs, Card } from 'antd';
 import {
   DatabaseOutlined,
   PlayCircleOutlined,
-  HistoryOutlined,
   BarChartOutlined,
 } from '@ant-design/icons';
 import DatasetOverview from './DatasetOverview';
 import ValidationRunner from './ValidationRunner';
-import ValidationHistory from './ValidationHistory';
 import ValidationResults from './ValidationResults';
-import { ViewMode, LogEntry, TestRepository } from './types';
+import { ViewMode, LogEntry, TestRepository, ValidationRunResult } from './types';
 import { useI18n } from '../I18nContext';
 
 export default function ValidationDashboard() {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<ViewMode>('dataset');
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [currentResult, setCurrentResult] = useState<ValidationRunResult | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
-  const [historyRefresh, setHistoryRefresh] = useState(0);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const appendLog = (entry: LogEntry) => {
@@ -44,20 +41,13 @@ export default function ValidationDashboard() {
     }
   }, [logs, showLogs]);
 
-  const handleValidationComplete = (runId: string) => {
-    setSelectedRunId(runId);
-    setActiveTab('results');
-    setHistoryRefresh((prev) => prev + 1);
-  };
-
-  const handleViewRun = (runId: string) => {
-    setSelectedRunId(runId);
+  const handleValidationComplete = (result: ValidationRunResult) => {
+    setCurrentResult(result);
     setActiveTab('results');
   };
 
-  const handleBackToHistory = () => {
-    setActiveTab('history');
-    setSelectedRunId(null);
+  const handleBackToRun = () => {
+    setActiveTab('run');
   };
 
   const handleViewEvaluation = (repo: TestRepository) => {
@@ -111,18 +101,6 @@ export default function ValidationDashboard() {
       ),
     },
     {
-      key: 'history',
-      label: (
-        <span>
-          <HistoryOutlined />
-          {t('validation.nav.history')}
-        </span>
-      ),
-      children: (
-        <ValidationHistory onViewRun={handleViewRun} refreshTrigger={historyRefresh} />
-      ),
-    },
-    {
       key: 'results',
       label: (
         <span>
@@ -131,7 +109,7 @@ export default function ValidationDashboard() {
         </span>
       ),
       children: (
-        <ValidationResults runId={selectedRunId} onBackToHistory={handleBackToHistory} />
+        <ValidationResults result={currentResult} onBack={handleBackToRun} />
       ),
     },
   ];

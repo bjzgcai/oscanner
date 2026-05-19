@@ -221,8 +221,6 @@ include = ["cli*", "evaluator*", "repos_runner*"]
 ~/.local/share/oscanner/
 ├── data/                       # 提取的仓库数据
 │   └── {platform}/{owner}/{repo}/
-├── evaluations/                # 评估结果缓存
-│   └── {platform}/{owner}/{repo}/
 └── repos/                      # repos_runner 克隆的仓库
     └── {repo_name}/
 ```

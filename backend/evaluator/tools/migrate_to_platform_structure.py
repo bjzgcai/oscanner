@@ -4,18 +4,15 @@ Migrate existing repository data to new platform-aware directory structure
 
 OLD STRUCTURE:
   evaluator/data/{owner}/{repo}/
-  evaluator/evaluations/cache/{owner}/
 
 NEW STRUCTURE:
   evaluator/data/{platform}/{owner}/{repo}/
-  evaluator/evaluations/{platform}/{owner}/{repo}/
 
 This script:
 1. Scans existing data directories
 2. Detects platform from repo_info.json
 3. Copies data to new platform-specific structure
-4. Migrates evaluation cache
-5. Creates backup and provides dry-run mode
+4. Creates backup and provides dry-run mode
 """
 
 import json
@@ -23,7 +20,7 @@ import shutil
 import argparse
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any
 
 
 def detect_platform(repo_info_path: Path) -> str:
@@ -148,78 +145,6 @@ def migrate_repo_data(
     return result
 
 
-def migrate_evaluations(
-    old_eval_root: Path,
-    new_eval_root: Path,
-    repo_platforms: Dict[str, str],  # {owner/repo: platform}
-    dry_run: bool = False
-) -> List[Dict[str, Any]]:
-    """
-    Migrate evaluation cache from old to new structure
-
-    OLD: evaluations/cache/{owner}/{author}.json
-    NEW: evaluations/{platform}/{owner}/{repo}/{author}.json
-
-    Args:
-        old_eval_root: Old evaluation root (evaluations/)
-        new_eval_root: New evaluation root (evaluations/)
-        repo_platforms: Mapping of owner/repo to platform
-        dry_run: If True, only print what would be done
-
-    Returns:
-        List of migration results
-    """
-    results = []
-    old_cache_dir = old_eval_root / "cache"
-
-    if not old_cache_dir.exists():
-        print("  ⚠ No evaluation cache directory found")
-        return results
-
-    print("\nMigrating evaluation cache...")
-
-    for owner_dir in old_cache_dir.iterdir():
-        if not owner_dir.is_dir():
-            continue
-
-        owner = owner_dir.name
-
-        for eval_file in owner_dir.glob("*.json"):
-            author = eval_file.stem
-
-            # Try to determine which repo this evaluation belongs to
-            # This is a limitation: old structure doesn't include repo in path
-            # We'll need to check the evaluation file content or make assumptions
-
-            try:
-                with open(eval_file, 'r', encoding='utf-8') as f:
-                    eval_data = json.load(f)
-
-                # Try to infer repo from evaluation data
-                # This might not always work, so we log warnings
-                print(f"  ⚠ Evaluation for {owner}/{author}: Cannot determine repo from old structure")
-                print(f"    Old path: {eval_file}")
-                print(f"    Suggestion: Manual migration may be needed")
-
-                results.append({
-                    "owner": owner,
-                    "author": author,
-                    "status": "needs_manual_migration",
-                    "old_path": str(eval_file)
-                })
-
-            except Exception as e:
-                print(f"  ✗ Error reading evaluation file {eval_file}: {e}")
-                results.append({
-                    "owner": owner,
-                    "author": author,
-                    "status": "error",
-                    "message": str(e)
-                })
-
-    return results
-
-
 def create_backup(data_dir: Path, backup_dir: Path) -> bool:
     """
     Create backup of data directory
@@ -239,11 +164,6 @@ def create_backup(data_dir: Path, backup_dir: Path) -> bool:
         if (data_dir / "data").exists():
             shutil.copytree(data_dir / "data", backup_dir / "data", dirs_exist_ok=True)
             print(f"  ✓ Backed up data/")
-
-        # Backup evaluations
-        if (data_dir / "evaluations").exists():
-            shutil.copytree(data_dir / "evaluations", backup_dir / "evaluations", dirs_exist_ok=True)
-            print(f"  ✓ Backed up evaluations/")
 
         return True
     except Exception as e:
@@ -279,13 +199,11 @@ def main():
             return
 
     data_dir = data_root / "data"
-    eval_dir = data_root / "evaluations"
 
     print("="*70)
     print("Platform-Aware Directory Structure Migration")
     print("="*70)
     print(f"Data directory: {data_dir}")
-    print(f"Evaluation directory: {eval_dir}")
     print(f"Mode: {'DRY RUN' if args.dry_run else 'LIVE'}")
     print("="*70)
 
@@ -330,17 +248,9 @@ def main():
 
     # Migrate repositories
     results = []
-    repo_platforms = {}  # Track owner/repo -> platform for evaluation migration
-
     for owner, repo, old_dir in old_repos:
         result = migrate_repo_data(old_dir, data_dir, owner, repo, args.dry_run)
         results.append(result)
-
-        if result["status"] == "migrated" or result["status"] == "skipped":
-            repo_platforms[f"{owner}/{repo}"] = result["platform"]
-
-    # Migrate evaluations
-    eval_results = migrate_evaluations(eval_dir, eval_dir, repo_platforms, args.dry_run)
 
     # Summary
     print("\n" + "="*70)
@@ -355,11 +265,6 @@ def main():
     print(f"  Migrated: {migrated}")
     print(f"  Skipped: {skipped}")
     print(f"  Failed: {failed}")
-
-    if eval_results:
-        needs_manual = sum(1 for r in eval_results if r["status"] == "needs_manual_migration")
-        print(f"\nEvaluations:")
-        print(f"  Needs manual migration: {needs_manual}")
 
     # Platform breakdown
     platform_counts = {}
@@ -382,9 +287,6 @@ def main():
         print("  2. Test the application with migrated data")
         print("  3. If everything works, you can remove old directories:")
         print(f"     - Old owner directories in {data_dir}/")
-        print(f"     - Old cache directory: {eval_dir}/cache/")
-        print("\nNote: Evaluation cache migration needs manual attention.")
-        print("  Old evaluations were stored by owner only, new structure requires repo.")
 
 
 if __name__ == "__main__":

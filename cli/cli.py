@@ -84,7 +84,6 @@ def _add_common_env_help(parser: argparse.ArgumentParser) -> None:
         "  OSCANNER_HOME             Base directory for oscanner data/cache\n"
         "  OSCANNER_DATA_DIR         Override data directory\n"
         "  OSCANNER_CACHE_DIR        Override cache directory\n"
-        "  OSCANNER_EVAL_CACHE_DIR   Override evaluation cache directory\n"
     )
 
 def _print_dashboard_instructions() -> None:
@@ -1458,4 +1457,3 @@ def _get_distribution_version() -> str:
         return str(_PACKAGE_FALLBACK_VERSION)
     except Exception:
         return str(_PACKAGE_FALLBACK_VERSION)
-

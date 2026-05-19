@@ -118,7 +118,6 @@ export const zhCN: Messages = {
   'validation.title': '基准验证',
   'validation.nav.dataset': '数据集',
   'validation.nav.run': '运行验证',
-  'validation.nav.history': '历史记录',
   'validation.nav.results': '结果',
 
   // Dataset
@@ -182,23 +181,6 @@ export const zhCN: Messages = {
   'validation.settings.enabled': '已启用',
   'validation.settings.disabled': '已禁用',
 
-  // History
-  'validation.history.title': '验证历史',
-  'validation.history.run_id': '运行ID',
-  'validation.history.timestamp': '时间戳',
-  'validation.history.score': '总分',
-  'validation.history.status': '状态',
-  'validation.history.duration': '耗时',
-  'validation.history.actions': '操作',
-  'validation.history.passed': '通过',
-  'validation.history.failed': '失败',
-  'validation.history.view_details': '查看详情',
-  'validation.history.refresh': '刷新',
-  'validation.history.no_runs': '暂无验证记录',
-  'validation.history.no_runs_desc': '运行您的第一次验证测试，结果将显示在这里',
-  'validation.history.total_runs': '次运行',
-  'validation.history.load_error': '加载验证历史失败',
-
   // Results
   'validation.results.title': '验证结果',
   'validation.results.overall_score': '总分',
@@ -214,7 +196,7 @@ export const zhCN: Messages = {
   'validation.results.no_details': '无其他详细信息',
   'validation.results.download': '下载报告',
   'validation.results.download_success': '报告下载成功',
-  'validation.results.back_to_history': '返回历史记录',
+  'validation.results.back_to_run': '返回运行',
   'validation.results.no_run_selected': '未选择运行',
   'validation.results.no_run_selected_desc': '从历史记录标签页选择一个验证运行以查看详细结果',
   'validation.results.loading': '正在加载验证结果...',

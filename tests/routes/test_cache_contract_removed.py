@@ -1,11 +1,14 @@
 """Regression tests for removing Oscanner-owned cache strategy."""
 
 import inspect
+import argparse
 
 import pytest
 
-from evaluator.routes import data, evaluation, trajectory
+from cli.cli import _add_common_env_help
+from evaluator.routes import benchmark, data, evaluation, trajectory
 from evaluator.schemas.evaluation import EvaluationMetadata
+from evaluator.tools import migrate_to_platform_structure
 from evaluator.validation.validation_runner import ValidationRunner
 
 pytestmark = pytest.mark.anyio
@@ -36,6 +39,66 @@ def test_response_metadata_does_not_advertise_cache_state():
 def test_validation_runner_repository_evaluation_has_no_cache_switch():
     """Validation should evaluate through the supplied evaluator without result reuse."""
     assert "use_cache" not in inspect.signature(ValidationRunner.evaluate_repository).parameters
+
+
+def test_validation_runner_has_no_persistent_run_storage(tmp_path):
+    """Validation runs should be returned to callers, not stored in validation_cache."""
+    runner = ValidationRunner(storage_dir=tmp_path / "validation_cache")
+
+    assert not hasattr(runner, "storage_dir")
+    assert not hasattr(runner, "_save_run_result")
+    assert not hasattr(runner, "list_validation_runs")
+    assert not hasattr(runner, "get_validation_run")
+    assert not (tmp_path / "validation_cache").exists()
+
+
+def test_validation_routes_do_not_expose_saved_run_cache():
+    """Benchmark validation should not expose cached run history endpoints."""
+    route_paths = {
+        getattr(route, "path", "")
+        for route in benchmark.router.routes
+    }
+
+    assert "/api/benchmark/validation/runs" not in route_paths
+    assert "/api/benchmark/validation/runs/{run_id}" not in route_paths
+
+
+def test_frontend_validation_api_does_not_call_saved_run_cache():
+    """Dashboard validation utilities should not call removed run-history APIs."""
+    source = (
+        __import__("pathlib").Path(__file__).resolve().parents[2]
+        / "frontend"
+        / "webapp"
+        / "utils"
+        / "validationApi.ts"
+    ).read_text(encoding="utf-8")
+
+    assert "/api/benchmark/validation/runs" not in source
+    assert "listRuns" not in source
+    assert "getRun" not in source
+
+
+def test_cli_help_does_not_advertise_evaluation_cache_env():
+    """The CLI should not advertise removed evaluation-cache configuration."""
+    parser = argparse.ArgumentParser(prog="oscanner")
+
+    _add_common_env_help(parser)
+
+    assert "OSCANNER_EVAL_CACHE_DIR" not in parser.epilog
+    assert "evaluation cache" not in parser.epilog.lower()
+
+
+def test_platform_migration_backup_ignores_removed_evaluation_cache(tmp_path):
+    """Legacy platform migration should not preserve removed evaluator cache data."""
+    data_root = tmp_path / "oscanner"
+    (data_root / "data" / "owner" / "repo").mkdir(parents=True)
+    (data_root / "evaluations" / "cache").mkdir(parents=True)
+    (data_root / "evaluations" / "cache" / "ada.json").write_text("{}", encoding="utf-8")
+
+    assert migrate_to_platform_structure.create_backup(data_root, tmp_path / "backup")
+
+    assert (tmp_path / "backup" / "data").exists()
+    assert not (tmp_path / "backup" / "evaluations").exists()
 
 
 async def test_evaluate_author_does_not_touch_evaluation_cache(monkeypatch, tmp_path):
