@@ -11,6 +11,7 @@ import GrowthReport from './GrowthReport';
 import LlmConfigModal from './LlmConfigModal';
 import PluginCheckpointRenderer from './PluginCheckpointRenderer';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { parseRepoUrl, validateRepoUrl } from '@/utils/repoUrl.mjs';
 import { TrajectoryData, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
 import { LOCALES } from '../i18n';
 
@@ -54,33 +55,6 @@ export default function TrajectoryAnalysis() {
     
     // Return original message if no specific pattern matches
     return errorMsg;
-  };
-
-  // Validate repo URL (GitHub or Gitee format)
-  const validateRepoUrl = (url: string): boolean => {
-    if (!url.trim()) return false;
-
-    const githubPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/;
-    const giteePattern = /^https?:\/\/(www\.)?gitee\.com\/[\w-]+\/[\w.-]+\/?$/;
-
-    return githubPattern.test(url.trim()) || giteePattern.test(url.trim());
-  };
-
-  // Parse owner and repo from URL
-  const parseRepoUrl = (url: string): { owner: string; repo: string; platform: string } | null => {
-    if (!url.trim()) return null;
-
-    const githubMatch = url.match(/^https?:\/\/(www\.)?github\.com\/([\w-]+)\/([\w.-]+)\/?$/);
-    if (githubMatch) {
-      return { owner: githubMatch[2], repo: githubMatch[3], platform: 'github' };
-    }
-
-    const giteeMatch = url.match(/^https?:\/\/(www\.)?gitee\.com\/([\w-]+)\/([\w.-]+)\/?$/);
-    if (giteeMatch) {
-      return { owner: giteeMatch[2], repo: giteeMatch[3], platform: 'gitee' };
-    }
-
-    return null;
   };
 
   // Update validation state when inputs change

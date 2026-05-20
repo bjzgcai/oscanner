@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, Form, Input, Button, Space, message, Modal } from 'antd';
 import { useUserSettings } from './UserSettingsContext';
 import { useI18n } from './I18nContext';
+import { validateRepoUrl } from '../utils/repoUrl.mjs';
 
 const { TextArea } = Input;
 
@@ -21,34 +22,6 @@ export default function Settings() {
       usernameGroups: userSettings.usernameGroups,
     });
   }, [userSettings, form]);
-
-  // URL validation helper
-  const parseRepoUrl = (input: string): boolean => {
-    const trimmed = input.trim();
-    if (!trimmed) return false;
-
-    const githubPatterns = [
-      /^https?:\/\/(?:www\.)?github\.com\/([^\/]+)\/([^\/\s]+)/i,
-      /^github\.com\/([^\/]+)\/([^\/\s]+)/i,
-      /^git@github\.com:([^\/]+)\/([^\/\s]+)\.git$/i,
-      /^git@github\.com:([^\/]+)\/([^\/\s]+)$/i,
-    ];
-    for (const pattern of githubPatterns) {
-      if (trimmed.match(pattern)) return true;
-    }
-
-    const giteePatterns = [
-      /^https?:\/\/(?:www\.)?gitee\.com\/([^\/]+)\/([^\/\s]+)/i,
-      /^gitee\.com\/([^\/]+)\/([^\/\s]+)/i,
-      /^git@gitee\.com:([^\/]+)\/([^\/\s]+)\.git$/i,
-      /^git@gitee\.com:([^\/]+)\/([^\/\s]+)$/i,
-    ];
-    for (const pattern of giteePatterns) {
-      if (trimmed.match(pattern)) return true;
-    }
-
-    return false;
-  };
 
   const handleSave = async (values: { defaultUsername: string; repoUrls: string; usernameGroups: string }) => {
     setLoading(true);
@@ -68,7 +41,7 @@ export default function Settings() {
 
       // Validate each URL
       for (const url of urlLines) {
-        if (!parseRepoUrl(url)) {
+        if (!validateRepoUrl(url)) {
           message.error(t('settings.validation.invalid_url', { url }));
           setLoading(false);
           return;

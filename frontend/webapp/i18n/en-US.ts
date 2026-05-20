@@ -26,7 +26,7 @@ export const enUS: Messages = {
   // Multi repo / main page
   'multi.repo_urls.label': 'Repository URLs (1-5 URLs, one per line)',
   'multi.repo_urls.placeholder':
-    'Single:\nhttps://gitee.com/owner/repo\n\nMulti:\nhttps://github.com/owner/repo1\nhttps://gitee.com/owner/repo2',
+    'Single:\nhttps://gitee.com/owner/repo/tree/branch\n\nMulti:\nhttps://github.com/owner/repo1\nhttps://gitee.com/owner/repo2',
   'multi.use_test_repo': 'Use test repos',
   'multi.llm_settings': 'LLM Settings',
   'multi.author_aliases.label': 'Author Aliases (optional, comma-separated names for the same person)',
@@ -237,7 +237,7 @@ export const enUS: Messages = {
   'settings.default_username.placeholder': 'e.g., CarterWu',
   'settings.default_username.help': 'Used as default author name for analysis',
   'settings.repo_urls.label': 'Repository URLs (one per line, max 5)',
-  'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner\nhttps://github.com/owner/repo',
+  'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner/tree/branch\nhttps://github.com/owner/repo',
   'settings.repo_urls.help': 'Will be auto-filled when starting analysis',
   'settings.username_groups.label': 'Author Aliases (comma-separated)',
   'settings.username_groups.placeholder': 'e.g., CarterWu, wu-yanbiao, 吴衍标',
@@ -353,7 +353,7 @@ export const enUS: Messages = {
   // Analysis Configuration
   'analysis.config': 'Analysis Configuration',
   'analysis.repo_url': 'Repository URL',
-  'analysis.repo_url.placeholder': 'https://github.com/owner/repo or https://gitee.com/owner/repo',
+  'analysis.repo_url.placeholder': 'https://github.com/owner/repo or https://gitee.com/owner/repo/tree/branch',
   'analysis.repo_url.error': 'Please enter a valid GitHub or Gitee repository URL',
   'analysis.authors.fetching': 'Fetching authors...',
   'analysis.authors.select': 'Select Author(s)',

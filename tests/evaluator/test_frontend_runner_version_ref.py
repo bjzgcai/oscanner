@@ -27,3 +27,20 @@ def test_repository_runner_has_localized_optional_version_ref_placeholder():
     assert "placeholder={t('runner.version_ref.placeholder')}" in runner_source
     assert "'runner.version_ref.placeholder': 'Optional: enter a tag or commit ID. Leave blank to use the latest commit.'" in en_source
     assert "'runner.version_ref.placeholder': '可选：输入 tag 或 commit id；留空则使用最新提交。'" in zh_source
+
+
+def test_repository_runner_uses_shared_tree_url_validation():
+    runner_source = RUNNER_COMPONENT.read_text(encoding="utf-8")
+
+    assert "import { validateRepoUrl } from '../utils/repoUrl.mjs';" in runner_source
+    assert "disabled={!validateRepoUrl(repoUrl)}" in runner_source
+    assert "githubPattern" not in runner_source
+    assert "giteePattern" not in runner_source
+
+
+def test_repo_url_placeholder_mentions_tree_branch_urls():
+    en_source = EN_MESSAGES.read_text(encoding="utf-8")
+    zh_source = ZH_MESSAGES.read_text(encoding="utf-8")
+
+    assert "https://gitee.com/owner/repo/tree/branch" in en_source
+    assert "https://gitee.com/owner/repo/tree/branch" in zh_source

@@ -307,6 +307,102 @@ async def test_group_analyse_code_route_maps_courses_branch_to_tree_url(monkeypa
 
 
 @pytest.mark.anyio
+async def test_group_analyse_code_route_maps_single_courses_branch_to_tree_url(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+
+    captured = {}
+
+    def fake_analyze_group_repositories(**kwargs):
+        captured.update(kwargs)
+        return {
+            "success": True,
+            "results": [
+                {
+                    "success": True,
+                    "id": "s1",
+                    "repo_url": "https://github.com/bjzgcai/oscanner/tree/9ba36e6a104ab1ffe296e0f71cf596bca12b2d6a",
+                    "score": 88,
+                    "checkpoint": {"evaluation": {"scores": {"total": 88}}},
+                },
+            ],
+            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+        }
+
+    monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(trajectory_route, "get_github_token", lambda: "github-token")
+    monkeypatch.setattr(trajectory_route, "resolve_plugin_id", lambda plugin: plugin)
+    monkeypatch.setattr(trajectory_route, "analyze_group_repositories", fake_analyze_group_repositories)
+
+    result = await trajectory_route.group_analyse_code(
+        request_body={
+            "id": "s1",
+            "repo_url": "https://github.com/bjzgcai/oscanner",
+            "repo_branch": "9ba36e6a104ab1ffe296e0f71cf596bca12b2d6a",
+        },
+        plugin="zgc_ai_native_2026",
+        language="zh-CN",
+        max_fetch_workers=4,
+        forced_checker="",
+        worktree_base="build",
+    )
+
+    assert result["success"] is True
+    assert captured["repositories"][0]["repo_url"] == (
+        "https://github.com/bjzgcai/oscanner/tree/9ba36e6a104ab1ffe296e0f71cf596bca12b2d6a"
+    )
+    assert captured["repositories"][0]["repo_branch"] == "9ba36e6a104ab1ffe296e0f71cf596bca12b2d6a"
+
+
+@pytest.mark.anyio
+async def test_group_analyse_code_route_preserves_courses_tree_branch_url(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+
+    tree_url = "https://gitee.com/zgcai/oscanner/tree/feat/update-gitee-ci-pipelines"
+    captured = {}
+
+    def fake_analyze_group_repositories(**kwargs):
+        captured.update(kwargs)
+        return {
+            "success": True,
+            "results": [
+                {
+                    "success": True,
+                    "id": "s1",
+                    "repo_url": tree_url,
+                    "score": 88,
+                    "checkpoint": {"evaluation": {"scores": {"total": 88}}},
+                },
+            ],
+            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+        }
+
+    monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(trajectory_route, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(trajectory_route, "resolve_plugin_id", lambda plugin: plugin)
+    monkeypatch.setattr(trajectory_route, "analyze_group_repositories", fake_analyze_group_repositories)
+
+    result = await trajectory_route.group_analyse_code(
+        request_body={
+            "students": [
+                {
+                    "id": "s1",
+                    "username": "Alice",
+                    "repo_url": tree_url,
+                },
+            ],
+        },
+        plugin="zgc_ai_native_2026",
+        language="zh-CN",
+        max_fetch_workers=4,
+        forced_checker="",
+        worktree_base="build",
+    )
+
+    assert result["success"] is True
+    assert captured["repositories"][0]["repo_url"] == tree_url
+
+
+@pytest.mark.anyio
 async def test_group_analyse_code_route_streams_progress_and_final_result(monkeypatch):
     from evaluator.routes import trajectory as trajectory_route
 

@@ -26,7 +26,7 @@ export const zhCN: Messages = {
   // Multi repo / main page
   'multi.repo_urls.label': '仓库 URLs（1-5 个，每行一个）',
   'multi.repo_urls.placeholder':
-    '单仓：\nhttps://gitee.com/owner/repo\n\n多仓：\nhttps://github.com/owner/repo1\nhttps://gitee.com/owner/repo2',
+    '单仓：\nhttps://gitee.com/owner/repo/tree/branch\n\n多仓：\nhttps://github.com/owner/repo1\nhttps://gitee.com/owner/repo2',
   'multi.use_test_repo': '使用测试仓库',
   'multi.llm_settings': 'LLM 设置',
   'multi.author_aliases.label': '作者别名（可选，同一人的多个名字，逗号分隔）',
@@ -234,7 +234,7 @@ export const zhCN: Messages = {
   'settings.default_username.placeholder': '例如：CarterWu',
   'settings.default_username.help': '用于分析的默认作者名字',
   'settings.repo_urls.label': '仓库 URLs（每行一个，最多 5 个）',
-  'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner\nhttps://github.com/owner/repo',
+  'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner/tree/branch\nhttps://github.com/owner/repo',
   'settings.repo_urls.help': '在开始分析时将自动填充',
   'settings.username_groups.label': '作者别名（逗号分隔）',
   'settings.username_groups.placeholder': '例如：CarterWu, wu-yanbiao, 吴衍标',
@@ -350,7 +350,7 @@ export const zhCN: Messages = {
   // Analysis Configuration
   'analysis.config': '分析配置',
   'analysis.repo_url': '仓库 URL',
-  'analysis.repo_url.placeholder': 'https://github.com/owner/repo 或 https://gitee.com/owner/repo',
+  'analysis.repo_url.placeholder': 'https://github.com/owner/repo 或 https://gitee.com/owner/repo/tree/branch',
   'analysis.repo_url.error': '请输入有效的 GitHub 或 Gitee 仓库 URL',
   'analysis.authors.fetching': '正在获取作者...',
   'analysis.authors.select': '选择作者',

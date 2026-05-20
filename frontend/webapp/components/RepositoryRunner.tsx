@@ -13,6 +13,7 @@ import { useI18n } from './I18nContext';
 import { useAppSettings } from './AppSettingsContext';
 import { LOCALES } from '../i18n';
 import { getRunnerApiBaseUrl } from '../utils/apiBase';
+import { validateRepoUrl } from '../utils/repoUrl.mjs';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -152,16 +153,6 @@ export default function RepositoryRunner() {
   const [step1Output, setStep1Output] = useState<RepoMetadata | null>(null);
   const [step2Output, setStep2Output] = useState<{ overviewPath: string; messages: string[] } | null>(null);
   const [step3Output, setStep3Output] = useState<{ results: TestSummary; messages: string[] } | null>(null);
-
-  // Validate repo URL with stricter regex
-  const validateRepoUrl = (url: string): boolean => {
-    if (!url.trim()) return false;
-    // GitHub: https://github.com/owner/repo or http://github.com/owner/repo
-    const githubPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/;
-    // Gitee: https://gitee.com/owner/repo or http://gitee.com/owner/repo
-    const giteePattern = /^https?:\/\/(www\.)?gitee\.com\/[\w-]+\/[\w.-]+\/?$/;
-    return githubPattern.test(url.trim()) || giteePattern.test(url.trim());
-  };
 
   const featureRequirementsParam = () => featureRequirements.trim();
 

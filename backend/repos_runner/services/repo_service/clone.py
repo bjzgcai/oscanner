@@ -32,6 +32,7 @@ _TRANSIENT_GIT_CLONE_ERRORS = (
     "The requested URL returned error: 504",
 )
 _GIT_CLONE_ATTEMPTS = 3
+_GIT_COMMIT_SHA_RE = re.compile(r"^[0-9a-f]{7,40}$", re.IGNORECASE)
 
 
 @dataclass
@@ -224,7 +225,13 @@ async def clone_repository(
     """
     parsed = parse_repo_url_with_ref(repo_url)
     platform, owner, repo_name = parsed.platform, parsed.owner, parsed.repo
-    checkout_branch = None if sha or tag else (branch or parsed.branch)
+    parsed_ref = parsed.branch
+    checkout_sha = sha or (
+        parsed_ref
+        if not tag and not branch and parsed_ref and _GIT_COMMIT_SHA_RE.fullmatch(parsed_ref)
+        else None
+    )
+    checkout_branch = None if checkout_sha or tag else (branch or parsed_ref)
 
     repos_dir = get_repos_dir()
     clone_path = get_clone_source_dir(
@@ -232,12 +239,23 @@ async def clone_repository(
         platform=platform,
         owner=owner,
         repo=repo_name,
-        sha=sha,
+        sha=checkout_sha,
         tag=tag,
         branch=checkout_branch,
     )
-    storage_key = repo_storage_key(platform, owner, repo_name, sha=sha, tag=tag, branch=checkout_branch)
-    preserved_artifacts = _snapshot_preserved_artifacts(clone_path) if clone_path.exists() else _PreservedArtifacts()
+    storage_key = repo_storage_key(
+        platform,
+        owner,
+        repo_name,
+        sha=checkout_sha,
+        tag=tag,
+        branch=checkout_branch,
+    )
+    preserved_artifacts = (
+        _snapshot_preserved_artifacts(clone_path)
+        if clone_path.exists()
+        else _PreservedArtifacts()
+    )
 
     if clone_path.exists():
         await asyncio.to_thread(shutil.rmtree, clone_path)
@@ -245,9 +263,9 @@ async def clone_repository(
     try:
         def _clone_sync():
             auth_url = _inject_auth_token(parsed.clone_url)
-            if sha:
+            if checkout_sha:
                 try:
-                    _fetch_sha_shallow(auth_url, clone_path, sha, timeout=timeout)
+                    _fetch_sha_shallow(auth_url, clone_path, checkout_sha, timeout=timeout)
                 except (RuntimeError, TimeoutError):
                     if clone_path.exists():
                         shutil.rmtree(clone_path)
@@ -256,7 +274,7 @@ async def clone_repository(
                         timeout=timeout,
                         clone_path=clone_path,
                     )
-                _run_git(["git", "checkout", sha], timeout=timeout, cwd=clone_path)
+                _run_git(["git", "checkout", checkout_sha], timeout=timeout, cwd=clone_path)
             elif tag:
                 _fetch_tag_shallow(auth_url, clone_path, tag, timeout=timeout)
             elif checkout_branch:

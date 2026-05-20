@@ -88,12 +88,19 @@ def _extract_group_repository_items(request_body: Dict[str, Any]) -> List[Dict[s
 
     repo_url = str(request_body.get("repo_url") or "").strip()
     if repo_url:
-        return [{
-            "id": request_body.get("id"),
-            "repo_url": repo_url,
-            "organization": request_body.get("organization"),
-            "pq_id": request_body.get("pq_id"),
-        }]
+        return [
+            _repository_scoped_group_item({
+                "id": request_body.get("id"),
+                "repo_url": repo_url,
+                "organization": request_body.get("organization"),
+                "pq_id": request_body.get("pq_id"),
+                **{
+                    key: request_body.get(key)
+                    for key in _COURSES_BRANCH_KEYS
+                    if key in request_body
+                },
+            })
+        ]
 
     return []
 

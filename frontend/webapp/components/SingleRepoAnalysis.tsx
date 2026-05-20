@@ -8,6 +8,7 @@ import { exportHomePageMD } from '../utils/mdExport';
 import { useAppSettings } from './AppSettingsContext';
 import { useUserSettings } from './UserSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
+import { parseRepoUrl } from '../utils/repoUrl.mjs';
 import { useI18n } from './I18nContext';
 
 // Default to same-origin so the bundled dashboard works when served by the backend.
@@ -85,41 +86,6 @@ export default function SingleRepoAnalysis() {
 
   const generateAvatarUrl = (author: string) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=FFEB00&color=0A0A0A&size=128&bold=true`;
-  };
-
-  const parseRepoUrl = (input: string): { platform: 'github' | 'gitee'; owner: string; repo: string } | null => {
-    const trimmed = input.trim();
-    const githubPatterns = [
-      /^https?:\/\/(?:www\.)?github\.com\/([^\/]+)\/([^\/\s]+)/i,
-      /^github\.com\/([^\/]+)\/([^\/\s]+)/i,
-      /^git@github\.com:([^\/]+)\/([^\/\s]+)\.git$/i,
-      /^git@github\.com:([^\/]+)\/([^\/\s]+)$/i,
-    ];
-    for (const pattern of githubPatterns) {
-      const match = trimmed.match(pattern);
-      if (match) {
-        let repo = match[2];
-        repo = repo.replace(/\.git$/, '');
-        return { platform: 'github', owner: match[1], repo };
-      }
-    }
-
-    const giteePatterns = [
-      /^https?:\/\/(?:www\.)?gitee\.com\/([^\/]+)\/([^\/\s]+)/i,
-      /^gitee\.com\/([^\/]+)\/([^\/\s]+)/i,
-      /^git@gitee\.com:([^\/]+)\/([^\/\s]+)\.git$/i,
-      /^git@gitee\.com:([^\/]+)\/([^\/\s]+)$/i,
-    ];
-    for (const pattern of giteePatterns) {
-      const match = trimmed.match(pattern);
-      if (match) {
-        let repo = match[2];
-        repo = repo.replace(/\.git$/, '');
-        return { platform: 'gitee', owner: match[1], repo };
-      }
-    }
-
-    return null;
   };
 
   const analyzeRepository = async () => {
