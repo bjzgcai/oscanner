@@ -88,6 +88,43 @@ def test_clone_repository_avoids_same_repo_name_collisions(monkeypatch, tmp_path
     assert Path(gitee_result["clone_path"]).exists()
 
 
+def test_clone_repository_retries_transient_git_tls_clone_failure(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+    attempts = 0
+
+    def _flaky_run_git(command, *, timeout, cwd=None):
+        nonlocal attempts
+        if command[:2] == ["git", "clone"]:
+            attempts += 1
+            if attempts == 1:
+                raise RuntimeError(
+                    "git clone failed: fatal: unable to access "
+                    "'https://github.com/org/demo/': GnuTLS recv error (-110): "
+                    "The TLS connection was non-properly terminated."
+                )
+            clone_path = Path(command[-1])
+            clone_path.mkdir(parents=True, exist_ok=True)
+            (clone_path / "README.md").write_text("cloned", encoding="utf-8")
+        return _FakeCompletedProcess()
+
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.get_repos_dir",
+        lambda: repos_dir,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone._inject_auth_token",
+        lambda repo_url: repo_url,
+    )
+    monkeypatch.setattr(clone_module, "_run_git", _flaky_run_git)
+    monkeypatch.setattr(clone_module, "_git_output", _fake_git_output)
+
+    result = asyncio.run(clone_repository("https://github.com/org/demo"))
+
+    assert attempts == 2
+    assert result["repo_name"] == "github/org/demo/default"
+    assert Path(result["clone_path"]).exists()
+
+
 def test_lifecycle_lists_and_deletes_namespaced_repo_keys(monkeypatch, tmp_path):
     repos_dir = tmp_path / "repos"
     source_dir = repos_dir / "github" / "org" / "demo" / "default" / "source"

@@ -22,6 +22,7 @@ from evaluator.services.extraction_service import (
     extract_github_data,
     extract_repo_files_at_commit_via_git,
     fetch_github_commits,
+    _extract_github_data_via_git,
     _write_filtered_repo_snapshot,
 )
 
@@ -123,6 +124,78 @@ class TestGitHubExtraction:
             assert git_commands[2] == ["git", "fetch", "--depth", "1", "--no-tags", "origin", "abcdef1234567890"]
             assert git_commands[3] == ["git", "checkout", "--detach", "abcdef1234567890"]
             mock_write_snapshot.assert_called_once()
+
+    def test_git_fallback_retries_transient_clone_failure(self, temp_data_dir):
+        """Git fallback extraction should retry transient GitHub clone failures."""
+        attempts = 0
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+
+        def fake_run_git(command, cwd=None, timeout=120):
+            nonlocal attempts
+            if command[:2] == ["git", "clone"]:
+                attempts += 1
+                if attempts == 1:
+                    return subprocess.CompletedProcess(
+                        args=command,
+                        returncode=128,
+                        stdout="",
+                        stderr=(
+                            "fatal: unable to access "
+                            "'https://github.com/test_owner/test_repo.git/': "
+                            "GnuTLS recv error (-110): The TLS connection was non-properly terminated."
+                        ),
+                    )
+                Path(command[-1]).mkdir(parents=True, exist_ok=True)
+                return completed
+            if command[:4] == ["git", "rev-parse", "--abbrev-ref", "HEAD"]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="main\n", stderr="")
+            if command[:2] == ["git", "rev-list"]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="abc123\n", stderr="")
+            if command[:3] == ["git", "show", "-s"]:
+                return subprocess.CompletedProcess(
+                    args=command,
+                    returncode=0,
+                    stdout=(
+                        "abc123\n"
+                        "Test Author\n"
+                        "author@example.com\n"
+                        "2026-01-01T00:00:00+00:00\n"
+                        "Test Author\n"
+                        "author@example.com\n"
+                        "2026-01-01T00:00:00+00:00\n"
+                        "Initial commit\n"
+                    ),
+                    stderr="",
+                )
+            if command[:3] == ["git", "show", "--name-status"]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="M\tREADME.md\n", stderr="")
+            if command[:3] == ["git", "show", "--numstat"]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="1\t0\tREADME.md\n", stderr="")
+            if command[:3] == ["git", "show", "--format="]:
+                return subprocess.CompletedProcess(
+                    args=command,
+                    returncode=0,
+                    stdout="diff --git a/README.md b/README.md\n+hello\n",
+                    stderr="",
+                )
+            return completed
+
+        with patch('evaluator.services.extraction_service._run_git', side_effect=fake_run_git), \
+             patch('evaluator.services.extraction_service._inject_git_token', side_effect=lambda url, platform: url), \
+             patch('evaluator.services.extraction_service._write_filtered_repo_snapshot') as mock_snapshot:
+
+            mock_snapshot.return_value = {"included_count": 1, "skipped_count": 0}
+
+            result = _extract_github_data_via_git(
+                "test_owner",
+                "test_repo",
+                temp_data_dir,
+                max_commits=500,
+            )
+
+            assert result is True
+            assert attempts == 2
+            assert (temp_data_dir / "commits_index.json").exists()
 
     def test_extract_github_data_no_token(self, temp_data_dir):
         """Test GitHub extraction without token."""

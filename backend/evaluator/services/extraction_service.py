@@ -23,6 +23,21 @@ from evaluator.utils.data_loader import is_eval_relevant_path
 
 
 DEFAULT_REPO_SNAPSHOT_MAX_FILE_BYTES = 1_000_000
+_GIT_CLONE_ATTEMPTS = 3
+_TRANSIENT_GIT_CLONE_ERRORS = (
+    "GnuTLS recv error",
+    "TLS connection was non-properly terminated",
+    "curl 56",
+    "early EOF",
+    "remote end hung up unexpectedly",
+    "Connection reset by peer",
+    "Operation timed out",
+    "Failed to connect",
+    "Connection timed out",
+    "The requested URL returned error: 502",
+    "The requested URL returned error: 503",
+    "The requested URL returned error: 504",
+)
 
 
 def get_requests_session() -> requests.Session:
@@ -497,6 +512,54 @@ def _mask_url_credentials(text: str) -> str:
         return text or ""
 
 
+def _is_transient_git_clone_error(text: str) -> bool:
+    lowered = (text or "").lower()
+    return any(pattern.lower() in lowered for pattern in _TRANSIENT_GIT_CLONE_ERRORS)
+
+
+def _run_git_clone_with_retries(
+    clone_cmd: List[str],
+    *,
+    clone_dir: Path,
+    timeout: int,
+) -> subprocess.CompletedProcess:
+    last_result: Optional[subprocess.CompletedProcess] = None
+
+    for attempt in range(1, _GIT_CLONE_ATTEMPTS + 1):
+        try:
+            result = _run_git(clone_cmd, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            if attempt >= _GIT_CLONE_ATTEMPTS:
+                raise
+            print(
+                f"⚠ Git fallback clone timed out on attempt "
+                f"{attempt}/{_GIT_CLONE_ATTEMPTS}; retrying"
+            )
+            shutil.rmtree(clone_dir, ignore_errors=True)
+            continue
+
+        if result.returncode == 0:
+            return result
+
+        last_result = result
+        error_text = result.stderr or result.stdout or ""
+        if attempt >= _GIT_CLONE_ATTEMPTS or not _is_transient_git_clone_error(error_text):
+            return result
+
+        print(
+            f"⚠ Git fallback clone transient failure on attempt "
+            f"{attempt}/{_GIT_CLONE_ATTEMPTS}: {_mask_url_credentials(error_text).strip()}"
+        )
+        shutil.rmtree(clone_dir, ignore_errors=True)
+
+    return last_result or subprocess.CompletedProcess(
+        args=clone_cmd,
+        returncode=1,
+        stdout="",
+        stderr="",
+    )
+
+
 def extract_repo_files_at_commit_via_git(
     platform: str,
     owner: str,
@@ -652,9 +715,13 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
             ]
             if max_commits > 0:
                 clone_cmd[4:4] = ["--depth", str(max_commits)]
-            clone_result = _run_git(clone_cmd, timeout=300)
+            clone_result = _run_git_clone_with_retries(
+                clone_cmd,
+                clone_dir=clone_dir,
+                timeout=300,
+            )
             if clone_result.returncode != 0:
-                print(f"✗ Git fallback clone failed: {clone_result.stderr}")
+                print(f"✗ Git fallback clone failed: {_mask_url_credentials(clone_result.stderr)}")
                 return False
 
             branch_result = _run_git(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=clone_dir, timeout=30)

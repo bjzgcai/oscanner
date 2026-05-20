@@ -18,6 +18,20 @@ from .paths import get_clone_source_dir, get_repos_dir, parse_repo_url, repo_sto
 _PRESERVED_FILE_PATTERNS = ("TEST_REPORT*.md", "REPO_OVERVIEW*.md")
 _PRESERVED_DIR_PATTERNS = ("TEST_ARTIFACTS_*",)
 _AUTH_URL_RE = re.compile(r"(https?://)[^/\s'\"@]+@")
+_TRANSIENT_GIT_CLONE_ERRORS = (
+    "GnuTLS recv error",
+    "TLS connection was non-properly terminated",
+    "curl 56",
+    "early EOF",
+    "remote end hung up unexpectedly",
+    "Connection reset by peer",
+    "Operation timed out",
+    "Failed to connect",
+    "The requested URL returned error: 502",
+    "The requested URL returned error: 503",
+    "The requested URL returned error: 504",
+)
+_GIT_CLONE_ATTEMPTS = 3
 
 
 @dataclass
@@ -142,6 +156,28 @@ def _git_output(command: list[str], *, timeout: int, cwd: Path) -> str:
     return _run_git(command, timeout=timeout, cwd=cwd).stdout.strip()
 
 
+def _is_transient_git_clone_error(error: Exception) -> bool:
+    text = str(error)
+    return any(pattern in text for pattern in _TRANSIENT_GIT_CLONE_ERRORS)
+
+
+def _run_git_clone_with_retries(command: list[str], *, timeout: int, clone_path: Path) -> None:
+    last_error: Exception | None = None
+    for attempt in range(1, _GIT_CLONE_ATTEMPTS + 1):
+        try:
+            _run_git(command, timeout=timeout)
+            return
+        except RuntimeError as exc:
+            last_error = exc
+            if attempt >= _GIT_CLONE_ATTEMPTS or not _is_transient_git_clone_error(exc):
+                raise
+            if clone_path.exists():
+                shutil.rmtree(clone_path)
+
+    if last_error is not None:
+        raise last_error
+
+
 async def clone_repository(
     repo_url: str,
     sha: Optional[str] = None,
@@ -181,16 +217,25 @@ async def clone_repository(
         def _clone_sync():
             auth_url = _inject_auth_token(repo_url)
             if sha:
-                _run_git(["git", "clone", auth_url, str(clone_path)], timeout=timeout)
+                _run_git_clone_with_retries(
+                    ["git", "clone", auth_url, str(clone_path)],
+                    timeout=timeout,
+                    clone_path=clone_path,
+                )
                 _run_git(["git", "checkout", sha], timeout=timeout, cwd=clone_path)
             elif tag:
-                _run_git(["git", "clone", auth_url, str(clone_path)], timeout=timeout)
+                _run_git_clone_with_retries(
+                    ["git", "clone", auth_url, str(clone_path)],
+                    timeout=timeout,
+                    clone_path=clone_path,
+                )
                 _run_git(["git", "fetch", "--tags"], timeout=timeout, cwd=clone_path)
                 _run_git(["git", "checkout", f"tags/{tag}"], timeout=timeout, cwd=clone_path)
             else:
-                _run_git(
+                _run_git_clone_with_retries(
                     ["git", "clone", "--depth", "1", "--single-branch", auth_url, str(clone_path)],
                     timeout=timeout,
+                    clone_path=clone_path,
                 )
 
             checked_out_sha = _git_output(
