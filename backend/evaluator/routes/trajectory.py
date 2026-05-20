@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
+import urllib.parse
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 import asyncio
@@ -19,7 +20,7 @@ from evaluator.services import (
 from evaluator.paths import get_platform_data_dir
 from evaluator.services.trajectory_service import ensure_repo_data_synced
 from evaluator.services.trajectory_poll_store import SQLiteTrajectoryPollStore
-from evaluator.utils import parse_repo_url, load_commits_from_local, get_author_from_commit
+from evaluator.utils import parse_repo_url, parse_repo_url_with_ref, load_commits_from_local, get_author_from_commit
 
 router = APIRouter()
 EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME = {"吴衍标"}
@@ -30,12 +31,40 @@ _trajectory_poll_store = SQLiteTrajectoryPollStore()
 _trajectory_poll_store.mark_interrupted_jobs(time.time(), _POLL_INTERRUPTED_MESSAGE)
 
 
+_COURSES_BRANCH_KEYS = ("branch", "repo_branch", "repository_branch", "git_branch", "ref")
+
+
+def _branch_value_from_item(item: Dict[str, Any]) -> Optional[str]:
+    for key in _COURSES_BRANCH_KEYS:
+        value = str(item.get(key) or "").strip()
+        if value:
+            return value
+    return None
+
+
+def _repo_url_with_courses_branch(item: Dict[str, Any]) -> str:
+    repo_url = str(item.get("repo_url") or "").strip()
+    branch = _branch_value_from_item(item)
+    if not repo_url or not branch:
+        return repo_url
+
+    parsed = parse_repo_url_with_ref(repo_url)
+    if not parsed or parsed.branch:
+        return repo_url
+
+    host = "github.com" if parsed.platform == "github" else "gitee.com"
+    encoded_branch = urllib.parse.quote(branch, safe="/._-")
+    return f"https://{host}/{parsed.owner}/{parsed.repo}/tree/{encoded_branch}"
+
+
 def _repository_scoped_group_item(item: Dict[str, Any]) -> Dict[str, Any]:
-    return {
+    scoped = {
         key: value
         for key, value in item.items()
         if key not in {"username", "aliases", "author_aliases"}
     }
+    scoped["repo_url"] = _repo_url_with_courses_branch(scoped)
+    return scoped
 
 
 def _extract_group_repository_items(request_body: Dict[str, Any]) -> List[Dict[str, Any]]:

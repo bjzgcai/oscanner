@@ -19,6 +19,7 @@ import json
 import argparse
 import urllib.request
 import urllib.error
+import urllib.parse
 from pathlib import Path
 
 
@@ -105,6 +106,7 @@ def main():
     parser.add_argument('--token', help='GitHub token (or set GITHUB_TOKEN env var)')
     parser.add_argument('--max-commits', type=int, default=500, help='Max commits (0=all, recommended: 300-500)')
     parser.add_argument('--platform', default='github', help='Platform (github, gitee, gitlab) - default: github')
+    parser.add_argument('--branch', help='Optional branch/ref to extract instead of the default branch')
     parser.add_argument('--skip-file-context', action='store_true',
                         help='Skip current file content downloads after commit extraction')
     args = parser.parse_args()
@@ -144,7 +146,7 @@ def main():
     save_json(out_dir / 'repo_info.json', repo_info)
     print(f'  ✓ Saved repo info (stars: {repo_info.get("stargazers_count", 0)}, platform: {args.platform})')
 
-    default_branch = repo_info.get('default_branch', 'main')
+    default_branch = args.branch or repo_info.get('default_branch', 'main')
 
     # 2. Fetch repository tree structure
     print('\n[2/5] Fetching repository structure...')
@@ -162,6 +164,8 @@ def main():
     # 3. Fetch commits list
     print('\n[3/5] Fetching commits list...')
     commits_url = f'https://api.github.com/repos/{owner}/{repo}/commits'
+    if args.branch:
+        commits_url += f'?sha={urllib.parse.quote(args.branch, safe="")}'
     commits_list = fetch_paginated(commits_url, token, args.max_commits)
 
     print(f'  ✓ Found {len(commits_list)} commits')

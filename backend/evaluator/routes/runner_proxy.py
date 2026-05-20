@@ -103,6 +103,7 @@ class RunAllRequest(BaseModel):
     repo_url: str
     sha: str | None = None
     tag: str | None = None
+    branch: str | None = None
     tag_message: str | None = None
     skip_clone: bool = False
     skip_explore: bool = False
@@ -154,6 +155,7 @@ async def run_all_steps(request: RunAllRequest):
         "repo_url": request.repo_url,
         "sha": request.sha,
         "tag": request.tag,
+        "branch": request.branch,
         "tag_message": request.tag_message,
         "skip_clone": request.skip_clone,
         "skip_explore": request.skip_explore,

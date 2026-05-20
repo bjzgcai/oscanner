@@ -3,7 +3,7 @@
 import pytest
 
 from repos_runner.services.repo_service.clone import _inject_auth_token
-from repos_runner.services.repo_service.paths import parse_repo_url
+from repos_runner.services.repo_service.paths import parse_repo_url, parse_repo_url_with_ref
 
 
 def test_parse_repo_url_accepts_exact_github_hosts():
@@ -16,6 +16,32 @@ def test_parse_repo_url_accepts_exact_github_hosts():
         "github",
         "octocat",
         "hello-world",
+    )
+
+
+def test_parse_repo_url_with_ref_accepts_tree_branch_urls():
+    github = parse_repo_url_with_ref("https://github.com/carterwu/carterwu.github.io/tree/main")
+    assert (github.platform, github.owner, github.repo, github.branch) == (
+        "github",
+        "carterwu",
+        "carterwu.github.io",
+        "main",
+    )
+
+    gitee = parse_repo_url_with_ref(
+        "https://gitee.com/zgcai/oscanner/tree/feat/update-gitee-ci-pipelines"
+    )
+    assert (gitee.platform, gitee.owner, gitee.repo, gitee.branch) == (
+        "gitee",
+        "zgcai",
+        "oscanner",
+        "feat/update-gitee-ci-pipelines",
+    )
+
+    assert parse_repo_url("https://github.com/carterwu/carterwu.github.io/tree/main") == (
+        "github",
+        "carterwu",
+        "carterwu.github.io",
     )
 
 

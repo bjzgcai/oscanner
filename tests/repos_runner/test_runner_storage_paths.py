@@ -57,6 +57,13 @@ def test_clone_source_dir_is_namespaced_by_platform_owner_repo_and_ref(tmp_path)
         repo="demo",
         tag="course/lesson 1",
     ) == repos_dir / "gitee" / "owner-two" / "demo" / "tag-course_lesson_1" / "source"
+    assert get_clone_source_dir(
+        repos_dir,
+        platform="gitee",
+        owner="owner-two",
+        repo="demo",
+        branch="feat/update pipelines",
+    ) == repos_dir / "gitee" / "owner-two" / "demo" / "branch-feat_update_pipelines" / "source"
 
 
 def test_clone_repository_avoids_same_repo_name_collisions(monkeypatch, tmp_path):
@@ -86,6 +93,190 @@ def test_clone_repository_avoids_same_repo_name_collisions(monkeypatch, tmp_path
     )
     assert Path(github_result["clone_path"]).exists()
     assert Path(gitee_result["clone_path"]).exists()
+
+
+def test_clone_repository_uses_tree_branch_url_as_checkout_branch(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+    git_commands = []
+
+    def _record_run_git(command, *, timeout, cwd=None):
+        git_commands.append(command)
+        if command[:2] == ["git", "clone"]:
+            clone_path = Path(command[-1])
+            clone_path.mkdir(parents=True, exist_ok=True)
+            (clone_path / "README.md").write_text("cloned", encoding="utf-8")
+        return _FakeCompletedProcess()
+
+    def _branch_git_output(command, *, timeout, cwd):
+        if command == ["git", "rev-parse", "HEAD"]:
+            return "abc123"
+        if command == ["git", "rev-parse", "--abbrev-ref", "HEAD"]:
+            return "feat/update-gitee-ci-pipelines"
+        raise AssertionError(f"unexpected git output command: {command}")
+
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.get_repos_dir",
+        lambda: repos_dir,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone._inject_auth_token",
+        lambda repo_url: repo_url,
+    )
+    monkeypatch.setattr(clone_module, "_run_git", _record_run_git)
+    monkeypatch.setattr(clone_module, "_git_output", _branch_git_output)
+
+    result = asyncio.run(
+        clone_repository("https://gitee.com/zgcai/oscanner/tree/feat/update-gitee-ci-pipelines")
+    )
+
+    clone_command = git_commands[0]
+    assert clone_command == [
+        "git",
+        "clone",
+        "--depth",
+        "1",
+        "--single-branch",
+        "--branch",
+        "feat/update-gitee-ci-pipelines",
+        "https://gitee.com/zgcai/oscanner.git",
+        str(repos_dir / "gitee" / "zgcai" / "oscanner" / "branch-feat_update-gitee-ci-pipelines" / "source"),
+    ]
+    assert result["repo_name"] == "gitee/zgcai/oscanner/branch-feat_update-gitee-ci-pipelines"
+    assert result["default_branch"] == "feat/update-gitee-ci-pipelines"
+
+
+def test_clone_repository_fetches_tag_shallowly(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+    git_commands = []
+    tag = "v1.2.3"
+
+    def _record_run_git(command, *, timeout, cwd=None):
+        git_commands.append((command, cwd))
+        if command == ["git", "init", str(repos_dir / "github" / "org" / "demo" / "tag-v1.2.3" / "source")]:
+            clone_path = Path(command[-1])
+            clone_path.mkdir(parents=True, exist_ok=True)
+        return _FakeCompletedProcess()
+
+    def _detached_git_output(command, *, timeout, cwd):
+        if command == ["git", "rev-parse", "HEAD"]:
+            return "tagged123"
+        if command == ["git", "rev-parse", "--abbrev-ref", "HEAD"]:
+            return "HEAD"
+        raise AssertionError(f"unexpected git output command: {command}")
+
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.get_repos_dir",
+        lambda: repos_dir,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone._inject_auth_token",
+        lambda repo_url: repo_url,
+    )
+    monkeypatch.setattr(clone_module, "_run_git", _record_run_git)
+    monkeypatch.setattr(clone_module, "_git_output", _detached_git_output)
+
+    result = asyncio.run(clone_repository("https://github.com/org/demo", tag=tag))
+
+    clone_path = repos_dir / "github" / "org" / "demo" / "tag-v1.2.3" / "source"
+    assert git_commands == [
+        (["git", "init", str(clone_path)], None),
+        (["git", "remote", "add", "origin", "https://github.com/org/demo.git"], clone_path),
+        (["git", "fetch", "--depth", "1", "origin", f"refs/tags/{tag}:refs/tags/{tag}"], clone_path),
+        (["git", "checkout", f"tags/{tag}"], clone_path),
+    ]
+    assert result["repo_name"] == "github/org/demo/tag-v1.2.3"
+    assert result["default_branch"] == "detached"
+
+
+def test_clone_repository_fetches_sha_shallowly_before_full_clone(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+    git_commands = []
+    sha = "abcdef1234567890"
+
+    def _record_run_git(command, *, timeout, cwd=None):
+        git_commands.append((command, cwd))
+        if command == ["git", "init", str(repos_dir / "github" / "org" / "demo" / f"sha-{sha}" / "source")]:
+            clone_path = Path(command[-1])
+            clone_path.mkdir(parents=True, exist_ok=True)
+        return _FakeCompletedProcess()
+
+    def _detached_git_output(command, *, timeout, cwd):
+        if command == ["git", "rev-parse", "HEAD"]:
+            return sha
+        if command == ["git", "rev-parse", "--abbrev-ref", "HEAD"]:
+            return "HEAD"
+        raise AssertionError(f"unexpected git output command: {command}")
+
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.get_repos_dir",
+        lambda: repos_dir,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone._inject_auth_token",
+        lambda repo_url: repo_url,
+    )
+    monkeypatch.setattr(clone_module, "_run_git", _record_run_git)
+    monkeypatch.setattr(clone_module, "_git_output", _detached_git_output)
+
+    result = asyncio.run(clone_repository("https://github.com/org/demo", sha=sha))
+
+    clone_path = repos_dir / "github" / "org" / "demo" / f"sha-{sha}" / "source"
+    assert git_commands == [
+        (["git", "init", str(clone_path)], None),
+        (["git", "remote", "add", "origin", "https://github.com/org/demo.git"], clone_path),
+        (["git", "fetch", "--depth", "1", "--no-tags", "origin", sha], clone_path),
+        (["git", "checkout", sha], clone_path),
+    ]
+    assert result["repo_name"] == f"github/org/demo/sha-{sha}"
+    assert result["default_branch"] == "detached"
+
+
+def test_clone_repository_falls_back_to_full_clone_when_shallow_sha_fetch_fails(monkeypatch, tmp_path):
+    repos_dir = tmp_path / "repos"
+    git_commands = []
+    sha = "abcdef1234567890"
+
+    def _record_run_git(command, *, timeout, cwd=None):
+        git_commands.append((command, cwd))
+        clone_path = repos_dir / "github" / "org" / "demo" / f"sha-{sha}" / "source"
+        if command == ["git", "init", str(clone_path)]:
+            clone_path.mkdir(parents=True, exist_ok=True)
+        if command == ["git", "fetch", "--depth", "1", "--no-tags", "origin", sha]:
+            raise RuntimeError("git fetch failed: server does not allow request for unadvertised object")
+        if command[:2] == ["git", "clone"]:
+            Path(command[-1]).mkdir(parents=True, exist_ok=True)
+        return _FakeCompletedProcess()
+
+    def _detached_git_output(command, *, timeout, cwd):
+        if command == ["git", "rev-parse", "HEAD"]:
+            return sha
+        if command == ["git", "rev-parse", "--abbrev-ref", "HEAD"]:
+            return "HEAD"
+        raise AssertionError(f"unexpected git output command: {command}")
+
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone.get_repos_dir",
+        lambda: repos_dir,
+    )
+    monkeypatch.setattr(
+        "repos_runner.services.repo_service.clone._inject_auth_token",
+        lambda repo_url: repo_url,
+    )
+    monkeypatch.setattr(clone_module, "_run_git", _record_run_git)
+    monkeypatch.setattr(clone_module, "_git_output", _detached_git_output)
+
+    result = asyncio.run(clone_repository("https://github.com/org/demo", sha=sha))
+
+    clone_path = repos_dir / "github" / "org" / "demo" / f"sha-{sha}" / "source"
+    assert git_commands == [
+        (["git", "init", str(clone_path)], None),
+        (["git", "remote", "add", "origin", "https://github.com/org/demo.git"], clone_path),
+        (["git", "fetch", "--depth", "1", "--no-tags", "origin", sha], clone_path),
+        (["git", "clone", "https://github.com/org/demo.git", str(clone_path)], None),
+        (["git", "checkout", sha], clone_path),
+    ]
+    assert result["repo_name"] == f"github/org/demo/sha-{sha}"
+    assert result["default_branch"] == "detached"
 
 
 def test_clone_repository_retries_transient_git_tls_clone_failure(monkeypatch, tmp_path):

@@ -71,6 +71,55 @@ async def test_run_all_proxy_forwards_tag_message(monkeypatch):
     assert captured["json"]["pipeline_timeout"] == 123
 
 
+@pytest.mark.anyio
+async def test_run_all_proxy_forwards_courses_branch(monkeypatch):
+    captured = {}
+
+    class _FakeRunnerResponse:
+        status_code = 200
+        text = ""
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def aiter_bytes(self):
+            yield b'data: {"event": "status", "data": {"status": "completed"}}\n\n'
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def stream(self, method, url, json, headers):
+            captured["json"] = json
+            return _FakeRunnerResponse()
+
+    monkeypatch.setattr(runner_proxy.httpx, "AsyncClient", _FakeClient)
+
+    response = await runner_proxy.run_all_steps(
+        runner_proxy.RunAllRequest(
+            repo_url="https://gitee.com/zgcai/oscanner",
+            branch="feat/update-gitee-ci-pipelines",
+            tag_message="course requirements",
+        )
+    )
+
+    async for _chunk in response.body_iterator:
+        pass
+
+    assert captured["json"]["repo_url"] == "https://gitee.com/zgcai/oscanner"
+    assert captured["json"]["branch"] == "feat/update-gitee-ci-pipelines"
+    assert captured["json"]["tag_message"] == "course requirements"
+
+
 def test_runner_proxy_passes_image_artifacts_without_json_decoding(monkeypatch):
     class _FakeRunnerResponse:
         status_code = 200

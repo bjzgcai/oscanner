@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 from evaluator.services import extract_github_data, extract_gitee_data, resolve_plugin_id
 from evaluator.paths import get_platform_data_dir
-from evaluator.utils import parse_repo_url, get_author_from_commit
+from evaluator.utils import parse_repo_url, parse_repo_url_with_ref, get_author_from_commit
 from evaluator.config import DEFAULT_LLM_MODEL
 from evaluator.routes.evaluation import evaluate_author
 
@@ -35,19 +35,27 @@ async def batch_extract_repos(request: dict):
             "data_exists": False
         }
 
-        parsed = parse_repo_url(url)
+        parsed_ref = parse_repo_url_with_ref(url)
+        parsed = (
+            (parsed_ref.platform, parsed_ref.owner, parsed_ref.repo)
+            if parsed_ref
+            else None
+        )
         if not parsed:
             result["message"] = "Invalid repository URL format"
             results.append(result)
             continue
 
         platform, owner, repo = parsed
+        branch = parsed_ref.branch if parsed_ref else None
         result["owner"] = owner
         result["repo"] = repo
         result["platform"] = platform
+        if branch:
+            result["branch"] = branch
 
         # Check if data exists
-        data_dir = get_platform_data_dir(platform, owner, repo)
+        data_dir = get_platform_data_dir(platform, owner, repo, ref=branch)
         commits_dir = data_dir / "commits"
 
         if data_dir.exists() and commits_dir.exists() and list(commits_dir.glob("*.json")):
@@ -60,9 +68,9 @@ async def batch_extract_repos(request: dict):
         # Extract
         try:
             if platform == "github":
-                success = extract_github_data(owner, repo)
+                success = extract_github_data(owner, repo, branch=branch)
             else:
-                success = extract_gitee_data(owner, repo)
+                success = extract_gitee_data(owner, repo, branch=branch)
 
             if success:
                 result["status"] = "extracted"
@@ -509,21 +517,22 @@ async def compare_contributor_across_repos(request: dict):
         owner = repo_info.get("owner")
         repo = repo_info.get("repo")
         repo_platform = repo_info.get("platform", "github")  # Default to github if not specified
+        branch = repo_info.get("branch")
 
         if not owner or not repo:
             continue
 
         try:
             # Check if data exists for this repo
-            data_dir = get_platform_data_dir(repo_platform, owner, repo)
+            data_dir = get_platform_data_dir(repo_platform, owner, repo, ref=branch)
             if not data_dir.exists() or not (data_dir / "commits").exists():
                 # Try to extract data in real-time
                 print(f"⚡ Data not found for {owner}/{repo}, triggering real-time extraction...")
                 try:
                     if repo_platform == "github":
-                        extraction_success = extract_github_data(owner, repo)
+                        extraction_success = extract_github_data(owner, repo, branch=branch)
                     else:
-                        extraction_success = extract_gitee_data(owner, repo)
+                        extraction_success = extract_gitee_data(owner, repo, branch=branch)
 
                     if not extraction_success:
                         failed_repos.append({

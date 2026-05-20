@@ -1,5 +1,7 @@
 import os
+import re
 from pathlib import Path
+from typing import Optional
 
 
 def _xdg_dir(env_key: str, fallback: Path) -> Path:
@@ -34,7 +36,12 @@ def get_data_dir() -> Path:
     return get_home_dir() / "data"
 
 
-def get_platform_data_dir(platform: str, owner: str, repo: str) -> Path:
+def _safe_storage_segment(value: str, *, fallback: str = "default") -> str:
+    segment = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value or "").strip()).strip("._-")
+    return segment or fallback
+
+
+def get_platform_data_dir(platform: str, owner: str, repo: str, ref: Optional[str] = None) -> Path:
     """
     Get platform-specific data directory for a repository.
 
@@ -42,12 +49,16 @@ def get_platform_data_dir(platform: str, owner: str, repo: str) -> Path:
         platform: Platform name (github, gitee, gitlab)
         owner: Repository owner
         repo: Repository name
+        ref: Optional branch/tag/SHA namespace for ref-specific data
 
     Returns:
         Path: data/{platform}/{owner}/{repo}
     """
     base_dir = get_data_dir()
-    return base_dir / platform / owner / repo
+    repo_dir = base_dir / platform / owner / repo
+    if ref:
+        return repo_dir / "refs" / _safe_storage_segment(ref)
+    return repo_dir
 
 
 def ensure_dirs() -> None:
@@ -64,5 +75,3 @@ def ensure_platform_dirs(platform: str, owner: str, repo: str) -> None:
         repo: Repository name
     """
     get_platform_data_dir(platform, owner, repo).mkdir(parents=True, exist_ok=True)
-
-

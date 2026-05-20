@@ -8,11 +8,32 @@ import re
 import json
 import urllib.request
 import urllib.parse
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Tuple, Optional, Dict
 
 
 _SAFE_STORAGE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+@dataclass(frozen=True)
+class RepoUrlParts:
+    platform: str
+    owner: str
+    repo: str
+    branch: Optional[str] = None
+
+    @property
+    def clone_url(self) -> str:
+        return f"https://{self.host}/{self.owner}/{self.repo}.git"
+
+    @property
+    def host(self) -> str:
+        if self.platform == "github":
+            return "github.com"
+        if self.platform == "gitee":
+            return "gitee.com"
+        raise ValueError(f"Unsupported repository platform: {self.platform}")
 
 
 def _xdg_dir(env_key: str, fallback: Path) -> Path:
@@ -49,11 +70,17 @@ def _safe_storage_segment(value: str, *, fallback: str = "default") -> str:
     return segment or fallback
 
 
-def repo_ref_segment(sha: Optional[str] = None, tag: Optional[str] = None) -> str:
+def repo_ref_segment(
+    sha: Optional[str] = None,
+    tag: Optional[str] = None,
+    branch: Optional[str] = None,
+) -> str:
     if sha:
         return f"sha-{_safe_storage_segment(sha)}"
     if tag:
         return f"tag-{_safe_storage_segment(tag)}"
+    if branch:
+        return f"branch-{_safe_storage_segment(branch)}"
     return "default"
 
 
@@ -63,6 +90,7 @@ def repo_storage_key(
     repo: str,
     sha: Optional[str] = None,
     tag: Optional[str] = None,
+    branch: Optional[str] = None,
 ) -> str:
     """Return the opaque runner key for a stored repository checkout."""
     return "/".join(
@@ -70,7 +98,7 @@ def repo_storage_key(
             _safe_storage_segment(platform),
             _safe_storage_segment(owner),
             _safe_storage_segment(repo),
-            repo_ref_segment(sha=sha, tag=tag),
+            repo_ref_segment(sha=sha, tag=tag, branch=branch),
         ]
     )
 
@@ -83,9 +111,10 @@ def get_clone_source_dir(
     repo: str,
     sha: Optional[str] = None,
     tag: Optional[str] = None,
+    branch: Optional[str] = None,
 ) -> Path:
     """Return repos/{platform}/{owner}/{repo}/{ref}/source."""
-    return repos_dir / repo_storage_key(platform, owner, repo, sha=sha, tag=tag) / "source"
+    return repos_dir / repo_storage_key(platform, owner, repo, sha=sha, tag=tag, branch=branch) / "source"
 
 
 def get_clone_source_dir_for_url(
@@ -93,16 +122,19 @@ def get_clone_source_dir_for_url(
     *,
     sha: Optional[str] = None,
     tag: Optional[str] = None,
+    branch: Optional[str] = None,
     repos_dir: Optional[Path] = None,
 ) -> Path:
-    platform, owner, repo = parse_repo_url(repo_url)
+    parsed = parse_repo_url_with_ref(repo_url)
+    effective_branch = branch or (None if sha or tag else parsed.branch)
     return get_clone_source_dir(
         repos_dir or get_repos_dir(),
-        platform=platform,
-        owner=owner,
-        repo=repo,
+        platform=parsed.platform,
+        owner=parsed.owner,
+        repo=parsed.repo,
         sha=sha,
         tag=tag,
+        branch=effective_branch,
     )
 
 
@@ -172,7 +204,7 @@ def _normalize_owner_repo(owner: str, repo: str) -> Tuple[str, str]:
     return owner, repo
 
 
-def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
+def _parse_repo_url_parts(repo_url: str) -> RepoUrlParts:
     """
     Parse repository URL to extract platform, owner, and repo name.
 
@@ -193,7 +225,7 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
             ssh_match.group("owner"),
             ssh_match.group("repo"),
         )
-        return platform, owner, repo_name
+        return RepoUrlParts(platform=platform, owner=owner, repo=repo_name)
 
     if "://" not in candidate:
         candidate = f"https://{candidate}"
@@ -204,12 +236,38 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
     if not platform:
         raise ValueError(f"Unsupported repository URL: {repo_url}")
 
-    path_parts = [part for part in parsed.path.split("/") if part]
-    if len(path_parts) != 2:
+    path_parts = [urllib.parse.unquote(part) for part in parsed.path.split("/") if part]
+    if len(path_parts) < 2:
+        raise ValueError("Repository URL must include owner and repository name")
+    if len(path_parts) > 2 and path_parts[2] != "tree":
         raise ValueError("Repository URL must include owner and repository name")
 
     owner, repo_name = _normalize_owner_repo(path_parts[0], path_parts[1])
-    return platform, owner, repo_name
+    branch = None
+    if len(path_parts) > 2:
+        if len(path_parts) == 3:
+            raise ValueError("Repository tree URL must include a branch name")
+        branch = "/".join(path_parts[3:]).strip("/")
+        if not branch:
+            raise ValueError("Repository tree URL must include a branch name")
+
+    return RepoUrlParts(platform=platform, owner=owner, repo=repo_name, branch=branch)
+
+
+def parse_repo_url_with_ref(repo_url: str) -> RepoUrlParts:
+    """Parse a GitHub/Gitee repo URL, including optional /tree/<branch> refs."""
+    return _parse_repo_url_parts(repo_url)
+
+
+def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
+    """
+    Parse repository URL to extract platform, owner, and repo name.
+
+    Returns:
+        Tuple of (platform, owner, repo_name)
+    """
+    parsed = _parse_repo_url_parts(repo_url)
+    return parsed.platform, parsed.owner, parsed.repo
 
 
 async def fetch_gitee_tag_message(repo_url: str, tag: str) -> Optional[str]:

@@ -17,7 +17,7 @@ from evaluator.schemas import (
     EvaluationSchema,
     PeriodAccumulationState,
 )
-from evaluator.utils import load_commits_from_local, is_commit_by_author
+from evaluator.utils import load_commits_from_local, is_commit_by_author, parse_repo_url_with_ref
 from evaluator.services.evaluation_service import (
     ensure_repo_evaluation_input_within_limit,
     get_or_create_evaluator,
@@ -44,33 +44,24 @@ def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
     Returns:
         Tuple of (platform, owner, repo)
     """
-    import re
+    parsed = parse_repo_url_with_ref(repo_url)
+    if not parsed:
+        raise ValueError(f"Unable to parse repository URL: {repo_url}")
+    return parsed.platform, parsed.owner, parsed.repo
 
-    # GitHub patterns
-    github_patterns = [
-        r'https?://(?:www\.)?github\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$',
-        r'github\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$',
-        r'git@github\.com:([^/]+)/([^/\s]+?)(?:\.git)?$',
-    ]
 
-    for pattern in github_patterns:
-        match = re.match(pattern, repo_url.strip())
-        if match:
-            return ('github', match.group(1), match.group(2))
-
-    # Gitee patterns
-    gitee_patterns = [
-        r'https?://(?:www\.)?gitee\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$',
-        r'gitee\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$',
-        r'git@gitee\.com:([^/]+)/([^/\s]+?)(?:\.git)?$',
-    ]
-
-    for pattern in gitee_patterns:
-        match = re.match(pattern, repo_url.strip())
-        if match:
-            return ('gitee', match.group(1), match.group(2))
-
-    raise ValueError(f"Unable to parse repository URL: {repo_url}")
+def _repo_data_dir_from_url(repo_url: str) -> Tuple[str, str, str, Path]:
+    platform, owner, repo = parse_repo_url(repo_url)
+    parsed_ref = parse_repo_url_with_ref(repo_url)
+    branch = (
+        parsed_ref.branch
+        if parsed_ref
+        and parsed_ref.platform == platform
+        and parsed_ref.owner == owner
+        and parsed_ref.repo == repo
+        else None
+    )
+    return platform, owner, repo, get_platform_data_dir(platform, owner, repo, ref=branch)
 
 
 def ensure_repo_data_synced(
@@ -96,7 +87,16 @@ def ensure_repo_data_synced(
         Exception if extraction fails, with detailed error message
     """
     platform, owner, repo = parse_repo_url(repo_url)
-    data_dir = get_platform_data_dir(platform, owner, repo)
+    parsed_ref = parse_repo_url_with_ref(repo_url)
+    branch = (
+        parsed_ref.branch
+        if parsed_ref
+        and parsed_ref.platform == platform
+        and parsed_ref.owner == owner
+        and parsed_ref.repo == repo
+        else None
+    )
+    data_dir = get_platform_data_dir(platform, owner, repo, ref=branch)
 
     # Check if data already exists
     commits_index = data_dir / "commits_index.json"
@@ -105,7 +105,10 @@ def ensure_repo_data_synced(
     if data_exists and not force_sync:
         print(f"[Trajectory] Found existing data for {platform}/{owner}/{repo}")
         if platform == "gitee":
-            was_synced = sync_gitee_data_incremental(owner, repo, max_commits=max_commits)
+            sync_kwargs = {"max_commits": max_commits}
+            if branch:
+                sync_kwargs["branch"] = branch
+            was_synced = sync_gitee_data_incremental(owner, repo, **sync_kwargs)
             if snapshot_sha:
                 snapshot_synced = extract_repo_files_at_commit_via_git(platform, owner, repo, data_dir, snapshot_sha)
                 was_synced = was_synced or snapshot_synced
@@ -123,9 +126,15 @@ def ensure_repo_data_synced(
 
     try:
         if platform == "github":
-            success = extract_github_data(owner, repo, max_commits=max_commits)
+            extract_kwargs = {"max_commits": max_commits}
+            if branch:
+                extract_kwargs["branch"] = branch
+            success = extract_github_data(owner, repo, **extract_kwargs)
         elif platform == "gitee":
-            success = extract_gitee_data(owner, repo, max_commits=max_commits)
+            extract_kwargs = {"max_commits": max_commits}
+            if branch:
+                extract_kwargs["branch"] = branch
+            success = extract_gitee_data(owner, repo, **extract_kwargs)
         else:
             raise ValueError(f"Unsupported platform: {platform}")
 
@@ -180,8 +189,7 @@ def _normalize_commit_date(commit: Dict[str, Any]) -> str:
 
 
 def _load_all_repo_commits(repo_url: str) -> Tuple[List[Dict[str, Any]], Path]:
-    platform, owner, repo = parse_repo_url(repo_url)
-    data_dir = get_platform_data_dir(platform, owner, repo)
+    _, _, _, data_dir = _repo_data_dir_from_url(repo_url)
     commits = load_commits_from_local(data_dir, limit=None)
     commits.sort(key=_normalize_commit_date, reverse=True)
     return commits, data_dir
@@ -759,8 +767,7 @@ def get_new_commits_from_repos(
 
     for repo_url in repo_urls:
         try:
-            platform, owner, repo = parse_repo_url(repo_url)
-            data_dir = get_platform_data_dir(platform, owner, repo)
+            platform, owner, repo, data_dir = _repo_data_dir_from_url(repo_url)
 
             if not data_dir.exists():
                 print(f"[Trajectory] Warning: No local data for {repo_url}")
@@ -870,9 +877,10 @@ def create_checkpoint_evaluation(
     # Create a temporary "platform" for evaluation
     # Use the first repo URL to determine platform
     if repos_analyzed:
-        platform, owner, repo = parse_repo_url(repos_analyzed[0])
+        platform, owner, repo, eval_data_dir = _repo_data_dir_from_url(repos_analyzed[0])
     else:
         platform, owner, repo = 'github', 'unknown', 'unknown'
+        eval_data_dir = get_platform_data_dir(platform, owner, repo)
 
     # Create evaluator with previous checkpoint context
     # Extract previous scores if available
@@ -886,7 +894,7 @@ def create_checkpoint_evaluation(
 
     # Create evaluator with previous checkpoint scores support
     evaluator = scan_mod.create_commit_evaluator(
-        data_dir=str(get_platform_data_dir(platform, owner, repo)),
+        data_dir=str(eval_data_dir),
         api_key=get_llm_api_key(),
         model=model,
         language=language,
@@ -901,7 +909,7 @@ def create_checkpoint_evaluation(
     print(f"[Trajectory] Evaluating checkpoint {checkpoint_id} with {len(commits)} commits (previous_checkpoint: {previous_checkpoint.checkpoint_id if previous_checkpoint else 'None'})")
     ensure_repo_evaluation_input_within_limit(
         commits=sorted_commits,
-        data_dir=get_platform_data_dir(platform, owner, repo),
+        data_dir=eval_data_dir,
     )
     if progress_callback:
         progress_callback("section", {
@@ -1073,8 +1081,7 @@ def get_commits_by_date(
 
     for repo_url in repo_urls:
         try:
-            platform, owner, repo = parse_repo_url(repo_url)
-            data_dir = get_platform_data_dir(platform, owner, repo)
+            platform, owner, repo, data_dir = _repo_data_dir_from_url(repo_url)
 
             if not data_dir.exists():
                 print(f"[Trajectory] Warning: No local data for {repo_url}")
@@ -1154,8 +1161,7 @@ def get_repo_start_date(
 
     for repo_url in repo_urls:
         try:
-            platform, owner, repo = parse_repo_url(repo_url)
-            data_dir = get_platform_data_dir(platform, owner, repo)
+            platform, owner, repo, data_dir = _repo_data_dir_from_url(repo_url)
 
             if not data_dir.exists():
                 print(f"[Trajectory] Warning: No local data for {repo_url}")

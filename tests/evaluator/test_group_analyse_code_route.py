@@ -255,6 +255,58 @@ async def test_group_analyse_code_route_batches_repos_without_chunk_params(monke
 
 
 @pytest.mark.anyio
+async def test_group_analyse_code_route_maps_courses_branch_to_tree_url(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+
+    captured = {}
+
+    def fake_analyze_group_repositories(**kwargs):
+        captured.update(kwargs)
+        return {
+            "success": True,
+            "results": [
+                {
+                    "success": True,
+                    "id": "s1",
+                    "repo_url": "https://gitee.com/zgcai/oscanner/tree/feat/update-gitee-ci-pipelines",
+                    "score": 88,
+                    "checkpoint": {"evaluation": {"scores": {"total": 88}}},
+                },
+            ],
+            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+        }
+
+    monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(trajectory_route, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(trajectory_route, "resolve_plugin_id", lambda plugin: plugin)
+    monkeypatch.setattr(trajectory_route, "analyze_group_repositories", fake_analyze_group_repositories)
+
+    result = await trajectory_route.group_analyse_code(
+        request_body={
+            "students": [
+                {
+                    "id": "s1",
+                    "username": "Alice",
+                    "repo_url": "https://gitee.com/zgcai/oscanner",
+                    "repo_branch": "feat/update-gitee-ci-pipelines",
+                },
+            ],
+        },
+        plugin="zgc_ai_native_2026",
+        language="zh-CN",
+        max_fetch_workers=4,
+        forced_checker="",
+        worktree_base="build",
+    )
+
+    assert result["success"] is True
+    assert captured["repositories"][0]["repo_url"] == (
+        "https://gitee.com/zgcai/oscanner/tree/feat/update-gitee-ci-pipelines"
+    )
+    assert captured["repositories"][0]["repo_branch"] == "feat/update-gitee-ci-pipelines"
+
+
+@pytest.mark.anyio
 async def test_group_analyse_code_route_streams_progress_and_final_result(monkeypatch):
     from evaluator.routes import trajectory as trajectory_route
 

@@ -215,6 +215,7 @@ def _fetch_gitee_commit_page(
     gitee_token: str,
     page: int,
     per_page: int,
+    branch: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     api_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits"
     params = {
@@ -222,6 +223,8 @@ def _fetch_gitee_commit_page(
         "page": page,
         "per_page": per_page,
     }
+    if branch:
+        params["sha"] = branch
 
     resp = session.get(api_url, params=params, timeout=30, allow_redirects=True)
     if resp.status_code != 200:
@@ -356,6 +359,7 @@ def _write_gitee_file_context(
     files_context: Dict[str, int],
     *,
     max_files: int,
+    branch: Optional[str] = None,
 ) -> int:
     files_dir.mkdir(parents=True, exist_ok=True)
     files_fetched = 0
@@ -364,7 +368,10 @@ def _write_gitee_file_context(
     for filepath, _mention_count in sorted_files:
         file_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/contents/{filepath}"
         try:
-            file_resp = session.get(file_url, params={"access_token": gitee_token}, timeout=30)
+            params = {"access_token": gitee_token}
+            if branch:
+                params["ref"] = branch
+            file_resp = session.get(file_url, params=params, timeout=30)
             if file_resp.status_code != 200:
                 continue
 
@@ -686,7 +693,13 @@ def _parse_git_diff_by_file(diff_text: str) -> Dict[str, str]:
     return patches
 
 
-def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_commits: int = 500) -> bool:
+def _extract_github_data_via_git(
+    owner: str,
+    repo: str,
+    output_dir: Path,
+    max_commits: int = 500,
+    branch: Optional[str] = None,
+) -> bool:
     """
     Fallback extractor that uses git CLI instead of GitHub API.
     Useful when GitHub REST API is unavailable (e.g., rate limit).
@@ -710,11 +723,12 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
                 "clone",
                 "--no-tags",
                 "--single-branch",
-                repo_url,
-                str(clone_dir),
             ]
+            if branch:
+                clone_cmd.extend(["--branch", branch])
             if max_commits > 0:
-                clone_cmd[4:4] = ["--depth", str(max_commits)]
+                clone_cmd.extend(["--depth", str(max_commits)])
+            clone_cmd.extend([repo_url, str(clone_dir)])
             clone_result = _run_git_clone_with_retries(
                 clone_cmd,
                 clone_dir=clone_dir,
@@ -953,9 +967,15 @@ def _extract_github_data_via_git(owner: str, repo: str, output_dir: Path, max_co
         return False
 
 
-def extract_github_data(owner: str, repo: str, max_commits: int = 500, include_file_context: bool = True) -> bool:
+def extract_github_data(
+    owner: str,
+    repo: str,
+    max_commits: int = 500,
+    include_file_context: bool = True,
+    branch: Optional[str] = None,
+) -> bool:
     """Extract GitHub repository data using extraction tool"""
-    output_dir = get_platform_data_dir("github", owner, repo)
+    output_dir = get_platform_data_dir("github", owner, repo, ref=branch)
     try:
         repo_url = f"https://github.com/{owner}/{repo}"
 
@@ -977,6 +997,8 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500, include_f
         ]
         if not include_file_context:
             cmd.append("--skip-file-context")
+        if branch:
+            cmd.extend(["--branch", branch])
 
         cmd_env = os.environ.copy()
         gh_token = get_github_token()
@@ -989,7 +1011,10 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500, include_f
         if result.returncode != 0:
             print(f"✗ Extraction failed: {result.stderr}")
             print("↻ Trying git-based fallback extraction...")
-            return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
+            fallback_kwargs = {"max_commits": max_commits}
+            if branch:
+                fallback_kwargs["branch"] = branch
+            return _extract_github_data_via_git(owner, repo, output_dir, **fallback_kwargs)
 
         print(f"✓ Extraction successful")
         print(result.stdout)
@@ -998,7 +1023,10 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500, include_f
         has_commit_json = commits_dir.exists() and any(commits_dir.glob("*.json"))
         if not has_commit_json:
             print("⚠ API extraction produced no commits, trying git-based fallback...")
-            return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
+            fallback_kwargs = {"max_commits": max_commits}
+            if branch:
+                fallback_kwargs["branch"] = branch
+            return _extract_github_data_via_git(owner, repo, output_dir, **fallback_kwargs)
 
         if include_file_context:
             _try_write_latest_repo_snapshot("github", owner, repo, output_dir)
@@ -1007,13 +1035,19 @@ def extract_github_data(owner: str, repo: str, max_commits: int = 500, include_f
     except subprocess.TimeoutExpired:
         print(f"✗ Extraction timeout after 30 minutes")
         print("↻ Trying git-based fallback extraction...")
-        return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
+        fallback_kwargs = {"max_commits": max_commits}
+        if branch:
+            fallback_kwargs["branch"] = branch
+        return _extract_github_data_via_git(owner, repo, output_dir, **fallback_kwargs)
     except Exception as e:
         print(f"✗ Extraction error: {e}")
         import traceback
         traceback.print_exc()
         print("↻ Trying git-based fallback extraction...")
-        return _extract_github_data_via_git(owner, repo, output_dir, max_commits=max_commits)
+        fallback_kwargs = {"max_commits": max_commits}
+        if branch:
+            fallback_kwargs["branch"] = branch
+        return _extract_github_data_via_git(owner, repo, output_dir, **fallback_kwargs)
 
 
 def fetch_github_commits(owner: str, repo: str, limit: int = 100) -> list:
@@ -1056,7 +1090,12 @@ def fetch_gitee_commits(owner: str, repo: str, limit: int = 100, is_enterprise: 
         raise HTTPException(status_code=500, detail=f"Failed to fetch Gitee commits: {str(e)}")
 
 
-def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -> bool:
+def sync_gitee_data_incremental(
+    owner: str,
+    repo: str,
+    max_commits: int = 500,
+    branch: Optional[str] = None,
+) -> bool:
     """
     Fast Gitee sync for existing local data.
 
@@ -1070,7 +1109,7 @@ def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -
     if not gitee_token:
         raise Exception("Gitee token not configured. Please set GITEE_TOKEN environment variable or configure it via oscanner init.")
 
-    data_dir = get_platform_data_dir("gitee", owner, repo)
+    data_dir = get_platform_data_dir("gitee", owner, repo, ref=branch)
     commits_list_path = data_dir / "commits_list.json"
     commits_index_path = data_dir / "commits_index.json"
     commits_dir = data_dir / "commits"
@@ -1101,7 +1140,7 @@ def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -
     latest_commits: List[Dict[str, Any]] = []
 
     for page in range(1, pages_to_fetch + 1):
-        batch = _fetch_gitee_commit_page(session, owner, repo, gitee_token, page, per_page)
+        batch = _fetch_gitee_commit_page(session, owner, repo, gitee_token, page, per_page, branch=branch)
         if not batch:
             break
         latest_commits.extend(batch)
@@ -1121,7 +1160,7 @@ def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -
         print("[Gitee Incremental] No new commit SHAs found in fetched latest pages")
         if max_commits <= 0 and remote_total is not None and remote_total > local_count:
             print("[Gitee Incremental] Local data appears capped; re-extracting full history")
-            return extract_gitee_data(owner, repo, max_commits=0)
+            return extract_gitee_data(owner, repo, max_commits=0, branch=branch)
         return False
 
     if max_commits > 0:
@@ -1163,6 +1202,7 @@ def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -
         files_dir,
         files_context,
         max_files=100,
+        branch=branch,
     )
 
     _save_json(
@@ -1194,7 +1234,12 @@ def sync_gitee_data_incremental(owner: str, repo: str, max_commits: int = 500) -
     return True
 
 
-def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
+def extract_gitee_data(
+    owner: str,
+    repo: str,
+    max_commits: int = 200,
+    branch: Optional[str] = None,
+) -> bool:
     """
     Extract Gitee repository data into platform-specific directory similar to GitHub extractor.
 
@@ -1215,7 +1260,7 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
         token_preview = f"{gitee_token[:8]}..." if len(gitee_token) > 8 else "***"
         print(f"[Gitee Extraction] Using Gitee token: {token_preview}")
         
-        data_dir = get_platform_data_dir("gitee", owner, repo)
+        data_dir = get_platform_data_dir("gitee", owner, repo, ref=branch)
         data_dir.mkdir(parents=True, exist_ok=True)
         commits_dir = data_dir / "commits"
         commits_dir.mkdir(parents=True, exist_ok=True)
@@ -1233,6 +1278,8 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
                 "page": page,
                 "access_token": gitee_token
             }
+            if branch:
+                params["sha"] = branch
             
             try:
                 print(f"[Gitee] Fetching commits from: {api_url} (page {page})")
@@ -1333,6 +1380,8 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
             # Fetch current file content from Gitee API
             file_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/contents/{filepath}"
             params = {"access_token": gitee_token}
+            if branch:
+                params["ref"] = branch
 
             try:
                 file_resp = session.get(file_url, params=params, timeout=30)
@@ -1381,6 +1430,8 @@ def extract_gitee_data(owner: str, repo: str, max_commits: int = 200) -> bool:
 
         # 4) repo_info.json
         repo_info = {"name": f"{owner}/{repo}", "full_name": f"{owner}/{repo}", "owner": owner, "platform": "gitee"}
+        if branch:
+            repo_info["branch"] = branch
         with open(data_dir / "repo_info.json", "w", encoding="utf-8") as f:
             json.dump(repo_info, f, indent=2, ensure_ascii=False)
 

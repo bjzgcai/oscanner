@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from .paths import get_clone_source_dir, get_repos_dir, parse_repo_url, repo_storage_key
+from .paths import get_clone_source_dir, get_repos_dir, parse_repo_url, parse_repo_url_with_ref, repo_storage_key
 
 _PRESERVED_FILE_PATTERNS = ("TEST_REPORT*.md", "REPO_OVERVIEW*.md")
 _PRESERVED_DIR_PATTERNS = ("TEST_ARTIFACTS_*",)
@@ -178,25 +178,53 @@ def _run_git_clone_with_retries(command: list[str], *, timeout: int, clone_path:
         raise last_error
 
 
+def _init_git_remote(clone_path: Path, auth_url: str, *, timeout: int) -> None:
+    _run_git(["git", "init", str(clone_path)], timeout=timeout)
+    _run_git(["git", "remote", "add", "origin", auth_url], timeout=timeout, cwd=clone_path)
+
+
+def _fetch_tag_shallow(auth_url: str, clone_path: Path, tag: str, *, timeout: int) -> None:
+    _init_git_remote(clone_path, auth_url, timeout=timeout)
+    _run_git(
+        ["git", "fetch", "--depth", "1", "origin", f"refs/tags/{tag}:refs/tags/{tag}"],
+        timeout=timeout,
+        cwd=clone_path,
+    )
+    _run_git(["git", "checkout", f"tags/{tag}"], timeout=timeout, cwd=clone_path)
+
+
+def _fetch_sha_shallow(auth_url: str, clone_path: Path, sha: str, *, timeout: int) -> None:
+    _init_git_remote(clone_path, auth_url, timeout=timeout)
+    _run_git(
+        ["git", "fetch", "--depth", "1", "--no-tags", "origin", sha],
+        timeout=timeout,
+        cwd=clone_path,
+    )
+
+
 async def clone_repository(
     repo_url: str,
     sha: Optional[str] = None,
     tag: Optional[str] = None,
     timeout: int = 300,
+    branch: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Clone a repository (shallow when no SHA/tag, full clone + checkout when SHA or tag given).
+    Clone a repository, using shallow fetches where possible.
 
     Args:
         repo_url: Repository URL to clone
         sha: Optional commit SHA to checkout (takes priority over tag)
         tag: Optional tag to checkout (used only when sha is not provided)
+        branch: Optional branch to checkout (used only when sha/tag are not provided)
         timeout: Seconds allowed per git operation
 
     Returns:
         Dictionary containing repo metadata
     """
-    platform, owner, repo_name = parse_repo_url(repo_url)
+    parsed = parse_repo_url_with_ref(repo_url)
+    platform, owner, repo_name = parsed.platform, parsed.owner, parsed.repo
+    checkout_branch = None if sha or tag else (branch or parsed.branch)
 
     repos_dir = get_repos_dir()
     clone_path = get_clone_source_dir(
@@ -206,8 +234,9 @@ async def clone_repository(
         repo=repo_name,
         sha=sha,
         tag=tag,
+        branch=checkout_branch,
     )
-    storage_key = repo_storage_key(platform, owner, repo_name, sha=sha, tag=tag)
+    storage_key = repo_storage_key(platform, owner, repo_name, sha=sha, tag=tag, branch=checkout_branch)
     preserved_artifacts = _snapshot_preserved_artifacts(clone_path) if clone_path.exists() else _PreservedArtifacts()
 
     if clone_path.exists():
@@ -215,22 +244,37 @@ async def clone_repository(
 
     try:
         def _clone_sync():
-            auth_url = _inject_auth_token(repo_url)
+            auth_url = _inject_auth_token(parsed.clone_url)
             if sha:
-                _run_git_clone_with_retries(
-                    ["git", "clone", auth_url, str(clone_path)],
-                    timeout=timeout,
-                    clone_path=clone_path,
-                )
+                try:
+                    _fetch_sha_shallow(auth_url, clone_path, sha, timeout=timeout)
+                except (RuntimeError, TimeoutError):
+                    if clone_path.exists():
+                        shutil.rmtree(clone_path)
+                    _run_git_clone_with_retries(
+                        ["git", "clone", auth_url, str(clone_path)],
+                        timeout=timeout,
+                        clone_path=clone_path,
+                    )
                 _run_git(["git", "checkout", sha], timeout=timeout, cwd=clone_path)
             elif tag:
+                _fetch_tag_shallow(auth_url, clone_path, tag, timeout=timeout)
+            elif checkout_branch:
                 _run_git_clone_with_retries(
-                    ["git", "clone", auth_url, str(clone_path)],
+                    [
+                        "git",
+                        "clone",
+                        "--depth",
+                        "1",
+                        "--single-branch",
+                        "--branch",
+                        checkout_branch,
+                        auth_url,
+                        str(clone_path),
+                    ],
                     timeout=timeout,
                     clone_path=clone_path,
                 )
-                _run_git(["git", "fetch", "--tags"], timeout=timeout, cwd=clone_path)
-                _run_git(["git", "checkout", f"tags/{tag}"], timeout=timeout, cwd=clone_path)
             else:
                 _run_git_clone_with_retries(
                     ["git", "clone", "--depth", "1", "--single-branch", auth_url, str(clone_path)],
@@ -259,6 +303,7 @@ async def clone_repository(
                 "clone_path": str(clone_path),
                 "platform": platform,
                 "owner": owner,
+                "branch": checkout_branch,
             }
 
         return await asyncio.to_thread(_clone_sync)

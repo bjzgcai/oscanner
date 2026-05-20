@@ -34,6 +34,7 @@ from repos_runner.services.repo_service import (
     get_clone_source_dir_for_url,
     get_repos_dir,
     parse_repo_url,
+    parse_repo_url_with_ref,
     source_dir_from_repo_key,
 )
 from repos_runner.services.repo_service.llm import (
@@ -180,12 +181,10 @@ def _resolve_runner_artifact_path(
 async def clone_repo(request: RepoCloneRequest):
     """Clone a repository and return metadata."""
     try:
-        metadata = await clone_repository(
-            request.repo_url,
-            request.sha,
-            request.tag,
-            timeout=request.clone_timeout,
-        )
+        clone_kwargs = {"timeout": request.clone_timeout}
+        if request.branch:
+            clone_kwargs["branch"] = request.branch
+        metadata = await clone_repository(request.repo_url, request.sha, request.tag, **clone_kwargs)
         return metadata
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -416,6 +415,7 @@ async def run_all_stream(request: RunAllRequest):
                     get_clone_source_dir,
                     get_repos_dir,
                     parse_repo_url,
+                    parse_repo_url_with_ref,
                     repo_storage_key,
                 )
 
@@ -423,7 +423,9 @@ async def run_all_stream(request: RunAllRequest):
 
                 # -- Clone step --
                 if request.skip_clone:
-                    platform, owner, repo_name = parse_repo_url(request.repo_url)
+                    parsed = parse_repo_url_with_ref(request.repo_url)
+                    platform, owner, repo_name = parsed.platform, parsed.owner, parsed.repo
+                    checkout_branch = None if request.sha or request.tag else (request.branch or parsed.branch)
                     clone_path = str(
                         get_clone_source_dir(
                             get_repos_dir(),
@@ -432,6 +434,7 @@ async def run_all_stream(request: RunAllRequest):
                             repo=repo_name,
                             sha=request.sha,
                             tag=request.tag,
+                            branch=checkout_branch,
                         )
                     )
                     await worker_progress_callback(f"Skipping clone, reusing {clone_path}")
@@ -443,17 +446,21 @@ async def run_all_stream(request: RunAllRequest):
                             repo_name,
                             sha=request.sha,
                             tag=request.tag,
+                            branch=checkout_branch,
                         ),
                         "display_name": repo_name,
                     }
                 else:
                     await worker_progress_callback("Cloning repository...")
+                    clone_kwargs = {"timeout": request.clone_timeout}
+                    if request.branch:
+                        clone_kwargs["branch"] = request.branch
                     clone_metadata = await _await_pipeline_step(
                         clone_repository(
                             request.repo_url,
                             request.sha,
                             request.tag,
-                            timeout=request.clone_timeout,
+                            **clone_kwargs,
                         ),
                         deadline=deadline,
                     )
@@ -604,6 +611,7 @@ async def batch_run_stream(request: BatchRunRequest):
             get_clone_source_dir,
             get_repos_dir,
             parse_repo_url,
+            parse_repo_url_with_ref,
             repo_storage_key,
         )
 
@@ -620,7 +628,9 @@ async def batch_run_stream(request: BatchRunRequest):
                     async with runner_queue.acquire(cb):
                         deadline = asyncio.get_running_loop().time() + repo_req.pipeline_timeout
                         if repo_req.skip_clone:
-                            platform, owner, repo_name = parse_repo_url(repo_url)
+                            parsed = parse_repo_url_with_ref(repo_url)
+                            platform, owner, repo_name = parsed.platform, parsed.owner, parsed.repo
+                            checkout_branch = None if repo_req.sha or repo_req.tag else (repo_req.branch or parsed.branch)
                             clone_path = str(
                                 get_clone_source_dir(
                                     get_repos_dir(),
@@ -629,6 +639,7 @@ async def batch_run_stream(request: BatchRunRequest):
                                     repo=repo_name,
                                     sha=repo_req.sha,
                                     tag=repo_req.tag,
+                                    branch=checkout_branch,
                                 )
                             )
                             await cb(f"Skipping clone, reusing {clone_path}")
@@ -640,18 +651,17 @@ async def batch_run_stream(request: BatchRunRequest):
                                     repo_name,
                                     sha=repo_req.sha,
                                     tag=repo_req.tag,
+                                    branch=checkout_branch,
                                 ),
                                 "display_name": repo_name,
                             }
                         else:
                             await cb("Cloning repository...")
+                            clone_kwargs = {"timeout": repo_req.clone_timeout}
+                            if repo_req.branch:
+                                clone_kwargs["branch"] = repo_req.branch
                             clone_metadata = await _await_pipeline_step(
-                                clone_repository(
-                                    repo_url,
-                                    repo_req.sha,
-                                    repo_req.tag,
-                                    timeout=repo_req.clone_timeout,
-                                ),
+                                clone_repository(repo_url, repo_req.sha, repo_req.tag, **clone_kwargs),
                                 deadline=deadline,
                             )
 
@@ -828,7 +838,8 @@ async def get_report(repo_url: str, tag: Optional[str] = None):
     Return the content of TEST_REPORT_{tag}.md (or TEST_REPORT.md) for a cloned repo.
     """
     try:
-        platform, owner, repo_name = parse_repo_url(repo_url)
+        parsed = parse_repo_url_with_ref(repo_url)
+        platform, owner, repo_name = parsed.platform, parsed.owner, parsed.repo
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -839,6 +850,7 @@ async def get_report(repo_url: str, tag: Optional[str] = None):
         owner=owner,
         repo=repo_name,
         tag=tag,
+        branch=None if tag else parsed.branch,
     )
     legacy_clone_dir = repos_dir / repo_name
     if not clone_dir.exists() and legacy_clone_dir.exists():

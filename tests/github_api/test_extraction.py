@@ -25,6 +25,7 @@ from evaluator.services.extraction_service import (
     _extract_github_data_via_git,
     _write_filtered_repo_snapshot,
 )
+from evaluator.utils.repo_parser import parse_repo_url_with_ref
 
 
 class TestGitHubExtraction:
@@ -124,6 +125,90 @@ class TestGitHubExtraction:
             assert git_commands[2] == ["git", "fetch", "--depth", "1", "--no-tags", "origin", "abcdef1234567890"]
             assert git_commands[3] == ["git", "checkout", "--detach", "abcdef1234567890"]
             mock_write_snapshot.assert_called_once()
+
+    def test_parse_repo_url_with_ref_accepts_tree_branch_urls(self):
+        github = parse_repo_url_with_ref("https://github.com/carterwu/carterwu.github.io/tree/main")
+        assert (github.platform, github.owner, github.repo, github.branch) == (
+            "github",
+            "carterwu",
+            "carterwu.github.io",
+            "main",
+        )
+
+        gitee = parse_repo_url_with_ref(
+            "https://gitee.com/zgcai/oscanner/tree/feat/update-gitee-ci-pipelines"
+        )
+        assert (gitee.platform, gitee.owner, gitee.repo, gitee.branch) == (
+            "gitee",
+            "zgcai",
+            "oscanner",
+            "feat/update-gitee-ci-pipelines",
+        )
+
+    def test_git_fallback_extraction_clones_requested_branch(self, temp_data_dir):
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+        clone_commands = []
+
+        def fake_run_git(command, cwd=None, timeout=120):
+            if command[:2] == ["git", "clone"]:
+                clone_commands.append(command)
+                Path(command[-1]).mkdir(parents=True, exist_ok=True)
+                return completed
+            if command[:4] == ["git", "rev-parse", "--abbrev-ref", "HEAD"]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="feature/demo\n", stderr="")
+            if command[:2] == ["git", "rev-list"]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="abc123\n", stderr="")
+            if command[:3] == ["git", "show", "-s"]:
+                return subprocess.CompletedProcess(
+                    args=command,
+                    returncode=0,
+                    stdout=(
+                        "abc123\n"
+                        "Test Author\n"
+                        "author@example.com\n"
+                        "2026-01-01T00:00:00+00:00\n"
+                        "Test Author\n"
+                        "author@example.com\n"
+                        "2026-01-01T00:00:00+00:00\n"
+                        "Initial commit\n"
+                    ),
+                    stderr="",
+                )
+            if command[:3] == ["git", "show", "--name-status"]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="M\tREADME.md\n", stderr="")
+            if command[:3] == ["git", "show", "--numstat"]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="1\t0\tREADME.md\n", stderr="")
+            if command[:3] == ["git", "show", "--format="]:
+                return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
+            return completed
+
+        with patch('evaluator.services.extraction_service._run_git', side_effect=fake_run_git), \
+             patch('evaluator.services.extraction_service._inject_git_token', side_effect=lambda url, platform: url), \
+             patch('evaluator.services.extraction_service._write_filtered_repo_snapshot') as mock_snapshot:
+
+            mock_snapshot.return_value = {"included_count": 1, "skipped_count": 0}
+
+            result = _extract_github_data_via_git(
+                "test_owner",
+                "test_repo",
+                temp_data_dir,
+                max_commits=500,
+                branch="feature/demo",
+            )
+
+            assert result is True
+            assert clone_commands[0] == [
+                "git",
+                "clone",
+                "--no-tags",
+                "--single-branch",
+                "--branch",
+                "feature/demo",
+                "--depth",
+                "500",
+                "https://github.com/test_owner/test_repo.git",
+                str(Path(clone_commands[0][-1])),
+            ]
 
     def test_git_fallback_retries_transient_clone_failure(self, temp_data_dir):
         """Git fallback extraction should retry transient GitHub clone failures."""

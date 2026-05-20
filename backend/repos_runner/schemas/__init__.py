@@ -20,6 +20,7 @@ class RepoCloneRequest(BaseModel):
     repo_url: str
     sha: Optional[str] = None  # Optional SHA to checkout after clone
     tag: Optional[str] = None  # Optional tag to checkout after clone (ignored if sha is set)
+    branch: Optional[str] = None  # Optional branch to checkout (ignored if sha/tag are set)
     clone_timeout: int = Field(default=300, gt=0)  # Seconds allowed for git clone/checkout
 
 
@@ -28,6 +29,7 @@ class RunAllRequest(BaseModel):
     repo_url: str
     sha: Optional[str] = None
     tag: Optional[str] = None  # Optional tag to checkout (ignored if sha is set)
+    branch: Optional[str] = None  # Optional branch to checkout (ignored if sha/tag are set)
     tag_message: Optional[str] = None  # Merged feature requirements supplied by Courses
     skip_clone: bool = False    # Reuse existing clone
     skip_explore: bool = False  # Reuse existing REPO_OVERVIEW.md
