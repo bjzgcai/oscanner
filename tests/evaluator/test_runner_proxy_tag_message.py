@@ -1,11 +1,14 @@
 """Tests for forwarding Courses feature requirements through evaluator proxy."""
 
+import asyncio
 import json
 
 import pytest
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
+from evaluator.services.trajectory_poll_store import SQLiteTrajectoryPollStore
 from evaluator.routes import runner_proxy
 
 
@@ -158,3 +161,56 @@ def test_runner_proxy_streams_explore_sse_without_buffering(monkeypatch):
     assert captured["url"] == "http://localhost:8001/api/runner/explore/?clone_path=%2Ftmp%2Frepo"
     assert b'"message": "started"' in response.content
     assert b'"overview_path": "/tmp/REPO_OVERVIEW.md"' in response.content
+
+
+@pytest.mark.anyio
+async def test_run_all_poll_endpoint_persists_runner_events(monkeypatch, tmp_path):
+    store = SQLiteTrajectoryPollStore(db_path=tmp_path / "runner-poll.sqlite3")
+    monkeypatch.setattr(runner_proxy, "_runner_poll_store", store)
+
+    async def fake_run_all_steps(_request):
+        async def body():
+            yield b'data: {"event":"progress","data":{"message":"Cloning repository"}}\n\n'
+            yield (
+                b'data: {"event":"status","data":{"status":"completed",'
+                b'"results":{"passed":1,"failed":0,"total":1,"score":100}}}\n\n'
+            )
+
+        return StreamingResponse(body(), media_type="text/event-stream")
+
+    monkeypatch.setattr(runner_proxy, "run_all_steps", fake_run_all_steps)
+
+    start_response = await runner_proxy.start_run_all_poll(
+        runner_proxy.RunAllRequest(repo_url="https://github.com/org/repo")
+    )
+    start_payload = json.loads(start_response.body)
+    job_id = start_payload["job_id"]
+
+    status = None
+    for _ in range(20):
+        await asyncio.sleep(0.01)
+        status_response = await runner_proxy.get_run_all_poll(job_id, cursor=0)
+        status = json.loads(status_response.body)
+        if status["done"]:
+            break
+
+    assert start_payload["poll_url"] == f"/api/runner/run-all_poll/{job_id}"
+    assert status["done"] is True
+    assert status["events"] == [
+        {
+            "id": 0,
+            "event": "message",
+            "data": {"event": "progress", "data": {"message": "Cloning repository"}},
+        },
+        {
+            "id": 1,
+            "event": "message",
+            "data": {
+                "event": "status",
+                "data": {
+                    "status": "completed",
+                    "results": {"passed": 1, "failed": 0, "total": 1, "score": 100},
+                },
+            },
+        },
+    ]

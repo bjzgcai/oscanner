@@ -3,9 +3,11 @@
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 import asyncio
 import json
+import time
+import uuid
 
 from evaluator.config import DEFAULT_LLM_MODEL, get_llm_api_key, get_github_token, get_gitee_token
 from evaluator.schemas import TrajectoryResponse
@@ -16,12 +18,16 @@ from evaluator.services import (
 )
 from evaluator.paths import get_platform_data_dir
 from evaluator.services.trajectory_service import ensure_repo_data_synced
+from evaluator.services.trajectory_poll_store import SQLiteTrajectoryPollStore
 from evaluator.utils import parse_repo_url, load_commits_from_local, get_author_from_commit
 
 router = APIRouter()
 EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME = {"吴衍标"}
 ONE_OFF_PRIMARY_MODEL = "deepseek/deepseek-v4-pro"
 ONE_OFF_PRIMARY_MODELS = (ONE_OFF_PRIMARY_MODEL,)
+_POLL_INTERRUPTED_MESSAGE = "Analysis job interrupted by server restart. Please start a new analysis."
+_trajectory_poll_store = SQLiteTrajectoryPollStore()
+_trajectory_poll_store.mark_interrupted_jobs(time.time(), _POLL_INTERRUPTED_MESSAGE)
 
 
 def _repository_scoped_group_item(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -95,6 +101,44 @@ def _check_platform_tokens_for_repos(repo_urls: List[str]) -> None:
 def format_sse_event(event: str, data: Dict[str, Any]) -> str:
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     return f"event: {event}\ndata: {payload}\n\n"
+
+
+def _parse_sse_frame(frame: str) -> tuple[str, Any] | None:
+    event = "message"
+    data_lines: List[str] = []
+
+    for line in frame.splitlines():
+        if not line or line.startswith(":"):
+            continue
+        if line.startswith("event:"):
+            event = line[6:].strip() or "message"
+            continue
+        if line.startswith("data:"):
+            data_lines.append(line[5:].lstrip())
+
+    if not data_lines:
+        return None
+
+    raw_data = "\n".join(data_lines)
+    try:
+        data: Any = json.loads(raw_data)
+    except json.JSONDecodeError:
+        data = raw_data
+    return event, data
+
+
+def _parse_sse_buffer(buffer: str) -> tuple[List[tuple[str, Any]], str]:
+    normalized = buffer.replace("\r\n", "\n")
+    frames = normalized.split("\n\n")
+    remaining = frames.pop() or ""
+    events = [
+        parsed
+        for frame in frames
+        if frame.strip()
+        for parsed in [_parse_sse_frame(frame)]
+        if parsed is not None
+    ]
+    return events, remaining
 
 
 def _wants_sse(request: Request | None) -> bool:
@@ -1248,3 +1292,110 @@ async def analyze_trajectory_one_off_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+async def _run_one_off_poll_job(
+    job_id: str,
+    request_body: Dict[str, Any],
+    plugin: str,
+    model: str,
+    language: str,
+    forced_checker: str,
+    worktree_base: str,
+    checkpoint_strategy: str,
+    start_sha: str,
+    end_sha: str,
+) -> None:
+    buffer = ""
+    try:
+        response = await analyze_trajectory_one_off_stream(
+            request_body=request_body,
+            plugin=plugin,
+            model=model,
+            language=language,
+            forced_checker=forced_checker,
+            worktree_base=worktree_base,
+            checkpoint_strategy=checkpoint_strategy,
+            start_sha=start_sha,
+            end_sha=end_sha,
+        )
+
+        async for chunk in response.body_iterator:
+            text = (
+                chunk.decode("utf-8", errors="replace")
+                if isinstance(chunk, bytes)
+                else str(chunk)
+            )
+            buffer += text
+            events, buffer = _parse_sse_buffer(buffer)
+            for event, data in events:
+                _trajectory_poll_store.append_event(job_id, event, data)
+
+        if buffer.strip():
+            events, _ = _parse_sse_buffer(f"{buffer}\n\n")
+            for event, data in events:
+                _trajectory_poll_store.append_event(job_id, event, data)
+    except Exception as exc:
+        message = f"Trajectory analysis poll job failed: {exc}"
+        _trajectory_poll_store.append_event(job_id, "error", {"message": message})
+        _trajectory_poll_store.finish_job(job_id, error=message)
+        return
+
+    _trajectory_poll_store.finish_job(job_id)
+
+
+@router.post("/api/trajectory/analyze_one_off_poll")
+async def start_trajectory_analyze_one_off_poll(
+    request_body: Dict[str, Any],
+    plugin: str = Query("zgc_ai_native_2026"),
+    model: str = Query(DEFAULT_LLM_MODEL),
+    language: str = Query("zh-CN"),
+    forced_checker: str = Query(""),
+    worktree_base: str = Query("build"),
+    checkpoint_strategy: str = Query("none"),
+    start_sha: str = Query(""),
+    end_sha: str = Query(""),
+) -> JSONResponse:
+    """Start a durable one-off trajectory analysis job and return its poll URL."""
+    if not isinstance(request_body, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object")
+
+    _trajectory_poll_store.cleanup()
+    job_id = uuid.uuid4().hex
+    _trajectory_poll_store.create_job(job_id)
+    asyncio.create_task(
+        _run_one_off_poll_job(
+            job_id=job_id,
+            request_body=request_body,
+            plugin=plugin,
+            model=model,
+            language=language,
+            forced_checker=forced_checker,
+            worktree_base=worktree_base,
+            checkpoint_strategy=checkpoint_strategy,
+            start_sha=start_sha,
+            end_sha=end_sha,
+        )
+    )
+
+    return JSONResponse(
+        {
+            "job_id": job_id,
+            "poll_url": f"/api/trajectory/analyze_one_off_poll/{job_id}",
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.get("/api/trajectory/analyze_one_off_poll/{job_id}")
+async def get_trajectory_analyze_one_off_poll(
+    job_id: str,
+    cursor: int = Query(0, ge=0),
+) -> JSONResponse:
+    """Return stored events for a durable one-off trajectory analysis job."""
+    _trajectory_poll_store.cleanup()
+    status = _trajectory_poll_store.get_job(job_id, cursor=cursor)
+    if status is None:
+        raise HTTPException(status_code=404, detail="Analysis job not found")
+
+    return JSONResponse(status, headers={"Cache-Control": "no-store"})

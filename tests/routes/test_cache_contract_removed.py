@@ -25,6 +25,8 @@ def test_public_evaluator_routes_do_not_expose_use_cache():
         trajectory.analyze_trajectory_stream,
         trajectory.analyze_trajectory_one_off,
         trajectory.analyze_trajectory_one_off_stream,
+        trajectory.start_trajectory_analyze_one_off_poll,
+        trajectory.get_trajectory_analyze_one_off_poll,
     ]
 
     for callable_obj in public_callables:
