@@ -150,6 +150,26 @@ def _parse_test_output_with_regex(output: str) -> Optional[Dict[str, int]]:
         passed, failed = int(m.group(1)), int(m.group(2))
         return {"passed": passed, "failed": failed, "total": passed + failed}
 
+    # CTest: "50% tests passed, 1 tests failed out of 2"
+    m = re.search(r"\b(\d+)%\s+tests\s+passed,\s+(\d+)\s+tests?\s+failed\s+out\s+of\s+(\d+)", output)
+    if m:
+        failed, total = int(m.group(2)), int(m.group(3))
+        return {"passed": total - failed, "failed": failed, "total": total}
+
+    # CTest all-passed: "100% tests passed, 0 tests failed out of 4"
+    m = re.search(r"\b100%\s+tests\s+passed,\s+0\s+tests?\s+failed\s+out\s+of\s+(\d+)", output)
+    if m:
+        total = int(m.group(1))
+        return {"passed": total, "failed": 0, "total": total}
+
+    # GoogleTest: "[  PASSED  ] N tests." plus optional "[  FAILED  ] M tests"
+    passed_match = re.search(r"\[\s+PASSED\s+\]\s+(\d+)\s+tests?", output)
+    failed_match = re.search(r"\[\s+FAILED\s+\]\s+(\d+)\s+tests?", output)
+    if passed_match or failed_match:
+        passed = int(passed_match.group(1)) if passed_match else 0
+        failed = int(failed_match.group(1)) if failed_match else 0
+        return {"passed": passed, "failed": failed, "total": passed + failed}
+
     # Maven surefire: "Tests run: N, Failures: N, Errors: N"
     m = re.search(r"Tests run:\s*(\d+),\s*Failures:\s*(\d+),\s*Errors:\s*(\d+)", output)
     if m:

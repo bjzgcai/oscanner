@@ -1757,11 +1757,15 @@ class CommitEvaluatorModerate:
         root_candidates: Dict[str, Tuple[str, ...]] = {
             "python": ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "tox.ini", "pytest.ini"),
             "node": ("package.json", "tsconfig.json", "jsconfig.json", "vite.config.ts", "vite.config.js", "next.config.js", "next.config.mjs"),
+            "java": ("pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts", "gradlew"),
+            "cpp": ("CMakeLists.txt", "Makefile", "meson.build", "conanfile.txt", "conanfile.py", "vcpkg.json"),
             "container": ("Dockerfile", "docker-compose.yml", "compose.yml", ".github/workflows/ci.yml"),
         }
 
         has_python = any(path.endswith((".py", ".pyi")) for path in changed_paths)
         has_node = any(path.endswith((".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")) for path in changed_paths)
+        has_java = any(path.endswith(".java") for path in changed_paths)
+        has_cpp = any(path.endswith((".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")) for path in changed_paths)
         has_container = any(
             path == "Dockerfile"
             or path.endswith(("Dockerfile", "docker-compose.yml", "compose.yml"))
@@ -1774,6 +1778,10 @@ class CommitEvaluatorModerate:
             groups.append("python")
         if has_node:
             groups.append("node")
+        if has_java:
+            groups.append("java")
+        if has_cpp:
+            groups.append("cpp")
         if has_container:
             groups.append("container")
 
@@ -1820,6 +1828,27 @@ class CommitEvaluatorModerate:
             selected.update(candidate for candidate in candidates if candidate in available_paths)
         return selected
 
+    def _cpp_include_candidates(self, source_path: str, content: str, available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        source_dir = Path(source_path).parent
+        includes = re.findall(r"^\s*#\s*include\s+\"([^\"]+)\"", content, flags=re.MULTILINE)
+        for include_path in includes:
+            base = source_dir.joinpath(include_path).as_posix()
+            if base in available_paths:
+                selected.add(base)
+            selected.update(path for path in available_paths if path.endswith(f"/{include_path}"))
+        return selected
+
+    def _java_import_candidates(self, source_path: str, content: str, available_paths: Set[str]) -> Set[str]:
+        selected: Set[str] = set()
+        imports = re.findall(r"^\s*import\s+(?:static\s+)?([\w.]+)(?:\.\*)?\s*;", content, flags=re.MULTILINE)
+        for imported in imports:
+            if imported.startswith(("java.", "javax.", "jakarta.", "org.junit.")):
+                continue
+            rel_path = "/".join(imported.split(".")) + ".java"
+            selected.update(path for path in available_paths if path.endswith(rel_path))
+        return selected
+
     def _related_context_paths(self, changed_paths: Set[str], changed_contents: Dict[str, str], available_paths: Set[str]) -> Set[str]:
         selected: Set[str] = set()
         for path, content in changed_contents.items():
@@ -1827,6 +1856,10 @@ class CommitEvaluatorModerate:
                 selected.update(self._python_import_candidates(path, content, available_paths))
             elif path.endswith((".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")):
                 selected.update(self._js_import_candidates(path, content, available_paths))
+            elif path.endswith((".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")):
+                selected.update(self._cpp_include_candidates(path, content, available_paths))
+            elif path.endswith(".java"):
+                selected.update(self._java_import_candidates(path, content, available_paths))
         selected.difference_update(changed_paths)
         return selected
 

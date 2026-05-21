@@ -56,6 +56,29 @@ def test_simple_plugin_loads_context_cone_from_repo_snapshot(tmp_path):
     }
 
 
+def test_simple_plugin_loads_cpp_context_cone_from_repo_snapshot(tmp_path):
+    plugin = _load_simple_plugin()
+    data_dir = tmp_path / "data"
+    _write_repo_file(data_dir, "src/main.cpp", '#include "app/service.h"\nint main() { return 0; }\n')
+    _write_repo_file(data_dir, "src/app/service.h", "int run_service();\n")
+    _write_repo_file(data_dir, "src/app/unrelated.h", "int unrelated();\n")
+    _write_repo_file(data_dir, "CMakeLists.txt", "add_executable(demo src/main.cpp)\n")
+    (data_dir / "repo_files_manifest.json").write_text("{}", encoding="utf-8")
+
+    evaluator = plugin.create_commit_evaluator(
+        data_dir=str(data_dir),
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+    )
+    commits = [{"files": [{"filename": "src/main.cpp", "patch": "+run_service()"}]}]
+
+    assert evaluator._load_context_files(commits) == {
+        "CMakeLists.txt": "add_executable(demo src/main.cpp)\n",
+        "src/app/service.h": "int run_service();\n",
+        "src/main.cpp": '#include "app/service.h"\nint main() { return 0; }\n',
+    }
+
+
 def test_ai_native_plugin_loads_context_cone_from_repo_snapshot(tmp_path):
     plugin = _load_ai_native_plugin()
     data_dir = tmp_path / "data"
@@ -76,6 +99,41 @@ def test_ai_native_plugin_loads_context_cone_from_repo_snapshot(tmp_path):
         "package.json": '{"scripts":{"test":"vitest"}}\n',
         "web/App.tsx": "import { api } from './api'\napi()\n",
         "web/api.ts": "export const api = () => null\n",
+    }
+
+
+def test_ai_native_plugin_loads_java_context_cone_from_repo_snapshot(tmp_path):
+    plugin = _load_ai_native_plugin()
+    data_dir = tmp_path / "data"
+    _write_repo_file(
+        data_dir,
+        "src/main/java/com/example/App.java",
+        "package com.example;\nimport com.example.service.UserService;\nclass App {}\n",
+    )
+    _write_repo_file(
+        data_dir,
+        "src/main/java/com/example/service/UserService.java",
+        "package com.example.service;\nclass UserService {}\n",
+    )
+    _write_repo_file(data_dir, "src/main/java/com/example/Unused.java", "class Unused {}\n")
+    _write_repo_file(data_dir, "pom.xml", "<project />\n")
+    (data_dir / "repo_files_manifest.json").write_text("{}", encoding="utf-8")
+
+    evaluator = plugin.create_commit_evaluator(
+        data_dir=str(data_dir),
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+    )
+    commits = [{"files": [{"filename": "src/main/java/com/example/App.java", "patch": "+new UserService()"}]}]
+
+    assert evaluator._load_context_files(commits) == {
+        "pom.xml": "<project />\n",
+        "src/main/java/com/example/App.java": (
+            "package com.example;\nimport com.example.service.UserService;\nclass App {}\n"
+        ),
+        "src/main/java/com/example/service/UserService.java": (
+            "package com.example.service;\nclass UserService {}\n"
+        ),
     }
 
 

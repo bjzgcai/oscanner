@@ -22,7 +22,9 @@ def _dep_hash(clone_dir: Path) -> str:
         "Cargo.toml", "Cargo.lock",
         "go.mod", "go.sum",
         "Gemfile", "Gemfile.lock",
-        "pom.xml", "build.gradle",
+        "pom.xml", "build.gradle", "build.gradle.kts",
+        "CMakeLists.txt", "Makefile", "meson.build",
+        "conanfile.txt", "conanfile.py", "vcpkg.json",
     ]
     h = hashlib.sha256()
     for name in manifests:

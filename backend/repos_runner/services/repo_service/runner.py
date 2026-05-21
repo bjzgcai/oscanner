@@ -196,6 +196,18 @@ _LANG_DISCOVERY: Dict[str, Dict] = {
         "is_test": lambda name: False,
         "skip_dirs": {".git", "target"},
     },
+    "cpp": {
+        "suffixes": (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"),
+        "is_test": lambda name: (
+            name.startswith("test_")
+            or name.endswith(("_test.c", "_test.cc", "_test.cpp", "_test.cxx"))
+            or name.endswith(("Test.c", "Test.cc", "Test.cpp", "Test.cxx"))
+            or name.endswith(("Tests.c", "Tests.cc", "Tests.cpp", "Tests.cxx"))
+            or name.endswith(("_spec.c", "_spec.cc", "_spec.cpp", "_spec.cxx"))
+        ),
+        "extra_dirs": {"test", "tests"},
+        "skip_dirs": {".git", "build", "cmake-build-debug", "cmake-build-release", "bazel-bin", "bazel-out"},
+    },
     "dotnet": {
         "suffixes": (".cs",),
         "is_test": lambda name: name.endswith("Tests.cs") or name.endswith("Test.cs"),
@@ -245,7 +257,10 @@ def _find_test_files(clone_dir: Path, language: str) -> List[str]:
     skip_dirs: set = spec["skip_dirs"]
     is_test = spec["is_test"]
     suffixes: tuple = spec["suffixes"]
+    extra_dirs = set(spec.get("extra_dirs", set()))
     extra_dir: str = spec.get("extra_dir", "")
+    if extra_dir:
+        extra_dirs.add(extra_dir)
 
     found: List[str] = []
     for p in clone_dir.rglob("*"):
@@ -262,10 +277,10 @@ def _find_test_files(clone_dir: Path, language: str) -> List[str]:
             continue
         if p.suffix not in suffixes:
             continue
-        if is_test(p.name) or (extra_dir and extra_dir in rel_parts):
+        if is_test(p.name) or any(part in extra_dirs for part in rel_parts):
             found.append(str(p.relative_to(clone_dir)))
 
-    return found
+    return sorted(found)
 
 
 def _find_python_requirement_file_paths(
@@ -438,7 +453,7 @@ def _build_discovered_command(clone_dir: Path, language: str, test_files: List[s
         # dotnet test discovers automatically; no path needed
         return None
 
-    if language in ("go", "rust", "java", "swift", "elixir", "kotlin"):
+    if language in ("go", "rust", "java", "cpp", "swift", "elixir", "kotlin"):
         # These runners handle full recursive discovery on their own
         return None
 
@@ -509,12 +524,12 @@ async def run_tests(
     # Fixes LLM-generated commands that hard-code wrong relative paths
     # (e.g. `tests/unit` when tests are actually at `zhugecai/tests/unit/`).
     # Applies to Python, Node/JS/TS, Ruby, PHP; skips languages whose runners
-    # auto-discover (Go, Rust, Java, Swift, etc.).
+    # auto-discover (Go, Rust, Java, C/C++, Swift, etc.).
     # When language is unknown (e.g. REPO_OVERVIEW.md was empty), scan all languages.
     language = test_info.get("language", "")
     found_test_files = _find_test_files(clone_dir, language)
     if not found_test_files and language in ("unknown", ""):
-        for candidate in ("python", "node", "ruby", "php", "go", "rust", "java", "dotnet", "elixir", "kotlin", "swift"):
+        for candidate in ("python", "node", "ruby", "php", "go", "rust", "java", "cpp", "dotnet", "elixir", "kotlin", "swift"):
             files = _find_test_files(clone_dir, candidate)
             if files:
                 language = candidate

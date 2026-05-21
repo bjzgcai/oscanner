@@ -9,8 +9,15 @@ COPY --from=python-runtime /usr/local /usr/local
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
         chromium \
+        default-jdk-headless \
         fonts-noto-cjk \
+        gradle \
+        maven \
+        meson \
+        ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m venv "$VIRTUAL_ENV" \

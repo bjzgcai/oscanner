@@ -7,6 +7,7 @@ This service provides automated repository cloning, exploration, and testing usi
 - **Clone Repository**: Shallow clone of GitHub/Gitee repositories
 - **Explore & Document**: Generate REPO_OVERVIEW.md using opencode, with messages API fallback
 - **Run Tests**: Automatically identify and run test suites
+- **Multi-language Support**: Python, JavaScript/TypeScript, Go, Rust, Java, and C/C++
 - **Real-time Streaming**: Progress updates via Server-Sent Events (SSE)
 
 ## Installation

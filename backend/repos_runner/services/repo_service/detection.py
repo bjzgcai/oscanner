@@ -82,6 +82,35 @@ _FRAMEWORK_MAP: List[Dict[str, Any]] = [
         "test": ["cargo test -- --format json 2>&1 > .test_report.json || cargo test 2>&1 | tee .test_report.txt"],
         "language": "rust",
     },
+    # C/C++
+    {
+        "files": ["CMakeLists.txt"],
+        "content_hints": {},
+        "setup": ["cmake -S . -B build", "cmake --build build"],
+        "test": ["ctest --test-dir build --output-on-failure 2>&1 | tee .test_report.txt"],
+        "language": "cpp",
+    },
+    {
+        "files": ["Makefile"],
+        "content_hints": {},
+        "setup": [],
+        "test": ["make test 2>&1 | tee .test_report.txt"],
+        "language": "cpp",
+    },
+    {
+        "files": ["meson.build"],
+        "content_hints": {},
+        "setup": ["meson setup build"],
+        "test": ["meson test -C build --print-errorlogs 2>&1 | tee .test_report.txt"],
+        "language": "cpp",
+    },
+    {
+        "files": ["BUILD", "BUILD.bazel", "WORKSPACE"],
+        "content_hints": {},
+        "setup": [],
+        "test": ["bazel test //... 2>&1 | tee .test_report.txt"],
+        "language": "cpp",
+    },
     # Maven (Java)
     {
         "files": ["pom.xml"],
@@ -234,7 +263,7 @@ Return a JSON object with this exact structure:
 {{
   "test_commands": ["command1", "command2"],
   "setup_commands": ["optional setup command"],
-  "language": "python|node|go|rust|java|ruby|dotnet|other"
+  "language": "python|node|go|rust|java|cpp|ruby|dotnet|other"
 }}
 
 If no tests are found, return {{"test_commands": [], "setup_commands": [], "language": "unknown"}}

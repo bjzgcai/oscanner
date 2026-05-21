@@ -84,6 +84,9 @@ async def _check_feature_coverage(clone_dir: Path, features: List[str]) -> Dict[
         "*_test.go", "test_*.go",
         "*_test.rs",
         "*Test.java", "*Tests.java",
+        "*_test.c", "*_test.cc", "*_test.cpp", "*_test.cxx",
+        "*Test.c", "*Test.cc", "*Test.cpp", "*Test.cxx",
+        "*Tests.c", "*Tests.cc", "*Tests.cpp", "*Tests.cxx",
         "*_spec.rb", "*_test.rb",
         "*Test.php",
     ]
@@ -110,7 +113,10 @@ async def _check_feature_coverage(clone_dir: Path, features: List[str]) -> Dict[
             test_dir = clone_dir / test_dir_name
             if test_dir.exists():
                 for f in test_dir.rglob("*"):
-                    if f.is_file() and f.suffix in {".py", ".js", ".ts", ".go", ".rs", ".java", ".rb", ".php"} and not _is_skipped(f):
+                    if f.is_file() and f.suffix in {
+                        ".py", ".js", ".ts", ".go", ".rs", ".java", ".rb", ".php",
+                        ".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx",
+                    } and not _is_skipped(f):
                         test_files.append(f)
 
     if not test_files:
