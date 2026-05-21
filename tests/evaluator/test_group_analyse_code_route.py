@@ -33,6 +33,15 @@ class _FakeInvalidLlmResponse:
         return {"choices": [{"message": {"content": "still not json"}}]}
 
 
+class _FakeNullContentLlmResponse:
+    is_success = True
+    status_code = 200
+    text = "ok"
+
+    def json(self):
+        return {"choices": [{"message": {"content": None}}]}
+
+
 class _FakeValidRetryResponse:
     is_success = True
     status_code = 200
@@ -100,6 +109,25 @@ def test_plugin_parse_retry_exhaustion_raises_by_default(monkeypatch, plugin_id)
     monkeypatch.setattr(evaluator._http_client, "post", fake_post)
 
     with pytest.raises(RuntimeError, match="LLM response parsing failed"):
+        evaluator._parse_llm_response_with_retry("not json", "original prompt", "test-model")
+
+    assert len(retry_calls) == 1
+
+
+@pytest.mark.parametrize("plugin_id", ["zgc_simple", "zgc_ai_native_2026"])
+def test_plugin_parse_retry_handles_null_retry_content(monkeypatch, plugin_id):
+    plugin = _load_scan_plugin(plugin_id, f"test_{plugin_id}_parse_retry_null_content")
+    evaluator = plugin.create_commit_evaluator(data_dir="", api_key="test-key", model="test-model")
+
+    retry_calls = []
+
+    def fake_post(*_args, **_kwargs):
+        retry_calls.append(True)
+        return _FakeNullContentLlmResponse()
+
+    monkeypatch.setattr(evaluator._http_client, "post", fake_post)
+
+    with pytest.raises(RuntimeError, match="Retry LLM response content was empty"):
         evaluator._parse_llm_response_with_retry("not json", "original prompt", "test-model")
 
     assert len(retry_calls) == 1

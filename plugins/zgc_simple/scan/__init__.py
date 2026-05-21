@@ -992,9 +992,12 @@ class CommitEvaluatorModerate:
     def _parse_llm_response_with_retry(self, content: str, original_prompt: str, model: str, retry_count: int = 0) -> Dict[str, Any]:
         """Parse LLM response with retry mechanism if parsing fails."""
         max_retries = 1  # Only retry once to avoid infinite loops
+        content_text = content if isinstance(content, str) else ""
         
         try:
-            return self._parse_llm_response(content)
+            if not content_text.strip():
+                raise ValueError("LLM response content was empty")
+            return self._parse_llm_response(content_text)
         except Exception as parse_error:
             error_msg = str(parse_error)
             print(f"[ERROR] Failed to parse LLM response: {error_msg}")
@@ -1006,7 +1009,7 @@ class CommitEvaluatorModerate:
             # Build retry prompt with original prompt and error information
             is_chinese = self.language == "zh-CN"
             # Show more content for better debugging (up to 1000 chars)
-            content_preview = content[:1000] + ("..." if len(content) > 1000 else "")
+            content_preview = content_text[:1000] + ("..." if len(content_text) > 1000 else "")
             
             if is_chinese:
                 retry_instruction = f"""\n\n[重要] 你之前的回复格式不正确，无法解析为JSON。
@@ -1055,6 +1058,8 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
                     return self._handle_parse_retry_failure("No choices in retry API response")
                 
                 retry_content = retry_data["choices"][0]["message"]["content"]
+                if not isinstance(retry_content, str) or not retry_content.strip():
+                    return self._handle_parse_retry_failure("Retry LLM response content was empty")
                 print(f"[LLM] Retry response received ({len(retry_content)} chars), parsing...")
                 return self._parse_llm_response_with_retry(retry_content, original_prompt, model, retry_count + 1)
                 
