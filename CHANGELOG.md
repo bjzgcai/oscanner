@@ -4,8 +4,8 @@ All notable changes to Oscanner Skill Evaluator are summarized from the git
 history.
 
 The package version in `pyproject.toml` is currently `0.1.6`; later work has not
-been tagged as a release in this repository. Latest commit covered: `8966754` on
-2026-05-12.
+been tagged as a release in this repository. Latest commit covered: `1953ff4` on
+2026-05-21.
 
 ## 2026-04 to 2026-05
 
@@ -16,6 +16,17 @@ been tagged as a release in this repository. Latest commit covered: `8966754` on
 - Added Docker sandbox runner support.
 - Added tag-message support for runner execution.
 - Added DeepSeek V4 Pro and configurable cache usage for evaluations.
+- Added filtered full-repository snapshot context extraction at `end_sha` for
+  GitHub and Gitee evaluations, including `repo_files` manifests for richer
+  plugin reasoning.
+- Added a 10M-token evaluator guardrail that stops oversized evaluation
+  requests before LLM work begins.
+- Added Oscanner repository runner flows across backend proxy and frontend UI,
+  including streaming, durable polling, artifacts, reports, token usage, and
+  configured API routing.
+- Added namespaced repository-runner storage with migration tooling.
+- Added runner concurrency limits, clone and pipeline timeout controls,
+  transient clone retries, and `opencode`-based repository exploration.
 - Added local agent skills and refreshed repository agent instructions.
 
 ### Changed
@@ -24,6 +35,15 @@ been tagged as a release in this repository. Latest commit covered: `8966754` on
 - Improved evaluator extraction and repository path handling.
 - Preserved both report and overview markdown after fresh clones.
 - Sped up Gitee author lookup.
+- Removed the strict cache contract from evaluator APIs and matching frontend
+  controls.
+- Reworked plugin token-budget handling, final reasoning structure, and
+  AI-native runtime evidence reporting.
+- Expanded repository-runner runtime evidence scoring, Docker evidence handling,
+  artifact reporting, and no-test command summaries.
+- Normalized repository URL handling across backend routes, runner storage, and
+  frontend inputs.
+- Simplified the validation benchmark flow and related dashboard UI.
 
 ### Fixed
 
@@ -32,6 +52,15 @@ been tagged as a release in this repository. Latest commit covered: `8966754` on
 - Disabled stale caching for author APIs and forced trajectory sync when cache
   is disabled.
 - Excluded a known internal author from commit analysis.
+- Secured repository path handling and masked authenticated Git URLs in clone
+  command errors, Git stderr, and extractor process arguments.
+- Fixed GitHub author discovery to use faster commit-only extraction, skip
+  unnecessary snapshots, and time out extractor requests.
+- Kept runner reports and responses responsive during long test runs and skipped
+  long-lived service commands.
+- Handled empty LLM retry responses and missing runtime-evidence paths.
+- Routed runner API calls through the configured base URL and isolated the
+  repository-runner production port.
 
 ## 2026-03
 
