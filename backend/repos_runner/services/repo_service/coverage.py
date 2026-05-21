@@ -7,15 +7,28 @@ import re
 from pathlib import Path
 from typing import Dict, Any, List
 
+from repos_runner.grading import normalize_grading_rubric
+
 from .llm import _default_requested_model, _message_text_content, _messages_create_with_fallback
 
 
-async def _extract_features_from_tag_message(message: str) -> List[str]:
+def _rubric_prompt_section(grading_rubric: str | None) -> str:
+    rubric = normalize_grading_rubric(grading_rubric)
+    return (
+        "\nGrading rubric to apply when interpreting requirements:\n"
+        f"{rubric}\n"
+        "Use this rubric to prioritize and interpret quality expectations, but do not invent features "
+        "that are absent from the tag message.\n"
+    )
+
+
+async def _extract_features_from_tag_message(message: str, grading_rubric: str | None = None) -> List[str]:
     """Use LLM to extract a list of distinct testable features from a tag annotation message."""
     try:
         prompt = f"""Extract the list of specific testable features from this tag annotation message.
 
 Tag message: "{message}"
+{_rubric_prompt_section(grading_rubric)}
 
 Return ONLY a JSON array of feature names (strings), e.g.:
 ["Create", "Read", "Update", "Delete"]
@@ -43,7 +56,11 @@ Rules:
     return []
 
 
-async def _check_feature_coverage(clone_dir: Path, features: List[str]) -> Dict[str, Any]:
+async def _check_feature_coverage(
+    clone_dir: Path,
+    features: List[str],
+    grading_rubric: str | None = None,
+) -> Dict[str, Any]:
     """
     Analyze test files in the repo to determine which required features are covered.
 
@@ -145,12 +162,14 @@ async def _check_feature_coverage(clone_dir: Path, features: List[str]) -> Dict[
     prompt = f"""You are analyzing test names to check which features are actually tested.
 
 Required features: {json.dumps(features)}
+{_rubric_prompt_section(grading_rubric)}
 
 Test class and method names found in the repository:
 {test_content}
 
 Determine which of the required features have dedicated test cases based on the test names above.
 A feature is "covered" if there are test classes or methods whose names clearly relate to that feature.
+When a grading rubric is provided, apply it to decide whether a test is specific enough to count.
 
 Return ONLY a JSON object:
 {{

@@ -21,6 +21,7 @@ def test_run_tests_stream_flushes_progress_before_blocking_work(monkeypatch, tmp
         test_timeout,
         tag_message=None,
         tag=None,
+        grading_rubric=None,
     ):
         await progress_callback("first progress")
         time.sleep(0.2)
@@ -118,9 +119,11 @@ def test_run_tests_stream_forwards_feature_requirements(monkeypatch, tmp_path):
         test_timeout,
         tag_message=None,
         tag=None,
+        grading_rubric=None,
     ):
         calls["tag_message"] = tag_message
         calls["tag"] = tag
+        calls["grading_rubric"] = grading_rubric
         return {
             "total": 2,
             "passed": 2,
@@ -142,6 +145,7 @@ def test_run_tests_stream_forwards_feature_requirements(monkeypatch, tmp_path):
             str(clone_dir),
             str(clone_dir / "REPO_OVERVIEW.md"),
             feature_requirements="Login\nReports export",
+            grading_rubric="Grade backend behavior before visual polish.",
         )
         async for chunk in response.body_iterator:
             text = chunk.decode() if isinstance(chunk, bytes) else chunk
@@ -156,7 +160,11 @@ def test_run_tests_stream_forwards_feature_requirements(monkeypatch, tmp_path):
 
     assert completed["status"] == "completed"
     assert completed["results"]["feature_coverage"]["covered"] == ["Login", "Reports export"]
-    assert calls == {"tag_message": "Login\nReports export", "tag": None}
+    assert calls == {
+        "tag_message": "Login\nReports export",
+        "tag": None,
+        "grading_rubric": "Grade backend behavior before visual polish.",
+    }
 
 
 def test_detect_tests_returns_validation_features(monkeypatch, tmp_path):

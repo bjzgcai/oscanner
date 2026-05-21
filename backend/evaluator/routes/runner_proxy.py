@@ -17,6 +17,7 @@ import httpx
 
 from evaluator.paths import get_data_dir
 from evaluator.services.trajectory_poll_store import SQLiteTrajectoryPollStore
+from repos_runner.grading import DEFAULT_GRADING_RUBRIC
 
 router = APIRouter(prefix="/api/runner")
 
@@ -105,6 +106,7 @@ class RunAllRequest(BaseModel):
     tag: str | None = None
     branch: str | None = None
     tag_message: str | None = None
+    grading_rubric: str | None = DEFAULT_GRADING_RUBRIC
     skip_clone: bool = False
     skip_explore: bool = False
     clone_timeout: int = Field(default=300, gt=0)
@@ -157,6 +159,7 @@ async def run_all_steps(request: RunAllRequest):
         "tag": request.tag,
         "branch": request.branch,
         "tag_message": request.tag_message,
+        "grading_rubric": str(request.grading_rubric or "").strip() or DEFAULT_GRADING_RUBRIC,
         "skip_clone": request.skip_clone,
         "skip_explore": request.skip_explore,
         "clone_timeout": request.clone_timeout,

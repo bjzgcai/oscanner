@@ -57,6 +57,13 @@ def _format_features_to_test_section(tag_message: Optional[str]) -> str:
     return section
 
 
+def _format_grading_rubric_section(grading_rubric: Optional[str]) -> str:
+    text = str(grading_rubric or "").strip()
+    if not text:
+        return ""
+    return f"## 评分规则\n\n{text}\n\n"
+
+
 def _check_group(check: Dict[str, Any]) -> str:
     check_id = str(check.get("id") or "")
     if check_id == "repository_static_inventory" or check_id.startswith("dynamic_static_"):
@@ -109,6 +116,7 @@ async def _generate_test_report(
     runtime_evidence: Optional[Dict[str, Any]] = None,
     score_breakdown: Optional[Dict[str, Any]] = None,
     execution_process: Optional[List[str]] = None,
+    grading_rubric: Optional[str] = None,
 ) -> None:
     """Generate TEST_REPORT.md for analyzed repository."""
     pass_rate = (passed / total * 100) if total > 0 else 0
@@ -172,6 +180,7 @@ async def _generate_test_report(
         report += f"- **总分**：代码测试 {code_score} = {score}/100\n\n"
 
     report += _format_features_to_test_section(tag_message)
+    report += _format_grading_rubric_section(grading_rubric)
     report += _format_execution_process_section(execution_process)
 
     report += f"""

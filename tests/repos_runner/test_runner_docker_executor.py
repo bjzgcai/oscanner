@@ -462,10 +462,10 @@ def test_run_tests_uses_runtime_evidence_when_only_dev_service_commands_remain(m
     )
     monkeypatch.setattr(runner_service, "_find_test_files", lambda _clone_dir, _language: [])
 
-    async def _fake_extract_features(_message):
+    async def _fake_extract_features(_message, grading_rubric=None):
         return ["Health endpoint returns JSON"]
 
-    async def _fake_check_feature_coverage(_clone_dir, _features):
+    async def _fake_check_feature_coverage(_clone_dir, _features, grading_rubric=None):
         return {
             "covered": [],
             "not_covered": ["Health endpoint returns JSON"],
@@ -480,6 +480,7 @@ def test_run_tests_uses_runtime_evidence_when_only_dev_service_commands_remain(m
         required_features=None,
         progress_callback=None,
         execution_session=None,
+        grading_rubric=None,
     ):
         return {
             "summary": {"passed": 1, "total": 1},

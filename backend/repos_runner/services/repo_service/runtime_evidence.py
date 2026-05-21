@@ -19,6 +19,8 @@ from urllib.parse import urlparse
 
 import httpx
 
+from repos_runner.grading import normalize_grading_rubric
+
 from .llm import _message_text_content, _messages_create_with_fallback
 
 
@@ -991,14 +993,23 @@ def _llm_runtime_evidence_plan(
     tag_message: str,
     required_features: list[str],
     commands: list[dict[str, str]],
+    grading_rubric: str | None = None,
 ) -> dict[str, Any]:
     if not required_features or not str(tag_message or "").strip():
         return {}
+
+    rubric = normalize_grading_rubric(grading_rubric)
+    rubric_section = (
+        "\nGrading rubric:\n"
+        f"{rubric}\n"
+        "Use the rubric to choose checks that prove the expected quality, but only for the exact required features.\n"
+    )
 
     prompt = f"""Create a safe runtime-evidence plan for an automated repository evaluator.
 
 Merged course/repository tag message:
 {tag_message}
+{rubric_section}
 
 Required features extracted from that tag:
 {json.dumps(required_features, ensure_ascii=False)}
@@ -1051,11 +1062,18 @@ def _build_runtime_evidence_plan(
     tag_message: str = "",
     required_features: list[str] | None = None,
     commands: list[dict[str, str]] | None = None,
+    grading_rubric: str | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     features = [str(feature) for feature in (required_features or []) if str(feature).strip()]
     command_list = commands or []
     command_ports = _ports_from_commands(command_list)
-    raw_plan = _llm_runtime_evidence_plan(repo_dir, tag_message, features, command_list)
+    raw_plan = _llm_runtime_evidence_plan(
+        repo_dir,
+        tag_message,
+        features,
+        command_list,
+        grading_rubric=grading_rubric,
+    )
     if not raw_plan:
         raw_plan = _fallback_runtime_evidence_plan(tag_message, features, command_ports)
     return _normalize_runtime_plan(raw_plan, repo_dir, features, command_ports)
@@ -1150,6 +1168,7 @@ async def collect_runtime_evidence(
     progress_callback=None,
     service_timeout: float = DEFAULT_SERVICE_TIMEOUT_SECONDS,
     execution_session=None,
+    grading_rubric: str | None = None,
 ) -> dict[str, Any]:
     """Start documented services and collect tag-driven runtime/static evidence."""
     clone_dir = Path(clone_dir)
@@ -1166,6 +1185,8 @@ async def collect_runtime_evidence(
         "covered_features": [],
         "warnings": [],
     }
+    clean_rubric = normalize_grading_rubric(grading_rubric)
+    evidence["grading_rubric"] = clean_rubric
     if not clone_dir.is_dir():
         evidence["enabled"] = False
         evidence["warnings"].append(f"Clone directory not found: {clone_dir}")
@@ -1179,6 +1200,7 @@ async def collect_runtime_evidence(
         tag_message=tag_message,
         required_features=required_features or [],
         commands=commands,
+        grading_rubric=clean_rubric,
     )
     ports_to_track = sorted({
         *_ports_from_commands(commands),

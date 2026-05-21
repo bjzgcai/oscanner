@@ -660,10 +660,10 @@ def test_run_tests_scores_code_and_functionality_independently(monkeypatch, tmp_
     async def _fake_parse_test_output(_output):
         return None
 
-    async def _fake_extract_features(_message):
+    async def _fake_extract_features(_message, grading_rubric=None):
         return ["Health endpoint returns JSON", "Docs endpoint accessible"]
 
-    async def _fake_check_feature_coverage(_clone_dir, _features):
+    async def _fake_check_feature_coverage(_clone_dir, _features, grading_rubric=None):
         return {
             "covered": [],
             "not_covered": ["Health endpoint returns JSON", "Docs endpoint accessible"],
@@ -678,6 +678,7 @@ def test_run_tests_scores_code_and_functionality_independently(monkeypatch, tmp_
         required_features=None,
         progress_callback=None,
         execution_session=None,
+        grading_rubric=None,
     ):
         return {
             "summary": {"passed": 2, "total": 2},
@@ -739,10 +740,10 @@ def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
     async def _fake_parse_test_output(_output):
         return {"passed": 1, "failed": 0, "total": 1}
 
-    async def _fake_extract_features(_message):
+    async def _fake_extract_features(_message, grading_rubric=None):
         return ["Health endpoint returns JSON", "Docs endpoint accessible"]
 
-    async def _fake_check_feature_coverage(_clone_dir, _features):
+    async def _fake_check_feature_coverage(_clone_dir, _features, grading_rubric=None):
         return {
             "covered": ["Health endpoint returns JSON"],
             "not_covered": ["Docs endpoint accessible"],
@@ -757,6 +758,7 @@ def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
         required_features=None,
         progress_callback=None,
         execution_session=None,
+        grading_rubric=None,
     ):
         return {
             "summary": {"passed": 1, "total": 1},
@@ -794,3 +796,167 @@ def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
     assert result["feature_coverage"]["coverage_ratio"] == 1.0
     assert result["runtime_evidence"]["summary"] == {"passed": 1, "total": 1}
     assert "运行时功能验证" in Path(result["report_path"]).read_text(encoding="utf-8")
+
+
+def test_run_tests_applies_grading_rubric_to_feature_analysis(monkeypatch, tmp_path):
+    from repos_runner.services.repo_service import runner as runner_service
+
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+    overview = clone_dir / "REPO_OVERVIEW_class-01.md"
+    overview.write_text("overview", encoding="utf-8")
+    grading_rubric = "Prioritize API correctness and input validation over visual polish."
+    calls = {}
+
+    monkeypatch.setattr(
+        runner_service,
+        "_detect_frameworks_statically",
+        lambda _clone_dir: {
+            "language": "python",
+            "test_commands": ["pytest tests -v"],
+            "setup_commands": [],
+        },
+    )
+    monkeypatch.setattr(runner_service, "_find_test_files", lambda _clone_dir, _language: [])
+    monkeypatch.setattr(runner_service, "ensure_repo_venv", lambda _clone_path: sys.executable)
+
+    class _SandboxResult:
+        returncode = 0
+        stdout = "1 passed"
+        stderr = ""
+
+    monkeypatch.setattr(runner_service, "run_sandboxed", lambda *args, **kwargs: _SandboxResult())
+    monkeypatch.setattr(runner_service, "_parse_json_report", lambda _clone_dir: None)
+
+    async def _fake_parse_test_output(_output):
+        return {"passed": 1, "failed": 0, "total": 1}
+
+    async def _fake_extract_features(_message, grading_rubric=None):
+        calls["extract_rubric"] = grading_rubric
+        return ["Health endpoint returns JSON"]
+
+    async def _fake_check_feature_coverage(_clone_dir, _features, grading_rubric=None):
+        calls["coverage_rubric"] = grading_rubric
+        return {
+            "covered": ["Health endpoint returns JSON"],
+            "not_covered": [],
+            "coverage_ratio": 1.0,
+            "test_files_found": ["tests/test_app.py"],
+        }
+
+    async def _fake_collect_runtime_evidence(
+        _clone_dir,
+        tag="",
+        tag_message="",
+        required_features=None,
+        progress_callback=None,
+        execution_session=None,
+        grading_rubric=None,
+    ):
+        calls["runtime_rubric"] = grading_rubric
+        return {"summary": {"passed": 0, "total": 0}, "covered_features": [], "checks": []}
+
+    monkeypatch.setattr(runner_service, "_parse_test_output", _fake_parse_test_output)
+    monkeypatch.setattr(runner_service, "_extract_features_from_tag_message", _fake_extract_features)
+    monkeypatch.setattr(runner_service, "_check_feature_coverage", _fake_check_feature_coverage)
+    monkeypatch.setattr(runner_service, "collect_runtime_evidence", _fake_collect_runtime_evidence)
+
+    result = asyncio.run(
+        runner_service.run_tests(
+            str(clone_dir),
+            str(overview),
+            tag_message="- `/health` returns JSON",
+            tag="class-01",
+            grading_rubric=grading_rubric,
+        )
+    )
+
+    assert calls == {
+        "extract_rubric": grading_rubric,
+        "coverage_rubric": grading_rubric,
+        "runtime_rubric": grading_rubric,
+    }
+    assert result["grading_rubric"] == grading_rubric
+    assert "评分规则" in Path(result["report_path"]).read_text(encoding="utf-8")
+    assert grading_rubric in Path(result["report_path"]).read_text(encoding="utf-8")
+
+
+def test_run_tests_uses_default_grading_rubric_when_omitted(monkeypatch, tmp_path):
+    from repos_runner.grading import DEFAULT_GRADING_RUBRIC
+    from repos_runner.services.repo_service import runner as runner_service
+
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+    overview = clone_dir / "REPO_OVERVIEW_class-01.md"
+    overview.write_text("overview", encoding="utf-8")
+    calls = {}
+
+    monkeypatch.setattr(
+        runner_service,
+        "_detect_frameworks_statically",
+        lambda _clone_dir: {
+            "language": "python",
+            "test_commands": ["pytest tests -v"],
+            "setup_commands": [],
+        },
+    )
+    monkeypatch.setattr(runner_service, "_find_test_files", lambda _clone_dir, _language: [])
+    monkeypatch.setattr(runner_service, "ensure_repo_venv", lambda _clone_path: sys.executable)
+
+    class _SandboxResult:
+        returncode = 0
+        stdout = "1 passed"
+        stderr = ""
+
+    monkeypatch.setattr(runner_service, "run_sandboxed", lambda *args, **kwargs: _SandboxResult())
+    monkeypatch.setattr(runner_service, "_parse_json_report", lambda _clone_dir: None)
+
+    async def _fake_parse_test_output(_output):
+        return {"passed": 1, "failed": 0, "total": 1}
+
+    async def _fake_extract_features(_message, grading_rubric=None):
+        calls["extract_rubric"] = grading_rubric
+        return ["Health endpoint returns JSON"]
+
+    async def _fake_check_feature_coverage(_clone_dir, _features, grading_rubric=None):
+        calls["coverage_rubric"] = grading_rubric
+        return {
+            "covered": ["Health endpoint returns JSON"],
+            "not_covered": [],
+            "coverage_ratio": 1.0,
+            "test_files_found": ["tests/test_app.py"],
+        }
+
+    async def _fake_collect_runtime_evidence(
+        _clone_dir,
+        tag="",
+        tag_message="",
+        required_features=None,
+        progress_callback=None,
+        execution_session=None,
+        grading_rubric=None,
+    ):
+        calls["runtime_rubric"] = grading_rubric
+        return {"summary": {"passed": 0, "total": 0}, "covered_features": [], "checks": []}
+
+    monkeypatch.setattr(runner_service, "_parse_test_output", _fake_parse_test_output)
+    monkeypatch.setattr(runner_service, "_extract_features_from_tag_message", _fake_extract_features)
+    monkeypatch.setattr(runner_service, "_check_feature_coverage", _fake_check_feature_coverage)
+    monkeypatch.setattr(runner_service, "collect_runtime_evidence", _fake_collect_runtime_evidence)
+
+    result = asyncio.run(
+        runner_service.run_tests(
+            str(clone_dir),
+            str(overview),
+            tag_message="- `/health` returns JSON",
+            tag="class-01",
+        )
+    )
+
+    assert calls == {
+        "extract_rubric": DEFAULT_GRADING_RUBRIC,
+        "coverage_rubric": DEFAULT_GRADING_RUBRIC,
+        "runtime_rubric": DEFAULT_GRADING_RUBRIC,
+    }
+    assert result["grading_rubric"] == DEFAULT_GRADING_RUBRIC
+    assert DEFAULT_GRADING_RUBRIC in Path(result["report_path"]).read_text(encoding="utf-8")

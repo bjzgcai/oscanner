@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 from repos_runner.services.sandbox import create_execution_session, run_sandboxed
+from repos_runner.grading import normalize_grading_rubric
 
 from .venv import ensure_repo_venv
 from .detection import (
@@ -468,6 +469,7 @@ async def run_tests(
     test_timeout: int = 600,
     tag_message: Optional[str] = None,
     tag: Optional[str] = None,
+    grading_rubric: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Identify and run tests based on REPO_OVERVIEW.md.
@@ -487,6 +489,7 @@ async def run_tests(
     """
     clone_dir = Path(clone_path)
     overview_file = Path(overview_path)
+    clean_grading_rubric = normalize_grading_rubric(grading_rubric)
 
     if not overview_file.exists():
         raise FileNotFoundError(f"REPO_OVERVIEW.md not found at {overview_path}")
@@ -648,13 +651,16 @@ async def run_tests(
                 repo_name=report_repo_name,
                 total=0, passed=0, failed=0, score=0,
                 test_results=[],
+                grading_rubric=clean_grading_rubric,
             )
-            return {
+            no_tests_result = {
                 "total": 0, "passed": 0, "failed": 0, "skipped": 0,
                 "score": 0, "details": [],
                 "message": "No tests found in repository",
                 "report_path": str(test_report_path),
             }
+            no_tests_result["grading_rubric"] = clean_grading_rubric
+            return no_tests_result
 
         total_passed = 0
         total_failed = 0
@@ -769,7 +775,8 @@ async def run_tests(
             code_relevance_ratio = 0.0
             if progress_callback:
                 await progress_callback("Analyzing tag message for required features...")
-            features = await _extract_features_from_tag_message(tag_message)
+            rubric_kwargs = {"grading_rubric": clean_grading_rubric}
+            features = await _extract_features_from_tag_message(tag_message, **rubric_kwargs)
             if features:
                 if progress_callback:
                     await progress_callback(
@@ -777,7 +784,11 @@ async def run_tests(
                     )
                 if progress_callback:
                     await progress_callback("Checking feature coverage in test files...")
-                feature_coverage = await _check_feature_coverage(clone_dir, features)
+                feature_coverage = await _check_feature_coverage(
+                    clone_dir,
+                    features,
+                    **rubric_kwargs,
+                )
                 code_relevance_ratio = float(feature_coverage.get("coverage_ratio", 0.0))
                 feature_coverage["code_relevance_ratio"] = code_relevance_ratio
                 if progress_callback:
@@ -789,6 +800,7 @@ async def run_tests(
                     required_features=features,
                     progress_callback=progress_callback,
                     execution_session=execution_session,
+                    **rubric_kwargs,
                 )
                 feature_coverage = merge_runtime_feature_coverage(
                     feature_coverage,
@@ -855,6 +867,7 @@ async def run_tests(
         runtime_evidence=runtime_evidence,
         score_breakdown=score_breakdown,
         execution_process=execution_process,
+        grading_rubric=clean_grading_rubric,
     )
 
     if progress_callback:
@@ -874,6 +887,7 @@ async def run_tests(
     if feature_coverage:
         result["feature_coverage"] = feature_coverage
         result["tag_message"] = tag_message
+    result["grading_rubric"] = clean_grading_rubric
     if runtime_evidence:
         result["runtime_evidence"] = runtime_evidence
     return result

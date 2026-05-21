@@ -20,6 +20,7 @@ from repos_runner.schemas import (
     RunAllRequest,
     BatchRunRequest,
 )
+from repos_runner.grading import normalize_grading_rubric
 from repos_runner.services import (
     clone_repository,
     explore_repository,
@@ -279,6 +280,7 @@ async def run_tests_stream(
     feature_requirements: Optional[str] = None,
     tag_message: Optional[str] = None,
     tag: Optional[str] = None,
+    grading_rubric: Optional[str] = None,
 ):
     """
     Run tests based on REPO_OVERVIEW.md with streaming progress.
@@ -293,6 +295,7 @@ async def run_tests_stream(
         loop = asyncio.get_running_loop()
         requirements = _clean_optional_text(feature_requirements) or _clean_optional_text(tag_message)
         clean_tag = _clean_optional_text(tag)
+        clean_grading_rubric = normalize_grading_rubric(grading_rubric)
 
         async def progress_callback(message: str):
             await progress_queue.put(message)
@@ -306,17 +309,16 @@ async def run_tests_stream(
                 from pathlib import Path
                 async with runner_queue.acquire(progress_callback):
                     result = await asyncio.to_thread(
-                        lambda: asyncio.run(
-                            run_tests(
-                                clone_path,
-                                overview_path,
-                                worker_progress_callback,
-                                setup_timeout=setup_timeout,
-                                test_timeout=test_timeout,
-                                tag_message=requirements,
-                                tag=clean_tag,
-                            )
-                        )
+                        lambda: asyncio.run(run_tests(
+                            clone_path,
+                            overview_path,
+                            worker_progress_callback,
+                            setup_timeout=setup_timeout,
+                            test_timeout=test_timeout,
+                            tag_message=requirements,
+                            tag=clean_tag,
+                            grading_rubric=clean_grading_rubric,
+                        ))
                     )
                 report_path = result.get("report_path", "")
                 try:
@@ -472,6 +474,7 @@ async def run_all_stream(request: RunAllRequest):
 
                 # -- Feature requirements / tag message --
                 tag_message = str(request.tag_message or "").strip() or None
+                grading_rubric = normalize_grading_rubric(request.grading_rubric)
                 if tag_message:
                     await worker_progress_callback("Using forwarded feature requirements.")
                 elif request.tag:
@@ -514,6 +517,7 @@ async def run_all_stream(request: RunAllRequest):
                         test_timeout=request.test_timeout,
                         tag_message=tag_message,
                         tag=request.tag,
+                        grading_rubric=grading_rubric,
                     ),
                     deadline=deadline,
                 )
@@ -672,6 +676,7 @@ async def batch_run_stream(request: BatchRunRequest):
 
                         # -- Feature requirements / tag message --
                         tag_message = str(repo_req.tag_message or "").strip() or None
+                        grading_rubric = normalize_grading_rubric(repo_req.grading_rubric)
                         if tag_message:
                             await cb("Using forwarded feature requirements.")
                         elif repo_req.tag:
@@ -708,6 +713,7 @@ async def batch_run_stream(request: BatchRunRequest):
                                 test_timeout=repo_req.test_timeout,
                                 tag_message=tag_message,
                                 tag=repo_req.tag,
+                                grading_rubric=grading_rubric,
                             ),
                             deadline=deadline,
                         )

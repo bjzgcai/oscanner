@@ -12,6 +12,13 @@ from evaluator.services.trajectory_poll_store import SQLiteTrajectoryPollStore
 from evaluator.routes import runner_proxy
 
 
+def test_runner_proxy_request_has_nonempty_default_grading_rubric():
+    request = runner_proxy.RunAllRequest(repo_url="https://gitee.com/org/repo")
+
+    assert request.grading_rubric
+    assert request.grading_rubric.strip()
+
+
 @pytest.mark.anyio
 async def test_run_all_proxy_forwards_tag_message(monkeypatch):
     captured = {}
@@ -56,6 +63,7 @@ async def test_run_all_proxy_forwards_tag_message(monkeypatch):
             repo_url="https://gitee.com/org/repo",
             tag="class-01",
             tag_message="## Course tag requirements\n\n- /health returns JSON",
+            grading_rubric="Grade API correctness before UI polish.",
             clone_timeout=42,
             pipeline_timeout=123,
         )
@@ -67,6 +75,7 @@ async def test_run_all_proxy_forwards_tag_message(monkeypatch):
     assert captured["url"] == "http://localhost:8001/api/runner/run-all"
     assert captured["json"]["tag"] == "class-01"
     assert captured["json"]["tag_message"] == "## Course tag requirements\n\n- /health returns JSON"
+    assert captured["json"]["grading_rubric"] == "Grade API correctness before UI polish."
     assert captured["json"]["clone_timeout"] == 42
     assert captured["json"]["pipeline_timeout"] == 123
 

@@ -27,34 +27,11 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import httpx
 
 
-_RUBRIC_SUMMARY = """
-You are evaluating an engineer in the Vibe Coding era. Distinguish "AI搬运工" vs "系统构建者".
-Use L1-L5 behavioral profiles as guidance:
-- L1: blind copy/paste, cannot explain, low-level errors, no quality gates
-- L2: can deliver happy-path, basic norms, basic tests/lint, but shallow system thinking
-- L3: one-person full-stack MVP builder, can refactor AI code, stronger type discipline, edge cases
-- L4: team anchor, introduces quality gates, defensive validation, CI, docs, cost/ops thinking
-- L5: leader/maintainer, defines patterns/standards, affects ecosystem, deep architecture decisions
+def _load_rubric_summary() -> str:
+    return (Path(__file__).resolve().parents[1] / "rubric.md").read_text(encoding="utf-8").strip()
 
-Evidence to look for (prefer repo artifacts over claims):
-- Spec/quality: refactors, modularity, input validation, tests (unit/integration/property), lint/format, CI
-- Reproducibility: dependency locks, one-command run, docker/compose/devcontainer
-- Cloud-native: containerization, IaC, deployment configs, resource limits, automation
-- AI engineering: agent/tooling, structured prompts, tool abstractions, traces/logs, eval datasets
-- Professionalism: docs/ADR, meaningful commits/PRs, careful tradeoffs, security/perf considerations
 
-Scoring mapping: for each dimension, map observed evidence to a rough L1-L5 and convert to 0-100
-(L1≈10-30, L2≈30-50, L3≈50-70, L4≈70-85, L5≈85-100). Be conservative when evidence is missing.
-
-TRAJECTORY EVALUATION CONTEXT:
-- This evaluation is part of a growth trajectory tracking system
-- Commits are grouped into evaluation nodes (minimum 10 commits per node from 2-week periods)
-- Scores should generally show INCREASING trend over time as engineers learn and improve
-- ONLY decrease scores if there is CLEAR NEGATIVE EVIDENCE (regression in quality, bugs introduced, anti-patterns)
-- When previous checkpoint scores are provided, use them as baseline for comparison
-- If current work maintains similar quality to previous, scores should be equal or slightly higher
-- Significant score increases require clear evidence of new capabilities or improved practices
-"""
+_RUBRIC_SUMMARY = _load_rubric_summary()
 
 
 ProgressCallback = Callable[[str, Dict[str, Any]], None]

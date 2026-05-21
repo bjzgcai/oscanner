@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
+from repos_runner.grading import DEFAULT_GRADING_RUBRIC
+
 
 class TaskStatus(str, Enum):
     """Status of a runner task"""
@@ -31,6 +33,7 @@ class RunAllRequest(BaseModel):
     tag: Optional[str] = None  # Optional tag to checkout (ignored if sha is set)
     branch: Optional[str] = None  # Optional branch to checkout (ignored if sha/tag are set)
     tag_message: Optional[str] = None  # Merged feature requirements supplied by Courses
+    grading_rubric: Optional[str] = DEFAULT_GRADING_RUBRIC  # Runner grading rubric supplied by Courses
     skip_clone: bool = False    # Reuse existing clone
     skip_explore: bool = False  # Reuse existing REPO_OVERVIEW.md
     clone_timeout: int = Field(default=300, gt=0)    # Seconds allowed for git clone/checkout

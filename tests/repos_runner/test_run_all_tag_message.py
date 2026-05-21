@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from repos_runner.routes import runner as runner_route
 from repos_runner.schemas import RunAllRequest
+from repos_runner.grading import DEFAULT_GRADING_RUBRIC
 from repos_runner.services.repo_service.llm import record_token_usage
 
 
@@ -16,9 +17,18 @@ def test_run_all_request_accepts_forwarded_tag_message():
         repo_url="https://github.com/org/repo",
         tag="class-01",
         tag_message="Merged course and repository requirements",
+        grading_rubric="Grade API correctness before UI polish.",
     )
 
     assert request.tag_message == "Merged course and repository requirements"
+    assert request.grading_rubric == "Grade API correctness before UI polish."
+
+
+def test_run_all_request_has_nonempty_default_grading_rubric():
+    request = RunAllRequest(repo_url="https://github.com/org/repo")
+
+    assert request.grading_rubric == DEFAULT_GRADING_RUBRIC
+    assert request.grading_rubric.strip()
 
 
 def test_run_all_request_accepts_runner_timeouts():
@@ -37,6 +47,7 @@ def test_run_all_uses_forwarded_tag_message(monkeypatch, tmp_path):
         "fetched_remote": 0,
         "explore_tag_message": None,
         "run_tag_message": None,
+        "run_grading_rubric": None,
     }
     clone_dir = tmp_path / "repo"
     clone_dir.mkdir()
@@ -64,8 +75,10 @@ def test_run_all_uses_forwarded_tag_message(monkeypatch, tmp_path):
         test_timeout,
         tag_message=None,
         tag=None,
+        grading_rubric=None,
     ):
         calls["run_tag_message"] = tag_message
+        calls["run_grading_rubric"] = grading_rubric
         return {
             "repo_name": "org/repo",
             "passed": 1,
@@ -86,6 +99,7 @@ def test_run_all_uses_forwarded_tag_message(monkeypatch, tmp_path):
                 repo_url="https://github.com/org/repo",
                 tag="class-01",
                 tag_message="Forwarded feature requirements",
+                grading_rubric="Grade API correctness before UI polish.",
             )
         )
     )
@@ -110,9 +124,11 @@ def test_run_all_uses_forwarded_tag_message(monkeypatch, tmp_path):
     assert calls["fetched_remote"] == 0
     assert calls["explore_tag_message"] == "Forwarded feature requirements"
     assert calls["run_tag_message"] == "Forwarded feature requirements"
+    assert calls["run_grading_rubric"] == "Grade API correctness before UI polish."
 
 
 def test_run_all_reports_accumulated_token_usage(monkeypatch, tmp_path):
+    calls = {"run_grading_rubric": None}
     clone_dir = tmp_path / "repo"
     clone_dir.mkdir()
     report_path = clone_dir / "TEST_REPORT.md"
@@ -135,7 +151,9 @@ def test_run_all_reports_accumulated_token_usage(monkeypatch, tmp_path):
         test_timeout,
         tag_message=None,
         tag=None,
+        grading_rubric=None,
     ):
+        calls["run_grading_rubric"] = grading_rubric
         record_token_usage({"input_tokens": 7, "output_tokens": 3, "total_tokens": 10})
         return {
             "repo_name": "org/repo",
@@ -173,6 +191,7 @@ def test_run_all_reports_accumulated_token_usage(monkeypatch, tmp_path):
         "source": "provider",
     }
     assert completed["results"]["token_usage"] == completed["token_usage"]
+    assert calls["run_grading_rubric"] == DEFAULT_GRADING_RUBRIC
 
 
 def test_run_all_times_out_entire_pipeline(monkeypatch):
