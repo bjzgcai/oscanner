@@ -16,6 +16,7 @@ from .validators import (
     TemporalValidator,
     OrderingValidator,
 )
+from .justice import build_justice_profile
 
 
 @dataclass
@@ -57,6 +58,7 @@ class ValidationRunResult:
     overall_passed: bool
     overall_score: float
     duration_seconds: float
+    justice_profile: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -65,6 +67,7 @@ class ValidationRunResult:
             "dataset_stats": self.dataset_stats,
             "evaluation_count": self.evaluation_count,
             "validation_results": [vr.to_dict() for vr in self.validation_results],
+            "justice_profile": self.justice_profile,
             "overall_passed": self.overall_passed,
             "overall_score": self.overall_score,
             "duration_seconds": self.duration_seconds,
@@ -369,6 +372,7 @@ class ValidationRunner:
 
         overall_passed = all(vr.passed for vr in validation_results)
         overall_score = sum(vr.score for vr in validation_results) / len(validation_results) if validation_results else 0
+        justice_profile = build_justice_profile(validation_results)
 
         result = ValidationRunResult(
             run_id=run_id,
@@ -376,6 +380,7 @@ class ValidationRunner:
             dataset_stats=self.dataset.get_stats(),
             evaluation_count=len(test_repos),
             validation_results=validation_results,
+            justice_profile=justice_profile,
             overall_passed=overall_passed,
             overall_score=overall_score,
             duration_seconds=duration,
