@@ -1,0 +1,18 @@
+language: cpp
+label: C/C++
+default_feature_requirements:
+  - The repository documents compiler, standard library, and platform expectations.
+  - The project builds through CMake, Make, Meson, Bazel, or documented commands.
+  - The documented test command runs without requiring private services.
+  - Core libraries, binaries, or algorithms have representative tests.
+  - Memory, boundary, parsing, or error handling behavior is tested or documented.
+  - Build configuration is reproducible from source with public dependencies.
+runner_notes:
+  preferred_commands:
+    - cmake -S . -B build && cmake --build build && ctest --test-dir build --output-on-failure
+    - make test
+    - meson setup build && meson test -C build
+  common_constraints:
+    - Historical projects may require old compilers or platform-specific libraries.
+    - Full test suites can be expensive and may need a documented subset.
+

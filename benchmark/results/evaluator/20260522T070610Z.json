@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "run_id": "20260522T070610Z",
+  "started_at": "2026-05-22T07:06:10Z",
+  "finished_at": null,
+  "manifest": "benchmark/repos.yaml",
+  "benchmark_name": "oscanner-language-career-benchmark",
+  "benchmark_version": 1,
+  "model": "deepseek/deepseek-v4-pro",
+  "default_plugin_id": "zgc_ai_native_2026",
+  "summary": {
+    "total": 30,
+    "succeeded": 3,
+    "failed": 2,
+    "skipped": 0
+  },
+  "results": [
+    {
+      "entry_id": "python-l1",
+      "language": "python",
+      "level": "L1",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "twitterlog",
+        "url": "https://github.com/mitsuhiko/twitterlog",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 13.75,
+      "scores": {
+        "spec_quality": 20,
+        "cloud_architecture": 5,
+        "ai_engineering": 0,
+        "mastery_professionalism": 30,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\nAssessment：, **Cloud-Native & Architecture Evolution**, **AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. For each dimension include the L1-L5 level and visible evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details. **Specification & Built-in Quality (L1, 20/100)**: The initial commit (ba64aa4) created `twitterlog.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## Engineering Mastery & Professionalism\n\nScore: 30/100\nLevel: L2\n\nEvidence:\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (5/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (5/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 4,
+      "commits_analyzed": 4,
+      "files_loaded": 5,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 4827,
+        "output_tokens": 788,
+        "total_tokens": 5615,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T15:07:12.646665",
+      "last_commit_sha": "88b23f68efbfcc6030e756278c8eb54c30d36bd2",
+      "commits_summary": {
+        "total_additions": 209,
+        "total_deletions": 1,
+        "files_changed": 5,
+        "languages": [
+          "gitignore",
+          "py"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\nAssessment：, **Cloud-Native & Architecture Evolution**, **AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. For each dimension include the L1-L5 level and visible evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details. **Specification & Built-in Quality (L1, 20/100)**: The initial commit (ba64aa4) created `twitterlog.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## Engineering Mastery & Professionalism\n\nScore: 30/100\nLevel: L2\n\nEvidence:\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (5/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (5/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/mitsuhiko/twitterlog"
+    },
+    {
+      "entry_id": "python-l2",
+      "language": "python",
+      "level": "L2",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "fungiform",
+        "url": "https://github.com/mitsuhiko/fungiform",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 43.75,
+      "scores": {
+        "spec_quality": 75,
+        "cloud_architecture": 10,
+        "ai_engineering": 0,
+        "mastery_professionalism": 90,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 75/100\nLevel: L4\n\nEvidence:\n- commit `ae75df94`: Added support for sentinel values to end multiple lists.  This fixes #1 and #2; files: fungiform/forms.py, fungiform/tests/widgets.py, fungiform/widgets.py\n- commit `a3591eb0`: Fixed a redirect bug; files: fungiform/redirects.py\n- commit `7dd16343`: Renamed bureaucracy to fungiform; files: .gitignore, AUTHORS, LICENSE, MANIFEST.in, Makefile, fungiform/__init__.py\n\nAssessment：(L4): The commits show strong evidence of testing (unit tests + doctests), refactoring for edge cases (sentinel support, redirect bug fix), and security awareness (Markup escaping in HTMLBuilder). The addition of `from_flat` demonstrates flexibility in API design. However, no CI configuration or linter setup is visible, and the codebase is in early stages. **Cloud-Native & Architecture Evolution** (L1): There is no containerization, IaC, or deployment configuration;\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `8e021652`: Added text to the __init__.py file; files: fungiform/__init__.py\n- commit `ba1fe67e`: HEAD is 0.2-dev; files: CHANGES, setup.py\n- commit `ce44a17c`: Ready for release; files: setup.py\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `8e021652`: Added text to the __init__.py file; files: fungiform/__init__.py\n- commit `ba1fe67e`: HEAD is 0.2-dev; files: CHANGES, setup.py\n- commit `ce44a17c`: Ready for release; files: setup.py\n\n## Engineering Mastery & Professionalism\n\nScore: 90/100\nLevel: L5\n\nEvidence:\n- commit `ae75df94`: Added support for sentinel values to end multiple lists.  This fixes #1 and #2; files: fungiform/forms.py, fungiform/tests/widgets.py, fungiform/widgets.py\n- commit `a3591eb0`: Fixed a redirect bug; files: fungiform/redirects.py\n- commit `7dd16343`: Renamed bureaucracy to fungiform; files: .gitignore, AUTHORS, LICENSE, MANIFEST.in, Makefile, fungiform/__init__.py\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 29,
+      "commits_analyzed": 9,
+      "files_loaded": 20,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 65457,
+        "output_tokens": 1841,
+        "total_tokens": 67298,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T15:08:29.919861",
+      "last_commit_sha": "8e021652aa4580192b9a7492dbfc0840125faa7f",
+      "commits_summary": {
+        "total_additions": 3380,
+        "total_deletions": 36,
+        "files_changed": 20,
+        "languages": [
+          "cfg",
+          "in",
+          "gitignore",
+          "py"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 75/100\nLevel: L4\n\nEvidence:\n- commit `ae75df94`: Added support for sentinel values to end multiple lists.  This fixes #1 and #2; files: fungiform/forms.py, fungiform/tests/widgets.py, fungiform/widgets.py\n- commit `a3591eb0`: Fixed a redirect bug; files: fungiform/redirects.py\n- commit `7dd16343`: Renamed bureaucracy to fungiform; files: .gitignore, AUTHORS, LICENSE, MANIFEST.in, Makefile, fungiform/__init__.py\n\nAssessment：(L4): The commits show strong evidence of testing (unit tests + doctests), refactoring for edge cases (sentinel support, redirect bug fix), and security awareness (Markup escaping in HTMLBuilder). The addition of `from_flat` demonstrates flexibility in API design. However, no CI configuration or linter setup is visible, and the codebase is in early stages. **Cloud-Native & Architecture Evolution** (L1): There is no containerization, IaC, or deployment configuration;\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `8e021652`: Added text to the __init__.py file; files: fungiform/__init__.py\n- commit `ba1fe67e`: HEAD is 0.2-dev; files: CHANGES, setup.py\n- commit `ce44a17c`: Ready for release; files: setup.py\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `8e021652`: Added text to the __init__.py file; files: fungiform/__init__.py\n- commit `ba1fe67e`: HEAD is 0.2-dev; files: CHANGES, setup.py\n- commit `ce44a17c`: Ready for release; files: setup.py\n\n## Engineering Mastery & Professionalism\n\nScore: 90/100\nLevel: L5\n\nEvidence:\n- commit `ae75df94`: Added support for sentinel values to end multiple lists.  This fixes #1 and #2; files: fungiform/forms.py, fungiform/tests/widgets.py, fungiform/widgets.py\n- commit `a3591eb0`: Fixed a redirect bug; files: fungiform/redirects.py\n- commit `7dd16343`: Renamed bureaucracy to fungiform; files: .gitignore, AUTHORS, LICENSE, MANIFEST.in, Makefile, fungiform/__init__.py\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/mitsuhiko/fungiform"
+    },
+    {
+      "entry_id": "python-l3",
+      "language": "python",
+      "level": "L3",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "flask-oauth",
+        "url": "https://github.com/mitsuhiko/flask-oauth",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 47.75,
+      "scores": {
+        "spec_quality": 68,
+        "cloud_architecture": 20,
+        "ai_engineering": 10,
+        "mastery_professionalism": 93,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 68/100\nLevel: L3\n\nEvidence:\n- commit `8bcba9a5`: Added response_type=code for authorize requests; files: flask_oauth.py\n- commit `d7f0f6cd`: Updated twitter example to use https.  This fixes #26; files: example/tweet.py\n- commit `c31785dc`: Fixed a comment (Fixes #39); files: flask_oauth.py\n- commit `333ab43c`: Added support for multiple tokens (Fixes #16); files: docs/index.rst, flask_oauth.py\n- commit `c1098a56`: Support 201 for oauth token requests.  This fixes #22; files: flask_oauth.py\n\nAssessment：, **Cloud-Native & Architecture Evolution**, **AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. For each dimension include the L1-L5 level and visible evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `d5c3f6a2`: Merge pull request #79 from s1hofmann/master; files: flask_oauth.py\n- commit `09ebf284`: This is 0.13; files: setup.py\n- commit `8bcba9a5`: Added response_type=code for authorize requests; files: flask_oauth.py\n\nAssessment：(L1, Score 20): No evidence of containerization, IaC, deployment automation, resource limits, or cloud architecture documents. Repository is a Python library with setup.py, no Dockerfile or CI. Architecture evolution limited to OAuth flow abstraction (commit 950079c) and migration from flaskext namespace package to flask_oauth module (commits c917931, d6d4eda). Score reflects absence of cloud-native practices.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `4b567ed3`: Added author email that was missing.; files: setup.py\n\nAssessment：(L1, Score 10): No commits contain AI/LLM tooling, structured prompts, agent definitions, eval datasets, or trace/logging specific to AI workflows. The project predates AI-assisted engineering; zero evidence.\n\n## Engineering Mastery & Professionalism\n\nScore: 93/100\nLevel: L5\n\nEvidence:\n- commit `d7f0f6cd`: Updated twitter example to use https.  This fixes #26; files: example/tweet.py\n- commit `f655275a`: Twitter wants https now; files: docs/index.rst\n- commit `c31785dc`: Fixed a comment (Fixes #39); files: flask_oauth.py\n- commit `22de937b`: Updated docs to new module name; files: docs/index.rst\n- commit `333ab43c`: Added support for multiple tokens (Fixes #16); files: docs/index.rst, flask_oauth.py\n\nAssessment：(L5, Score 93): Armin Ronacher demonstrates high professional standards: clear, descriptive commit messages (e.g., 'Improved the exception system and made it possible to override the method for token authorizations' in 950079c), comprehensive documentation via Sphinx (commits 156056b, 0fdb8e8) with examples and API reference, open source collaboration through pull requests (e.g.\n\n## Conclusion And Suggestions\n\nConclusion: Outstanding mastery and professional open source practices. To advance to modern L4/L5, incorporate testing (pytest), linting (flake8/black), CI (GitHub Actions), and containerized dev environment. Cloud architecture and AI engineering are not relevant to this library context but would be needed in service-oriented projects. Overall, a top-tier engineer leading by example.\nSuggestion: Prioritize AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (20/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 59,
+      "commits_analyzed": 43,
+      "files_loaded": 16,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 51438,
+        "output_tokens": 2688,
+        "total_tokens": 54126,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T15:12:28.125385",
+      "last_commit_sha": "d5c3f6a229df1c3566b9bc3233311c109b4dcff9",
+      "commits_summary": {
+        "total_additions": 2100,
+        "total_deletions": 305,
+        "files_changed": 20,
+        "languages": [
+          "html",
+          "bat",
+          "gitignore",
+          "gitmodules",
+          "css",
+          "cfg",
+          "rst",
+          "py"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 68/100\nLevel: L3\n\nEvidence:\n- commit `8bcba9a5`: Added response_type=code for authorize requests; files: flask_oauth.py\n- commit `d7f0f6cd`: Updated twitter example to use https.  This fixes #26; files: example/tweet.py\n- commit `c31785dc`: Fixed a comment (Fixes #39); files: flask_oauth.py\n- commit `333ab43c`: Added support for multiple tokens (Fixes #16); files: docs/index.rst, flask_oauth.py\n- commit `c1098a56`: Support 201 for oauth token requests.  This fixes #22; files: flask_oauth.py\n\nAssessment：, **Cloud-Native & Architecture Evolution**, **AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. For each dimension include the L1-L5 level and visible evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `d5c3f6a2`: Merge pull request #79 from s1hofmann/master; files: flask_oauth.py\n- commit `09ebf284`: This is 0.13; files: setup.py\n- commit `8bcba9a5`: Added response_type=code for authorize requests; files: flask_oauth.py\n\nAssessment：(L1, Score 20): No evidence of containerization, IaC, deployment automation, resource limits, or cloud architecture documents. Repository is a Python library with setup.py, no Dockerfile or CI. Architecture evolution limited to OAuth flow abstraction (commit 950079c) and migration from flaskext namespace package to flask_oauth module (commits c917931, d6d4eda). Score reflects absence of cloud-native practices.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `4b567ed3`: Added author email that was missing.; files: setup.py\n\nAssessment：(L1, Score 10): No commits contain AI/LLM tooling, structured prompts, agent definitions, eval datasets, or trace/logging specific to AI workflows. The project predates AI-assisted engineering; zero evidence.\n\n## Engineering Mastery & Professionalism\n\nScore: 93/100\nLevel: L5\n\nEvidence:\n- commit `d7f0f6cd`: Updated twitter example to use https.  This fixes #26; files: example/tweet.py\n- commit `f655275a`: Twitter wants https now; files: docs/index.rst\n- commit `c31785dc`: Fixed a comment (Fixes #39); files: flask_oauth.py\n- commit `22de937b`: Updated docs to new module name; files: docs/index.rst\n- commit `333ab43c`: Added support for multiple tokens (Fixes #16); files: docs/index.rst, flask_oauth.py\n\nAssessment：(L5, Score 93): Armin Ronacher demonstrates high professional standards: clear, descriptive commit messages (e.g., 'Improved the exception system and made it possible to override the method for token authorizations' in 950079c), comprehensive documentation via Sphinx (commits 156056b, 0fdb8e8) with examples and API reference, open source collaboration through pull requests (e.g.\n\n## Conclusion And Suggestions\n\nConclusion: Outstanding mastery and professional open source practices. To advance to modern L4/L5, incorporate testing (pytest), linting (flake8/black), CI (GitHub Actions), and containerized dev environment. Cloud architecture and AI engineering are not relevant to this library context but would be needed in service-oriented projects. Overall, a top-tier engineer leading by example.\nSuggestion: Prioritize AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (20/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/mitsuhiko/flask-oauth"
+    },
+    {
+      "entry_id": "python-l4",
+      "language": "python",
+      "level": "L4",
+      "status": "failed",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "rstblog",
+        "url": "https://github.com/mitsuhiko/rstblog",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "model": "deepseek/deepseek-v4-pro",
+      "error": "No commits loaded from local data",
+      "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 169, in <module>\nRuntimeError: No commits loaded from local data\n"
+    },
+    {
+      "entry_id": "python-l5",
+      "language": "python",
+      "level": "L5",
+      "status": "failed",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "zine",
+        "url": "https://github.com/mitsuhiko/zine",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "model": "deepseek/deepseek-v4-pro",
+      "error": "502: LLM evaluation failed: LLM request failed for all models. last_error=object of type 'NoneType' has no len()",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/carter/working/oscanner/backend/evaluator/services/evaluation_service.py\", line 198, in evaluate_author_incremental\n    evaluation = evaluator.evaluate_engineer(\n        commits=author_commits,\n    ...<2 lines>...\n        load_files=True,\n    )\n  File \"/home/carter/working/oscanner/plugins/zgc_ai_native_2026/scan/__init__.py\", line 783, in evaluate_engineer\n    return self._evaluate_engineer_chunked(author_commits, username, load_files=load_files)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/carter/working/oscanner/plugins/zgc_ai_native_2026/scan/__init__.py\", line 1112, in _evaluate_engineer_chunked\n    return self._evaluate_chunks_sequential(\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n        chunks,\n        ^^^^^^^\n    ...<2 lines>...\n        input_budget_errors=input_budget_errors,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/carter/working/oscanner/plugins/zgc_ai_native_2026/scan/__init__.py\", line 1147, in _evaluate_chunks_sequential\n    chunk_scores = self._evaluate_with_llm(context, username, chunk_idx=idx)\n  File \"/home/carter/working/oscanner/plugins/zgc_ai_native_2026/scan/__init__.py\", line 2100, in _evaluate_with_llm\n    raise RuntimeError(f\"LLM request failed for all models. last_error={last_err}\")\nRuntimeError: LLM request failed for all models. last_error=object of type 'NoneType' has no len()\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<stdin>\", line 179, in <module>\n  File \"/home/carter/working/oscanner/backend/evaluator/services/evaluation_service.py\", line 206, in evaluate_author_incremental\n    raise HTTPException(status_code=502, detail=f\"LLM evaluation failed: {str(e)}\")\nfastapi.exceptions.HTTPException: 502: LLM evaluation failed: LLM request failed for all models. last_error=object of type 'NoneType' has no len()\n"
+    }
+  ]
+}

@@ -12,3 +12,9 @@ the 10M-token evaluator guardrail.
 The check lives in evaluation_service.py and stops evaluation with HTTP 413 and exact detail:
 the repo is too big exceeding 10M tokens!
 It now runs before evaluator/LLM work in the main incremental evaluator path, Gitee contributor route, and trajectory/group evaluation paths.
+
+## PR and Cooperation with others
+
+## forks and stars are not considered in the evaluation, as they can be easily manipulated and do not necessarily reflect the quality of the code or the contribution.
+
+## vercel how to set up and deploy

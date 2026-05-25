@@ -1,0 +1,19 @@
+language: java
+label: Java
+default_feature_requirements:
+  - The repository documents the required JDK version.
+  - The project builds with Maven, Gradle, or documented public dependencies.
+  - The documented test command runs without requiring private services.
+  - Core modules, APIs, or command paths have representative tests.
+  - Invalid input, compatibility behavior, or failure paths are tested or documented.
+  - Generated artifacts are reproducible from source with documented commands.
+runner_notes:
+  preferred_commands:
+    - mvn test
+    - ./mvnw test
+    - gradle test
+    - ./gradlew test
+  common_constraints:
+    - Older Java projects may require legacy JDK versions.
+    - Large enterprise projects may need module-specific test commands.
+

@@ -1,0 +1,17 @@
+language: rust
+label: Rust
+default_feature_requirements:
+  - The repository declares crate metadata or workspace metadata.
+  - The project builds using stable Rust unless a toolchain override is documented.
+  - The documented cargo test command runs without private services.
+  - Core crates, binaries, or public APIs have representative tests.
+  - Error cases use typed errors, Result handling, or documented panic boundaries.
+  - Examples, benches, or docs validate important user-facing behavior when present.
+runner_notes:
+  preferred_commands:
+    - cargo test --all
+    - cargo test
+  common_constraints:
+    - Historical projects may require an older Rust toolchain.
+    - Large workspaces may need test filtering to avoid long benchmark suites.
+

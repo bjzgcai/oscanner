@@ -1,0 +1,17 @@
+language: go
+label: Go
+default_feature_requirements:
+  - The repository declares module metadata or clear GOPATH-era setup instructions.
+  - The package or command builds with documented public dependencies.
+  - The standard test command runs for the selected packages.
+  - Core packages or commands include representative unit or integration tests.
+  - Error handling behavior is covered for invalid input or failed dependencies.
+  - Public examples or documentation match the executable behavior.
+runner_notes:
+  preferred_commands:
+    - go test ./...
+    - go test
+  common_constraints:
+    - Some old repositories predate Go modules and need GOPATH-compatible setup.
+    - Tests that require network credentials should be skipped or documented.
+

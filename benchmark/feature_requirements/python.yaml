@@ -1,0 +1,18 @@
+language: python
+label: Python
+default_feature_requirements:
+  - The repository documents supported Python versions and installation steps.
+  - The main package or application can be imported or started after setup.
+  - The documented test command runs without requiring private services.
+  - Core public APIs or CLI commands have representative tests.
+  - Invalid input and common failure paths are covered by tests or examples.
+  - Packaging metadata is present through pyproject.toml, setup.cfg, or setup.py.
+runner_notes:
+  preferred_commands:
+    - uv run pytest
+    - pytest
+    - python -m pytest
+  common_constraints:
+    - Some historical repositories may need older Python versions.
+    - Native extensions may require system packages that are unavailable in the runner.
+

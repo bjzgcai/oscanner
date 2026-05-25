@@ -1,0 +1,829 @@
+version: 1
+name: oscanner-language-career-benchmark
+status: draft
+description: >
+  Metadata-only benchmark draft for evaluating Oscanner across six programming
+  language tracks and five career-stage levels per track.
+
+languages:
+  - id: python
+    label: Python
+    feature_requirements_file: benchmark/feature_requirements/python.yaml
+  - id: javascript-typescript
+    label: JavaScript/TypeScript
+    feature_requirements_file: benchmark/feature_requirements/javascript-typescript.yaml
+  - id: go
+    label: Go
+    feature_requirements_file: benchmark/feature_requirements/go.yaml
+  - id: rust
+    label: Rust
+    feature_requirements_file: benchmark/feature_requirements/rust.yaml
+  - id: java
+    label: Java
+    feature_requirements_file: benchmark/feature_requirements/java.yaml
+  - id: cpp
+    label: C/C++
+    feature_requirements_file: benchmark/feature_requirements/cpp.yaml
+
+levels:
+  - id: L1
+    label: Junior
+    definition: >
+      Early work with limited scope, small fixes, simple features, or learning
+      stage contributions.
+  - id: L2
+    label: Independent
+    definition: >
+      Delivers complete features, handles common edge cases, and writes usable
+      tests or documentation with limited architecture ownership.
+  - id: L3
+    label: Senior
+    definition: >
+      Owns meaningful modules, improves maintainability, makes design tradeoffs,
+      and contributes reliable tests or reviewable changes.
+  - id: L4
+    label: Lead
+    definition: >
+      Leads architecture or quality gates, coordinates larger changes, and shows
+      strong judgment around reliability, compatibility, and operations.
+  - id: L5
+    label: Expert
+    definition: >
+      Creates or shapes influential systems, sets ecosystem direction, and has
+      public evidence of exceptional technical impact.
+
+defaults:
+  evaluator:
+    plugin_id: zgc_ai_native_2026
+    expected_score_band: null
+    expected_strengths: []
+    expected_risks: []
+  repos_runner:
+    test_command_policy: auto_detect
+    feature_requirements_override: []
+    known_test_constraints: []
+  fairness:
+    review_status: unreviewed
+    public_evidence_urls: []
+    exclusion_notes: []
+
+entries:
+  - id: python-l1
+    language: python
+    level: L1
+    status: candidate
+    developer_profile_id: armin-ronacher
+    developer: Armin Ronacher
+    author_aliases: [mitsuhiko, Armin Ronacher]
+    repo:
+      platform: github
+      owner: mitsuhiko
+      name: twitterlog
+      url: https://github.com/mitsuhiko/twitterlog
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Early small Python utility; useful as an immature personal-repo baseline.
+    evaluator: &python_evaluator
+      plugin_id: zgc_ai_native_2026
+      target_author: mitsuhiko
+      expected_score_band: null
+      expected_strengths: []
+      expected_risks:
+        - Small historical repo may not expose enough context for stable scoring.
+    repos_runner: &python_runner
+      feature_requirements_file: benchmark/feature_requirements/python.yaml
+      feature_requirements_override: []
+      test_command_policy: auto_detect
+      known_test_constraints:
+        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+    fairness: &personal_candidate_fairness
+      selection_rule: Prefer a non-fork personal repo; use chronology as the main factor and maturity/design complexity as the tie-breaker.
+      public_evidence_urls: []
+      exclusion_notes: []
+      review_status: unreviewed
+
+  - id: python-l2
+    language: python
+    level: L2
+    status: candidate
+    developer_profile_id: armin-ronacher
+    developer: Armin Ronacher
+    author_aliases: [mitsuhiko, Armin Ronacher]
+    repo:
+      platform: github
+      owner: mitsuhiko
+      name: fungiform
+      url: https://github.com/mitsuhiko/fungiform
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Early form library with broader scope than a demo utility.
+    evaluator: *python_evaluator
+    repos_runner: *python_runner
+    fairness: *personal_candidate_fairness
+
+  - id: python-l3
+    language: python
+    level: L3
+    status: candidate
+    developer_profile_id: armin-ronacher
+    developer: Armin Ronacher
+    author_aliases: [mitsuhiko, Armin Ronacher]
+    repo:
+      platform: github
+      owner: mitsuhiko
+      name: flask-oauth
+      url: https://github.com/mitsuhiko/flask-oauth
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Flask extension that introduces integration and protocol concerns.
+    evaluator: *python_evaluator
+    repos_runner: *python_runner
+    fairness: *personal_candidate_fairness
+
+  - id: python-l4
+    language: python
+    level: L4
+    status: candidate
+    developer_profile_id: armin-ronacher
+    developer: Armin Ronacher
+    author_aliases: [mitsuhiko, Armin Ronacher]
+    repo:
+      platform: github
+      owner: mitsuhiko
+      name: rstblog
+      url: https://github.com/mitsuhiko/rstblog
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Personal static site generator with more complete product shape.
+    evaluator: *python_evaluator
+    repos_runner: *python_runner
+    fairness: *personal_candidate_fairness
+
+  - id: python-l5
+    language: python
+    level: L5
+    status: candidate
+    developer_profile_id: armin-ronacher
+    developer: Armin Ronacher
+    author_aliases: [mitsuhiko, Armin Ronacher]
+    repo:
+      platform: github
+      owner: mitsuhiko
+      name: zine
+      url: https://github.com/mitsuhiko/zine
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Larger personal Python application; best personal-repo substitute for mature framework work.
+    evaluator: *python_evaluator
+    repos_runner: *python_runner
+    fairness: *personal_candidate_fairness
+
+  - id: javascript-typescript-l1
+    language: javascript-typescript
+    level: L1
+    status: candidate
+    developer_profile_id: evan-you
+    developer: Evan You
+    author_aliases: [yyx990803, Evan You]
+    repo:
+      platform: github
+      owner: yyx990803
+      name: Socket-Play
+      url: https://github.com/yyx990803/Socket-Play
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Early HTML5 game concept demo; matches the intended practice-repo baseline.
+    evaluator: &js_evaluator
+      plugin_id: zgc_ai_native_2026
+      target_author: yyx990803
+      expected_score_band: null
+      expected_strengths: []
+      expected_risks:
+        - Early demo repositories may have limited tests and sparse commit history.
+    repos_runner: &js_runner
+      feature_requirements_file: benchmark/feature_requirements/javascript-typescript.yaml
+      feature_requirements_override: []
+      test_command_policy: auto_detect
+      known_test_constraints:
+        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+    fairness: *personal_candidate_fairness
+
+  - id: javascript-typescript-l2
+    language: javascript-typescript
+    level: L2
+    status: candidate
+    developer_profile_id: evan-you
+    developer: Evan You
+    author_aliases: [yyx990803, Evan You]
+    repo:
+      platform: github
+      owner: yyx990803
+      name: shell-task
+      url: https://github.com/yyx990803/shell-task
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Small proof-of-concept Node tool; between practice and reusable utility.
+    evaluator: *js_evaluator
+    repos_runner: *js_runner
+    fairness: *personal_candidate_fairness
+
+  - id: javascript-typescript-l3
+    language: javascript-typescript
+    level: L3
+    status: candidate
+    developer_profile_id: evan-you
+    developer: Evan You
+    author_aliases: [yyx990803, Evan You]
+    repo:
+      platform: github
+      owner: yyx990803
+      name: semi
+      url: https://github.com/yyx990803/semi
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - More complete developer tool with clearer product intent than early demos.
+    evaluator: *js_evaluator
+    repos_runner: *js_runner
+    fairness: *personal_candidate_fairness
+
+  - id: javascript-typescript-l4
+    language: javascript-typescript
+    level: L4
+    status: candidate
+    developer_profile_id: evan-you
+    developer: Evan You
+    author_aliases: [yyx990803, Evan You]
+    repo:
+      platform: github
+      owner: yyx990803
+      name: vue-hooks
+      url: https://github.com/yyx990803/vue-hooks
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Vue ecosystem experiment that reflects framework-level design thinking.
+    evaluator: *js_evaluator
+    repos_runner: *js_runner
+    fairness: *personal_candidate_fairness
+
+  - id: javascript-typescript-l5
+    language: javascript-typescript
+    level: L5
+    status: candidate
+    developer_profile_id: evan-you
+    developer: Evan You
+    author_aliases: [yyx990803, Evan You]
+    repo:
+      platform: github
+      owner: yyx990803
+      name: launch-editor
+      url: https://github.com/yyx990803/launch-editor
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Mature personal tooling repo used across the Vue developer experience ecosystem.
+    evaluator: *js_evaluator
+    repos_runner: *js_runner
+    fairness: *personal_candidate_fairness
+
+  - id: go-l1
+    language: go
+    level: L1
+    status: candidate
+    developer_profile_id: brad-fitzpatrick
+    developer: Brad Fitzpatrick
+    author_aliases: [bradfitz, Brad Fitzpatrick]
+    repo:
+      platform: github
+      owner: bradfitz
+      name: gotsync
+      url: https://github.com/bradfitz/gotsync
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Early personal Go experiment for parallel tree sync.
+    evaluator: &go_evaluator
+      plugin_id: zgc_ai_native_2026
+      target_author: bradfitz
+      expected_score_band: null
+      expected_strengths: []
+      expected_risks:
+        - Several early personal repos are archived and may need historical Go versions.
+    repos_runner: &go_runner
+      feature_requirements_file: benchmark/feature_requirements/go.yaml
+      feature_requirements_override: []
+      test_command_policy: auto_detect
+      known_test_constraints:
+        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+    fairness: *personal_candidate_fairness
+
+  - id: go-l2
+    language: go
+    level: L2
+    status: candidate
+    developer_profile_id: brad-fitzpatrick
+    developer: Brad Fitzpatrick
+    author_aliases: [bradfitz, Brad Fitzpatrick]
+    repo:
+      platform: github
+      owner: bradfitz
+      name: goman
+      url: https://github.com/bradfitz/goman
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Early personal Go client library with more reusable-package shape.
+    evaluator: *go_evaluator
+    repos_runner: *go_runner
+    fairness: *personal_candidate_fairness
+
+  - id: go-l3
+    language: go
+    level: L3
+    status: candidate
+    developer_profile_id: brad-fitzpatrick
+    developer: Brad Fitzpatrick
+    author_aliases: [bradfitz, Brad Fitzpatrick]
+    repo:
+      platform: github
+      owner: bradfitz
+      name: gomemcache
+      url: https://github.com/bradfitz/gomemcache
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Widely used Go memcached client; stronger library design and compatibility surface.
+    evaluator: *go_evaluator
+    repos_runner: *go_runner
+    fairness: *personal_candidate_fairness
+
+  - id: go-l4
+    language: go
+    level: L4
+    status: candidate
+    developer_profile_id: brad-fitzpatrick
+    developer: Brad Fitzpatrick
+    author_aliases: [bradfitz, Brad Fitzpatrick]
+    repo:
+      platform: github
+      owner: bradfitz
+      name: goimports
+      url: https://github.com/bradfitz/goimports
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Developer tooling with ecosystem impact and more mature workflow integration.
+    evaluator: *go_evaluator
+    repos_runner: *go_runner
+    fairness: *personal_candidate_fairness
+
+  - id: go-l5
+    language: go
+    level: L5
+    status: candidate
+    developer_profile_id: brad-fitzpatrick
+    developer: Brad Fitzpatrick
+    author_aliases: [bradfitz, Brad Fitzpatrick]
+    repo:
+      platform: github
+      owner: bradfitz
+      name: http2
+      url: https://github.com/bradfitz/http2
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Personal HTTP/2 implementation work; strongest personal-repo proxy for advanced systems design.
+    evaluator: *go_evaluator
+    repos_runner: *go_runner
+    fairness: *personal_candidate_fairness
+
+  - id: rust-l1
+    language: rust
+    level: L1
+    status: candidate
+    developer_profile_id: andrew-gallant
+    developer: Andrew Gallant
+    author_aliases: [BurntSushi, Andrew Gallant]
+    repo:
+      platform: github
+      owner: BurntSushi
+      name: byteorder
+      url: https://github.com/BurntSushi/byteorder
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Small early Rust utility crate with narrow scope.
+    evaluator: &rust_evaluator
+      plugin_id: zgc_ai_native_2026
+      target_author: BurntSushi
+      expected_score_band: null
+      expected_strengths: []
+      expected_risks:
+        - Some crates may be small but high quality, so score expectations need calibration.
+    repos_runner: &rust_runner
+      feature_requirements_file: benchmark/feature_requirements/rust.yaml
+      feature_requirements_override: []
+      test_command_policy: auto_detect
+      known_test_constraints:
+        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+    fairness: *personal_candidate_fairness
+
+  - id: rust-l2
+    language: rust
+    level: L2
+    status: candidate
+    developer_profile_id: andrew-gallant
+    developer: Andrew Gallant
+    author_aliases: [BurntSushi, Andrew Gallant]
+    repo:
+      platform: github
+      owner: BurntSushi
+      name: rust-csv
+      url: https://github.com/BurntSushi/rust-csv
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Practical parser/library crate with broader API concerns.
+    evaluator: *rust_evaluator
+    repos_runner: *rust_runner
+    fairness: *personal_candidate_fairness
+
+  - id: rust-l3
+    language: rust
+    level: L3
+    status: candidate
+    developer_profile_id: andrew-gallant
+    developer: Andrew Gallant
+    author_aliases: [BurntSushi, Andrew Gallant]
+    repo:
+      platform: github
+      owner: BurntSushi
+      name: aho-corasick
+      url: https://github.com/BurntSushi/aho-corasick
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Algorithmic crate with performance-sensitive internals and reusable API surface.
+    evaluator: *rust_evaluator
+    repos_runner: *rust_runner
+    fairness: *personal_candidate_fairness
+
+  - id: rust-l4
+    language: rust
+    level: L4
+    status: candidate
+    developer_profile_id: andrew-gallant
+    developer: Andrew Gallant
+    author_aliases: [BurntSushi, Andrew Gallant]
+    repo:
+      platform: github
+      owner: BurntSushi
+      name: regex-automata
+      url: https://github.com/BurntSushi/regex-automata
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Advanced regex engine internals in a personal repository, replacing the org-owned regex repo.
+    evaluator: *rust_evaluator
+    repos_runner: *rust_runner
+    fairness: *personal_candidate_fairness
+
+  - id: rust-l5
+    language: rust
+    level: L5
+    status: candidate
+    developer_profile_id: andrew-gallant
+    developer: Andrew Gallant
+    author_aliases: [BurntSushi, Andrew Gallant]
+    repo:
+      platform: github
+      owner: BurntSushi
+      name: ripgrep
+      url: https://github.com/BurntSushi/ripgrep
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Mature flagship Rust application combining search algorithms, UX, performance, and portability.
+    evaluator: *rust_evaluator
+    repos_runner: *rust_runner
+    fairness: *personal_candidate_fairness
+
+  - id: java-l1
+    language: java
+    level: L1
+    status: candidate
+    developer_profile_id: tatu-saloranta
+    developer: Tatu Saloranta
+    author_aliases: [cowtowncoder, Tatu Saloranta]
+    repo:
+      platform: github
+      owner: cowtowncoder
+      name: java-cachemate
+      url: https://github.com/cowtowncoder/java-cachemate
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Early personal Java cache library with limited scope.
+    evaluator: &java_evaluator
+      plugin_id: zgc_ai_native_2026
+      target_author: cowtowncoder
+      expected_score_band: null
+      expected_strengths: []
+      expected_risks:
+        - Personal Java repos are less famous than FasterXML/Jackson org repos.
+    repos_runner: &java_runner
+      feature_requirements_file: benchmark/feature_requirements/java.yaml
+      feature_requirements_override: []
+      test_command_policy: auto_detect
+      known_test_constraints:
+        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+    fairness: *personal_candidate_fairness
+
+  - id: java-l2
+    language: java
+    level: L2
+    status: candidate
+    developer_profile_id: tatu-saloranta
+    developer: Tatu Saloranta
+    author_aliases: [cowtowncoder, Tatu Saloranta]
+    repo:
+      platform: github
+      owner: cowtowncoder
+      name: java-uuid-generator
+      url: https://github.com/cowtowncoder/java-uuid-generator
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Reusable personal Java library with larger API and compatibility concerns.
+    evaluator: *java_evaluator
+    repos_runner: *java_runner
+    fairness: *personal_candidate_fairness
+
+  - id: java-l3
+    language: java
+    level: L3
+    status: candidate
+    developer_profile_id: tatu-saloranta
+    developer: Tatu Saloranta
+    author_aliases: [cowtowncoder, Tatu Saloranta]
+    repo:
+      platform: github
+      owner: cowtowncoder
+      name: low-gc-membuffers
+      url: https://github.com/cowtowncoder/low-gc-membuffers
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Performance-oriented Java library with more specialized implementation tradeoffs.
+    evaluator: *java_evaluator
+    repos_runner: *java_runner
+    fairness: *personal_candidate_fairness
+
+  - id: java-l4
+    language: java
+    level: L4
+    status: candidate
+    developer_profile_id: tatu-saloranta
+    developer: Tatu Saloranta
+    author_aliases: [cowtowncoder, Tatu Saloranta]
+    repo:
+      platform: github
+      owner: cowtowncoder
+      name: StoreMate
+      url: https://github.com/cowtowncoder/StoreMate
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Larger storage-oriented personal Java project with system design concerns.
+    evaluator: *java_evaluator
+    repos_runner: *java_runner
+    fairness: *personal_candidate_fairness
+
+  - id: java-l5
+    language: java
+    level: L5
+    status: candidate
+    developer_profile_id: tatu-saloranta
+    developer: Tatu Saloranta
+    author_aliases: [cowtowncoder, Tatu Saloranta]
+    repo:
+      platform: github
+      owner: cowtowncoder
+      name: ClusterMate
+      url: https://github.com/cowtowncoder/ClusterMate
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Distributed-systems building blocks; strongest personal-repo proxy for advanced Java design.
+    evaluator: *java_evaluator
+    repos_runner: *java_runner
+    fairness: *personal_candidate_fairness
+
+  - id: cpp-l1
+    language: cpp
+    level: L1
+    status: candidate
+    developer_profile_id: salvatore-sanfilippo
+    developer: Salvatore Sanfilippo
+    author_aliases: [antirez, Salvatore Sanfilippo]
+    repo:
+      platform: github
+      owner: antirez
+      name: smaz
+      url: https://github.com/antirez/smaz
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Small early C compression library; good immature personal-repo baseline.
+    evaluator: &cpp_evaluator
+      plugin_id: zgc_ai_native_2026
+      target_author: antirez
+      expected_score_band: null
+      expected_strengths: []
+      expected_risks:
+        - Historical C projects may have little modern package/test metadata.
+    repos_runner: &cpp_runner
+      feature_requirements_file: benchmark/feature_requirements/cpp.yaml
+      feature_requirements_override: []
+      test_command_policy: auto_detect
+      known_test_constraints:
+        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+    fairness: *personal_candidate_fairness
+
+  - id: cpp-l2
+    language: cpp
+    level: L2
+    status: candidate
+    developer_profile_id: salvatore-sanfilippo
+    developer: Salvatore Sanfilippo
+    author_aliases: [antirez, Salvatore Sanfilippo]
+    repo:
+      platform: github
+      owner: antirez
+      name: linenoise
+      url: https://github.com/antirez/linenoise
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Small but polished readline alternative with reusable API design.
+    evaluator: *cpp_evaluator
+    repos_runner: *cpp_runner
+    fairness: *personal_candidate_fairness
+
+  - id: cpp-l3
+    language: cpp
+    level: L3
+    status: candidate
+    developer_profile_id: salvatore-sanfilippo
+    developer: Salvatore Sanfilippo
+    author_aliases: [antirez, Salvatore Sanfilippo]
+    repo:
+      platform: github
+      owner: antirez
+      name: sds
+      url: https://github.com/antirez/sds
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - C data-structure library extracted from mature systems work.
+    evaluator: *cpp_evaluator
+    repos_runner: *cpp_runner
+    fairness: *personal_candidate_fairness
+
+  - id: cpp-l4
+    language: cpp
+    level: L4
+    status: candidate
+    developer_profile_id: salvatore-sanfilippo
+    developer: Salvatore Sanfilippo
+    author_aliases: [antirez, Salvatore Sanfilippo]
+    repo:
+      platform: github
+      owner: antirez
+      name: hping
+      url: https://github.com/antirez/hping
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Mature networking tool with broader systems and protocol concerns.
+    evaluator: *cpp_evaluator
+    repos_runner: *cpp_runner
+    fairness: *personal_candidate_fairness
+
+  - id: cpp-l5
+    language: cpp
+    level: L5
+    status: candidate
+    developer_profile_id: salvatore-sanfilippo
+    developer: Salvatore Sanfilippo
+    author_aliases: [antirez, Salvatore Sanfilippo]
+    repo:
+      platform: github
+      owner: antirez
+      name: disque
+      url: https://github.com/antirez/disque
+      ref_type: null
+      ref: null
+      start_sha: null
+      end_sha: null
+      license: null
+    selection_evidence:
+      - Distributed message broker; strongest personal-repo substitute for Redis-level advanced design.
+    evaluator: *cpp_evaluator
+    repos_runner: *cpp_runner
+    fairness: *personal_candidate_fairness

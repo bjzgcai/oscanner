@@ -1,0 +1,19 @@
+language: javascript-typescript
+label: JavaScript/TypeScript
+default_feature_requirements:
+  - The repository documents Node.js or runtime version expectations.
+  - Dependencies install through npm, pnpm, or yarn using public registries.
+  - The documented test command runs without requiring private services.
+  - Core library exports, CLI commands, or application routes have representative tests.
+  - TypeScript projects expose type-checking or compile validation.
+  - Build artifacts are reproducible from source with documented commands.
+runner_notes:
+  preferred_commands:
+    - npm test
+    - pnpm test
+    - yarn test
+    - npm run test
+  common_constraints:
+    - Historical lockfiles may require older Node.js versions.
+    - Browser or E2E suites may require extra services not available in the runner.
+

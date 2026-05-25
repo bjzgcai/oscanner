@@ -1,0 +1,1040 @@
+{
+  "schema_version": 1,
+  "run_id": "20260522T073342Z-commit-only",
+  "started_at": "2026-05-22T07:33:42Z",
+  "finished_at": null,
+  "manifest": "benchmark/repos.yaml",
+  "benchmark_name": "oscanner-language-career-benchmark",
+  "benchmark_version": 1,
+  "mode": "commit_only",
+  "settings": {
+    "load_files": false,
+    "max_eval_commits": 150,
+    "max_extract_commits": 150,
+    "extract_include_file_context": false,
+    "language": "en-US"
+  },
+  "model": "deepseek/deepseek-v4-pro",
+  "default_plugin_id": "zgc_ai_native_2026",
+  "summary": {
+    "total": 30,
+    "succeeded": 16,
+    "failed": 1,
+    "skipped": 0
+  },
+  "results": [
+    {
+      "entry_id": "python-l1",
+      "language": "python",
+      "level": "L1",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "twitterlog",
+        "url": "https://github.com/mitsuhiko/twitterlog",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 17.0,
+      "scores": {
+        "spec_quality": 28,
+        "cloud_architecture": 5,
+        "ai_engineering": 0,
+        "mastery_professionalism": 35,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 28/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\nAssessment：(L1, 28/100)**: The initial commit (ba64aa4) establishes a basic Python logging handler with a custom formatter that truncates messages to 140 characters, showing some attention to domain constraints. However, there are no tests, no lint/format configuration, no CI, and no type hints. The code hardcodes OAuth consumer credentials (CONSUMER_KEY, CONSUMER_SECRET) directly in the source, which is a security anti-pattern. The setup.py includes install_requires and classifiers, which is a minimal packaging standard. The version bump (88b23f6) is a trivial metadata change.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## Engineering Mastery & Professionalism\n\nScore: 35/100\nLevel: L2\n\nEvidence:\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (5/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (5/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 4,
+      "commits_analyzed": 4,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 3128,
+        "output_tokens": 576,
+        "total_tokens": 3704,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:33:51Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 209,
+        "total_deletions": 1,
+        "files_changed": 5,
+        "languages": [
+          "gitignore",
+          "py"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 28/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\nAssessment：(L1, 28/100)**: The initial commit (ba64aa4) establishes a basic Python logging handler with a custom formatter that truncates messages to 140 characters, showing some attention to domain constraints. However, there are no tests, no lint/format configuration, no CI, and no type hints. The code hardcodes OAuth consumer credentials (CONSUMER_KEY, CONSUMER_SECRET) directly in the source, which is a security anti-pattern. The setup.py includes install_requires and classifiers, which is a minimal packaging standard. The version bump (88b23f6) is a trivial metadata change.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `88b23f68`: Pushed to 0.6.1; files: setup.py\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## Engineering Mastery & Professionalism\n\nScore: 35/100\nLevel: L2\n\nEvidence:\n- commit `c7227352`: Added missing license; files: LICENSE, twitterlog.py\n- commit `82a10031`: Added missing README; files: README\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (5/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (5/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/mitsuhiko/twitterlog"
+    },
+    {
+      "entry_id": "python-l2",
+      "language": "python",
+      "level": "L2",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "fungiform",
+        "url": "https://github.com/mitsuhiko/fungiform",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 41.5,
+      "scores": {
+        "spec_quality": 68,
+        "cloud_architecture": 10,
+        "ai_engineering": 0,
+        "mastery_professionalism": 88,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 68/100\nLevel: L3\n\nEvidence:\n- commit `ae75df94`: Added support for sentinel values to end multiple lists.  This fixes #1 and #2; files: fungiform/forms.py, fungiform/tests/widgets.py, fungiform/widgets.py\n- commit `a3591eb0`: Fixed a redirect bug; files: fungiform/redirects.py\n- commit `7dd16343`: Renamed bureaucracy to fungiform; files: .gitignore, AUTHORS, LICENSE, MANIFEST.in, Makefile, fungiform/__init__.py\n\nAssessment：The code shows a well‑structured form library with unit tests (forms, utils, widgets) and doctests, clear validation logic, edge‑case handling (sentinel values, omitted fields, min/max sizes), and a modular design (forms, widgets, csrf, redirects). However, no lint/format configuration or CI pipeline is present. The project setup (setup.py, MANIFEST.in) is standard Python packaging, but lacks modern reproducibility artifacts like Docker/Compose. Approximately L3‑L4, scoring 68.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `8e021652`: Added text to the __init__.py file; files: fungiform/__init__.py\n- commit `ba1fe67e`: HEAD is 0.2-dev; files: CHANGES, setup.py\n- commit `ce44a17c`: Ready for release; files: setup.py\n\nAssessment：No containerization, orchestration, IaC, or cloud‑specific deployment patterns appear in any commit. The library is a form handling tool with basic WSGI integration (URL building, host detection) but no ADRs or architecture decisions beyond web middleware. This is L1‑L2, scoring 10.\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `8e021652`: Added text to the __init__.py file; files: fungiform/__init__.py\n- commit `ba1fe67e`: HEAD is 0.2-dev; files: CHANGES, setup.py\n- commit `ce44a17c`: Ready for release; files: setup.py\n\nAssessment：There is zero evidence of AI/LLM involvement, agent orchestration, structured prompts, trace logging, or evaluation datasets. All commits are manual, traditional development. Score is 0.\n\n## Engineering Mastery & Professionalism\n\nScore: 88/100\nLevel: L5\n\nEvidence:\n- commit `ae75df94`: Added support for sentinel values to end multiple lists.  This fixes #1 and #2; files: fungiform/forms.py, fungiform/tests/widgets.py, fungiform/widgets.py\n- commit `a3591eb0`: Fixed a redirect bug; files: fungiform/redirects.py\n- commit `7dd16343`: Renamed bureaucracy to fungiform; files: .gitignore, AUTHORS, LICENSE, MANIFEST.in, Makefile, fungiform/__init__.py\n\nAssessment：The commits show a high standard of open‑source practice: AUTHORS, LICENSE, CHANGES, meaningful commit messages (‘Fixed a redirect bug’, ‘This fixes #1 and #2’), extensive docstrings, comprehensive error and CSRF/redirect security handling, and test coverage with both unit and doctests. The work reflects a seasoned maintainer who values quality, security, and documentation. This is L5 level mastery, scoring 88.\n\n## Conclusion And Suggestions\n\nConclusion: The engineer demonstrates strong foundational quality and professionalism but would benefit from adding CI/CD workflows, linting, and containerization if deploying web services; AI‑specific patterns are irrelevant to this project. The trajectory is stable and high in software craftsmanship, while cloud and AI dimensions are not applicable in this context.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 29,
+      "commits_analyzed": 9,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 34778,
+        "output_tokens": 1852,
+        "total_tokens": 36630,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:35:09Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 3380,
+        "total_deletions": 36,
+        "files_changed": 20,
+        "languages": [
+          "cfg",
+          "in",
+          "gitignore",
+          "py"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 68/100\nLevel: L3\n\nEvidence:\n- commit `ae75df94`: Added support for sentinel values to end multiple lists.  This fixes #1 and #2; files: fungiform/forms.py, fungiform/tests/widgets.py, fungiform/widgets.py\n- commit `a3591eb0`: Fixed a redirect bug; files: fungiform/redirects.py\n- commit `7dd16343`: Renamed bureaucracy to fungiform; files: .gitignore, AUTHORS, LICENSE, MANIFEST.in, Makefile, fungiform/__init__.py\n\nAssessment：The code shows a well‑structured form library with unit tests (forms, utils, widgets) and doctests, clear validation logic, edge‑case handling (sentinel values, omitted fields, min/max sizes), and a modular design (forms, widgets, csrf, redirects). However, no lint/format configuration or CI pipeline is present. The project setup (setup.py, MANIFEST.in) is standard Python packaging, but lacks modern reproducibility artifacts like Docker/Compose. Approximately L3‑L4, scoring 68.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `8e021652`: Added text to the __init__.py file; files: fungiform/__init__.py\n- commit `ba1fe67e`: HEAD is 0.2-dev; files: CHANGES, setup.py\n- commit `ce44a17c`: Ready for release; files: setup.py\n\nAssessment：No containerization, orchestration, IaC, or cloud‑specific deployment patterns appear in any commit. The library is a form handling tool with basic WSGI integration (URL building, host detection) but no ADRs or architecture decisions beyond web middleware. This is L1‑L2, scoring 10.\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `8e021652`: Added text to the __init__.py file; files: fungiform/__init__.py\n- commit `ba1fe67e`: HEAD is 0.2-dev; files: CHANGES, setup.py\n- commit `ce44a17c`: Ready for release; files: setup.py\n\nAssessment：There is zero evidence of AI/LLM involvement, agent orchestration, structured prompts, trace logging, or evaluation datasets. All commits are manual, traditional development. Score is 0.\n\n## Engineering Mastery & Professionalism\n\nScore: 88/100\nLevel: L5\n\nEvidence:\n- commit `ae75df94`: Added support for sentinel values to end multiple lists.  This fixes #1 and #2; files: fungiform/forms.py, fungiform/tests/widgets.py, fungiform/widgets.py\n- commit `a3591eb0`: Fixed a redirect bug; files: fungiform/redirects.py\n- commit `7dd16343`: Renamed bureaucracy to fungiform; files: .gitignore, AUTHORS, LICENSE, MANIFEST.in, Makefile, fungiform/__init__.py\n\nAssessment：The commits show a high standard of open‑source practice: AUTHORS, LICENSE, CHANGES, meaningful commit messages (‘Fixed a redirect bug’, ‘This fixes #1 and #2’), extensive docstrings, comprehensive error and CSRF/redirect security handling, and test coverage with both unit and doctests. The work reflects a seasoned maintainer who values quality, security, and documentation. This is L5 level mastery, scoring 88.\n\n## Conclusion And Suggestions\n\nConclusion: The engineer demonstrates strong foundational quality and professionalism but would benefit from adding CI/CD workflows, linting, and containerization if deploying web services; AI‑specific patterns are irrelevant to this project. The trajectory is stable and high in software craftsmanship, while cloud and AI dimensions are not applicable in this context.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/mitsuhiko/fungiform"
+    },
+    {
+      "entry_id": "python-l3",
+      "language": "python",
+      "level": "L3",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "flask-oauth",
+        "url": "https://github.com/mitsuhiko/flask-oauth",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 40.0,
+      "scores": {
+        "spec_quality": 60,
+        "cloud_architecture": 10,
+        "ai_engineering": 0,
+        "mastery_professionalism": 90,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 60/100\nLevel: L3\n\nEvidence:\n- commit `8bcba9a5`: Added response_type=code for authorize requests; files: flask_oauth.py\n- commit `d7f0f6cd`: Updated twitter example to use https.  This fixes #26; files: example/tweet.py\n- commit `c31785dc`: Fixed a comment (Fixes #39); files: flask_oauth.py\n- commit `333ab43c`: Added support for multiple tokens (Fixes #16); files: docs/index.rst, flask_oauth.py\n- commit `c1098a56`: Support 201 for oauth token requests.  This fixes #22; files: flask_oauth.py\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `d5c3f6a2`: Merge pull request #79 from s1hofmann/master; files: flask_oauth.py\n- commit `09ebf284`: This is 0.13; files: setup.py\n- commit `8bcba9a5`: Added response_type=code for authorize requests; files: flask_oauth.py\n\nAssessment：(cloud_architecture)**: L1。该项目是一个 Flask 扩展库，提交中没有任何容器化、IaC、K8s 或部署自动化的迹象。模块重命名和 OAuth2 支持属于 API 层面，不构成云架构演进。保守评分 10。 **AI 工程与自动化演进(ai_engineering)**: L1。所有提交均为人工开发，无 agent、结构化提示、LLM 跟踪、评估数据集或自动化智能工作流的相关证据。维度无适用证据，评分 0。 **工程掌握与专业精神(mastery_professionalism)**: L5。Armin Ronacher 作为维护者展现了高水平的开源协作与专业能力：通过合并 PR 进行社区协作，维护语义化版本发布，编写详尽的 Sphinx 文档，修复安全与兼容性问题（如强制 HTTPS、Python 3 导入），以及清晰描述性的提交消息。这符合生态系统维护者和标准定义者的 L5 特征。得分 90。\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `4b567ed3`: Added author email that was missing.; files: setup.py\n\n## Engineering Mastery & Professionalism\n\nScore: 90/100\nLevel: L5\n\nEvidence:\n- commit `d7f0f6cd`: Updated twitter example to use https.  This fixes #26; files: example/tweet.py\n- commit `f655275a`: Twitter wants https now; files: docs/index.rst\n- commit `c31785dc`: Fixed a comment (Fixes #39); files: flask_oauth.py\n- commit `22de937b`: Updated docs to new module name; files: docs/index.rst\n- commit `333ab43c`: Added support for multiple tokens (Fixes #16); files: docs/index.rst, flask_oauth.py\n\n## Conclusion And Suggestions\n\nConclusion: 用户展现了卓越的项目维护和工程设计能力，但在自动化测试、CI 和云原生方面没有可见证据。若需提高 spec_quality 评分，应引入测试套件和 CI 管道。其他维度在当前项目性质下可能不相关。\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 59,
+      "commits_analyzed": 43,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 36623,
+        "output_tokens": 1586,
+        "total_tokens": 38209,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:35:57Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 2100,
+        "total_deletions": 305,
+        "files_changed": 20,
+        "languages": [
+          "gitignore",
+          "css",
+          "py",
+          "cfg",
+          "bat",
+          "gitmodules",
+          "rst",
+          "html"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 60/100\nLevel: L3\n\nEvidence:\n- commit `8bcba9a5`: Added response_type=code for authorize requests; files: flask_oauth.py\n- commit `d7f0f6cd`: Updated twitter example to use https.  This fixes #26; files: example/tweet.py\n- commit `c31785dc`: Fixed a comment (Fixes #39); files: flask_oauth.py\n- commit `333ab43c`: Added support for multiple tokens (Fixes #16); files: docs/index.rst, flask_oauth.py\n- commit `c1098a56`: Support 201 for oauth token requests.  This fixes #22; files: flask_oauth.py\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `d5c3f6a2`: Merge pull request #79 from s1hofmann/master; files: flask_oauth.py\n- commit `09ebf284`: This is 0.13; files: setup.py\n- commit `8bcba9a5`: Added response_type=code for authorize requests; files: flask_oauth.py\n\nAssessment：(cloud_architecture)**: L1。该项目是一个 Flask 扩展库，提交中没有任何容器化、IaC、K8s 或部署自动化的迹象。模块重命名和 OAuth2 支持属于 API 层面，不构成云架构演进。保守评分 10。 **AI 工程与自动化演进(ai_engineering)**: L1。所有提交均为人工开发，无 agent、结构化提示、LLM 跟踪、评估数据集或自动化智能工作流的相关证据。维度无适用证据，评分 0。 **工程掌握与专业精神(mastery_professionalism)**: L5。Armin Ronacher 作为维护者展现了高水平的开源协作与专业能力：通过合并 PR 进行社区协作，维护语义化版本发布，编写详尽的 Sphinx 文档，修复安全与兼容性问题（如强制 HTTPS、Python 3 导入），以及清晰描述性的提交消息。这符合生态系统维护者和标准定义者的 L5 特征。得分 90。\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `4b567ed3`: Added author email that was missing.; files: setup.py\n\n## Engineering Mastery & Professionalism\n\nScore: 90/100\nLevel: L5\n\nEvidence:\n- commit `d7f0f6cd`: Updated twitter example to use https.  This fixes #26; files: example/tweet.py\n- commit `f655275a`: Twitter wants https now; files: docs/index.rst\n- commit `c31785dc`: Fixed a comment (Fixes #39); files: flask_oauth.py\n- commit `22de937b`: Updated docs to new module name; files: docs/index.rst\n- commit `333ab43c`: Added support for multiple tokens (Fixes #16); files: docs/index.rst, flask_oauth.py\n\n## Conclusion And Suggestions\n\nConclusion: 用户展现了卓越的项目维护和工程设计能力，但在自动化测试、CI 和云原生方面没有可见证据。若需提高 spec_quality 评分，应引入测试套件和 CI 管道。其他维度在当前项目性质下可能不相关。\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/mitsuhiko/flask-oauth"
+    },
+    {
+      "entry_id": "python-l4",
+      "language": "python",
+      "level": "L4",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "rstblog",
+        "url": "https://github.com/mitsuhiko/rstblog",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 40.5,
+      "scores": {
+        "spec_quality": 65,
+        "cloud_architecture": 15,
+        "ai_engineering": 0,
+        "mastery_professionalism": 82,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 65/100\nLevel: L3\n\nEvidence:\n- commit `79feb610`: Added Jinja2 version requirement.  This fixes #13; files: setup.py\n- commit `4c4fc7d9`: Fixed a bug in rstblog; files: rstblog/builder.py\n- commit `33649827`: Fixed HTML generation issue; files: rstblog/builder.py, rstblog/modules/blog.py, rstblog/templates/rst_display.html\n- commit `e805213d`: Switched to medium date format; files: rstblog/templates/blog/index.html\n- commit `bdf1708a`: Fixed two small bugs; files: rstblog/builder.py, rstblog/programs.py\n\nAssessment：(L3, 65/100)**: The codebase shows strong modularity with a plugin system (signals, modules like blog, tags, pygments, latex, disqus). Commits such as 733d5e71 ('Add slug') include significant refactoring and code style improvements (consistent quoting, import formatting). The Python 3 port in 366c88a4 ('Half assed python3 port') adds `from __future__` imports and uses `six` for compatibility, demonstrating attention to maintainability.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 15/100\nLevel: L1\n\nEvidence:\n- commit `366c88a4`: Half assed python3 port; files: rstblog/builder.py, rstblog/cli.py, rstblog/config.py, rstblog/modules/__init__.py, rstblog/modules/blog.py, rstblog/modules/disqus.py\n- commit `9d4b672e`: Added debug serve command; files: rstblog/builder.py, rstblog/cli.py, rstblog/modules/blog.py, rstblog/modules/tags.py, rstblog/rst.py, rstblog/server.py\n- commit `3bf60d21`: Initial version; files: .gitignore, LICENSE, README, rstblog/__init__.py, rstblog/builder.py, rstblog/cli.py\n\nAssessment：(L1, 15/100)**: No evidence of containerization, IaC, deployment automation, or cloud-native design. The project is a static site generator with no Dockerfile, Kubernetes configs, or infrastructure code. The internal architecture uses a builder pattern and URL routing, but there are no ADRs or cloud considerations. Score reflects minimal cloud-native awareness.\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `755b304a`: Hack to enable inline php; files: rstblog/modules/pygments.py\n- commit `733d5e71`: Add slug; files: rstblog/builder.py\n- commit `366c88a4`: Half assed python3 port; files: rstblog/builder.py, rstblog/cli.py, rstblog/config.py, rstblog/modules/__init__.py, rstblog/modules/blog.py, rstblog/modules/disqus.py\n\nAssessment：(L1, 0/100)**: No AI-related tooling, agent orchestration, structured prompts, LLM traces, or eval datasets are present. The project predates the AI engineering paradigm and contains no relevant evidence.\n\n## Engineering Mastery & Professionalism\n\nScore: 82/100\nLevel: L4\n\nEvidence:\n- commit `79feb610`: Added Jinja2 version requirement.  This fixes #13; files: setup.py\n- commit `4c4fc7d9`: Fixed a bug in rstblog; files: rstblog/builder.py\n- commit `33649827`: Fixed HTML generation issue; files: rstblog/builder.py, rstblog/modules/blog.py, rstblog/templates/rst_display.html\n- commit `bdf1708a`: Fixed two small bugs; files: rstblog/builder.py, rstblog/programs.py\n- commit `5cd0ba63`: Ignore makefiles and readme by default for the common github setup; files: rstblog/builder.py\n\nAssessment：(L4, 82/100)**: The project demonstrates high professionalism through open-source collaboration: multiple pull requests merged (12e31059, 80ca1426, 79feb610, 58946172, f1fc3a23) with meaningful commit messages. Security is considered, e.g., replacing `yaml.load` with `yaml.safe_load` (366c88a4). Documentation exists in module docstrings and a README, though minimal. The code is clean, well-structured, and follows Python best practices of the era.\n\n## Conclusion And Suggestions\n\nConclusion: Armin Ronacher exhibits strong system-building skills with a focus on modularity, compatibility, and collaboration. To reach higher levels, the project would benefit from adding automated tests, CI/CD pipelines, and dependency pinning. For modern contexts, introducing containerization and AI-assisted workflows would further demonstrate growth. The foundational engineering practices are solid, but the lack of quality gates (tests, linting) is the primary limitation.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (15/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 44,
+      "commits_analyzed": 25,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 31181,
+        "output_tokens": 2577,
+        "total_tokens": 33758,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:37:29Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 1852,
+        "total_deletions": 242,
+        "files_changed": 29,
+        "languages": [
+          "gitignore",
+          "in",
+          "html",
+          "py"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 65/100\nLevel: L3\n\nEvidence:\n- commit `79feb610`: Added Jinja2 version requirement.  This fixes #13; files: setup.py\n- commit `4c4fc7d9`: Fixed a bug in rstblog; files: rstblog/builder.py\n- commit `33649827`: Fixed HTML generation issue; files: rstblog/builder.py, rstblog/modules/blog.py, rstblog/templates/rst_display.html\n- commit `e805213d`: Switched to medium date format; files: rstblog/templates/blog/index.html\n- commit `bdf1708a`: Fixed two small bugs; files: rstblog/builder.py, rstblog/programs.py\n\nAssessment：(L3, 65/100)**: The codebase shows strong modularity with a plugin system (signals, modules like blog, tags, pygments, latex, disqus). Commits such as 733d5e71 ('Add slug') include significant refactoring and code style improvements (consistent quoting, import formatting). The Python 3 port in 366c88a4 ('Half assed python3 port') adds `from __future__` imports and uses `six` for compatibility, demonstrating attention to maintainability.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 15/100\nLevel: L1\n\nEvidence:\n- commit `366c88a4`: Half assed python3 port; files: rstblog/builder.py, rstblog/cli.py, rstblog/config.py, rstblog/modules/__init__.py, rstblog/modules/blog.py, rstblog/modules/disqus.py\n- commit `9d4b672e`: Added debug serve command; files: rstblog/builder.py, rstblog/cli.py, rstblog/modules/blog.py, rstblog/modules/tags.py, rstblog/rst.py, rstblog/server.py\n- commit `3bf60d21`: Initial version; files: .gitignore, LICENSE, README, rstblog/__init__.py, rstblog/builder.py, rstblog/cli.py\n\nAssessment：(L1, 15/100)**: No evidence of containerization, IaC, deployment automation, or cloud-native design. The project is a static site generator with no Dockerfile, Kubernetes configs, or infrastructure code. The internal architecture uses a builder pattern and URL routing, but there are no ADRs or cloud considerations. Score reflects minimal cloud-native awareness.\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `755b304a`: Hack to enable inline php; files: rstblog/modules/pygments.py\n- commit `733d5e71`: Add slug; files: rstblog/builder.py\n- commit `366c88a4`: Half assed python3 port; files: rstblog/builder.py, rstblog/cli.py, rstblog/config.py, rstblog/modules/__init__.py, rstblog/modules/blog.py, rstblog/modules/disqus.py\n\nAssessment：(L1, 0/100)**: No AI-related tooling, agent orchestration, structured prompts, LLM traces, or eval datasets are present. The project predates the AI engineering paradigm and contains no relevant evidence.\n\n## Engineering Mastery & Professionalism\n\nScore: 82/100\nLevel: L4\n\nEvidence:\n- commit `79feb610`: Added Jinja2 version requirement.  This fixes #13; files: setup.py\n- commit `4c4fc7d9`: Fixed a bug in rstblog; files: rstblog/builder.py\n- commit `33649827`: Fixed HTML generation issue; files: rstblog/builder.py, rstblog/modules/blog.py, rstblog/templates/rst_display.html\n- commit `bdf1708a`: Fixed two small bugs; files: rstblog/builder.py, rstblog/programs.py\n- commit `5cd0ba63`: Ignore makefiles and readme by default for the common github setup; files: rstblog/builder.py\n\nAssessment：(L4, 82/100)**: The project demonstrates high professionalism through open-source collaboration: multiple pull requests merged (12e31059, 80ca1426, 79feb610, 58946172, f1fc3a23) with meaningful commit messages. Security is considered, e.g., replacing `yaml.load` with `yaml.safe_load` (366c88a4). Documentation exists in module docstrings and a README, though minimal. The code is clean, well-structured, and follows Python best practices of the era.\n\n## Conclusion And Suggestions\n\nConclusion: Armin Ronacher exhibits strong system-building skills with a focus on modularity, compatibility, and collaboration. To reach higher levels, the project would benefit from adding automated tests, CI/CD pipelines, and dependency pinning. For modern contexts, introducing containerization and AI-assisted workflows would further demonstrate growth. The foundational engineering practices are solid, but the lack of quality gates (tests, linting) is the primary limitation.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (15/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/mitsuhiko/rstblog"
+    },
+    {
+      "entry_id": "python-l5",
+      "language": "python",
+      "level": "L5",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "mitsuhiko",
+        "name": "zine",
+        "url": "https://github.com/mitsuhiko/zine",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "armin-ronacher",
+      "developer": "Armin Ronacher",
+      "target_author": "mitsuhiko",
+      "author_aliases": [
+        "mitsuhiko",
+        "Armin Ronacher"
+      ],
+      "evaluation_username": "mitsuhiko,Armin Ronacher",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 48.0,
+      "scores": {
+        "spec_quality": 82,
+        "cloud_architecture": 15,
+        "ai_engineering": 0,
+        "mastery_professionalism": 95,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 82/100\nLevel: L4\n\nEvidence:\n- commit `c74b64f0`: Fixed a typo; files: zine/views/admin.py\n- commit `5bfca869`: Switched to HTML5 and fixed a few template annoyances.; files: zine/plugins/miniblog_theme/templates/layout.html, zine/plugins/myrtle_theme/templates/layout.html, zine/plugins/vessel_theme/templates/layout.html, zine/shared/admin/style.css, zine/templates/admin/edit_entry.html, zine/templates/admin/edit_page.html\n- commit `cdd05471`: Fixed typo; files: INSTALL\n- commit `9496a341`: Fixed chrome display errors.; files: zine/plugins/myrtle_theme/shared/style.css, zine/plugins/vessel_theme/shared/style.css\n- commit `f94e1bfc`: Kinda fixed eric the fish for new migrations. Kinda not because i have no; files: external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, zine/database.py, zine/templates/admin/perform_upgrade.html, zine/upgrades/__init__.py, zine/upgrades/customisation.py\n\nAssessment：(L4, 82/100):** Commits show strong systematic engineering: introduction of a full database migration system (zine/upgrades/__init__.py, customisation.py, versions/) with upgrade/downgrade support, schema versioning (zine/database.py adding schema_versions table), and a web-based upgrade interface (zine/upgrades/webapp.py). Input validation is hardened (zine/forms.py adding required=True to comment body, closing comments after a period in zine/models.py comments_closed property). Refactoring for modularity is evident in the pluggable authentication merge (6d289f7, introducing zine.plugins.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 15/100\nLevel: L1\n\nEvidence:\n- commit `c81f04a6`: HTML5ified migration; files: zine/upgrades/versions/001_split_tables.py\n- commit `35463b63`: Merged; files: INSTALL, external-plugins/eric_the_fish/__init__.py, external-plugins/eric_the_fish/database.py, external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, scripts/_install-posix.py, scripts/_make-setup-virtualenv.py\n- commit `f94e1bfc`: Kinda fixed eric the fish for new migrations. Kinda not because i have no; files: external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, zine/database.py, zine/templates/admin/perform_upgrade.html, zine/upgrades/__init__.py, zine/upgrades/customisation.py\n- commit `0f54b0ae`: Updates for SA 0.6; files: scripts/server, zine/database.py\n- commit `a2096a51`: Automated merge with http://bitbucket.org/birkenfeld/zine-main-migrations; files: external-plugins/markdown_parser/__init__.py, scripts/_make-setup-virtualenv.py, scripts/extract-messages, scripts/setup-virtualenv, zine/application.py, zine/config.py\n\nAssessment：(L1, 15/100):** The provided commits contain no evidence of containerization, Kubernetes, Infrastructure as Code, or cloud deployment patterns. The setup-virtualenv script updates are internal Python environment management, not cloud-native provisioning. The default listen host change from 'localhost' to '127.0.0.1' in scripts/server is a minor security hardening, not a cloud architecture signal.\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `6d289f72`: Merge pull request #3 from ejucovy/pluggable-auth; files: zine/application.py, zine/models.py, zine/plugins/example_remote_auth/__init__.py, zine/plugins/example_remote_auth/metadata.txt\n- commit `5bfca869`: Switched to HTML5 and fixed a few template annoyances.; files: zine/plugins/miniblog_theme/templates/layout.html, zine/plugins/myrtle_theme/templates/layout.html, zine/plugins/vessel_theme/templates/layout.html, zine/shared/admin/style.css, zine/templates/admin/edit_entry.html, zine/templates/admin/edit_page.html\n- commit `35463b63`: Merged; files: INSTALL, external-plugins/eric_the_fish/__init__.py, external-plugins/eric_the_fish/database.py, external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, scripts/_install-posix.py, scripts/_make-setup-virtualenv.py\n- commit `a2096a51`: Automated merge with http://bitbucket.org/birkenfeld/zine-main-migrations; files: external-plugins/markdown_parser/__init__.py, scripts/_make-setup-virtualenv.py, scripts/extract-messages, scripts/setup-virtualenv, zine/application.py, zine/config.py\n- commit `50c046a1`: Added support for automatic closing down of comments.  Be advised: this; files: zine/config.py, zine/forms.py, zine/models.py, zine/templates/show_entry.html\n\nAssessment：(L1, 0/100):** No commits show any tool definitions, structured prompts, LLM traces, evaluation datasets, or agent frameworks. The work predates the LLM era; no AI engineering indicators are present.\n\n## Engineering Mastery & Professionalism\n\nScore: 95/100\nLevel: L5\n\nEvidence:\n- commit `c74b64f0`: Fixed a typo; files: zine/views/admin.py\n- commit `5bfca869`: Switched to HTML5 and fixed a few template annoyances.; files: zine/plugins/miniblog_theme/templates/layout.html, zine/plugins/myrtle_theme/templates/layout.html, zine/plugins/vessel_theme/templates/layout.html, zine/shared/admin/style.css, zine/templates/admin/edit_entry.html, zine/templates/admin/edit_page.html\n- commit `35463b63`: Merged; files: INSTALL, external-plugins/eric_the_fish/__init__.py, external-plugins/eric_the_fish/database.py, external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, scripts/_install-posix.py, scripts/_make-setup-virtualenv.py\n- commit `cdd05471`: Fixed typo; files: INSTALL\n- commit `9496a341`: Fixed chrome display errors.; files: zine/plugins/myrtle_theme/shared/style.css, zine/plugins/vessel_theme/shared/style.css\n\nAssessment：(L5, 95/100):** Armin Ronacher demonstrates maintainer-level leadership. Commits merge community contributions (pull request #3 for pluggable auth), carefully review API design (database mapper auto-registration in zine/database.py, exposing db.basic_mapper vs. session-bound mapper). He handles major dependency upgrades (SQLAlchemy 0.6, Werkzeug 0.6) with compatibility fixes (zine/database.py LargeBinary, zine/application.py get_response fix). Documentation is improved (docstring corrections, INSTALL updates).\n\n## Conclusion And Suggestions\n\nConclusion: ** The engineer is a clear L5 open source leader designing extensible, maintainable systems. To raise spec_quality further, tests and CI could be added. Cloud-native was not the project's scope, but modern evaluators would look for deployment configs. AI engineering skills would need separate demonstration.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (15/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 499,
+      "commits_analyzed": 29,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 154169,
+        "output_tokens": 1335,
+        "total_tokens": 155504,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:38:53Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 12896,
+        "total_deletions": 1242,
+        "files_changed": 57,
+        "languages": [
+          "js",
+          "css",
+          "py",
+          "txt",
+          "html"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 82/100\nLevel: L4\n\nEvidence:\n- commit `c74b64f0`: Fixed a typo; files: zine/views/admin.py\n- commit `5bfca869`: Switched to HTML5 and fixed a few template annoyances.; files: zine/plugins/miniblog_theme/templates/layout.html, zine/plugins/myrtle_theme/templates/layout.html, zine/plugins/vessel_theme/templates/layout.html, zine/shared/admin/style.css, zine/templates/admin/edit_entry.html, zine/templates/admin/edit_page.html\n- commit `cdd05471`: Fixed typo; files: INSTALL\n- commit `9496a341`: Fixed chrome display errors.; files: zine/plugins/myrtle_theme/shared/style.css, zine/plugins/vessel_theme/shared/style.css\n- commit `f94e1bfc`: Kinda fixed eric the fish for new migrations. Kinda not because i have no; files: external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, zine/database.py, zine/templates/admin/perform_upgrade.html, zine/upgrades/__init__.py, zine/upgrades/customisation.py\n\nAssessment：(L4, 82/100):** Commits show strong systematic engineering: introduction of a full database migration system (zine/upgrades/__init__.py, customisation.py, versions/) with upgrade/downgrade support, schema versioning (zine/database.py adding schema_versions table), and a web-based upgrade interface (zine/upgrades/webapp.py). Input validation is hardened (zine/forms.py adding required=True to comment body, closing comments after a period in zine/models.py comments_closed property). Refactoring for modularity is evident in the pluggable authentication merge (6d289f7, introducing zine.plugins.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 15/100\nLevel: L1\n\nEvidence:\n- commit `c81f04a6`: HTML5ified migration; files: zine/upgrades/versions/001_split_tables.py\n- commit `35463b63`: Merged; files: INSTALL, external-plugins/eric_the_fish/__init__.py, external-plugins/eric_the_fish/database.py, external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, scripts/_install-posix.py, scripts/_make-setup-virtualenv.py\n- commit `f94e1bfc`: Kinda fixed eric the fish for new migrations. Kinda not because i have no; files: external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, zine/database.py, zine/templates/admin/perform_upgrade.html, zine/upgrades/__init__.py, zine/upgrades/customisation.py\n- commit `0f54b0ae`: Updates for SA 0.6; files: scripts/server, zine/database.py\n- commit `a2096a51`: Automated merge with http://bitbucket.org/birkenfeld/zine-main-migrations; files: external-plugins/markdown_parser/__init__.py, scripts/_make-setup-virtualenv.py, scripts/extract-messages, scripts/setup-virtualenv, zine/application.py, zine/config.py\n\nAssessment：(L1, 15/100):** The provided commits contain no evidence of containerization, Kubernetes, Infrastructure as Code, or cloud deployment patterns. The setup-virtualenv script updates are internal Python environment management, not cloud-native provisioning. The default listen host change from 'localhost' to '127.0.0.1' in scripts/server is a minor security hardening, not a cloud architecture signal.\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `6d289f72`: Merge pull request #3 from ejucovy/pluggable-auth; files: zine/application.py, zine/models.py, zine/plugins/example_remote_auth/__init__.py, zine/plugins/example_remote_auth/metadata.txt\n- commit `5bfca869`: Switched to HTML5 and fixed a few template annoyances.; files: zine/plugins/miniblog_theme/templates/layout.html, zine/plugins/myrtle_theme/templates/layout.html, zine/plugins/vessel_theme/templates/layout.html, zine/shared/admin/style.css, zine/templates/admin/edit_entry.html, zine/templates/admin/edit_page.html\n- commit `35463b63`: Merged; files: INSTALL, external-plugins/eric_the_fish/__init__.py, external-plugins/eric_the_fish/database.py, external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, scripts/_install-posix.py, scripts/_make-setup-virtualenv.py\n- commit `a2096a51`: Automated merge with http://bitbucket.org/birkenfeld/zine-main-migrations; files: external-plugins/markdown_parser/__init__.py, scripts/_make-setup-virtualenv.py, scripts/extract-messages, scripts/setup-virtualenv, zine/application.py, zine/config.py\n- commit `50c046a1`: Added support for automatic closing down of comments.  Be advised: this; files: zine/config.py, zine/forms.py, zine/models.py, zine/templates/show_entry.html\n\nAssessment：(L1, 0/100):** No commits show any tool definitions, structured prompts, LLM traces, evaluation datasets, or agent frameworks. The work predates the LLM era; no AI engineering indicators are present.\n\n## Engineering Mastery & Professionalism\n\nScore: 95/100\nLevel: L5\n\nEvidence:\n- commit `c74b64f0`: Fixed a typo; files: zine/views/admin.py\n- commit `5bfca869`: Switched to HTML5 and fixed a few template annoyances.; files: zine/plugins/miniblog_theme/templates/layout.html, zine/plugins/myrtle_theme/templates/layout.html, zine/plugins/vessel_theme/templates/layout.html, zine/shared/admin/style.css, zine/templates/admin/edit_entry.html, zine/templates/admin/edit_page.html\n- commit `35463b63`: Merged; files: INSTALL, external-plugins/eric_the_fish/__init__.py, external-plugins/eric_the_fish/database.py, external-plugins/eric_the_fish/versions/001_Move_fortunes_to_the_database.py, scripts/_install-posix.py, scripts/_make-setup-virtualenv.py\n- commit `cdd05471`: Fixed typo; files: INSTALL\n- commit `9496a341`: Fixed chrome display errors.; files: zine/plugins/myrtle_theme/shared/style.css, zine/plugins/vessel_theme/shared/style.css\n\nAssessment：(L5, 95/100):** Armin Ronacher demonstrates maintainer-level leadership. Commits merge community contributions (pull request #3 for pluggable auth), carefully review API design (database mapper auto-registration in zine/database.py, exposing db.basic_mapper vs. session-bound mapper). He handles major dependency upgrades (SQLAlchemy 0.6, Werkzeug 0.6) with compatibility fixes (zine/database.py LargeBinary, zine/application.py get_response fix). Documentation is improved (docstring corrections, INSTALL updates).\n\n## Conclusion And Suggestions\n\nConclusion: ** The engineer is a clear L5 open source leader designing extensible, maintainable systems. To raise spec_quality further, tests and CI could be added. Cloud-native was not the project's scope, but modern evaluators would look for deployment configs. AI engineering skills would need separate demonstration.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (15/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/mitsuhiko/zine"
+    },
+    {
+      "entry_id": "javascript-typescript-l1",
+      "language": "javascript-typescript",
+      "level": "L1",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "yyx990803",
+        "name": "Socket-Play",
+        "url": "https://github.com/yyx990803/Socket-Play",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "evan-you",
+      "developer": "Evan You",
+      "target_author": "yyx990803",
+      "author_aliases": [
+        "yyx990803",
+        "Evan You"
+      ],
+      "evaluation_username": "yyx990803,Evan You",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 41.5,
+      "scores": {
+        "spec_quality": 50,
+        "cloud_architecture": 38,
+        "ai_engineering": 10,
+        "mastery_professionalism": 68,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 50/100\nLevel: L3\n\nEvidence:\n- commit `0bf65844`: minor fix; files: public/css/style.css, public/css/style.less, views/index.ejs\n- commit `a8b8e77d`: fixed instructions; files: README.md\n- commit `d63612f3`: basic ship and stars done; files: controllers/index.js, public/css/style.css, public/css/style.less, public/js/classes/AbstractObject.js, public/js/classes/Player.js, public/js/controller.js\n- commit `5cea4b27`: mobile safari has no toFixed(); files: public/js/controller.js\n- commit `0f0183a2`: refactored code; files: public/js/controller.js, public/js/main.js, server.js, views/index.ejs\n\nAssessment：(L2-L3, 50)**: The project evolved from a simple cube demo to a modularized multiplayer game. Evidence includes introduction of RequireJS modules (commit d63612f, 'basic ship and stars done'), separation of concerns with classes/Player and AbstractObject, a build script for r.js optimization (eb523d7), and use of LESS with variables (0a6aa86). Edge-case handling is present, such as fixing mobile Safari's missing toFixed() (5cea4b27) and touch detection for device orientation (46380a1). However, there are no tests, linting, CI, or type discipline, and no schema validation.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 38/100\nLevel: L2\n\nEvidence:\n- commit `0a97cfb3`: remove stats for deploy; files: public/js/app-dev.js, public/js/app.js\n- commit `0a6aa860`: update views; files: public/css/style.css, public/css/style.less, server.js, views/controller.ejs, views/index.ejs\n- commit `18e562db`: 123; files: server.js\n- commit `a834676b`: 123; files: server.js\n- commit `368b656e`: 123; files: server.js, views/index.ejs\n\nAssessment：(L2, 38)**: Deployment awareness is shown through .webbynode configuration files and a .pushand script (later removed in c910892). Production Socket.io configuration with log level, connect timeout, and transport selection appears in commits a834676 and 18e562d. Multiple DNS changes indicate deployment to different environments. However, there is no containerization, IaC, resource limits, or advanced cloud-native patterns. The architecture remains a simple single-server Node.js application, fitting L2.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `3c32a254`: wrap up; files: public/js/controller.js, public/js/main.js, server.js\n- commit `a1b5e0d1`: 123; files: public/js/main.js\n- commit `afdad68c`: adjusted speed; files: public/js/main.js, views/index.ejs\n- commit `9bc78231`: controller styles; files: public/css/style.css, public/css/style.less, public/js/controller.js, public/js/main.js, views/controller.ejs\n- commit `7fce50b8`: 123; files: public/js/main.js\n\nAssessment：(L1, 10)**: The project dates from 2011–2012, long before the AI engineering era. No evidence of agent orchestration, tool definitions, structured prompts, LLM traces, eval datasets, or automated AI workflows exists in any commit. Score is minimal due to complete absence of relevant evidence.\n\n## Engineering Mastery & Professionalism\n\nScore: 68/100\nLevel: L3\n\nEvidence:\n- commit `0bf65844`: minor fix; files: public/css/style.css, public/css/style.less, views/index.ejs\n- commit `a8b8e77d`: fixed instructions; files: README.md\n- commit `14b92a96`: README; files: README.md\n- commit `e1efd84f`: 123; files: README.md, package.json\n- commit `5cea4b27`: mobile safari has no toFixed(); files: public/js/controller.js\n\nAssessment：(L3, 68)**: Commit messages are descriptive and meaningful (e.g., 'refactored code', 'mobile safari has no toFixed()', 'switched to zepto.js for mobile controller'). A README with install instructions and requirements was added (14b92a9, e1efd84). Performance considerations include switching from jQuery to Zepto for mobile (8b08efe), adjusting particle counts and speed (afdad68), and using requestAnimationFrame. The project shows good solo-developer practices, but lacks code reviews, security hardening, and mentorship evidence. This aligns with L3.\n\n## Conclusion And Suggestions\n\nConclusion: The project demonstrates solid foundational engineering for its time, with modularization, build optimization, and thoughtful edge-case handling. To advance, introduce automated testing, linting, and CI; adopt containerization for reproducible deployments; and consider modern AI-assisted workflows if revisiting the project. The trajectory shows growth from prototype to structured application, consistent with a developer building real-world skills.\nSuggestion: Prioritize AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (38/100, L2) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 67,
+      "commits_analyzed": 67,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 215172,
+        "output_tokens": 3075,
+        "total_tokens": 218247,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:41:11Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 6410,
+        "total_deletions": 4687,
+        "files_changed": 36,
+        "languages": [
+          "js",
+          "sh",
+          "gitignore",
+          "css",
+          "ejs",
+          "md",
+          "webbynode/settings",
+          "less",
+          "webbynode/config",
+          "json"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 50/100\nLevel: L3\n\nEvidence:\n- commit `0bf65844`: minor fix; files: public/css/style.css, public/css/style.less, views/index.ejs\n- commit `a8b8e77d`: fixed instructions; files: README.md\n- commit `d63612f3`: basic ship and stars done; files: controllers/index.js, public/css/style.css, public/css/style.less, public/js/classes/AbstractObject.js, public/js/classes/Player.js, public/js/controller.js\n- commit `5cea4b27`: mobile safari has no toFixed(); files: public/js/controller.js\n- commit `0f0183a2`: refactored code; files: public/js/controller.js, public/js/main.js, server.js, views/index.ejs\n\nAssessment：(L2-L3, 50)**: The project evolved from a simple cube demo to a modularized multiplayer game. Evidence includes introduction of RequireJS modules (commit d63612f, 'basic ship and stars done'), separation of concerns with classes/Player and AbstractObject, a build script for r.js optimization (eb523d7), and use of LESS with variables (0a6aa86). Edge-case handling is present, such as fixing mobile Safari's missing toFixed() (5cea4b27) and touch detection for device orientation (46380a1). However, there are no tests, linting, CI, or type discipline, and no schema validation.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 38/100\nLevel: L2\n\nEvidence:\n- commit `0a97cfb3`: remove stats for deploy; files: public/js/app-dev.js, public/js/app.js\n- commit `0a6aa860`: update views; files: public/css/style.css, public/css/style.less, server.js, views/controller.ejs, views/index.ejs\n- commit `18e562db`: 123; files: server.js\n- commit `a834676b`: 123; files: server.js\n- commit `368b656e`: 123; files: server.js, views/index.ejs\n\nAssessment：(L2, 38)**: Deployment awareness is shown through .webbynode configuration files and a .pushand script (later removed in c910892). Production Socket.io configuration with log level, connect timeout, and transport selection appears in commits a834676 and 18e562d. Multiple DNS changes indicate deployment to different environments. However, there is no containerization, IaC, resource limits, or advanced cloud-native patterns. The architecture remains a simple single-server Node.js application, fitting L2.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `3c32a254`: wrap up; files: public/js/controller.js, public/js/main.js, server.js\n- commit `a1b5e0d1`: 123; files: public/js/main.js\n- commit `afdad68c`: adjusted speed; files: public/js/main.js, views/index.ejs\n- commit `9bc78231`: controller styles; files: public/css/style.css, public/css/style.less, public/js/controller.js, public/js/main.js, views/controller.ejs\n- commit `7fce50b8`: 123; files: public/js/main.js\n\nAssessment：(L1, 10)**: The project dates from 2011–2012, long before the AI engineering era. No evidence of agent orchestration, tool definitions, structured prompts, LLM traces, eval datasets, or automated AI workflows exists in any commit. Score is minimal due to complete absence of relevant evidence.\n\n## Engineering Mastery & Professionalism\n\nScore: 68/100\nLevel: L3\n\nEvidence:\n- commit `0bf65844`: minor fix; files: public/css/style.css, public/css/style.less, views/index.ejs\n- commit `a8b8e77d`: fixed instructions; files: README.md\n- commit `14b92a96`: README; files: README.md\n- commit `e1efd84f`: 123; files: README.md, package.json\n- commit `5cea4b27`: mobile safari has no toFixed(); files: public/js/controller.js\n\nAssessment：(L3, 68)**: Commit messages are descriptive and meaningful (e.g., 'refactored code', 'mobile safari has no toFixed()', 'switched to zepto.js for mobile controller'). A README with install instructions and requirements was added (14b92a9, e1efd84). Performance considerations include switching from jQuery to Zepto for mobile (8b08efe), adjusting particle counts and speed (afdad68), and using requestAnimationFrame. The project shows good solo-developer practices, but lacks code reviews, security hardening, and mentorship evidence. This aligns with L3.\n\n## Conclusion And Suggestions\n\nConclusion: The project demonstrates solid foundational engineering for its time, with modularization, build optimization, and thoughtful edge-case handling. To advance, introduce automated testing, linting, and CI; adopt containerization for reproducible deployments; and consider modern AI-assisted workflows if revisiting the project. The trajectory shows growth from prototype to structured application, consistent with a developer building real-world skills.\nSuggestion: Prioritize AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (38/100, L2) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/yyx990803/Socket-Play"
+    },
+    {
+      "entry_id": "javascript-typescript-l2",
+      "language": "javascript-typescript",
+      "level": "L2",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "yyx990803",
+        "name": "shell-task",
+        "url": "https://github.com/yyx990803/shell-task",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "evan-you",
+      "developer": "Evan You",
+      "target_author": "yyx990803",
+      "author_aliases": [
+        "yyx990803",
+        "Evan You"
+      ],
+      "evaluation_username": "yyx990803,Evan You",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 31.25,
+      "scores": {
+        "spec_quality": 55,
+        "cloud_architecture": 10,
+        "ai_engineering": 10,
+        "mastery_professionalism": 50,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 55/100\nLevel: L3\n\nEvidence:\n- commit `5dc393f2`: updatesss; files: README.md, package.json, task.js, test.js\n- commit `cd894741`: test version bump; files: package.json\n- commit `cb188e43`: error handling; files: task.js, test.js\n- commit `3551a08e`: ability to call functions in between; files: task.js, test.js\n- commit `2617c651`: init; files: .gitignore, .npmignore, README.md, package.json, task.js, test.js\n\nAssessment：The project evolved from a basic shell chainer to a more polished API. The final commit (5dc393f) introduces JSDoc comments, unified error/callback handling, improved argument parsing (supporting quoted strings), and code style consistency. However, there are no automated tests (only a manual test.js), no linting/formatting configuration, and no CI/CD. This places it at an L2-L3 boundary, around 55.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `5dc393f2`: updatesss; files: README.md, package.json, task.js, test.js\n- commit `cd894741`: test version bump; files: package.json\n- commit `4d1392a2`: msg; files: task.js\n\nAssessment：No containerization, IaC, deployment configuration, or architectural documentation is present. Purely a local Node.js utility. L1, score 10.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `5dc393f2`: updatesss; files: README.md, package.json, task.js, test.js\n- commit `cd894741`: test version bump; files: package.json\n- commit `4d1392a2`: msg; files: task.js\n\nAssessment：No evidence of agent orchestration, structured prompts, trace logs, or automation scripts. L1, score 10.\n\n## Engineering Mastery & Professionalism\n\nScore: 50/100\nLevel: L3\n\nEvidence:\n- commit `5dc393f2`: updatesss; files: README.md, package.json, task.js, test.js\n- commit `ba918fc6`: readme; files: README.md\n- commit `29b31eb4`: meta; files: README.md, package.json, task.js\n- commit `74a11369`: readme; files: README.md\n- commit `bc5cbe6b`: readme; files: README.md\n\nAssessment：Commit messages are often vague ('msg', 'updatesss', 'readme'), but the README is well-maintained with install/usage instructions and caveats. Later commits add JSDoc annotations and semver version bumps, showing some discipline. No code reviews or collaboration visible. The project is a single-person proof-of-concept. Overall L2, score 50.\n\n## Conclusion And Suggestions\n\nConclusion: The project demonstrates solid early-stage prototyping and iterative refinement, with meaningful code improvements around error handling and API design. To reach higher levels, it would need automated testing, CI integration, and clearer commit discipline. Cloud-native and AI-engineering dimensions are not applicable at this stage.\nSuggestion: Prioritize Cloud-Native & Architecture Evolution (10/100, L1), AI Engineering & Automated Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 12,
+      "commits_analyzed": 12,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 6937,
+        "output_tokens": 2691,
+        "total_tokens": 9628,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:42:36Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 382,
+        "total_deletions": 145,
+        "files_changed": 6,
+        "languages": [
+          "js",
+          "gitignore",
+          "md",
+          "json",
+          "npmignore"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 55/100\nLevel: L3\n\nEvidence:\n- commit `5dc393f2`: updatesss; files: README.md, package.json, task.js, test.js\n- commit `cd894741`: test version bump; files: package.json\n- commit `cb188e43`: error handling; files: task.js, test.js\n- commit `3551a08e`: ability to call functions in between; files: task.js, test.js\n- commit `2617c651`: init; files: .gitignore, .npmignore, README.md, package.json, task.js, test.js\n\nAssessment：The project evolved from a basic shell chainer to a more polished API. The final commit (5dc393f) introduces JSDoc comments, unified error/callback handling, improved argument parsing (supporting quoted strings), and code style consistency. However, there are no automated tests (only a manual test.js), no linting/formatting configuration, and no CI/CD. This places it at an L2-L3 boundary, around 55.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `5dc393f2`: updatesss; files: README.md, package.json, task.js, test.js\n- commit `cd894741`: test version bump; files: package.json\n- commit `4d1392a2`: msg; files: task.js\n\nAssessment：No containerization, IaC, deployment configuration, or architectural documentation is present. Purely a local Node.js utility. L1, score 10.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `5dc393f2`: updatesss; files: README.md, package.json, task.js, test.js\n- commit `cd894741`: test version bump; files: package.json\n- commit `4d1392a2`: msg; files: task.js\n\nAssessment：No evidence of agent orchestration, structured prompts, trace logs, or automation scripts. L1, score 10.\n\n## Engineering Mastery & Professionalism\n\nScore: 50/100\nLevel: L3\n\nEvidence:\n- commit `5dc393f2`: updatesss; files: README.md, package.json, task.js, test.js\n- commit `ba918fc6`: readme; files: README.md\n- commit `29b31eb4`: meta; files: README.md, package.json, task.js\n- commit `74a11369`: readme; files: README.md\n- commit `bc5cbe6b`: readme; files: README.md\n\nAssessment：Commit messages are often vague ('msg', 'updatesss', 'readme'), but the README is well-maintained with install/usage instructions and caveats. Later commits add JSDoc annotations and semver version bumps, showing some discipline. No code reviews or collaboration visible. The project is a single-person proof-of-concept. Overall L2, score 50.\n\n## Conclusion And Suggestions\n\nConclusion: The project demonstrates solid early-stage prototyping and iterative refinement, with meaningful code improvements around error handling and API design. To reach higher levels, it would need automated testing, CI integration, and clearer commit discipline. Cloud-native and AI-engineering dimensions are not applicable at this stage.\nSuggestion: Prioritize Cloud-Native & Architecture Evolution (10/100, L1), AI Engineering & Automated Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/yyx990803/shell-task"
+    },
+    {
+      "entry_id": "javascript-typescript-l3",
+      "language": "javascript-typescript",
+      "level": "L3",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "yyx990803",
+        "name": "semi",
+        "url": "https://github.com/yyx990803/semi",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "evan-you",
+      "developer": "Evan You",
+      "target_author": "yyx990803",
+      "author_aliases": [
+        "yyx990803",
+        "Evan You"
+      ],
+      "evaluation_username": "yyx990803,Evan You",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 48.75,
+      "scores": {
+        "spec_quality": 78,
+        "cloud_architecture": 20,
+        "ai_engineering": 5,
+        "mastery_professionalism": 92,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 78/100\nLevel: L4\n\nEvidence:\n- commit `4e34ea05`: fix duplicate adding/removing (fix #10); files: lib/rule.js, test/test.js\n- commit `850c6c19`: bump eslint version to latest compatible; files: package.json\n- commit `f402cda5`: handle throw statements; files: lib/rule.js, test/test.js\n- commit `615d8e7f`: refactor index.js, share logic for add/remove; files: lib/index.js, lib/rule.js\n- commit `64de94be`: use default eslint parser with all ES6 features; files: lib/features.js, lib/index.js, package.json\n\nAssessment：L4. The codebase shows strong modular design (e.g., extraction of ESLint rule into lib/rule.js, shared process function in lib/index.js after refactor in 615d8e7). Tests are present and evolved into a clean declarative testCase suite (d0a29cb) that covers many edge cases: empty statement handling, do‑while, special newline scenarios, ES6 import/export, and bug regression tests like issue #10 (4e34ea05). Defensive checks prevent double‑apply of operations (4e34ea05) and include error event handling in the API (2f4b8643). A Travis CI badge is referenced in README.md, and a .gitignore/.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `c37db74c`: add deprecation warning [ci skip]; files: README.md\n- commit `dbefb2ed`: more readme [ci skip]; files: README.md\n- commit `5865790d`: fix semicolon removal special cases in ESLint; files: rule.js, test/test.js\n\nAssessment：L1. The project is a pure Node.js CLI tool and library. No containerization (Docker/Compose), no infrastructure‑as‑code (Terraform/Kubernetes), and no deployment automation appear. The architectural evolution is limited to switching parser backends (jshint → babel‑eslint → native ESLint ES6 features, e.g., 10a3bca, 64de94be) and restructuring the lib directory. This is not cloud‑native work; it falls in the lower L1‑L2 range.\n\n## AI Engineering & Automated Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `c37db74c`: add deprecation warning [ci skip]; files: README.md\n- commit `0c3eb53a`: 4.0.5; files: package.json\n- commit `4e34ea05`: fix duplicate adding/removing (fix #10); files: lib/rule.js, test/test.js\n\nAssessment：L1. There is zero evidence of AI‑related engineering: no agent orchestration, structured prompts, LLM tracing, eval datasets, or automation loops. The tool predates the LLM‑era and contains no such features. Score reflects minimal presence.\n\n## Engineering Mastery & Professionalism\n\nScore: 92/100\nLevel: L5\n\nEvidence:\n- commit `c37db74c`: add deprecation warning [ci skip]; files: README.md\n- commit `4e34ea05`: fix duplicate adding/removing (fix #10); files: lib/rule.js, test/test.js\n- commit `493900d7`: grammar; files: README.md\n- commit `dbefb2ed`: more readme [ci skip]; files: README.md\n- commit `4bc439af`: readme; files: README.md\n\nAssessment：L5. Evan You demonstrates deep mastery: every commit is small, focused, and well‑described (e.g., 'fix duplicate adding/removing (fix #10)', 'refactor index.js, share logic for add/remove'). He maintains a clean public API, adds deprecation warnings (c37db74) when ESLint absorbed the functionality, and gracefully handles community contributions (merge PRs #4, #6, #7, #8). Documentation is rich (README.md covers usage, special cases, philosophy links). He defines the ESLint autofix pattern for semicolons, later obviated by ESLint’s own --fix, and responsibly sunsets the project.\n\n## Conclusion And Suggestions\n\nConclusion: The engineer excels in craftsmanship and open‑source maintenance, delivering a clean, well‑tested utility with excellent commit hygiene. While the domain remains a single‑purpose tool, the evolution from jshint hack to a proper ESLint rule, refactoring discipline, and eventual graceful deprecation illustrate a senior maintainer’s mindset. For growth into cloud‑native or AI‑engineering domains, entirely different project contexts would be needed.\nSuggestion: Prioritize AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (20/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 71,
+      "commits_analyzed": 59,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 30364,
+        "output_tokens": 2527,
+        "total_tokens": 32891,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:44:22Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 1544,
+        "total_deletions": 608,
+        "files_changed": 12,
+        "languages": [
+          "js",
+          "gitignore",
+          "md",
+          "yml",
+          "json",
+          "npmignore"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 78/100\nLevel: L4\n\nEvidence:\n- commit `4e34ea05`: fix duplicate adding/removing (fix #10); files: lib/rule.js, test/test.js\n- commit `850c6c19`: bump eslint version to latest compatible; files: package.json\n- commit `f402cda5`: handle throw statements; files: lib/rule.js, test/test.js\n- commit `615d8e7f`: refactor index.js, share logic for add/remove; files: lib/index.js, lib/rule.js\n- commit `64de94be`: use default eslint parser with all ES6 features; files: lib/features.js, lib/index.js, package.json\n\nAssessment：L4. The codebase shows strong modular design (e.g., extraction of ESLint rule into lib/rule.js, shared process function in lib/index.js after refactor in 615d8e7). Tests are present and evolved into a clean declarative testCase suite (d0a29cb) that covers many edge cases: empty statement handling, do‑while, special newline scenarios, ES6 import/export, and bug regression tests like issue #10 (4e34ea05). Defensive checks prevent double‑apply of operations (4e34ea05) and include error event handling in the API (2f4b8643). A Travis CI badge is referenced in README.md, and a .gitignore/.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `c37db74c`: add deprecation warning [ci skip]; files: README.md\n- commit `dbefb2ed`: more readme [ci skip]; files: README.md\n- commit `5865790d`: fix semicolon removal special cases in ESLint; files: rule.js, test/test.js\n\nAssessment：L1. The project is a pure Node.js CLI tool and library. No containerization (Docker/Compose), no infrastructure‑as‑code (Terraform/Kubernetes), and no deployment automation appear. The architectural evolution is limited to switching parser backends (jshint → babel‑eslint → native ESLint ES6 features, e.g., 10a3bca, 64de94be) and restructuring the lib directory. This is not cloud‑native work; it falls in the lower L1‑L2 range.\n\n## AI Engineering & Automated Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `c37db74c`: add deprecation warning [ci skip]; files: README.md\n- commit `0c3eb53a`: 4.0.5; files: package.json\n- commit `4e34ea05`: fix duplicate adding/removing (fix #10); files: lib/rule.js, test/test.js\n\nAssessment：L1. There is zero evidence of AI‑related engineering: no agent orchestration, structured prompts, LLM tracing, eval datasets, or automation loops. The tool predates the LLM‑era and contains no such features. Score reflects minimal presence.\n\n## Engineering Mastery & Professionalism\n\nScore: 92/100\nLevel: L5\n\nEvidence:\n- commit `c37db74c`: add deprecation warning [ci skip]; files: README.md\n- commit `4e34ea05`: fix duplicate adding/removing (fix #10); files: lib/rule.js, test/test.js\n- commit `493900d7`: grammar; files: README.md\n- commit `dbefb2ed`: more readme [ci skip]; files: README.md\n- commit `4bc439af`: readme; files: README.md\n\nAssessment：L5. Evan You demonstrates deep mastery: every commit is small, focused, and well‑described (e.g., 'fix duplicate adding/removing (fix #10)', 'refactor index.js, share logic for add/remove'). He maintains a clean public API, adds deprecation warnings (c37db74) when ESLint absorbed the functionality, and gracefully handles community contributions (merge PRs #4, #6, #7, #8). Documentation is rich (README.md covers usage, special cases, philosophy links). He defines the ESLint autofix pattern for semicolons, later obviated by ESLint’s own --fix, and responsibly sunsets the project.\n\n## Conclusion And Suggestions\n\nConclusion: The engineer excels in craftsmanship and open‑source maintenance, delivering a clean, well‑tested utility with excellent commit hygiene. While the domain remains a single‑purpose tool, the evolution from jshint hack to a proper ESLint rule, refactoring discipline, and eventual graceful deprecation illustrate a senior maintainer’s mindset. For growth into cloud‑native or AI‑engineering domains, entirely different project contexts would be needed.\nSuggestion: Prioritize AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (20/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/yyx990803/semi"
+    },
+    {
+      "entry_id": "javascript-typescript-l4",
+      "language": "javascript-typescript",
+      "level": "L4",
+      "status": "failed",
+      "repo": {
+        "platform": "github",
+        "owner": "yyx990803",
+        "name": "vue-hooks",
+        "url": "https://github.com/yyx990803/vue-hooks"
+      },
+      "developer": "Evan You",
+      "target_author": "yyx990803",
+      "author_aliases": [
+        "yyx990803",
+        "Evan You"
+      ],
+      "evaluation_username": "yyx990803,Evan You",
+      "plugin_id": "zgc_ai_native_2026",
+      "model": "deepseek/deepseek-v4-pro",
+      "error": "LLM part evaluation failed for commits: object of type 'NoneType' has no len()",
+      "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 177, in <module>\n  File \"/home/carter/working/oscanner/plugins/zgc_ai_native_2026/scan/__init__.py\", line 784, in evaluate_engineer\n    return self._evaluate_engineer_standard(author_commits, username, load_files=load_files)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/carter/working/oscanner/plugins/zgc_ai_native_2026/scan/__init__.py\", line 887, in _evaluate_engineer_standard\n    part_result = self._evaluate_part_with_llm(part_name, part_context, username, chunk_idx=None)\n  File \"/home/carter/working/oscanner/plugins/zgc_ai_native_2026/scan/__init__.py\", line 1995, in _evaluate_part_with_llm\n    raise RuntimeError(f\"LLM part evaluation failed for {part_name}: {last_err}\")\nRuntimeError: LLM part evaluation failed for commits: object of type 'NoneType' has no len()\n"
+    },
+    {
+      "entry_id": "javascript-typescript-l5",
+      "language": "javascript-typescript",
+      "level": "L5",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "yyx990803",
+        "name": "launch-editor",
+        "url": "https://github.com/yyx990803/launch-editor",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "evan-you",
+      "developer": "Evan You",
+      "target_author": "yyx990803",
+      "author_aliases": [
+        "yyx990803",
+        "Evan You"
+      ],
+      "evaluation_username": "yyx990803,Evan You",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 41.25,
+      "scores": {
+        "spec_quality": 65,
+        "cloud_architecture": 10,
+        "ai_engineering": 10,
+        "mastery_professionalism": 80,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 65/100\nLevel: L3\n\nEvidence:\n- commit `9a439cfc`: fix: use subl for Sublime on Linux (fix #6); files: packages/launch-editor/editor-info/linux.js\n- commit `9c7f2812`: ensure file path is absolute + allow specifying srcRoot; files: README.md, packages/launch-editor-middleware/index.js\n- commit `2a8dea40`: setup eslint; files: package.json, yarn.lock\n- commit `07ab9af6`: fix readme; files: README.md\n\nAssessment：(L3, 65/100)**: - Linting and formatting are established: commit `2a8dea4` sets up eslint with vue-libs plugin and lint-staged; commit `0a8fbac` adds pre-commit hooks via yorkie; commit `f2f1ba03` adds a `lint` script. - Input validation and edge case handling are present: the initial `index.js` (commit `7927d8a`) checks `fs.existsSync(fileName)`, sanitizes `lineNumber` (isNaN guard), and the middleware returns HTTP 500 for missing `file` param. Later, commit `9c7f281` ensures file path is absolute via `path.resolve` and allows configurable `srcRoot`.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `9c7f2812`: ensure file path is absolute + allow specifying srcRoot; files: README.md, packages/launch-editor-middleware/index.js\n\nAssessment：(L1, 10/100)**: - No evidence of containerization, IaC, deployment configurations, or cloud resource optimisation appears in any commit. The project is a pure Node.js library. Score reflects the absence of cloud-native practices, not a quality judgement.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `f47b0040`: v2.8.2; files: packages/launch-editor/package.json\n- commit `cf575715`: chore: use checkmark in support table; files: README.md\n- commit `307c6906`: v2.2.1; files: lerna.json, packages/launch-editor-middleware/package.json, packages/launch-editor/package.json\n\nAssessment：(L1, 10/100)**: - No signs of agent orchestration, structured prompts, LLM traces, eval datasets, or automated feedback loops. The commits contain no AI-related tooling or workflows.\n\n## Engineering Mastery & Professionalism\n\nScore: 80/100\nLevel: L4\n\nEvidence:\n- commit `cf575715`: chore: use checkmark in support table; files: README.md\n- commit `9a439cfc`: fix: use subl for Sublime on Linux (fix #6); files: packages/launch-editor/editor-info/linux.js\n- commit `9c7f2812`: ensure file path is absolute + allow specifying srcRoot; files: README.md, packages/launch-editor-middleware/index.js\n- commit `b1bc028d`: readme; files: README.md\n- commit `f2f1ba03`: support columns; files: README.md, package.json, packages/launch-editor-middleware/index.js, packages/launch-editor/get-args.js, packages/launch-editor/guess.js, packages/launch-editor/index.js\n\nAssessment：(L4, 80/100)**: - High-quality open‑source practices: MIT license, extensive README (usage examples, middleware docs, editor compatibility table) from the first commit, and iterative documentation improvements (typo fix in `07ab9af`, column support note in `b1bc028`, argument description update in `9c7f281`, checkmark table style in `cf57571`). - Disciplined version management with lerna: version bumps (commits `604070b`, `f4b90f4`, `5e7d5fb`, `4f18afd`, `307c690`, `f47b004`) show semver awareness, and a fix for initial lerna version in `604070b` demonstrates practical troubleshooting.\n\n## Conclusion And Suggestions\n\nConclusion: The commits reflect a strong solo maintainer delivering a well‑engineered utility with proper linting, cross‑platform edge cases, and polished documentation. To move towards L4 in Specification & Quality, adding automated tests (unit/integration) would be the next step. Cloud and AI dimensions are not applicable to this library, so scores remain minimal.\nSuggestion: Prioritize Cloud-Native & Architecture Evolution (10/100, L1), AI Engineering & Automated Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 91,
+      "commits_analyzed": 16,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 60218,
+        "output_tokens": 3534,
+        "total_tokens": 63752,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:47:40Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 3133,
+        "total_deletions": 142,
+        "files_changed": 15,
+        "languages": [
+          "js",
+          "gitignore",
+          "md",
+          "lock",
+          "json"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 65/100\nLevel: L3\n\nEvidence:\n- commit `9a439cfc`: fix: use subl for Sublime on Linux (fix #6); files: packages/launch-editor/editor-info/linux.js\n- commit `9c7f2812`: ensure file path is absolute + allow specifying srcRoot; files: README.md, packages/launch-editor-middleware/index.js\n- commit `2a8dea40`: setup eslint; files: package.json, yarn.lock\n- commit `07ab9af6`: fix readme; files: README.md\n\nAssessment：(L3, 65/100)**: - Linting and formatting are established: commit `2a8dea4` sets up eslint with vue-libs plugin and lint-staged; commit `0a8fbac` adds pre-commit hooks via yorkie; commit `f2f1ba03` adds a `lint` script. - Input validation and edge case handling are present: the initial `index.js` (commit `7927d8a`) checks `fs.existsSync(fileName)`, sanitizes `lineNumber` (isNaN guard), and the middleware returns HTTP 500 for missing `file` param. Later, commit `9c7f281` ensures file path is absolute via `path.resolve` and allows configurable `srcRoot`.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `9c7f2812`: ensure file path is absolute + allow specifying srcRoot; files: README.md, packages/launch-editor-middleware/index.js\n\nAssessment：(L1, 10/100)**: - No evidence of containerization, IaC, deployment configurations, or cloud resource optimisation appears in any commit. The project is a pure Node.js library. Score reflects the absence of cloud-native practices, not a quality judgement.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `f47b0040`: v2.8.2; files: packages/launch-editor/package.json\n- commit `cf575715`: chore: use checkmark in support table; files: README.md\n- commit `307c6906`: v2.2.1; files: lerna.json, packages/launch-editor-middleware/package.json, packages/launch-editor/package.json\n\nAssessment：(L1, 10/100)**: - No signs of agent orchestration, structured prompts, LLM traces, eval datasets, or automated feedback loops. The commits contain no AI-related tooling or workflows.\n\n## Engineering Mastery & Professionalism\n\nScore: 80/100\nLevel: L4\n\nEvidence:\n- commit `cf575715`: chore: use checkmark in support table; files: README.md\n- commit `9a439cfc`: fix: use subl for Sublime on Linux (fix #6); files: packages/launch-editor/editor-info/linux.js\n- commit `9c7f2812`: ensure file path is absolute + allow specifying srcRoot; files: README.md, packages/launch-editor-middleware/index.js\n- commit `b1bc028d`: readme; files: README.md\n- commit `f2f1ba03`: support columns; files: README.md, package.json, packages/launch-editor-middleware/index.js, packages/launch-editor/get-args.js, packages/launch-editor/guess.js, packages/launch-editor/index.js\n\nAssessment：(L4, 80/100)**: - High-quality open‑source practices: MIT license, extensive README (usage examples, middleware docs, editor compatibility table) from the first commit, and iterative documentation improvements (typo fix in `07ab9af`, column support note in `b1bc028`, argument description update in `9c7f281`, checkmark table style in `cf57571`). - Disciplined version management with lerna: version bumps (commits `604070b`, `f4b90f4`, `5e7d5fb`, `4f18afd`, `307c690`, `f47b004`) show semver awareness, and a fix for initial lerna version in `604070b` demonstrates practical troubleshooting.\n\n## Conclusion And Suggestions\n\nConclusion: The commits reflect a strong solo maintainer delivering a well‑engineered utility with proper linting, cross‑platform edge cases, and polished documentation. To move towards L4 in Specification & Quality, adding automated tests (unit/integration) would be the next step. Cloud and AI dimensions are not applicable to this library, so scores remain minimal.\nSuggestion: Prioritize Cloud-Native & Architecture Evolution (10/100, L1), AI Engineering & Automated Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/yyx990803/launch-editor"
+    },
+    {
+      "entry_id": "go-l1",
+      "language": "go",
+      "level": "L1",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "bradfitz",
+        "name": "gotsync",
+        "url": "https://github.com/bradfitz/gotsync",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "brad-fitzpatrick",
+      "developer": "Brad Fitzpatrick",
+      "target_author": "bradfitz",
+      "author_aliases": [
+        "bradfitz",
+        "Brad Fitzpatrick"
+      ],
+      "evaluation_username": "bradfitz,Brad Fitzpatrick",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 40.75,
+      "scores": {
+        "spec_quality": 65,
+        "cloud_architecture": 20,
+        "ai_engineering": 0,
+        "mastery_professionalism": 78,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 65/100\nLevel: L3\n\nEvidence:\n- commit `7638d220`: respect syncer flag; files: main.go, test.sh\n- commit `64b15b51`: 'fix' Makefile lamely; files: Makefile, main.go, test.sh\n- commit `92cf277b`: break into lib & main.  main not yet building.; files: .gitignore, Makefile, gotsync.go, main.go, test.sh\n- commit `0dc5af1e`: formatting; files: hblsync.go\n- commit `c348f320`: fix file copy stats; files: hblsync.go\n\nAssessment：L3 (50-70). The codebase shows strong type discipline, modularity (split into library and main in 92cf277), and continuous refactoring (e.g., 0113d1e refactors to avoid holding file descriptors, 16f6599 simplifies channel usage). Error handling is consistent via a Syncer struct with configurable ErrorWriter (405d591). Edge cases like symlinks, directory replacement, and utimes are handled (4d40c505, a000a673). A basic integration test script exists (test.sh in 64b15b51), but there are no unit tests, CI, or property tests. gofmt is applied (5d5cee6).\n\n## Cloud-Native & Architecture Evolution\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `d0ce4bc1`: comment about the webserver; files: main.go\n\nAssessment：L1 (10-30). The project is a CLI tool, not a cloud service. The only cloud-adjacent feature is a debug HTTP server for profiling (d0ce4bc). No containerization, IaC, deployment configs, resource limits, or architecture decision records. The architecture is a local parallel syncer, not designed for cloud-native patterns. Score reflects minimal evidence.\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `d0ce4bc1`: comment about the webserver; files: main.go\n- commit `b05b2ce2`: add AndroidMode.; files: gotsync.go, main.go\n- commit `29cd565a`: os.Exit with the number of errors that occurred.; files: main.go\n- commit `ed42aea4`: stuff; files: Makefile, gotsync.go, main.go\n- commit `0eba1ccd`: headers; files: gotsync.go, main.go\n\nAssessment：L1 (0-10). No evidence of AI tooling, agent orchestration, structured prompts, LLM traces, or evaluation datasets. The project predates modern AI engineering practices. Score is 0 due to complete absence of relevant evidence.\n\n## Engineering Mastery & Professionalism\n\nScore: 78/100\nLevel: L4\n\nEvidence:\n- commit `6d02d2ca`: add LICENSE file; files: LICENSE\n- commit `3f51bebc`: add docs; files: gotsync.go\n- commit `64b15b51`: 'fix' Makefile lamely; files: Makefile, main.go, test.sh\n- commit `c348f320`: fix file copy stats; files: hblsync.go\n\nAssessment：L4 (70-85). Commits are granular and well-described (e.g., 'add AndroidMode', 'os.Exit with the number of errors that occurred'). Documentation is added for exported functions (3f51beb) and file headers include license references (0eba1cc). A LICENSE file is provided (6d02d2c). The code includes thoughtful trade-off comments (e.g., portability of utimes in b05b2ce, a000a673). Performance considerations drive the concurrent design and resource cleanup (0113d1e). The project follows Go conventions and is released under a BSD license, demonstrating professional open-source practice.\n\n## Conclusion And Suggestions\n\nConclusion: Brad Fitzpatrick demonstrates strong system-building skills with a focus on correctness, concurrency, and maintainability. To reach higher levels, the project would benefit from automated testing (unit/integration), CI pipelines, and containerization for reproducibility. Cloud-native and AI engineering dimensions are not applicable to this tool, but future work could explore those areas if the context shifts.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (20/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 30,
+      "commits_analyzed": 30,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 25441,
+        "output_tokens": 3252,
+        "total_tokens": 28693,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:48:56Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 1067,
+        "total_deletions": 367,
+        "files_changed": 7,
+        "languages": [
+          "sh",
+          "gitignore",
+          "go"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 65/100\nLevel: L3\n\nEvidence:\n- commit `7638d220`: respect syncer flag; files: main.go, test.sh\n- commit `64b15b51`: 'fix' Makefile lamely; files: Makefile, main.go, test.sh\n- commit `92cf277b`: break into lib & main.  main not yet building.; files: .gitignore, Makefile, gotsync.go, main.go, test.sh\n- commit `0dc5af1e`: formatting; files: hblsync.go\n- commit `c348f320`: fix file copy stats; files: hblsync.go\n\nAssessment：L3 (50-70). The codebase shows strong type discipline, modularity (split into library and main in 92cf277), and continuous refactoring (e.g., 0113d1e refactors to avoid holding file descriptors, 16f6599 simplifies channel usage). Error handling is consistent via a Syncer struct with configurable ErrorWriter (405d591). Edge cases like symlinks, directory replacement, and utimes are handled (4d40c505, a000a673). A basic integration test script exists (test.sh in 64b15b51), but there are no unit tests, CI, or property tests. gofmt is applied (5d5cee6).\n\n## Cloud-Native & Architecture Evolution\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `d0ce4bc1`: comment about the webserver; files: main.go\n\nAssessment：L1 (10-30). The project is a CLI tool, not a cloud service. The only cloud-adjacent feature is a debug HTTP server for profiling (d0ce4bc). No containerization, IaC, deployment configs, resource limits, or architecture decision records. The architecture is a local parallel syncer, not designed for cloud-native patterns. Score reflects minimal evidence.\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `d0ce4bc1`: comment about the webserver; files: main.go\n- commit `b05b2ce2`: add AndroidMode.; files: gotsync.go, main.go\n- commit `29cd565a`: os.Exit with the number of errors that occurred.; files: main.go\n- commit `ed42aea4`: stuff; files: Makefile, gotsync.go, main.go\n- commit `0eba1ccd`: headers; files: gotsync.go, main.go\n\nAssessment：L1 (0-10). No evidence of AI tooling, agent orchestration, structured prompts, LLM traces, or evaluation datasets. The project predates modern AI engineering practices. Score is 0 due to complete absence of relevant evidence.\n\n## Engineering Mastery & Professionalism\n\nScore: 78/100\nLevel: L4\n\nEvidence:\n- commit `6d02d2ca`: add LICENSE file; files: LICENSE\n- commit `3f51bebc`: add docs; files: gotsync.go\n- commit `64b15b51`: 'fix' Makefile lamely; files: Makefile, main.go, test.sh\n- commit `c348f320`: fix file copy stats; files: hblsync.go\n\nAssessment：L4 (70-85). Commits are granular and well-described (e.g., 'add AndroidMode', 'os.Exit with the number of errors that occurred'). Documentation is added for exported functions (3f51beb) and file headers include license references (0eba1cc). A LICENSE file is provided (6d02d2c). The code includes thoughtful trade-off comments (e.g., portability of utimes in b05b2ce, a000a673). Performance considerations drive the concurrent design and resource cleanup (0113d1e). The project follows Go conventions and is released under a BSD license, demonstrating professional open-source practice.\n\n## Conclusion And Suggestions\n\nConclusion: Brad Fitzpatrick demonstrates strong system-building skills with a focus on correctness, concurrency, and maintainability. To reach higher levels, the project would benefit from automated testing (unit/integration), CI pipelines, and containerization for reproducibility. Cloud-native and AI engineering dimensions are not applicable to this tool, but future work could explore those areas if the context shifts.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (20/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/bradfitz/gotsync"
+    },
+    {
+      "entry_id": "go-l2",
+      "language": "go",
+      "level": "L2",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "bradfitz",
+        "name": "goman",
+        "url": "https://github.com/bradfitz/goman",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "brad-fitzpatrick",
+      "developer": "Brad Fitzpatrick",
+      "target_author": "bradfitz",
+      "author_aliases": [
+        "bradfitz",
+        "Brad Fitzpatrick"
+      ],
+      "evaluation_username": "bradfitz,Brad Fitzpatrick",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 25.0,
+      "scores": {
+        "spec_quality": 40,
+        "cloud_architecture": 10,
+        "ai_engineering": 5,
+        "mastery_professionalism": 45,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 40/100\nLevel: L2\n\nEvidence:\n- commit `7b26aabb`: Merge pull request #2 from dsymonds/prbot-gofmt; files: client.go, gearman.go, gearman_test.go, worker.go\n- commit `71eda817`: Initial sketch of a Gearman client for Whitaker to complete.; files: .gitignore, Makefile, call.go, client.go, gearman.go, gearman_test.go\n\nAssessment：Evidence across commits is limited to a skeleton library (71eda81: gearman.go, client.go, worker.go, call.go, gearman_test.go) with most methods stubbed via log.Exitf, and a single test that only checks client creation and requires an external service. The only quality practice visible is the acceptance of a gofmt pull request (7b26aab, dsymonds) that corrected whitespace, import ordering, and indentation in client.go, gearman.go, gearman_test.go, worker.go. No lint configuration, CI, or meaningful error/boundary handling is present.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `7b26aabb`: Merge pull request #2 from dsymonds/prbot-gofmt; files: client.go, gearman.go, gearman_test.go, worker.go\n- commit `71eda817`: Initial sketch of a Gearman client for Whitaker to complete.; files: .gitignore, Makefile, call.go, client.go, gearman.go, gearman_test.go\n\n## AI Engineering & Automated Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `7b26aabb`: Merge pull request #2 from dsymonds/prbot-gofmt; files: client.go, gearman.go, gearman_test.go, worker.go\n- commit `71eda817`: Initial sketch of a Gearman client for Whitaker to complete.; files: .gitignore, Makefile, call.go, client.go, gearman.go, gearman_test.go\n\n## Engineering Mastery & Professionalism\n\nScore: 45/100\nLevel: L2\n\nEvidence:\n- commit `7b26aabb`: Merge pull request #2 from dsymonds/prbot-gofmt; files: client.go, gearman.go, gearman_test.go, worker.go\n- commit `71eda817`: Initial sketch of a Gearman client for Whitaker to complete.; files: .gitignore, Makefile, call.go, client.go, gearman.go, gearman_test.go\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (10/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 3,
+      "commits_analyzed": 2,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 2404,
+        "output_tokens": 2139,
+        "total_tokens": 4543,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:50:04Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 149,
+        "total_deletions": 6,
+        "files_changed": 7,
+        "languages": [
+          "gitignore",
+          "go"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 40/100\nLevel: L2\n\nEvidence:\n- commit `7b26aabb`: Merge pull request #2 from dsymonds/prbot-gofmt; files: client.go, gearman.go, gearman_test.go, worker.go\n- commit `71eda817`: Initial sketch of a Gearman client for Whitaker to complete.; files: .gitignore, Makefile, call.go, client.go, gearman.go, gearman_test.go\n\nAssessment：Evidence across commits is limited to a skeleton library (71eda81: gearman.go, client.go, worker.go, call.go, gearman_test.go) with most methods stubbed via log.Exitf, and a single test that only checks client creation and requires an external service. The only quality practice visible is the acceptance of a gofmt pull request (7b26aab, dsymonds) that corrected whitespace, import ordering, and indentation in client.go, gearman.go, gearman_test.go, worker.go. No lint configuration, CI, or meaningful error/boundary handling is present.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `7b26aabb`: Merge pull request #2 from dsymonds/prbot-gofmt; files: client.go, gearman.go, gearman_test.go, worker.go\n- commit `71eda817`: Initial sketch of a Gearman client for Whitaker to complete.; files: .gitignore, Makefile, call.go, client.go, gearman.go, gearman_test.go\n\n## AI Engineering & Automated Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `7b26aabb`: Merge pull request #2 from dsymonds/prbot-gofmt; files: client.go, gearman.go, gearman_test.go, worker.go\n- commit `71eda817`: Initial sketch of a Gearman client for Whitaker to complete.; files: .gitignore, Makefile, call.go, client.go, gearman.go, gearman_test.go\n\n## Engineering Mastery & Professionalism\n\nScore: 45/100\nLevel: L2\n\nEvidence:\n- commit `7b26aabb`: Merge pull request #2 from dsymonds/prbot-gofmt; files: client.go, gearman.go, gearman_test.go, worker.go\n- commit `71eda817`: Initial sketch of a Gearman client for Whitaker to complete.; files: .gitignore, Makefile, call.go, client.go, gearman.go, gearman_test.go\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (10/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/bradfitz/goman"
+    },
+    {
+      "entry_id": "go-l3",
+      "language": "go",
+      "level": "L3",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "bradfitz",
+        "name": "gomemcache",
+        "url": "https://github.com/bradfitz/gomemcache",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "brad-fitzpatrick",
+      "developer": "Brad Fitzpatrick",
+      "target_author": "bradfitz",
+      "author_aliases": [
+        "bradfitz",
+        "Brad Fitzpatrick"
+      ],
+      "evaluation_username": "bradfitz,Brad Fitzpatrick",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 43.0,
+      "scores": {
+        "spec_quality": 82,
+        "cloud_architecture": 10,
+        "ai_engineering": 0,
+        "mastery_professionalism": 80,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 82/100\nLevel: L4\n\nEvidence:\n- commit `4d751bb6`: README: fix pkg.go.dev badge link to point to memcache package; files: README.md\n- commit `24af94b0`: add TLS integration test, update Client.DialContext docs; files: memcache/fakecerts_test.go, memcache/fakeserver_test.go, memcache/memcache.go, memcache/memcache_test.go\n- commit `6f412de2`: add CompareAndSwap (cas) tests; files: memcache/fakeserver_test.go, memcache/memcache_test.go\n- commit `553e0d51`: run the three main test types in parallel; files: memcache/memcache_test.go\n- commit `2695f49c`: add start of GitHub Actions CI; files: .github/workflows/test.yml\n\nAssessment：(L4, 82/100):** Evidence: comprehensive testing (unit, fake server, TLS integration, benchmarks) in memcache/memcache_test.go and memcache/fakeserver_test.go; edge-case coverage (Unicode keys, CAS conflict, malformed keys); continuous refactoring (rename Mutex to mu, removal of unused Item.Object, separation of parse logic); CI via GitHub Actions (commit 2695f49c); performance optimizations with benchmarks and allocation avoidance (selector.go, keyBufPool);\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `24af94b0`: add TLS integration test, update Client.DialContext docs; files: memcache/fakecerts_test.go, memcache/fakeserver_test.go, memcache/memcache.go, memcache/memcache_test.go\n- commit `6f412de2`: add CompareAndSwap (cas) tests; files: memcache/fakeserver_test.go, memcache/memcache_test.go\n- commit `2695f49c`: add start of GitHub Actions CI; files: .github/workflows/test.yml\n- commit `70caab58`: add minimal Go memcached server for tests; files: memcache/fakeserver_test.go, memcache/memcache_test.go\n- commit `72a68649`: Address an allocation TODO in the default ServerSelector.; files: memcache/selector.go, memcache/selector_test.go\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `21f1bbe2`: raise DefaultTimeout from 100ms to 500ms; files: memcache/memcache.go\n- commit `553e0d51`: run the three main test types in parallel; files: memcache/memcache_test.go\n- commit `2695f49c`: add start of GitHub Actions CI; files: .github/workflows/test.yml\n- commit `0f301323`: Merge pull request #12 from craigmj/master; files: memcache/memcache.go, memcache/memcache_test.go, memcache/selector.go\n- commit `95f9a84c`: remove makefile; use the go tool; files: Makefile\n\n## Engineering Mastery & Professionalism\n\nScore: 80/100\nLevel: L4\n\nEvidence:\n- commit `4d751bb6`: README: fix pkg.go.dev badge link to point to memcache package; files: README.md\n- commit `91de306f`: README: add pkg.go.dev badge; files: README.md\n- commit `24af94b0`: add TLS integration test, update Client.DialContext docs; files: memcache/fakecerts_test.go, memcache/fakeserver_test.go, memcache/memcache.go, memcache/memcache_test.go\n- commit `d8906ede`: README.md: remove some dated Go notes; files: README.md\n- commit `c2ad34c3`: Move the LICENSE up a directory; files: LICENSE\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1); the strongest signal comes from Specification & Built-in Quality.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 111,
+      "commits_analyzed": 72,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 41888,
+        "output_tokens": 1937,
+        "total_tokens": 43825,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:52:35Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 3379,
+        "total_deletions": 1441,
+        "files_changed": 23,
+        "languages": [
+          "gitignore",
+          "md",
+          "yml",
+          "go",
+          "mod",
+          "txt",
+          "html"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 82/100\nLevel: L4\n\nEvidence:\n- commit `4d751bb6`: README: fix pkg.go.dev badge link to point to memcache package; files: README.md\n- commit `24af94b0`: add TLS integration test, update Client.DialContext docs; files: memcache/fakecerts_test.go, memcache/fakeserver_test.go, memcache/memcache.go, memcache/memcache_test.go\n- commit `6f412de2`: add CompareAndSwap (cas) tests; files: memcache/fakeserver_test.go, memcache/memcache_test.go\n- commit `553e0d51`: run the three main test types in parallel; files: memcache/memcache_test.go\n- commit `2695f49c`: add start of GitHub Actions CI; files: .github/workflows/test.yml\n\nAssessment：(L4, 82/100):** Evidence: comprehensive testing (unit, fake server, TLS integration, benchmarks) in memcache/memcache_test.go and memcache/fakeserver_test.go; edge-case coverage (Unicode keys, CAS conflict, malformed keys); continuous refactoring (rename Mutex to mu, removal of unused Item.Object, separation of parse logic); CI via GitHub Actions (commit 2695f49c); performance optimizations with benchmarks and allocation avoidance (selector.go, keyBufPool);\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `24af94b0`: add TLS integration test, update Client.DialContext docs; files: memcache/fakecerts_test.go, memcache/fakeserver_test.go, memcache/memcache.go, memcache/memcache_test.go\n- commit `6f412de2`: add CompareAndSwap (cas) tests; files: memcache/fakeserver_test.go, memcache/memcache_test.go\n- commit `2695f49c`: add start of GitHub Actions CI; files: .github/workflows/test.yml\n- commit `70caab58`: add minimal Go memcached server for tests; files: memcache/fakeserver_test.go, memcache/memcache_test.go\n- commit `72a68649`: Address an allocation TODO in the default ServerSelector.; files: memcache/selector.go, memcache/selector_test.go\n\n## AI Engineering & Automated Evolution\n\nScore: 0/100\nLevel: L1\n\nEvidence:\n- commit `21f1bbe2`: raise DefaultTimeout from 100ms to 500ms; files: memcache/memcache.go\n- commit `553e0d51`: run the three main test types in parallel; files: memcache/memcache_test.go\n- commit `2695f49c`: add start of GitHub Actions CI; files: .github/workflows/test.yml\n- commit `0f301323`: Merge pull request #12 from craigmj/master; files: memcache/memcache.go, memcache/memcache_test.go, memcache/selector.go\n- commit `95f9a84c`: remove makefile; use the go tool; files: Makefile\n\n## Engineering Mastery & Professionalism\n\nScore: 80/100\nLevel: L4\n\nEvidence:\n- commit `4d751bb6`: README: fix pkg.go.dev badge link to point to memcache package; files: README.md\n- commit `91de306f`: README: add pkg.go.dev badge; files: README.md\n- commit `24af94b0`: add TLS integration test, update Client.DialContext docs; files: memcache/fakecerts_test.go, memcache/fakeserver_test.go, memcache/memcache.go, memcache/memcache_test.go\n- commit `d8906ede`: README.md: remove some dated Go notes; files: README.md\n- commit `c2ad34c3`: Move the LICENSE up a directory; files: LICENSE\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1); the strongest signal comes from Specification & Built-in Quality.\nSuggestion: Prioritize AI Engineering & Automated Evolution (0/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/bradfitz/gomemcache"
+    },
+    {
+      "entry_id": "go-l4",
+      "language": "go",
+      "level": "L4",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "bradfitz",
+        "name": "goimports",
+        "url": "https://github.com/bradfitz/goimports",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "brad-fitzpatrick",
+      "developer": "Brad Fitzpatrick",
+      "target_author": "bradfitz",
+      "author_aliases": [
+        "bradfitz",
+        "Brad Fitzpatrick"
+      ],
+      "evaluation_username": "bradfitz,Brad Fitzpatrick",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 50.0,
+      "scores": {
+        "spec_quality": 90,
+        "cloud_architecture": 10,
+        "ai_engineering": 5,
+        "mastery_professionalism": 95,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 90/100\nLevel: L5\n\nEvidence:\n- commit `44fb76b9`: Delete most of the code.; files: goimports.go, imports/fix.go, imports/fix_test.go, imports/imports.go, imports/mkindex.go, imports/sortimports.go\n- commit `b33d2e25`: Merge pull request #30 from nf/master; files: goimports.go, imports/fix.go, imports/fix_test.go, imports/imports.go, imports/mkindex.go, imports/sortimports.go\n- commit `d5338658`: Pass fileset to astutil. API change from astutil.; files: fix.go\n- commit `c4acddce`: Merge pull request #22 from shurcooL/fix-package-names; files: README, fix.go\n- commit `98c17f81`: Merge pull request #23 from shivakumargn/master; files: fix.go, fix_test.go\n\nAssessment：(L5, 90)**: The project demonstrates strong engineering practices. Early commits introduce a test suite (`fix_test.go`) with many test cases covering edge cases: adding imports, removing unused ones, handling dot/blank imports, cgo, grouping, blank lines, duplicate prevention (e.g., commits `72c860a`, `5b4106d`, `a8ada6d`, `c03862f`). The code is later refactored into a separate reusable `imports` package (`b33d2e2`), improving modularity and separation of concerns.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `d5338658`: Pass fileset to astutil. API change from astutil.; files: fix.go\n- commit `a010f94d`: Use format.Node instead of printer.Config. Fixes a sorting case, for some weird reason.; files: fix_test.go, goimports.go\n\nAssessment：(L1, 10)**: There is no evidence of containerization, IaC, K8s configs, or deployment automation. The only faint cloud-native consideration is the `mkindex.go` tool which pre-builds a package index for environments like App Engine (a cloud PaaS), mentioned in the file's comment. This is minimal and does not constitute a cloud-native architecture.\n\n## AI Engineering & Automated Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `2ca671cd`: Match go.tools' goimports.; files: goimports.go\n- commit `d48e612c`: Merge pull request #13 from nikai3d/patch-1; files: README\n- commit `3a520906`: tool to automatically fix imports. adding works.; files: fix.go, fix_test.go, gen.go, goimports.go, zcommon.go\n\nAssessment：(L1, 5)**: No AI agent/tooling, structured prompts, LLM traces, or eval datasets are present. The `gen.go` and `mkindex.go` scripts automate code generation from the Go API, but this is a simple build-time code generator, not AI engineering. The score reflects a lack of evidence in this dimension.\n\n## Engineering Mastery & Professionalism\n\nScore: 95/100\nLevel: L5\n\nEvidence:\n- commit `6559d0f3`: Merge pull request #34 from fhs/patch-1; files: README\n- commit `a080937f`: Replace docs with reference to docs elsewhere.; files: README\n- commit `42a11901`: Merge pull request #32 from mdwhatcott/master; files: README\n- commit `0b032c9d`: update README to note the move; files: README\n- commit `44fb76b9`: Delete most of the code.; files: goimports.go, imports/fix.go, imports/fix_test.go, imports/imports.go, imports/mkindex.go, imports/sortimports.go\n\nAssessment：(L5, 95)**: Brad Fitzpatrick's commits show mature open-source collaboration. He merges pull requests with clear attribution (e.g., `#35 from ditashi/master`, `#30 from nf/master`) and writes meaningful commit messages describing the rationale (e.g., `Project has moved to code.google.com/p/go.tools/cmd/goimports`). The project includes a LICENSE file (`64a4a42`) and a README with editor integration instructions (`16f75ce`, `d088022`).\n\n## Conclusion And Suggestions\n\nConclusion: The engineer demonstrates L5 mastery in specification quality and professionalism, effectively building and maintaining a foundational Go tool. The work includes comprehensive test coverage, modular refactoring, and community leadership. The project is not cloud-native, nor does it involve AI engineering, which is expected given its era and domain. To further improve, modern contributions could add CI/CD pipelines (e.g., GitHub Actions), integration tests across Go versions, and a Docker-based development environment, though these were not in scope during this phase.\nSuggestion: Prioritize AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 63,
+      "commits_analyzed": 45,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 47615,
+        "output_tokens": 2334,
+        "total_tokens": 49949,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:54:19Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 10011,
+        "total_deletions": 9771,
+        "files_changed": 18,
+        "languages": [
+          "txt",
+          "gitignore",
+          "go"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 90/100\nLevel: L5\n\nEvidence:\n- commit `44fb76b9`: Delete most of the code.; files: goimports.go, imports/fix.go, imports/fix_test.go, imports/imports.go, imports/mkindex.go, imports/sortimports.go\n- commit `b33d2e25`: Merge pull request #30 from nf/master; files: goimports.go, imports/fix.go, imports/fix_test.go, imports/imports.go, imports/mkindex.go, imports/sortimports.go\n- commit `d5338658`: Pass fileset to astutil. API change from astutil.; files: fix.go\n- commit `c4acddce`: Merge pull request #22 from shurcooL/fix-package-names; files: README, fix.go\n- commit `98c17f81`: Merge pull request #23 from shivakumargn/master; files: fix.go, fix_test.go\n\nAssessment：(L5, 90)**: The project demonstrates strong engineering practices. Early commits introduce a test suite (`fix_test.go`) with many test cases covering edge cases: adding imports, removing unused ones, handling dot/blank imports, cgo, grouping, blank lines, duplicate prevention (e.g., commits `72c860a`, `5b4106d`, `a8ada6d`, `c03862f`). The code is later refactored into a separate reusable `imports` package (`b33d2e2`), improving modularity and separation of concerns.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `d5338658`: Pass fileset to astutil. API change from astutil.; files: fix.go\n- commit `a010f94d`: Use format.Node instead of printer.Config. Fixes a sorting case, for some weird reason.; files: fix_test.go, goimports.go\n\nAssessment：(L1, 10)**: There is no evidence of containerization, IaC, K8s configs, or deployment automation. The only faint cloud-native consideration is the `mkindex.go` tool which pre-builds a package index for environments like App Engine (a cloud PaaS), mentioned in the file's comment. This is minimal and does not constitute a cloud-native architecture.\n\n## AI Engineering & Automated Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `2ca671cd`: Match go.tools' goimports.; files: goimports.go\n- commit `d48e612c`: Merge pull request #13 from nikai3d/patch-1; files: README\n- commit `3a520906`: tool to automatically fix imports. adding works.; files: fix.go, fix_test.go, gen.go, goimports.go, zcommon.go\n\nAssessment：(L1, 5)**: No AI agent/tooling, structured prompts, LLM traces, or eval datasets are present. The `gen.go` and `mkindex.go` scripts automate code generation from the Go API, but this is a simple build-time code generator, not AI engineering. The score reflects a lack of evidence in this dimension.\n\n## Engineering Mastery & Professionalism\n\nScore: 95/100\nLevel: L5\n\nEvidence:\n- commit `6559d0f3`: Merge pull request #34 from fhs/patch-1; files: README\n- commit `a080937f`: Replace docs with reference to docs elsewhere.; files: README\n- commit `42a11901`: Merge pull request #32 from mdwhatcott/master; files: README\n- commit `0b032c9d`: update README to note the move; files: README\n- commit `44fb76b9`: Delete most of the code.; files: goimports.go, imports/fix.go, imports/fix_test.go, imports/imports.go, imports/mkindex.go, imports/sortimports.go\n\nAssessment：(L5, 95)**: Brad Fitzpatrick's commits show mature open-source collaboration. He merges pull requests with clear attribution (e.g., `#35 from ditashi/master`, `#30 from nf/master`) and writes meaningful commit messages describing the rationale (e.g., `Project has moved to code.google.com/p/go.tools/cmd/goimports`). The project includes a LICENSE file (`64a4a42`) and a README with editor integration instructions (`16f75ce`, `d088022`).\n\n## Conclusion And Suggestions\n\nConclusion: The engineer demonstrates L5 mastery in specification quality and professionalism, effectively building and maintaining a foundational Go tool. The work includes comprehensive test coverage, modular refactoring, and community leadership. The project is not cloud-native, nor does it involve AI engineering, which is expected given its era and domain. To further improve, modern contributions could add CI/CD pipelines (e.g., GitHub Actions), integration tests across Go versions, and a Docker-based development environment, though these were not in scope during this phase.\nSuggestion: Prioritize AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (10/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/bradfitz/goimports"
+    },
+    {
+      "entry_id": "go-l5",
+      "language": "go",
+      "level": "L5",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "bradfitz",
+        "name": "http2",
+        "url": "https://github.com/bradfitz/http2",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "brad-fitzpatrick",
+      "developer": "Brad Fitzpatrick",
+      "target_author": "bradfitz",
+      "author_aliases": [
+        "bradfitz",
+        "Brad Fitzpatrick"
+      ],
+      "evaluation_username": "bradfitz,Brad Fitzpatrick",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 53.75,
+      "scores": {
+        "spec_quality": 80,
+        "cloud_architecture": 30,
+        "ai_engineering": 10,
+        "mastery_professionalism": 95,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 80/100\nLevel: L4\n\nEvidence:\n- commit `d6b5b745`: h2i: fix binary name in usage message; files: h2i/h2i.go\n- commit `02f7b45e`: Merge pull request #55 from mdlayher/testframetypestring; files: frame_test.go\n- commit `f443e0d4`: Merge branch 'master' of github.com:bradfitz/http2; files: buffer_test.go, h2i/h2i.go, transport_test.go\n- commit `5d83bd44`: Merge pull request #54 from mdlayher/master; files: buffer_test.go, transport_test.go\n- commit `95163641`: Merge pull request #28 from mdlayher/master; files: buffer.go, buffer_test.go\n\nAssessment：(L4, 80): Evidence from multiple commits shows strong quality practices. Commit 5d83bd4 (buffer_test, transport_test) fixes 'go vet' issues, indicating lint enforcement. Commits 9516364 and 255559d add thorough table-driven tests for buffer writes (buffer_test.go, TestBufferWrite), covering edge cases like closed buffers, full buffers. Commit 91f8030 (server.go) adds defensive panics and ordering of writingFrame flag to prevent race conditions. Test improvements in 7bb8b7c (transport.go) and 286740e (server_test.go) include connection abort tests with goroutine safety and correct mutex usage.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 30/100\nLevel: L2\n\nEvidence:\n- commit `b17d8201`: Merge branch 'master' of https://github.com/bradfitz/http2; files: frame.go, server.go\n- commit `91f80303`: Merge pull request #44 from pabbott0/master; files: server.go\n- commit `a962c3ea`: Merge pull request #42 from aecdanjun/master; files: frame.go\n- commit `13dfd891`: Advertise 'h2' protocol, now that HTTP/2 is final.; files: http2.go, server.go, server_test.go\n- commit `286740e3`: Merge branch 'master' of github.com:bradfitz/http2; files: server_test.go, transport_test.go\n\nAssessment：(L2, 30): Very limited evidence. Commit b625564 (h2demo/launch.go) updates from goauth2 to golang.org/x/oauth2, using Google Compute Engine APIs, token caching, and basic file-based token storage. This shows awareness of cloud services but no containerization, IaC, or cloud-native patterns. No architecture docs or ADRs beyond README updates.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `68bb7553`: h2i: show Settings, WindowUpdate, GoAway frame details.; files: h2i/h2i.go\n- commit `b4eaf1cb`: transport_test: more failures for Blake to fix; files: transport_test.go\n- commit `ebe9b945`: transport_test: failing test for Blake to work on; files: transport_test.go\n- commit `76847809`: In curl integration test, include output along with non-zero exit status in failure message.; files: http2_test.go\n- commit `57999e39`: Load the spec coverage in tests lazily.; files: z_spec_test.go\n\nAssessment：(L1, 10): Zero evidence. The commits (2015 era) contain no AI-related tooling, agent orchestration, structured prompts, or LLM integration. No trace or eval infrastructure exists.\n\n## Engineering Mastery & Professionalism\n\nScore: 95/100\nLevel: L5\n\nEvidence:\n- commit `aa7658c0`: Update README; files: README\n- commit `6608b73e`: More doc updates about the repo move.; files: HACKING, README\n- commit `b84866fc`: Update README to redirect people to this repo's new home.; files: README\n- commit `d6b5b745`: h2i: fix binary name in usage message; files: h2i/h2i.go\n- commit `b70dcabe`: h2i: add installation tips to README; files: h2i/README.md\n\nAssessment：(L5, 95): Brad Fitzpatrick demonstrates deep open-source leadership. Commits include numerous well-structured merges of external contributions (e.g., 02f7b45 for TestFrameTypeString, 5d83bd4 vet fixes, b17d820 for race fix), with meaningful attribution (C+A file update in 030231d). Commit messages are clear, often linking issues (Fixes #57 in d6b5b74). Documentation is continuously improved (README updates in aa7658c, b84866f, 6608b73, and h2i/README.md in 85da460, 7eb059d).\n\n## Conclusion And Suggestions\n\nConclusion: Brad exhibits mastery in testing, modular design, and community stewardship, but the evaluation lacks modern cloud-native and AI dimensions due to the era of the project. For a subsequent stage, integrating CI/CD configuration and cloud deployment patterns would elevate cloud_architecture; AI dimension is not applicable given the timeframe.\nSuggestion: Prioritize AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (30/100, L2) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 150,
+      "commits_analyzed": 126,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 36457,
+        "output_tokens": 1707,
+        "total_tokens": 38164,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T07:57:14Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 5470,
+        "total_deletions": 1850,
+        "files_changed": 33,
+        "languages": [
+          "patch",
+          "md",
+          "go"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 80/100\nLevel: L4\n\nEvidence:\n- commit `d6b5b745`: h2i: fix binary name in usage message; files: h2i/h2i.go\n- commit `02f7b45e`: Merge pull request #55 from mdlayher/testframetypestring; files: frame_test.go\n- commit `f443e0d4`: Merge branch 'master' of github.com:bradfitz/http2; files: buffer_test.go, h2i/h2i.go, transport_test.go\n- commit `5d83bd44`: Merge pull request #54 from mdlayher/master; files: buffer_test.go, transport_test.go\n- commit `95163641`: Merge pull request #28 from mdlayher/master; files: buffer.go, buffer_test.go\n\nAssessment：(L4, 80): Evidence from multiple commits shows strong quality practices. Commit 5d83bd4 (buffer_test, transport_test) fixes 'go vet' issues, indicating lint enforcement. Commits 9516364 and 255559d add thorough table-driven tests for buffer writes (buffer_test.go, TestBufferWrite), covering edge cases like closed buffers, full buffers. Commit 91f8030 (server.go) adds defensive panics and ordering of writingFrame flag to prevent race conditions. Test improvements in 7bb8b7c (transport.go) and 286740e (server_test.go) include connection abort tests with goroutine safety and correct mutex usage.\n\n## Cloud-Native & Architecture Evolution\n\nScore: 30/100\nLevel: L2\n\nEvidence:\n- commit `b17d8201`: Merge branch 'master' of https://github.com/bradfitz/http2; files: frame.go, server.go\n- commit `91f80303`: Merge pull request #44 from pabbott0/master; files: server.go\n- commit `a962c3ea`: Merge pull request #42 from aecdanjun/master; files: frame.go\n- commit `13dfd891`: Advertise 'h2' protocol, now that HTTP/2 is final.; files: http2.go, server.go, server_test.go\n- commit `286740e3`: Merge branch 'master' of github.com:bradfitz/http2; files: server_test.go, transport_test.go\n\nAssessment：(L2, 30): Very limited evidence. Commit b625564 (h2demo/launch.go) updates from goauth2 to golang.org/x/oauth2, using Google Compute Engine APIs, token caching, and basic file-based token storage. This shows awareness of cloud services but no containerization, IaC, or cloud-native patterns. No architecture docs or ADRs beyond README updates.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `68bb7553`: h2i: show Settings, WindowUpdate, GoAway frame details.; files: h2i/h2i.go\n- commit `b4eaf1cb`: transport_test: more failures for Blake to fix; files: transport_test.go\n- commit `ebe9b945`: transport_test: failing test for Blake to work on; files: transport_test.go\n- commit `76847809`: In curl integration test, include output along with non-zero exit status in failure message.; files: http2_test.go\n- commit `57999e39`: Load the spec coverage in tests lazily.; files: z_spec_test.go\n\nAssessment：(L1, 10): Zero evidence. The commits (2015 era) contain no AI-related tooling, agent orchestration, structured prompts, or LLM integration. No trace or eval infrastructure exists.\n\n## Engineering Mastery & Professionalism\n\nScore: 95/100\nLevel: L5\n\nEvidence:\n- commit `aa7658c0`: Update README; files: README\n- commit `6608b73e`: More doc updates about the repo move.; files: HACKING, README\n- commit `b84866fc`: Update README to redirect people to this repo's new home.; files: README\n- commit `d6b5b745`: h2i: fix binary name in usage message; files: h2i/h2i.go\n- commit `b70dcabe`: h2i: add installation tips to README; files: h2i/README.md\n\nAssessment：(L5, 95): Brad Fitzpatrick demonstrates deep open-source leadership. Commits include numerous well-structured merges of external contributions (e.g., 02f7b45 for TestFrameTypeString, 5d83bd4 vet fixes, b17d820 for race fix), with meaningful attribution (C+A file update in 030231d). Commit messages are clear, often linking issues (Fixes #57 in d6b5b74). Documentation is continuously improved (README updates in aa7658c, b84866f, 6608b73, and h2i/README.md in 85da460, 7eb059d).\n\n## Conclusion And Suggestions\n\nConclusion: Brad exhibits mastery in testing, modular design, and community stewardship, but the evaluation lacks modern cloud-native and AI dimensions due to the era of the project. For a subsequent stage, integrating CI/CD configuration and cloud deployment patterns would elevate cloud_architecture; AI dimension is not applicable given the timeframe.\nSuggestion: Prioritize AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (30/100, L2) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/bradfitz/http2"
+    },
+    {
+      "entry_id": "rust-l1",
+      "language": "rust",
+      "level": "L1",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "BurntSushi",
+        "name": "byteorder",
+        "url": "https://github.com/BurntSushi/byteorder",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "andrew-gallant",
+      "developer": "Andrew Gallant",
+      "target_author": "BurntSushi",
+      "author_aliases": [
+        "BurntSushi",
+        "Andrew Gallant"
+      ],
+      "evaluation_username": "BurntSushi,Andrew Gallant",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 53.25,
+      "scores": {
+        "spec_quality": 90,
+        "cloud_architecture": 20,
+        "ai_engineering": 10,
+        "mastery_professionalism": 93,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 90/100\nLevel: L5\n\nEvidence:\n- commit `8d9f0c0f`: ci: use latest OS versions and switch to dtolnay; files: .github/workflows/ci.yml\n- commit `5d9d0386`: impl: prefix unsafe macros with 'unsafe_'; files: src/io.rs, src/lib.rs\n- commit `0ead1057`: impl: fix read implementations; files: src/lib.rs\n- commit `c25f0f9d`: doc: fix overflowing literals in doc tests; files: src/lib.rs\n- commit `b22bff6e`: deps: more updates in test code for rand 0.4 -> 0.5; files: benches/bench.rs, src/lib.rs\n\nAssessment：(L4-L5)**: The commit history demonstrates a rigorous testing discipline: unit tests, property-based quickcheck for all integer sizes (including custom Wi128 generators), explicit regression tests (commit 0ead105 for issue #173), and edge-case tests for panic-on-small-buffer. CI is hardened across many platforms (linux, macos, windows) with cross-compilation for aarch64, powerpc64, s390x (commit a5bd7cb), pinning cross versions, and adding Miri for undefined-behavior detection (a5bd7cb). `rustfmt` is enforced (f86396e) and lints from clippy are applied (4d0764c).\n\n## Cloud-Native & Architecture Evolution\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `dd41ee27`: msrv: bump to Rust 1.60; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `a5bd7cb3`: ci: polishing and add miri; files: .github/workflows/ci.yml, src/lib.rs\n- commit `8d9f0c0f`: ci: use latest OS versions and switch to dtolnay; files: .github/workflows/ci.yml\n- commit `fc274435`: ci: pin cross to v0.2.1; files: .github/workflows/ci.yml\n- commit `aa7c5b25`: msrv: bump to 1.41.1; files: .github/workflows/ci.yml, Cargo.toml, benches/bench.rs, build.rs, src/io.rs, src/lib.rs\n\nAssessment：(L2)**: byteorder is a foundational Rust library, not a deployable service. There is no containerization, IaC, or deployment configuration. The CI does cross-compile for many architectures using pre-built `cross` binaries (a5bd7cb), which shows attention to portability but does not constitute cloud-native architecture. Score: 20.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `dd41ee27`: msrv: bump to Rust 1.60; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `a5bd7cb3`: ci: polishing and add miri; files: .github/workflows/ci.yml, src/lib.rs\n- commit `8d9f0c0f`: ci: use latest OS versions and switch to dtolnay; files: .github/workflows/ci.yml\n- commit `fc274435`: ci: pin cross to v0.2.1; files: .github/workflows/ci.yml\n- commit `aa7c5b25`: msrv: bump to 1.41.1; files: .github/workflows/ci.yml, Cargo.toml, benches/bench.rs, build.rs, src/io.rs, src/lib.rs\n\nAssessment：(L1)**: No AI‑related tooling, agent orchestration, structured prompts, eval datasets, or LLM traces appear in any commit. Score: 10.\n\n## Engineering Mastery & Professionalism\n\nScore: 93/100\nLevel: L5\n\nEvidence:\n- commit `62b0e31f`: changelog: add a note about it not being updated; files: CHANGELOG.md\n- commit `dd41ee27`: msrv: bump to Rust 1.60; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `663358f9`: readme: document MSRV; files: README.md\n- commit `5d9d0386`: impl: prefix unsafe macros with 'unsafe_'; files: src/io.rs, src/lib.rs\n- commit `0ead1057`: impl: fix read implementations; files: src/lib.rs\n\nAssessment：(L5)**: The author (Andrew Gallant) consistently demonstrates leadership and professional maintainership. Commits are atomic with clear, reasoned messages (e.g., “msrv: bump to Rust 1.60” explains the deliberate trade-off, “impl: prefix unsafe macros” credits the idea to a community member). Extensive documentation includes `#![deny(missing_docs)]`, detailed doc examples (fixed overflowing literals in c25f0f9, 7dab8dd), a CHANGELOG, a FUNDING.yml, and a published MSRV policy (663358f). Deprecation of methods is handled with `#[deprecated]` and smooth migration paths (a7dcbd8).\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (20/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (20/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 150,
+      "commits_analyzed": 89,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 85986,
+        "output_tokens": 3548,
+        "total_tokens": 89534,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T08:02:42Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 4442,
+        "total_deletions": 2266,
+        "files_changed": 15,
+        "languages": [
+          "sh",
+          "toml",
+          "vim",
+          "md",
+          "rs",
+          "yml"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 90/100\nLevel: L5\n\nEvidence:\n- commit `8d9f0c0f`: ci: use latest OS versions and switch to dtolnay; files: .github/workflows/ci.yml\n- commit `5d9d0386`: impl: prefix unsafe macros with 'unsafe_'; files: src/io.rs, src/lib.rs\n- commit `0ead1057`: impl: fix read implementations; files: src/lib.rs\n- commit `c25f0f9d`: doc: fix overflowing literals in doc tests; files: src/lib.rs\n- commit `b22bff6e`: deps: more updates in test code for rand 0.4 -> 0.5; files: benches/bench.rs, src/lib.rs\n\nAssessment：(L4-L5)**: The commit history demonstrates a rigorous testing discipline: unit tests, property-based quickcheck for all integer sizes (including custom Wi128 generators), explicit regression tests (commit 0ead105 for issue #173), and edge-case tests for panic-on-small-buffer. CI is hardened across many platforms (linux, macos, windows) with cross-compilation for aarch64, powerpc64, s390x (commit a5bd7cb), pinning cross versions, and adding Miri for undefined-behavior detection (a5bd7cb). `rustfmt` is enforced (f86396e) and lints from clippy are applied (4d0764c).\n\n## Cloud-Native & Architecture Evolution\n\nScore: 20/100\nLevel: L1\n\nEvidence:\n- commit `dd41ee27`: msrv: bump to Rust 1.60; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `a5bd7cb3`: ci: polishing and add miri; files: .github/workflows/ci.yml, src/lib.rs\n- commit `8d9f0c0f`: ci: use latest OS versions and switch to dtolnay; files: .github/workflows/ci.yml\n- commit `fc274435`: ci: pin cross to v0.2.1; files: .github/workflows/ci.yml\n- commit `aa7c5b25`: msrv: bump to 1.41.1; files: .github/workflows/ci.yml, Cargo.toml, benches/bench.rs, build.rs, src/io.rs, src/lib.rs\n\nAssessment：(L2)**: byteorder is a foundational Rust library, not a deployable service. There is no containerization, IaC, or deployment configuration. The CI does cross-compile for many architectures using pre-built `cross` binaries (a5bd7cb), which shows attention to portability but does not constitute cloud-native architecture. Score: 20.\n\n## AI Engineering & Automated Evolution\n\nScore: 10/100\nLevel: L1\n\nEvidence:\n- commit `dd41ee27`: msrv: bump to Rust 1.60; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `a5bd7cb3`: ci: polishing and add miri; files: .github/workflows/ci.yml, src/lib.rs\n- commit `8d9f0c0f`: ci: use latest OS versions and switch to dtolnay; files: .github/workflows/ci.yml\n- commit `fc274435`: ci: pin cross to v0.2.1; files: .github/workflows/ci.yml\n- commit `aa7c5b25`: msrv: bump to 1.41.1; files: .github/workflows/ci.yml, Cargo.toml, benches/bench.rs, build.rs, src/io.rs, src/lib.rs\n\nAssessment：(L1)**: No AI‑related tooling, agent orchestration, structured prompts, eval datasets, or LLM traces appear in any commit. Score: 10.\n\n## Engineering Mastery & Professionalism\n\nScore: 93/100\nLevel: L5\n\nEvidence:\n- commit `62b0e31f`: changelog: add a note about it not being updated; files: CHANGELOG.md\n- commit `dd41ee27`: msrv: bump to Rust 1.60; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `663358f9`: readme: document MSRV; files: README.md\n- commit `5d9d0386`: impl: prefix unsafe macros with 'unsafe_'; files: src/io.rs, src/lib.rs\n- commit `0ead1057`: impl: fix read implementations; files: src/lib.rs\n\nAssessment：(L5)**: The author (Andrew Gallant) consistently demonstrates leadership and professional maintainership. Commits are atomic with clear, reasoned messages (e.g., “msrv: bump to Rust 1.60” explains the deliberate trade-off, “impl: prefix unsafe macros” credits the idea to a community member). Extensive documentation includes `#![deny(missing_docs)]`, detailed doc examples (fixed overflowing literals in c25f0f9, 7dab8dd), a CHANGELOG, a FUNDING.yml, and a published MSRV policy (663358f). Deprecation of methods is handled with `#[deprecated]` and smooth migration paths (a7dcbd8).\n\n## Conclusion And Suggestions\n\nConclusion: The largest gaps are in AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (20/100, L1); the strongest signal comes from Engineering Mastery & Professionalism.\nSuggestion: Prioritize AI Engineering & Automated Evolution (10/100, L1), Cloud-Native & Architecture Evolution (20/100, L1) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/BurntSushi/byteorder"
+    },
+    {
+      "entry_id": "rust-l2",
+      "language": "rust",
+      "level": "L2",
+      "status": "succeeded",
+      "repo": {
+        "platform": "github",
+        "owner": "BurntSushi",
+        "name": "rust-csv",
+        "url": "https://github.com/BurntSushi/rust-csv",
+        "ref_type": null,
+        "ref": null,
+        "start_sha": null,
+        "end_sha": null
+      },
+      "developer_profile_id": "andrew-gallant",
+      "developer": "Andrew Gallant",
+      "target_author": "BurntSushi",
+      "author_aliases": [
+        "BurntSushi",
+        "Andrew Gallant"
+      ],
+      "evaluation_username": "BurntSushi,Andrew Gallant",
+      "plugin_id": "zgc_ai_native_2026",
+      "plugin_version": "0.1.0",
+      "model": "deepseek/deepseek-v4-pro",
+      "score": 61.75,
+      "scores": {
+        "spec_quality": 82,
+        "cloud_architecture": 72,
+        "ai_engineering": 5,
+        "mastery_professionalism": 88,
+        "reasoning": "## Specification & Built-in Quality\n\nScore: 82/100\nLevel: L4\n\nEvidence:\n- commit `b25e5d12`: ci: various fixups; files: .github/workflows/ci.yml\n- commit `e0a8b8b2`: readme: fix GitHub Actions badge image link; files: README.md\n- commit `a0e83883`: deps: drop 'bstr'; files: Cargo.toml, src/byte_record.rs, src/debug.rs, src/lib.rs\n- commit `ea0273c5`: *: fix all warnings and update code; files: examples/cookbook-read-basic.rs, examples/cookbook-read-colon.rs, examples/cookbook-read-no-headers.rs, examples/cookbook-read-serde.rs, examples/cookbook-write-basic.rs, examples/cookbook-write-serde.rs\n- commit `73cf38b8`: perf: fix record copying performance bug; files: src/byte_record.rs, src/reader.rs, src/string_record.rs\n\nAssessment：(L4, 82)** Andrew Gallant demonstrates a high level of software engineering discipline. The commits show consistent refactoring (e.g., commit 9ab8311 for better import grouping, ea0273c for fixing all warnings, a0e83883 for dropping 'bstr' as a dependency and replacing it with a custom `debug` module), thorough testing (unit tests for 128-bit integers, deserialization edge cases, trim functionality), and strong type discipline (conditions for 128-bit integers in commit 7b8c812).\n\n## Cloud-Native & Architecture Evolution\n\nScore: 72/100\nLevel: L4\n\nEvidence:\n- commit `95a5e1af`: msrv: bump pinned version in CI; files: .github/workflows/ci.yml\n- commit `533d37b7`: ci: bump pinned to Rust 1.65; files: .github/workflows/ci.yml, Cargo.toml\n- commit `05045263`: msrv: bump to Rust 1.61; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `b25e5d12`: ci: various fixups; files: .github/workflows/ci.yml\n- commit `b9479c2e`: ci: switch to GitHub Actions; files: .github/workflows/ci.yml, .travis.yml, Cargo.toml, appveyor.yml\n\nAssessment：(L3, 72)** The project is a library, not a service, so containerization and IaC are not applicable. However, the migration from Travis CI/Appveyor to GitHub Actions (commit b9479c2) represents a significant architectural evolution in the development and deployment pipeline. The CI matrix is comprehensive, testing on `ubuntu-latest`, `macos-latest`, and `windows-latest`, with strategies for pinned and nightly Rust versions (commits b25e5d1, 533d37b). The author cleans up and modernizes CI configurations, such as removing OS version pinning to reduce maintenance burden (commit b25e5d1).\n\n## AI Engineering & Automated Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `95a5e1af`: msrv: bump pinned version in CI; files: .github/workflows/ci.yml\n- commit `533d37b7`: ci: bump pinned to Rust 1.65; files: .github/workflows/ci.yml, Cargo.toml\n- commit `05045263`: msrv: bump to Rust 1.61; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `b25e5d12`: ci: various fixups; files: .github/workflows/ci.yml\n- commit `b9479c2e`: ci: switch to GitHub Actions; files: .github/workflows/ci.yml, .travis.yml, Cargo.toml, appveyor.yml\n\nAssessment：(L1, 5)** There is no evidence of AI engineering practices. No agent orchestration, structured prompts, LLM traces, evaluation datasets, or automated code generation workflows appear in any commit message or diff. The development appears to be entirely manually driven by a human expert. The score reflects the complete absence of this dimension.\n\n## Engineering Mastery & Professionalism\n\nScore: 88/100\nLevel: L5\n\nEvidence:\n- commit `05045263`: msrv: bump to Rust 1.61; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `b25e5d12`: ci: various fixups; files: .github/workflows/ci.yml\n- commit `d24eac1e`: doc: make setup version independent; files: src/lib.rs\n- commit `e0a8b8b2`: readme: fix GitHub Actions badge image link; files: README.md\n- commit `2ba20b55`: readme: various updates; files: README.md\n\nAssessment：(L5, 88)** Andrew Gallant operates at the level of an ecosystem leader and maintainer. The commit history is meticulously crafted, with clear, descriptive messages that explain the \"why\" behind changes (e.g., \"error: drop 'source' impl\" with a detailed explanation of the design trade-off). He maintains a widely-used Rust crate (`csv`), handles versioning, publishes releases (1.1.0 to 1.4.0), and manages dependencies across sub-crates. His work directly addresses community issues (e.g., \"Fixes #227\", \"Fixes #156\", \"Closes #306\").\n\n## Conclusion And Suggestions\n\nConclusion: The data depicts an L5-level engineer who is a top-tier maintainer of a foundational Rust library. The primary area for development, within this rubric, would be integrating AI/LLM-based tooling into the development workflow. Suggestions include exploring AI-assisted fuzzing, automated test generation, or using LLMs for documentation triage. However, given the engineer's established manual craftsmanship and the nature of the project, a low score in AI engineering is entirely expected and does not detract from their exceptional mastery.\nSuggestion: Prioritize AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (72/100, L4) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly."
+      },
+      "commits_loaded": 150,
+      "commits_analyzed": 102,
+      "files_loaded": 0,
+      "input_truncated": false,
+      "warnings": [],
+      "token_usage": {
+        "input_tokens": 33564,
+        "output_tokens": 5044,
+        "total_tokens": 38608,
+        "source": "provider"
+      },
+      "evaluated_at": "2026-05-22T08:07:25Z",
+      "last_commit_sha": null,
+      "commits_summary": {
+        "total_additions": 3834,
+        "total_deletions": 3188,
+        "files_changed": 70,
+        "languages": [
+          "sh",
+          "toml",
+          "md",
+          "rs",
+          "yml"
+        ]
+      },
+      "reasoning": "## Specification & Built-in Quality\n\nScore: 82/100\nLevel: L4\n\nEvidence:\n- commit `b25e5d12`: ci: various fixups; files: .github/workflows/ci.yml\n- commit `e0a8b8b2`: readme: fix GitHub Actions badge image link; files: README.md\n- commit `a0e83883`: deps: drop 'bstr'; files: Cargo.toml, src/byte_record.rs, src/debug.rs, src/lib.rs\n- commit `ea0273c5`: *: fix all warnings and update code; files: examples/cookbook-read-basic.rs, examples/cookbook-read-colon.rs, examples/cookbook-read-no-headers.rs, examples/cookbook-read-serde.rs, examples/cookbook-write-basic.rs, examples/cookbook-write-serde.rs\n- commit `73cf38b8`: perf: fix record copying performance bug; files: src/byte_record.rs, src/reader.rs, src/string_record.rs\n\nAssessment：(L4, 82)** Andrew Gallant demonstrates a high level of software engineering discipline. The commits show consistent refactoring (e.g., commit 9ab8311 for better import grouping, ea0273c for fixing all warnings, a0e83883 for dropping 'bstr' as a dependency and replacing it with a custom `debug` module), thorough testing (unit tests for 128-bit integers, deserialization edge cases, trim functionality), and strong type discipline (conditions for 128-bit integers in commit 7b8c812).\n\n## Cloud-Native & Architecture Evolution\n\nScore: 72/100\nLevel: L4\n\nEvidence:\n- commit `95a5e1af`: msrv: bump pinned version in CI; files: .github/workflows/ci.yml\n- commit `533d37b7`: ci: bump pinned to Rust 1.65; files: .github/workflows/ci.yml, Cargo.toml\n- commit `05045263`: msrv: bump to Rust 1.61; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `b25e5d12`: ci: various fixups; files: .github/workflows/ci.yml\n- commit `b9479c2e`: ci: switch to GitHub Actions; files: .github/workflows/ci.yml, .travis.yml, Cargo.toml, appveyor.yml\n\nAssessment：(L3, 72)** The project is a library, not a service, so containerization and IaC are not applicable. However, the migration from Travis CI/Appveyor to GitHub Actions (commit b9479c2) represents a significant architectural evolution in the development and deployment pipeline. The CI matrix is comprehensive, testing on `ubuntu-latest`, `macos-latest`, and `windows-latest`, with strategies for pinned and nightly Rust versions (commits b25e5d1, 533d37b). The author cleans up and modernizes CI configurations, such as removing OS version pinning to reduce maintenance burden (commit b25e5d1).\n\n## AI Engineering & Automated Evolution\n\nScore: 5/100\nLevel: L1\n\nEvidence:\n- commit `95a5e1af`: msrv: bump pinned version in CI; files: .github/workflows/ci.yml\n- commit `533d37b7`: ci: bump pinned to Rust 1.65; files: .github/workflows/ci.yml, Cargo.toml\n- commit `05045263`: msrv: bump to Rust 1.61; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `b25e5d12`: ci: various fixups; files: .github/workflows/ci.yml\n- commit `b9479c2e`: ci: switch to GitHub Actions; files: .github/workflows/ci.yml, .travis.yml, Cargo.toml, appveyor.yml\n\nAssessment：(L1, 5)** There is no evidence of AI engineering practices. No agent orchestration, structured prompts, LLM traces, evaluation datasets, or automated code generation workflows appear in any commit message or diff. The development appears to be entirely manually driven by a human expert. The score reflects the complete absence of this dimension.\n\n## Engineering Mastery & Professionalism\n\nScore: 88/100\nLevel: L5\n\nEvidence:\n- commit `05045263`: msrv: bump to Rust 1.61; files: .github/workflows/ci.yml, Cargo.toml, README.md\n- commit `b25e5d12`: ci: various fixups; files: .github/workflows/ci.yml\n- commit `d24eac1e`: doc: make setup version independent; files: src/lib.rs\n- commit `e0a8b8b2`: readme: fix GitHub Actions badge image link; files: README.md\n- commit `2ba20b55`: readme: various updates; files: README.md\n\nAssessment：(L5, 88)** Andrew Gallant operates at the level of an ecosystem leader and maintainer. The commit history is meticulously crafted, with clear, descriptive messages that explain the \"why\" behind changes (e.g., \"error: drop 'source' impl\" with a detailed explanation of the design trade-off). He maintains a widely-used Rust crate (`csv`), handles versioning, publishes releases (1.1.0 to 1.4.0), and manages dependencies across sub-crates. His work directly addresses community issues (e.g., \"Fixes #227\", \"Fixes #156\", \"Closes #306\").\n\n## Conclusion And Suggestions\n\nConclusion: The data depicts an L5-level engineer who is a top-tier maintainer of a foundational Rust library. The primary area for development, within this rubric, would be integrating AI/LLM-based tooling into the development workflow. Suggestions include exploring AI-assisted fuzzing, automated test generation, or using LLMs for documentation triage. However, given the engineer's established manual craftsmanship and the nature of the project, a low score in AI engineering is entirely expected and does not detract from their exceptional mastery.\nSuggestion: Prioritize AI Engineering & Automated Evolution (5/100, L1), Cloud-Native & Architecture Evolution (72/100, L4) with reproducible improvement loops, and make later commits show verification, automation, and design trade-offs clearly.",
+      "data_dir": "/home/carter/.local/share/oscanner/data/github/BurntSushi/rust-csv"
+    }
+  ]
+}
