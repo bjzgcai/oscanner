@@ -206,6 +206,15 @@ export const enUS: Messages = {
   'validation.results.not_found': 'Validation run not found',
   'validation.results.load_error': 'Failed to load validation results',
 
+  // Justice profile
+  'justice.profile.title': 'Benchmark Justice Profile',
+  'justice.profile.status': 'Justice Status',
+  'justice.profile.aggregate': 'Trend Score',
+  'justice.profile.sources': 'Sources',
+  'justice.check.pass': 'Pass',
+  'justice.check.warn': 'Warn',
+  'justice.check.fail': 'Fail',
+
   // Status
   'validation.status.passed': 'Passed',
   'validation.status.failed': 'Failed',

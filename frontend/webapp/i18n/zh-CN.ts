@@ -203,6 +203,15 @@ export const zhCN: Messages = {
   'validation.results.not_found': '未找到验证运行',
   'validation.results.load_error': '加载验证结果失败',
 
+  // Justice profile
+  'justice.profile.title': '基准公平性画像',
+  'justice.profile.status': '公平性状态',
+  'justice.profile.aggregate': '趋势分',
+  'justice.profile.sources': '来源',
+  'justice.check.pass': '通过',
+  'justice.check.warn': '警告',
+  'justice.check.fail': '失败',
+
   // Status
   'validation.status.passed': '通过',
   'validation.status.failed': '失败',

@@ -80,8 +80,8 @@ entries:
       owner: mitsuhiko
       name: twitterlog
       url: https://github.com/mitsuhiko/twitterlog
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 88b23f68efbfcc6030e756278c8eb54c30d36bd2
       start_sha: null
       end_sha: null
       license: null
@@ -99,7 +99,7 @@ entries:
       feature_requirements_override: []
       test_command_policy: auto_detect
       known_test_constraints:
-        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+        - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
     fairness: &personal_candidate_fairness
       selection_rule: Prefer a non-fork personal repo; use chronology as the main factor and maturity/design complexity as the tie-breaker.
       public_evidence_urls: []
@@ -118,8 +118,8 @@ entries:
       owner: mitsuhiko
       name: fungiform
       url: https://github.com/mitsuhiko/fungiform
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 08232b50f78cdb0f4b7c64a28bec843bdc50ed7f
       start_sha: null
       end_sha: null
       license: null
@@ -141,8 +141,8 @@ entries:
       owner: mitsuhiko
       name: flask-oauth
       url: https://github.com/mitsuhiko/flask-oauth
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: af6432621a9add5e55b0d7638e1380f66f3d4ed0
       start_sha: null
       end_sha: null
       license: null
@@ -164,8 +164,8 @@ entries:
       owner: mitsuhiko
       name: rstblog
       url: https://github.com/mitsuhiko/rstblog
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 755b304a0be7262e54de094567a9196d8121cb87
       start_sha: null
       end_sha: null
       license: null
@@ -187,8 +187,8 @@ entries:
       owner: mitsuhiko
       name: zine
       url: https://github.com/mitsuhiko/zine
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 6d289f72b4ead85163ffa41cc4e92178d3dfe293
       start_sha: null
       end_sha: null
       license: null
@@ -210,8 +210,8 @@ entries:
       owner: yyx990803
       name: Socket-Play
       url: https://github.com/yyx990803/Socket-Play
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: e11fded523199d82fb80f9b39deb04393d8cecdd
       start_sha: null
       end_sha: null
       license: null
@@ -229,7 +229,7 @@ entries:
       feature_requirements_override: []
       test_command_policy: auto_detect
       known_test_constraints:
-        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+        - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
     fairness: *personal_candidate_fairness
 
   - id: javascript-typescript-l2
@@ -244,8 +244,8 @@ entries:
       owner: yyx990803
       name: shell-task
       url: https://github.com/yyx990803/shell-task
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 5dc393f202fc859901e9e0e2c1c4d432d4380496
       start_sha: null
       end_sha: null
       license: null
@@ -267,8 +267,8 @@ entries:
       owner: yyx990803
       name: semi
       url: https://github.com/yyx990803/semi
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: c37db74cd888ab710b2ed3340bbc69c7e9a73d8d
       start_sha: null
       end_sha: null
       license: null
@@ -290,8 +290,8 @@ entries:
       owner: yyx990803
       name: vue-hooks
       url: https://github.com/yyx990803/vue-hooks
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 09de396a89461513098cbe1c501567dba20ab3ac
       start_sha: null
       end_sha: null
       license: null
@@ -313,8 +313,8 @@ entries:
       owner: yyx990803
       name: launch-editor
       url: https://github.com/yyx990803/launch-editor
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: c63b5b13bee21a1f1209bc29d487f07cebfb5391
       start_sha: null
       end_sha: null
       license: null
@@ -336,8 +336,8 @@ entries:
       owner: bradfitz
       name: gotsync
       url: https://github.com/bradfitz/gotsync
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: d0ce4bc1dcce3d6f1796ff50a25cf6cfbb6e4f41
       start_sha: null
       end_sha: null
       license: null
@@ -355,7 +355,7 @@ entries:
       feature_requirements_override: []
       test_command_policy: auto_detect
       known_test_constraints:
-        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+        - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
     fairness: *personal_candidate_fairness
 
   - id: go-l2
@@ -370,8 +370,8 @@ entries:
       owner: bradfitz
       name: goman
       url: https://github.com/bradfitz/goman
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 7b26aabb70fc09256d28925c1461e90e22143c12
       start_sha: null
       end_sha: null
       license: null
@@ -393,8 +393,8 @@ entries:
       owner: bradfitz
       name: gomemcache
       url: https://github.com/bradfitz/gomemcache
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 4d751bb6e37cf0da5fd57a86b880f76791307adf
       start_sha: null
       end_sha: null
       license: null
@@ -416,8 +416,8 @@ entries:
       owner: bradfitz
       name: goimports
       url: https://github.com/bradfitz/goimports
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 919f4f2bcea0744d4da4ae851fbf818ae11cba87
       start_sha: null
       end_sha: null
       license: null
@@ -439,8 +439,8 @@ entries:
       owner: bradfitz
       name: http2
       url: https://github.com/bradfitz/http2
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: aa7658c0e9902e929a9ed0996ef949e59fc0f3ab
       start_sha: null
       end_sha: null
       license: null
@@ -462,8 +462,8 @@ entries:
       owner: BurntSushi
       name: byteorder
       url: https://github.com/BurntSushi/byteorder
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 5a82625fae462e8ba64cec8146b24a372b4d75c6
       start_sha: null
       end_sha: null
       license: null
@@ -481,7 +481,7 @@ entries:
       feature_requirements_override: []
       test_command_policy: auto_detect
       known_test_constraints:
-        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+        - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
     fairness: *personal_candidate_fairness
 
   - id: rust-l2
@@ -496,8 +496,8 @@ entries:
       owner: BurntSushi
       name: rust-csv
       url: https://github.com/BurntSushi/rust-csv
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 4a3997e91d668ea1d8595bdef15625a77cf2308a
       start_sha: null
       end_sha: null
       license: null
@@ -519,8 +519,8 @@ entries:
       owner: BurntSushi
       name: aho-corasick
       url: https://github.com/BurntSushi/aho-corasick
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: c82178696b9ddc18b56c3c74853529e7926ff329
       start_sha: null
       end_sha: null
       license: null
@@ -542,8 +542,8 @@ entries:
       owner: BurntSushi
       name: regex-automata
       url: https://github.com/BurntSushi/regex-automata
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 33b73c5ada010e9925000938aa9ddc74fa868d1c
       start_sha: null
       end_sha: null
       license: null
@@ -565,8 +565,8 @@ entries:
       owner: BurntSushi
       name: ripgrep
       url: https://github.com/BurntSushi/ripgrep
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 4519153e5e461527f4bca45b042fff45c4ec6fb9
       start_sha: null
       end_sha: null
       license: null
@@ -588,8 +588,8 @@ entries:
       owner: cowtowncoder
       name: java-cachemate
       url: https://github.com/cowtowncoder/java-cachemate
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: cabd2109bf9960cd89688a7ec69d014c9d116532
       start_sha: null
       end_sha: null
       license: null
@@ -607,7 +607,7 @@ entries:
       feature_requirements_override: []
       test_command_policy: auto_detect
       known_test_constraints:
-        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+        - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
     fairness: *personal_candidate_fairness
 
   - id: java-l2
@@ -622,8 +622,8 @@ entries:
       owner: cowtowncoder
       name: java-uuid-generator
       url: https://github.com/cowtowncoder/java-uuid-generator
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 7fb61004b300bcc06371c6d56547a664719d935c
       start_sha: null
       end_sha: null
       license: null
@@ -645,8 +645,8 @@ entries:
       owner: cowtowncoder
       name: low-gc-membuffers
       url: https://github.com/cowtowncoder/low-gc-membuffers
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 96b73b91f4f5af099693cf50416fdf5ec08b25b5
       start_sha: null
       end_sha: null
       license: null
@@ -668,8 +668,8 @@ entries:
       owner: cowtowncoder
       name: StoreMate
       url: https://github.com/cowtowncoder/StoreMate
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 9300afb8a90fce2885149d0ed566e30547af7710
       start_sha: null
       end_sha: null
       license: null
@@ -691,8 +691,8 @@ entries:
       owner: cowtowncoder
       name: ClusterMate
       url: https://github.com/cowtowncoder/ClusterMate
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: a2609b2d2f7884acbf0e0a114d98226886dc41d0
       start_sha: null
       end_sha: null
       license: null
@@ -714,8 +714,8 @@ entries:
       owner: antirez
       name: smaz
       url: https://github.com/antirez/smaz
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 2f625846a775501fb69456567409a8b12f10ea25
       start_sha: null
       end_sha: null
       license: null
@@ -733,7 +733,7 @@ entries:
       feature_requirements_override: []
       test_command_policy: auto_detect
       known_test_constraints:
-        - Candidate is not pinned; choose a tag or SHA before locking the benchmark.
+        - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
     fairness: *personal_candidate_fairness
 
   - id: cpp-l2
@@ -748,8 +748,8 @@ entries:
       owner: antirez
       name: linenoise
       url: https://github.com/antirez/linenoise
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: a473823d74b93eab2ba83480df16ed37617493f2
       start_sha: null
       end_sha: null
       license: null
@@ -771,8 +771,8 @@ entries:
       owner: antirez
       name: sds
       url: https://github.com/antirez/sds
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 5347739b1581fcba74fd5cab1fc21d2aef317d71
       start_sha: null
       end_sha: null
       license: null
@@ -794,8 +794,8 @@ entries:
       owner: antirez
       name: hping
       url: https://github.com/antirez/hping
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 3547c7691742c6eaa31f8402e0ccbb81387c1b99
       start_sha: null
       end_sha: null
       license: null
@@ -817,8 +817,8 @@ entries:
       owner: antirez
       name: disque
       url: https://github.com/antirez/disque
-      ref_type: null
-      ref: null
+      ref_type: sha
+      ref: 0192ba7e1cda157024229962b7bee1c6e86d771b
       start_sha: null
       end_sha: null
       license: null

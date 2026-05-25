@@ -1,4 +1,10 @@
 import { getApiBaseUrl } from './apiBase';
+import type {
+  DatasetStats,
+  TestRepository,
+  ValidationResult,
+  ValidationRunResult,
+} from '../components/validation/types';
 
 const API_BASE = getApiBaseUrl();
 
@@ -6,7 +12,14 @@ export interface DatasetStatsResponse {
   success: boolean;
   dataset_path: string;
   total_repos: number;
-  repos: any[];
+  stats?: DatasetStats;
+  categories?: string[];
+  pinning?: {
+    total: number;
+    pinned: number;
+    unpinned: number;
+  };
+  repos: TestRepository[];
 }
 
 export interface ReposResponse {
@@ -15,17 +28,17 @@ export interface ReposResponse {
   per_page: number;
   total: number;
   total_pages: number;
-  repos: any[];
+  repos: TestRepository[];
 }
 
 export interface ValidationRunResponse {
   success: boolean;
   run_id: string;
   message?: string;
-  result?: any;
+  result?: ValidationRunResult;
   overall_passed?: boolean;
   overall_score?: number;
-  validation_results?: any[];
+  validation_results?: ValidationResult[];
 }
 
 /**

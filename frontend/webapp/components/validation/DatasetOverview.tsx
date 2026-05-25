@@ -17,6 +17,7 @@ export default function DatasetOverview({ onViewEvaluation }: DatasetOverviewPro
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<DatasetStats | null>(null);
   const [repos, setRepos] = useState<TestRepository[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [perPage] = useState(20);
   const [total, setTotal] = useState(0);
@@ -26,30 +27,36 @@ export default function DatasetOverview({ onViewEvaluation }: DatasetOverviewPro
     try {
       const result = await validationApi.getDatasetInfo();
       if (result.success) {
-        const totalRepos = result.total_repos;
         const allRepos = result.repos || [];
+        const apiCategories = result.categories || Array.from(new Set(allRepos.map((repo) => repo.category)));
+        setCategories(apiCategories);
 
-        const categories = new Set(allRepos.map((r: any) => r.category)).size;
-        const platforms = new Set(allRepos.map((r: any) => r.platform)).size;
-        const groundTruth = allRepos.filter((r: any) => r.is_ground_truth).length;
-        const edgeCases = allRepos.filter((r: any) => r.is_edge_case).length;
+        if (result.stats) {
+          setStats(result.stats);
+        } else {
+          const totalRepos = result.total_repos;
+          const categoryCount = new Set(allRepos.map((repo) => repo.category)).size;
+          const platforms = new Set(allRepos.map((repo) => repo.platform)).size;
+          const groundTruth = allRepos.filter((repo) => repo.is_ground_truth).length;
+          const edgeCases = allRepos.filter((repo) => repo.is_edge_case).length;
 
-        const skillCounts = {
-          novice: allRepos.filter((r: any) => r.skill_level === 'novice').length,
-          intermediate: allRepos.filter((r: any) => r.skill_level === 'intermediate').length,
-          senior: allRepos.filter((r: any) => r.skill_level === 'senior').length,
-          architect: allRepos.filter((r: any) => r.skill_level === 'architect').length,
-          expert: allRepos.filter((r: any) => r.skill_level === 'expert').length,
-        };
+          const skillCounts = {
+            novice: allRepos.filter((repo) => repo.skill_level === 'novice').length,
+            intermediate: allRepos.filter((repo) => repo.skill_level === 'intermediate').length,
+            senior: allRepos.filter((repo) => repo.skill_level === 'senior').length,
+            architect: allRepos.filter((repo) => repo.skill_level === 'architect').length,
+            expert: allRepos.filter((repo) => repo.skill_level === 'expert').length,
+          };
 
-        setStats({
-          total: totalRepos,
-          ground_truth: groundTruth,
-          edge_cases: edgeCases,
-          categories,
-          platforms,
-          ...skillCounts,
-        });
+          setStats({
+            total: totalRepos,
+            ground_truth: groundTruth,
+            edge_cases: edgeCases,
+            categories: categoryCount,
+            platforms,
+            ...skillCounts,
+          });
+        }
       }
     } catch (err) {
       message.error(t('validation.dataset.load_stats_error'));
@@ -159,6 +166,15 @@ export default function DatasetOverview({ onViewEvaluation }: DatasetOverviewPro
     },
   ];
 
+  const categoryLabel = (category: string) => {
+    const translated = t(`validation.category.${category}`);
+    if (translated !== `validation.category.${category}`) return translated;
+    return category
+      .split(/[-_]/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  };
+
   return (
     <div>
       {stats && (
@@ -217,16 +233,11 @@ export default function DatasetOverview({ onViewEvaluation }: DatasetOverviewPro
               setPage(1);
             }}
           >
-            <Select.Option value="ground_truth">{t('validation.category.ground_truth')}</Select.Option>
-            <Select.Option value="famous_developer">{t('validation.category.famous_developer')}</Select.Option>
-            <Select.Option value="dimension_specialist">{t('validation.category.dimension_specialist')}</Select.Option>
-            <Select.Option value="rising_star">{t('validation.category.rising_star')}</Select.Option>
-            <Select.Option value="temporal_evolution">{t('validation.category.temporal_evolution')}</Select.Option>
-            <Select.Option value="edge_case">{t('validation.category.edge_case')}</Select.Option>
-            <Select.Option value="corporate_team">{t('validation.category.corporate_team')}</Select.Option>
-            <Select.Option value="domain_specialist">{t('validation.category.domain_specialist')}</Select.Option>
-            <Select.Option value="international">{t('validation.category.international')}</Select.Option>
-            <Select.Option value="comparison_pair">{t('validation.category.comparison_pair')}</Select.Option>
+            {categories.map((category) => (
+              <Select.Option key={category} value={category}>
+                {categoryLabel(category)}
+              </Select.Option>
+            ))}
           </Select>
         }
       >

@@ -336,7 +336,18 @@ class ValidationRunner:
                   f"(score: {result.score:.1f})")
 
         # 3. Temporal Test
-        temporal_groups = self.dataset.get_temporal_groups()
+        test_repo_ids = {repo.identifier for repo in test_repos}
+        temporal_groups = {
+            group: [
+                repo for repo in repos
+                if repo.identifier in test_repo_ids
+            ]
+            for group, repos in self.dataset.get_temporal_groups().items()
+        }
+        temporal_groups = {
+            group: repos for group, repos in temporal_groups.items()
+            if len(repos) >= 2
+        }
         if temporal_groups:
             temporal_data = await self.run_temporal_test(temporal_groups)
             validator = TemporalValidator()

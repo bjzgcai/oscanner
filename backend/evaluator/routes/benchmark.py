@@ -1,11 +1,15 @@
 """Benchmark and validation routes."""
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 # Import validation modules
 try:
-    from evaluator.validation.benchmark_dataset import get_benchmark_repos_list, get_benchmark_dataset_path
+    from evaluator.validation.benchmark_dataset import (
+        benchmark_dataset,
+        get_benchmark_repos_list,
+        get_benchmark_dataset_path,
+    )
     from evaluator.validation.validation_runner import ValidationRunner
     VALIDATION_AVAILABLE = True
 except ImportError:
@@ -24,6 +28,16 @@ from evaluator.services import (
 )
 
 router = APIRouter()
+
+
+def _pinning_summary(repos):
+    total = len(repos)
+    pinned = sum(1 for repo in repos if repo.get("is_pinned"))
+    return {
+        "total": total,
+        "pinned": pinned,
+        "unpinned": total - pinned,
+    }
 
 
 async def extract_commits_from_platform(platform: str, owner: str, repo: str):
@@ -140,6 +154,9 @@ async def get_benchmark_dataset():
         "success": True,
         "dataset_path": str(dataset_path),
         "total_repos": len(repos),
+        "stats": benchmark_dataset.get_stats(),
+        "categories": sorted(benchmark_dataset.get_categories()),
+        "pinning": _pinning_summary(repos),
         "repos": repos[:10]  # Preview first 10
     }
 
@@ -147,13 +164,14 @@ async def get_benchmark_dataset():
 @router.get("/api/benchmark/repos")
 async def get_benchmark_repos(
     page: int = Query(1, ge=1),
-    per_page: int = Query(50, ge=1, le=100)
+    per_page: int = Query(50, ge=1, le=100),
+    category: Optional[str] = Query(None)
 ):
     """Get paginated list of benchmark repos."""
     if not VALIDATION_AVAILABLE:
         raise HTTPException(status_code=501, detail="Validation module not available")
 
-    repos = get_benchmark_repos_list()
+    repos = get_benchmark_repos_list(category=category)
     total = len(repos)
     start = (page - 1) * per_page
     end = start + per_page

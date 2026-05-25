@@ -288,6 +288,8 @@ class DimensionValidator(BaseValidator):
         strong_total = 0
         weak_match_count = 0
         weak_total = 0
+        expected_match_count = 0
+        expected_total = 0
 
         for repo_id, result_data in evaluation_results.items():
             actual_dims = result_data.get("actual_dimensions", {})
@@ -348,6 +350,7 @@ class DimensionValidator(BaseValidator):
             for dim_name, (expected_min, expected_max) in expected_dim_scores.items():
                 score = actual_dims.get(dim_name, 0)
                 within_range = expected_min <= score <= expected_max
+                expected_total += 1
 
                 repo_details["expected_checks"][dim_name] = {
                     "score": score,
@@ -355,7 +358,9 @@ class DimensionValidator(BaseValidator):
                     "passed": within_range,
                 }
 
-                if not within_range:
+                if within_range:
+                    expected_match_count += 1
+                else:
                     errors.append(
                         f"{repo_id}: {dim_name} score {score:.1f} "
                         f"outside expected [{expected_min}, {expected_max}]"
@@ -364,9 +369,18 @@ class DimensionValidator(BaseValidator):
             details[repo_id] = repo_details
 
         # Calculate pass rates
-        strong_rate = (strong_match_count / strong_total * 100) if strong_total > 0 else 100
-        weak_rate = (weak_match_count / weak_total * 100) if weak_total > 0 else 100
-        overall_rate = (strong_rate + weak_rate) / 2
+        strong_rate = (strong_match_count / strong_total * 100) if strong_total > 0 else None
+        weak_rate = (weak_match_count / weak_total * 100) if weak_total > 0 else None
+        expected_rate = (
+            expected_match_count / expected_total * 100
+            if expected_total > 0
+            else None
+        )
+        active_rates = [
+            rate for rate in (strong_rate, weak_rate, expected_rate)
+            if rate is not None
+        ]
+        overall_rate = sum(active_rates) / len(active_rates) if active_rates else 100
 
         passed = overall_rate >= 70  # 70% of dimension expectations should match
 
@@ -375,12 +389,15 @@ class DimensionValidator(BaseValidator):
             passed=passed,
             score=overall_rate,
             details={
-                "strong_dimension_match_rate": round(strong_rate, 2),
-                "weak_dimension_match_rate": round(weak_rate, 2),
+                "strong_dimension_match_rate": round(strong_rate, 2) if strong_rate is not None else None,
+                "weak_dimension_match_rate": round(weak_rate, 2) if weak_rate is not None else None,
+                "expected_dimension_match_rate": round(expected_rate, 2) if expected_rate is not None else None,
                 "strong_match_count": strong_match_count,
                 "strong_total": strong_total,
                 "weak_match_count": weak_match_count,
                 "weak_total": weak_total,
+                "expected_match_count": expected_match_count,
+                "expected_total": expected_total,
                 "repos": details,
             },
             errors=errors,

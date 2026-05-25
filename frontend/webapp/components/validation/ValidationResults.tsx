@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Card, Row, Col, Statistic, Alert, Button, Empty, message } from 'antd';
+import { Card, Row, Col, Statistic, Alert, Button, Empty, message, Tag } from 'antd';
 import { DownloadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import TestResultCard from './TestResultCard';
 import { ValidationRunResult } from './types';
@@ -55,6 +55,18 @@ export default function ValidationResults({ result, onBack }: ValidationResultsP
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
+  const justiceStatusColor = (status: string) => {
+    if (status === 'PASS') return 'success';
+    if (status === 'WARN') return 'warning';
+    return 'error';
+  };
+
+  const justiceAlertType = (status: string) => {
+    if (status === 'PASS') return 'success';
+    if (status === 'WARN') return 'warning';
+    return 'error';
   };
 
   return (
@@ -134,6 +146,66 @@ export default function ValidationResults({ result, onBack }: ValidationResultsP
           showIcon
         />
       </Card>
+
+      {result.justice_profile && (
+        <Card title={t('justice.profile.title')} style={{ marginBottom: 24 }}>
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col xs={24} sm={8}>
+              <Statistic
+                title={t('justice.profile.status')}
+                value={result.justice_profile.overall_status}
+              />
+            </Col>
+            <Col xs={8} sm={4}>
+              <Statistic title={t('justice.check.pass')} value={result.justice_profile.summary.pass} />
+            </Col>
+            <Col xs={8} sm={4}>
+              <Statistic title={t('justice.check.warn')} value={result.justice_profile.summary.warn} />
+            </Col>
+            <Col xs={8} sm={4}>
+              <Statistic title={t('justice.check.fail')} value={result.justice_profile.summary.fail} />
+            </Col>
+            <Col xs={24} sm={4}>
+              <Statistic
+                title={t('justice.profile.aggregate')}
+                value={result.justice_profile.aggregate.score ?? '-'}
+                suffix={result.justice_profile.aggregate.score == null ? undefined : '/100'}
+              />
+            </Col>
+          </Row>
+
+          {result.justice_profile.checks.map((check) => (
+            <Alert
+              key={check.id}
+              type={justiceAlertType(check.status)}
+              showIcon
+              style={{ marginBottom: 8 }}
+              message={
+                <span>
+                  {check.label}
+                  <Tag color={justiceStatusColor(check.status)} style={{ marginLeft: 8 }}>
+                    {t(`justice.check.${check.status.toLowerCase()}`)}
+                  </Tag>
+                  {check.score != null && <span>{check.score.toFixed(1)}/100</span>}
+                </span>
+              }
+              description={
+                <div>
+                  {check.source_tests.length > 0 && (
+                    <div>{t('justice.profile.sources')}: {check.source_tests.join(', ')}</div>
+                  )}
+                  {check.failed_cases.map((failedCase, idx) => (
+                    <div key={`failed-${idx}`}>{failedCase}</div>
+                  ))}
+                  {check.warnings.map((warning, idx) => (
+                    <div key={`warning-${idx}`}>{warning}</div>
+                  ))}
+                </div>
+              }
+            />
+          ))}
+        </Card>
+      )}
 
       <div>
         <h3>{t('validation.results.test_details')}</h3>

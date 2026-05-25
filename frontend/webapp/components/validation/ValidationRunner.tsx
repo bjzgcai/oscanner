@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Form, Select, Switch, Button, Descriptions, Alert, message } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { validationApi } from '../../utils/validationApi';
@@ -21,7 +21,24 @@ export default function ValidationRunner({
   const { model, pluginId } = useAppSettings();
   const [isRunning, setIsRunning] = useState(false);
   const [subset, setSubset] = useState<string | undefined>(undefined);
+  const [categories, setCategories] = useState<string[]>([]);
   const [quickMode, setQuickMode] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    validationApi.getDatasetInfo()
+      .then((result) => {
+        if (mounted && result.success) {
+          setCategories(result.categories || []);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const appendLog = (msg: string, type: 'info' | 'error' | 'success' | 'warning' = 'info') => {
     onLog?.({
@@ -29,6 +46,15 @@ export default function ValidationRunner({
       type,
       timestamp: Date.now(),
     });
+  };
+
+  const categoryLabel = (category: string) => {
+    const translated = t(`validation.category.${category}`);
+    if (translated !== `validation.category.${category}`) return translated;
+    return category
+      .split(/[-_]/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
   };
 
   const handleRunValidation = async () => {
@@ -106,36 +132,11 @@ export default function ValidationRunner({
               disabled={isRunning}
             >
               <Select.Option value={undefined}>{t('validation.run.subset.all')}</Select.Option>
-              <Select.Option value="ground_truth">
-                {t('validation.category.ground_truth')}
-              </Select.Option>
-              <Select.Option value="famous_developer">
-                {t('validation.category.famous_developer')}
-              </Select.Option>
-              <Select.Option value="dimension_specialist">
-                {t('validation.category.dimension_specialist')}
-              </Select.Option>
-              <Select.Option value="rising_star">
-                {t('validation.category.rising_star')}
-              </Select.Option>
-              <Select.Option value="temporal_evolution">
-                {t('validation.category.temporal_evolution')}
-              </Select.Option>
-              <Select.Option value="edge_case">
-                {t('validation.category.edge_case')}
-              </Select.Option>
-              <Select.Option value="corporate_team">
-                {t('validation.category.corporate_team')}
-              </Select.Option>
-              <Select.Option value="domain_specialist">
-                {t('validation.category.domain_specialist')}
-              </Select.Option>
-              <Select.Option value="international">
-                {t('validation.category.international')}
-              </Select.Option>
-              <Select.Option value="comparison_pair">
-                {t('validation.category.comparison_pair')}
-              </Select.Option>
+              {categories.map((category) => (
+                <Select.Option key={category} value={category}>
+                  {categoryLabel(category)}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 

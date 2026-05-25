@@ -5,6 +5,10 @@
 export type SkillLevel = 'novice' | 'intermediate' | 'senior' | 'architect' | 'expert';
 
 export interface TestRepository {
+  entry_id?: string | null;
+  language?: string | null;
+  level?: string | null;
+  status?: string | null;
   platform: string;
   owner: string;
   repo: string;
@@ -23,6 +27,7 @@ export interface TestRepository {
   is_edge_case: boolean;
   repo_url: string;
   identifier: string;
+  is_pinned?: boolean;
 }
 
 export interface DimensionScore {
@@ -46,7 +51,7 @@ export interface BenchmarkEvaluationResult {
   };
   overall_score: number;
   dimension_scores: DimensionScore;
-  evaluation_data: any;
+  evaluation_data: unknown;
   timestamp: string;
   error: string | null;
 }
@@ -55,10 +60,35 @@ export interface ValidationResult {
   test_name: string;
   passed: boolean;
   score: number; // 0-100
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   errors: string[];
   warnings: string[];
   timestamp: string;
+}
+
+export interface JusticeCheck {
+  id: string;
+  label: string;
+  status: 'PASS' | 'WARN' | 'FAIL';
+  score: number | null;
+  source_tests: string[];
+  failed_cases: string[];
+  warnings: string[];
+}
+
+export interface JusticeProfile {
+  overall_status: string;
+  summary: {
+    pass: number;
+    warn: number;
+    fail: number;
+  };
+  checks: JusticeCheck[];
+  aggregate: {
+    score: number | null;
+    authoritative: boolean;
+    label: string;
+  };
 }
 
 export interface DatasetStats {
@@ -83,6 +113,7 @@ export interface ValidationRunResult {
   overall_passed: boolean;
   overall_score: number; // 0-100
   duration_seconds: number;
+  justice_profile?: JusticeProfile;
 }
 
 export interface LogEntry {

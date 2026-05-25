@@ -7,6 +7,8 @@ from typing import Dict, List, Optional, Set, Any
 from enum import Enum
 from pathlib import Path
 
+import yaml
+
 
 class SkillLevel(Enum):
     """Expected skill level categories"""
@@ -37,6 +39,20 @@ class TestRepository:
     owner: str
     repo: str
     author: str  # Author to evaluate in this repo
+
+    # Manifest metadata
+    entry_id: Optional[str] = None
+    language: Optional[str] = None
+    level: Optional[str] = None
+    status: Optional[str] = None
+    developer_profile_id: Optional[str] = None
+    developer: Optional[str] = None
+    author_aliases: List[str] = field(default_factory=list)
+    ref_type: Optional[str] = None
+    ref: Optional[str] = None
+    start_sha: Optional[str] = None
+    end_sha: Optional[str] = None
+    license: Optional[str] = None
 
     # Expected characteristics
     skill_level: Optional[SkillLevel] = None
@@ -86,9 +102,10 @@ class BenchmarkDataset:
     Curated collection of test repositories organized by category
     """
 
-    def __init__(self):
-        self.repos: List[TestRepository] = []
-        self._init_dataset()
+    def __init__(self, repos: Optional[List[TestRepository]] = None, initialize: bool = True):
+        self.repos: List[TestRepository] = repos or []
+        if initialize and repos is None:
+            self._init_dataset()
 
     def _init_dataset(self):
         """Initialize the curated dataset"""
@@ -677,7 +694,13 @@ class BenchmarkDataset:
 
     def get_by_category(self, category: str) -> List[TestRepository]:
         """Get repositories by category"""
-        return [r for r in self.repos if r.category == category]
+        return [
+            r for r in self.repos
+            if r.category == category
+            or r.category.startswith(f"{category}_")
+            or r.language == category
+            or r.level == category
+        ]
 
     def get_ground_truth(self) -> List[TestRepository]:
         """Get only ground truth (manually verified) repositories"""
@@ -736,35 +759,118 @@ class BenchmarkDataset:
         }
 
 
-# Create singleton instance
-benchmark_dataset = BenchmarkDataset()
+LEVEL_TO_SKILL_LEVEL = {
+    "L1": SkillLevel.NOVICE,
+    "L2": SkillLevel.INTERMEDIATE,
+    "L3": SkillLevel.SENIOR,
+    "L4": SkillLevel.ARCHITECT,
+    "L5": SkillLevel.EXPERT,
+}
 
 
-# ========== Helper Functions for API Routes ==========
+def _find_repo_root() -> Path:
+    """Best-effort locate repository root from this module."""
+    here = Path(__file__).resolve()
+    for path in [here.parent, *here.parents]:
+        if (path / "pyproject.toml").exists():
+            return path
+    return here.parents[3]
+
+
+def _score_range(raw: Any) -> Optional[tuple[int, int]]:
+    if raw is None:
+        return None
+    if isinstance(raw, (list, tuple)) and len(raw) == 2:
+        return (int(raw[0]), int(raw[1]))
+    return None
+
 
 def get_benchmark_dataset_path() -> Path:
-    """Get the path to the benchmark validation storage directory."""
-    return Path.home() / ".local/share/oscanner/validation"
+    """Get the path to the public benchmark manifest."""
+    return _find_repo_root() / "benchmark" / "repos.yaml"
 
 
-def get_benchmark_repos_list() -> List[Dict[str, Any]]:
+def _manifest_entry_to_repo(entry: Dict[str, Any]) -> TestRepository:
+    repo_info = entry.get("repo") or {}
+    evaluator = entry.get("evaluator") or {}
+    fairness = entry.get("fairness") or {}
+    level = entry.get("level")
+    language = entry.get("language")
+    author_aliases = entry.get("author_aliases") or []
+
+    return TestRepository(
+        platform=repo_info.get("platform", "github"),
+        owner=repo_info.get("owner", ""),
+        repo=repo_info.get("name", ""),
+        author=evaluator.get("target_author") or (author_aliases[0] if author_aliases else ""),
+        entry_id=entry.get("id"),
+        language=language,
+        level=level,
+        status=entry.get("status"),
+        developer_profile_id=entry.get("developer_profile_id"),
+        developer=entry.get("developer"),
+        author_aliases=list(author_aliases),
+        ref_type=repo_info.get("ref_type"),
+        ref=repo_info.get("ref"),
+        start_sha=repo_info.get("start_sha"),
+        end_sha=repo_info.get("end_sha"),
+        license=repo_info.get("license"),
+        skill_level=LEVEL_TO_SKILL_LEVEL.get(level),
+        expected_score_range=_score_range(evaluator.get("expected_score_band")),
+        strong_dimensions=evaluator.get("expected_strengths") or [],
+        category=language or "general",
+        description="; ".join(entry.get("selection_evidence") or []),
+        is_ground_truth=fairness.get("review_status") in {"expert_reviewed", "locked"},
+    )
+
+
+def load_benchmark_manifest_dataset(path: Optional[Path] = None) -> BenchmarkDataset:
+    """Load the public benchmark manifest into the validation dataset shape."""
+    manifest_path = path or get_benchmark_dataset_path()
+    with manifest_path.open("r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    entries = data.get("entries") or []
+    repos = [_manifest_entry_to_repo(entry) for entry in entries]
+    return BenchmarkDataset(repos=repos, initialize=False)
+
+
+# Create singleton instance from the public manifest when available.
+try:
+    benchmark_dataset = load_benchmark_manifest_dataset()
+except Exception:
+    benchmark_dataset = BenchmarkDataset()
+
+
+def get_benchmark_repos_list(category: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Get list of all benchmark repositories as dictionaries
 
     Returns:
         List of repository info dictionaries
     """
-    repos = benchmark_dataset.get_all()
+    repos = benchmark_dataset.get_by_category(category) if category else benchmark_dataset.get_all()
     return [
         {
+            "entry_id": repo.entry_id,
+            "language": repo.language,
+            "level": repo.level,
+            "status": repo.status,
             "platform": repo.platform,
             "owner": repo.owner,
             "repo": repo.repo,
+            "name": repo.repo,
             "author": repo.author,
+            "author_aliases": repo.author_aliases,
             "identifier": repo.identifier,
             "category": repo.category,
             "skill_level": repo.skill_level.value if repo.skill_level else None,
             "expected_score_range": repo.expected_score_range,
+            "ref_type": repo.ref_type,
+            "ref": repo.ref,
+            "start_sha": repo.start_sha,
+            "end_sha": repo.end_sha,
+            "is_pinned": bool(repo.ref or repo.end_sha),
             "is_ground_truth": repo.is_ground_truth,
             "is_edge_case": repo.is_edge_case,
             "description": repo.description,
