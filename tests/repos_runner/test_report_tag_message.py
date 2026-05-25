@@ -161,6 +161,32 @@ def test_generate_test_report_writes_execution_process_section(tmp_path):
     assert "```text\nRunning test 1/1: pytest\nTest 1: 1 passed, 0 failed\n```" in report
 
 
+def test_generate_test_report_hides_grading_rubric(tmp_path):
+    report_path = tmp_path / "TEST_REPORT_class-01.md"
+    grading_rubric = "评分规则\n\n内部评分提示不应出现在报告里"
+
+    asyncio.run(
+        _generate_test_report(
+            report_path=report_path,
+            repo_name="demo",
+            total=1,
+            passed=1,
+            failed=0,
+            score=100,
+            test_results=[],
+            grading_rubric=grading_rubric,
+            execution_process=["Running test 1/1: pytest"],
+        )
+    )
+
+    report = report_path.read_text(encoding="utf-8")
+
+    assert "## 执行过程" in report
+    assert "Running test 1/1: pytest" in report
+    assert "评分规则" not in report
+    assert "内部评分提示不应出现在报告里" not in report
+
+
 def test_generate_test_report_uses_absolute_runtime_artifact_urls(tmp_path, monkeypatch):
     report_path = tmp_path / "TEST_REPORT_class-01.md"
     monkeypatch.setenv("RUNNER_PUBLIC_BASE_URL", "http://localhost:8001/")

@@ -8,7 +8,7 @@ import logging
 import mimetypes
 import re
 from pathlib import Path
-from typing import AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,18 @@ router = APIRouter(prefix="/api/runner")
 
 _ALLOWED_ARTIFACT_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 _ACTIVE_RUN_ALL_REPORTS: set[tuple[str, str]] = set()
+
+
+def _hide_grading_rubric(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _hide_grading_rubric(item)
+            for key, item in value.items()
+            if key != "grading_rubric"
+        }
+    if isinstance(value, list):
+        return [_hide_grading_rubric(item) for item in value]
+    return value
 
 
 def _clean_optional_text(value: Optional[str]) -> Optional[str]:
@@ -325,7 +337,11 @@ async def run_tests_stream(
                     report_content = Path(report_path).read_text() if report_path else ""
                 except Exception:
                     report_content = ""
-                await progress_queue.put({"status": "completed", "results": result, "report_content": report_content})
+                await progress_queue.put({
+                    "status": "completed",
+                    "results": _hide_grading_rubric(result),
+                    "report_content": report_content,
+                })
             except RunnerQueueFull as e:
                 await progress_queue.put({"status": "failed", "error": str(e)})
             except Exception as e:
@@ -535,7 +551,7 @@ async def run_all_stream(request: RunAllRequest):
                     "status": "completed",
                     "clone_metadata": clone_metadata,
                     "overview_path": overview_path,
-                    "results": result,
+                    "results": _hide_grading_rubric(result),
                     "report_content": report_content,
                     "token_usage": token_usage,
                 }
@@ -724,7 +740,7 @@ async def batch_run_stream(request: BatchRunRequest):
                         "status": "completed",
                         "clone_metadata": clone_metadata,
                         "overview_path": overview_path,
-                        "results": result,
+                        "results": _hide_grading_rubric(result),
                     })
                 except RunnerQueueFull as e:
                     await event_queue.put({

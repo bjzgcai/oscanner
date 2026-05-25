@@ -167,6 +167,62 @@ def test_run_tests_stream_forwards_feature_requirements(monkeypatch, tmp_path):
     }
 
 
+def test_run_tests_stream_hides_grading_rubric_from_response(monkeypatch, tmp_path):
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+    report_path = clone_dir / "TEST_REPORT.md"
+    report_path.write_text("report body", encoding="utf-8")
+
+    async def _fake_run_tests(
+        _clone_path,
+        _overview_path,
+        _progress_callback,
+        setup_timeout,
+        test_timeout,
+        tag_message=None,
+        tag=None,
+        grading_rubric=None,
+    ):
+        return {
+            "total": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "score": 100,
+            "report_path": str(report_path),
+            "grading_rubric": grading_rubric,
+            "runtime_evidence": {
+                "summary": {"passed": 1, "total": 1},
+                "checks": [],
+                "grading_rubric": grading_rubric,
+            },
+        }
+
+    monkeypatch.setattr(runner_route, "run_tests", _fake_run_tests)
+
+    async def _collect_completed():
+        response = await runner_route.run_tests_stream(
+            str(clone_dir),
+            str(clone_dir / "REPO_OVERVIEW.md"),
+            grading_rubric="评分规则\n\n隐藏的评测提示",
+        )
+        async for chunk in response.body_iterator:
+            text = chunk.decode() if isinstance(chunk, bytes) else chunk
+            for line in text.splitlines():
+                if line.startswith("data: "):
+                    event = json.loads(line[6:])
+                    if event["event"] == "status":
+                        return event["data"]
+        raise AssertionError("status event not found")
+
+    completed = asyncio.run(_collect_completed())
+
+    assert "grading_rubric" not in completed["results"]
+    assert "grading_rubric" not in completed["results"]["runtime_evidence"]
+    assert "评分规则" not in json.dumps(completed, ensure_ascii=False)
+    assert "隐藏的评测提示" not in json.dumps(completed, ensure_ascii=False)
+
+
 def test_detect_tests_returns_validation_features(monkeypatch, tmp_path):
     clone_dir = tmp_path / "repo"
     clone_dir.mkdir()

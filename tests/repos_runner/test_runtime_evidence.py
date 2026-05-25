@@ -877,8 +877,9 @@ def test_run_tests_applies_grading_rubric_to_feature_analysis(monkeypatch, tmp_p
         "runtime_rubric": grading_rubric,
     }
     assert result["grading_rubric"] == grading_rubric
-    assert "评分规则" in Path(result["report_path"]).read_text(encoding="utf-8")
-    assert grading_rubric in Path(result["report_path"]).read_text(encoding="utf-8")
+    report = Path(result["report_path"]).read_text(encoding="utf-8")
+    assert "评分规则" not in report
+    assert grading_rubric not in report
 
 
 def test_run_tests_uses_default_grading_rubric_when_omitted(monkeypatch, tmp_path):
@@ -959,4 +960,4 @@ def test_run_tests_uses_default_grading_rubric_when_omitted(monkeypatch, tmp_pat
         "runtime_rubric": DEFAULT_GRADING_RUBRIC,
     }
     assert result["grading_rubric"] == DEFAULT_GRADING_RUBRIC
-    assert DEFAULT_GRADING_RUBRIC in Path(result["report_path"]).read_text(encoding="utf-8")
+    assert DEFAULT_GRADING_RUBRIC not in Path(result["report_path"]).read_text(encoding="utf-8")
