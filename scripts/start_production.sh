@@ -88,6 +88,9 @@ echo -e "${BLUE}Configuration:${NC}"
 echo -e "  Evaluator Port:    ${GREEN}${EVALUATOR_PORT}${NC}"
 echo -e "  Repos Runner Port: ${GREEN}${REPOS_RUNNER_PORT}${NC}"
 echo -e "  Webapp Port:       ${GREEN}${WEBAPP_PORT}${NC}"
+if [ -n "${OSCANNER_HOME:-}" ]; then
+    echo -e "  Oscanner Home:     ${GREEN}${OSCANNER_HOME}${NC}"
+fi
 echo -e "  Rebuild:           ${REBUILD}"
 echo -e "  Daemon Mode:       ${DAEMON}"
 echo ""
@@ -96,6 +99,9 @@ if [ "${OSCANNER_START_PRODUCTION_PRINT_CONFIG:-}" = "1" ]; then
     echo "EVALUATOR_PORT=${EVALUATOR_PORT}"
     echo "REPOS_RUNNER_PORT=${REPOS_RUNNER_PORT}"
     echo "WEBAPP_PORT=${WEBAPP_PORT}"
+    if [ -n "${OSCANNER_HOME:-}" ]; then
+        echo "OSCANNER_HOME=${OSCANNER_HOME}"
+    fi
     exit 0
 fi
 

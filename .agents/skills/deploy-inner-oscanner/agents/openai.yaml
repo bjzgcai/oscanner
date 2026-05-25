@@ -1,0 +1,7 @@
+interface:
+  display_name: "Deploy Inner Oscanner"
+  short_description: "Deploy or inspect internal Oscanner services"
+  default_prompt: "Use $deploy-inner-oscanner to deploy the internal Oscanner services on 10.1.132.63."
+
+policy:
+  allow_implicit_invocation: true
