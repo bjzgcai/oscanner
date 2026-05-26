@@ -18,6 +18,37 @@ from evaluator.utils import get_author_from_commit
 router = APIRouter()
 
 
+GITHUB_COMMIT_AUTHORS_QUERY = """
+query($owner: String!, $name: String!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    defaultBranchRef {
+      target {
+        ... on Commit {
+          history(first: 100, after: $cursor) {
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              author {
+                name
+                email
+                user {
+                  login
+                  avatarUrl
+                  url
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+
 def _extract_platform_data(platform: str, owner: str, repo: str) -> bool:
     """Extract repository data from the given platform."""
     if platform == "gitee":
@@ -81,112 +112,126 @@ def _normalize_gitee_contributors(contributors: Any) -> List[Dict[str, Any]]:
     return sorted(authors_map.values(), key=lambda x: x["commits"], reverse=True)
 
 
-def _normalize_github_contributors(contributors: Any) -> List[Dict[str, Any]]:
-    if not isinstance(contributors, list):
+def _normalize_github_commit_author_nodes(nodes: Any) -> List[Dict[str, Any]]:
+    if not isinstance(nodes, list):
         return []
 
     authors_map: Dict[str, Dict[str, Any]] = {}
-    for item in contributors:
-        if not isinstance(item, dict):
+    for node in nodes:
+        if not isinstance(node, dict):
             continue
 
-        author = (
-            item.get("login")
-            or item.get("name")
-            or item.get("email")
-            or ""
-        )
-        author = str(author).strip()
-        if not author:
+        author_data = node.get("author")
+        if not isinstance(author_data, dict):
             continue
 
-        email = str(item.get("email") or "")
-        avatar_url = str(item.get("avatar_url") or "")
-        html_url = str(item.get("html_url") or "")
-        commits = _coerce_commit_count(item.get("contributions"))
+        name = str(author_data.get("name") or "").strip()
+        email = str(author_data.get("email") or "").strip()
+        if not name and not email:
+            continue
 
-        if author not in authors_map:
-            authors_map[author] = {
-                "author": author,
+        user_data = author_data.get("user")
+        if not isinstance(user_data, dict):
+            user_data = {}
+
+        key = f"{name.lower()}\0{email.lower()}"
+        if key not in authors_map:
+            authors_map[key] = {
+                "author": name or email,
                 "email": email,
                 "commits": 0,
-                "avatar_url": avatar_url,
-                "html_url": html_url,
+                "provider_login": str(user_data.get("login") or ""),
+                "avatar_url": str(user_data.get("avatarUrl") or ""),
+                "html_url": str(user_data.get("url") or ""),
             }
         else:
-            if not authors_map[author].get("email") and email:
-                authors_map[author]["email"] = email
-            if not authors_map[author].get("avatar_url") and avatar_url:
-                authors_map[author]["avatar_url"] = avatar_url
-            if not authors_map[author].get("html_url") and html_url:
-                authors_map[author]["html_url"] = html_url
+            author = authors_map[key]
+            if not author.get("provider_login") and user_data.get("login"):
+                author["provider_login"] = str(user_data.get("login"))
+            if not author.get("avatar_url") and user_data.get("avatarUrl"):
+                author["avatar_url"] = str(user_data.get("avatarUrl"))
+            if not author.get("html_url") and user_data.get("url"):
+                author["html_url"] = str(user_data.get("url"))
 
-        authors_map[author]["commits"] += commits
+        authors_map[key]["commits"] += 1
 
     return sorted(authors_map.values(), key=lambda x: x["commits"], reverse=True)
 
 
-def _response_has_next_page(response: Any) -> bool:
-    links = getattr(response, "links", None)
-    if isinstance(links, dict) and links.get("next"):
-        return True
-
-    headers = getattr(response, "headers", None)
-    if isinstance(headers, dict):
-        return 'rel="next"' in str(headers.get("Link", ""))
-
-    return False
-
-
 def _fetch_github_contributors_authors(owner: str, repo: str) -> List[Dict[str, Any]]:
     """
-    Fetch GitHub contributors through the lightweight contributors API.
+    Fetch GitHub authors through GraphQL commit history.
 
-    This avoids full repository extraction for author discovery.
+    GitHub's REST contributors API groups by GitHub account/email. For evaluator
+    identity selection, use raw Git commit author name + email instead.
     """
-    contributors_url = f"https://api.github.com/repos/{owner}/{repo}/contributors"
+    github_token = get_github_token()
+    if not github_token:
+        print("[GitHub Authors] GitHub token not configured; skipping GraphQL author API")
+        return []
+
+    graphql_url = "https://api.github.com/graphql"
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "oscanner-skill-evaluator",
+        "Authorization": f"Bearer {github_token}",
     }
-    github_token = get_github_token()
-    if github_token:
-        headers["Authorization"] = f"Bearer {github_token}"
 
-    contributors: List[Dict[str, Any]] = []
-    page = 1
+    nodes: List[Dict[str, Any]] = []
+    cursor = None
     while True:
         try:
-            response = get_requests_session().get(
-                contributors_url,
+            response = get_requests_session().post(
+                graphql_url,
                 headers=headers,
-                params={"per_page": 100, "anon": "1", "page": page},
+                json={
+                    "query": GITHUB_COMMIT_AUTHORS_QUERY,
+                    "variables": {
+                        "owner": owner,
+                        "name": repo,
+                        "cursor": cursor,
+                    },
+                },
                 timeout=10,
             )
         except Exception as exc:
-            print(f"[GitHub Authors] Contributors API request failed for {owner}/{repo}: {exc}")
-            return [] if page == 1 else _normalize_github_contributors(contributors)
+            print(f"[GitHub Authors] GraphQL author API request failed for {owner}/{repo}: {exc}")
+            return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 
         if response.status_code != 200:
-            print(f"[GitHub Authors] Contributors API returned {response.status_code} for {owner}/{repo}")
-            return [] if page == 1 else _normalize_github_contributors(contributors)
+            print(f"[GitHub Authors] GraphQL author API returned {response.status_code} for {owner}/{repo}")
+            return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 
         try:
-            page_contributors = response.json()
+            payload = response.json()
         except Exception as exc:
-            print(f"[GitHub Authors] Failed to parse contributors response for {owner}/{repo}: {exc}")
-            return [] if page == 1 else _normalize_github_contributors(contributors)
+            print(f"[GitHub Authors] Failed to parse GraphQL author response for {owner}/{repo}: {exc}")
+            return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 
-        if not isinstance(page_contributors, list):
-            return [] if page == 1 else _normalize_github_contributors(contributors)
+        if not isinstance(payload, dict) or payload.get("errors"):
+            print(f"[GitHub Authors] GraphQL author API returned errors for {owner}/{repo}: {payload.get('errors') if isinstance(payload, dict) else payload}")
+            return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 
-        contributors.extend(page_contributors)
+        history = (
+            payload.get("data", {})
+            .get("repository", {})
+            .get("defaultBranchRef", {})
+            .get("target", {})
+            .get("history", {})
+        )
+        if not isinstance(history, dict):
+            return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 
-        if not page_contributors or not _response_has_next_page(response):
+        page_nodes = history.get("nodes")
+        if isinstance(page_nodes, list):
+            nodes.extend(page_nodes)
+
+        page_info = history.get("pageInfo") if isinstance(history.get("pageInfo"), dict) else {}
+        if not page_info.get("hasNextPage") or not page_info.get("endCursor"):
             break
-        page += 1
+        cursor = page_info.get("endCursor")
 
-    return _normalize_github_contributors(contributors)
+    return _normalize_github_commit_author_nodes(nodes)
 
 
 def _fetch_gitee_contributors_authors(owner: str, repo: str) -> List[Dict[str, Any]]:

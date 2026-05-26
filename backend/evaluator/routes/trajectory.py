@@ -105,6 +105,17 @@ def _extract_group_repository_items(request_body: Dict[str, Any]) -> List[Dict[s
     return []
 
 
+def _aliases_from_request(request_body: Dict[str, Any]) -> List[str]:
+    aliases: List[str] = []
+    for key in ("aliases", "author_aliases"):
+        value = request_body.get(key)
+        if isinstance(value, list):
+            aliases.extend(value)
+        elif isinstance(value, str):
+            aliases.extend(part.strip() for part in value.split(",") if part.strip())
+    return aliases
+
+
 def _check_platform_tokens_for_repos(repo_urls: List[str]) -> None:
     github_token = get_github_token()
     gitee_token = get_gitee_token()
@@ -904,7 +915,7 @@ async def analyze_trajectory_one_off(
             # If repo_urls is empty but repo_url exists, use it
             repo_urls = [request_body.get("repo_url")]
 
-        aliases = request_body.get("aliases", [])
+        aliases = _aliases_from_request(request_body)
         if not isinstance(aliases, list):
             aliases = []
 
@@ -1136,9 +1147,7 @@ async def analyze_trajectory_one_off_stream(
             if not repo_urls and request_body.get("repo_url"):
                 repo_urls = [request_body.get("repo_url")]
 
-            aliases = request_body.get("aliases", [])
-            if not isinstance(aliases, list):
-                aliases = []
+            aliases = _aliases_from_request(request_body)
 
             expected_feature = request_body.get("expected_feature")
             if isinstance(expected_feature, str):

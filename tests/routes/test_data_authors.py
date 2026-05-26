@@ -71,27 +71,57 @@ def test_fetch_gitee_contributors_authors_returns_empty_without_token(monkeypatc
     session.get.assert_not_called()
 
 
-def test_fetch_github_contributors_authors_normalizes_users_and_anonymous(monkeypatch):
-    """GitHub contributors should become the existing authors response shape."""
+def test_fetch_github_contributors_authors_groups_graphql_commit_authors(monkeypatch):
+    """GitHub author discovery should group by raw commit author name and email."""
     response = Mock()
     response.status_code = 200
-    response.json.return_value = [
-        {
-            "login": "Vincy2021",
-            "html_url": "https://github.com/Vincy2021",
-            "avatar_url": "https://avatars.githubusercontent.com/u/90611146?v=4",
-            "contributions": 1,
-        },
-        {
-            "name": "Liang Dong",
-            "email": "v-ld@zgci.ac.cn",
-            "type": "Anonymous",
-            "contributions": 32,
-        },
-    ]
+    response.json.return_value = {
+        "data": {
+            "repository": {
+                "defaultBranchRef": {
+                    "target": {
+                        "history": {
+                            "pageInfo": {"hasNextPage": False, "endCursor": None},
+                            "nodes": [
+                                {
+                                    "author": {
+                                        "name": "Evan You",
+                                        "email": "yyou@example.com",
+                                        "user": {
+                                            "login": "yyx990803",
+                                            "avatarUrl": "https://avatars.githubusercontent.com/u/499550?v=4",
+                                            "url": "https://github.com/yyx990803",
+                                        },
+                                    }
+                                },
+                                {
+                                    "author": {
+                                        "name": "Evan You",
+                                        "email": "yyou@example.com",
+                                        "user": {
+                                            "login": "yyx990803",
+                                            "avatarUrl": "https://avatars.githubusercontent.com/u/499550?v=4",
+                                            "url": "https://github.com/yyx990803",
+                                        },
+                                    }
+                                },
+                                {
+                                    "author": {
+                                        "name": "HE Shi-Jun",
+                                        "email": "hax@example.com",
+                                        "user": None,
+                                    }
+                                },
+                            ],
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     session = Mock()
-    session.get.return_value = response
+    session.post.return_value = response
     monkeypatch.setattr(data, "get_requests_session", lambda: session)
     monkeypatch.setattr(data, "get_github_token", lambda: "fake-token")
 
@@ -99,30 +129,101 @@ def test_fetch_github_contributors_authors_normalizes_users_and_anonymous(monkey
 
     assert authors == [
         {
-            "author": "Liang Dong",
-            "email": "v-ld@zgci.ac.cn",
-            "commits": 32,
+            "author": "Evan You",
+            "email": "yyou@example.com",
+            "commits": 2,
+            "provider_login": "yyx990803",
+            "avatar_url": "https://avatars.githubusercontent.com/u/499550?v=4",
+            "html_url": "https://github.com/yyx990803",
+        },
+        {
+            "author": "HE Shi-Jun",
+            "email": "hax@example.com",
+            "commits": 1,
+            "provider_login": "",
             "avatar_url": "",
             "html_url": "",
         },
-        {
-            "author": "Vincy2021",
-            "email": "",
-            "commits": 1,
-            "avatar_url": "https://avatars.githubusercontent.com/u/90611146?v=4",
-            "html_url": "https://github.com/Vincy2021",
-        },
     ]
-    session.get.assert_called_once_with(
-        "https://api.github.com/repos/bjzgcai/AI-History-Show/contributors",
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "oscanner-skill-evaluator",
-            "Authorization": "Bearer fake-token",
-        },
-        params={"per_page": 100, "anon": "1", "page": 1},
-        timeout=10,
-    )
+    session.post.assert_called_once()
+    url, = session.post.call_args.args
+    assert url == "https://api.github.com/graphql"
+    assert session.post.call_args.kwargs["headers"] == {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "oscanner-skill-evaluator",
+        "Authorization": "Bearer fake-token",
+    }
+    assert session.post.call_args.kwargs["json"]["variables"] == {
+        "owner": "bjzgcai",
+        "name": "AI-History-Show",
+        "cursor": None,
+    }
+
+
+def test_fetch_github_contributors_authors_paginates_graphql_history(monkeypatch):
+    """GitHub GraphQL history pagination should be aggregated across pages."""
+    first_response = Mock()
+    first_response.status_code = 200
+    first_response.json.return_value = {
+        "data": {
+            "repository": {
+                "defaultBranchRef": {
+                    "target": {
+                        "history": {
+                            "pageInfo": {"hasNextPage": True, "endCursor": "cursor-1"},
+                            "nodes": [
+                                {
+                                    "author": {
+                                        "name": "Evan You",
+                                        "email": "yyou@example.com",
+                                        "user": {"login": "yyx990803"},
+                                    }
+                                }
+                            ],
+                        }
+                    }
+                }
+            }
+        }
+    }
+    second_response = Mock()
+    second_response.status_code = 200
+    second_response.json.return_value = {
+        "data": {
+            "repository": {
+                "defaultBranchRef": {
+                    "target": {
+                        "history": {
+                            "pageInfo": {"hasNextPage": False, "endCursor": None},
+                            "nodes": [
+                                {
+                                    "author": {
+                                        "name": "Evan You",
+                                        "email": "yyou@example.com",
+                                        "user": {"login": "yyx990803"},
+                                    }
+                                }
+                            ],
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    session = Mock()
+    session.post.side_effect = [first_response, second_response]
+    monkeypatch.setattr(data, "get_requests_session", lambda: session)
+    monkeypatch.setattr(data, "get_github_token", lambda: "fake-token")
+
+    authors = data._fetch_github_contributors_authors("yyx990803", "semi")
+
+    assert authors[0]["author"] == "Evan You"
+    assert authors[0]["email"] == "yyou@example.com"
+    assert authors[0]["commits"] == 2
+    assert session.post.call_count == 2
+    assert session.post.call_args_list[0].kwargs["json"]["variables"]["cursor"] is None
+    assert session.post.call_args_list[1].kwargs["json"]["variables"]["cursor"] == "cursor-1"
 
 
 def test_extract_platform_data_uses_commit_only_github_extraction(monkeypatch):

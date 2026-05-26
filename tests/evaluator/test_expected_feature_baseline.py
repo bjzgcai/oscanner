@@ -181,6 +181,80 @@ async def test_analyze_one_off_route_allows_missing_expected_feature(monkeypatch
 
 
 @pytest.mark.anyio
+async def test_analyze_one_off_route_accepts_author_aliases(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+
+    captured_args = {}
+
+    def fake_analyze_growth_trajectory(*args):
+        captured_args["aliases"] = args[2]
+        return SimpleNamespace(success=False, trajectory=None, message="done")
+
+    monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(trajectory_route, "get_github_token", lambda: "github-token")
+    monkeypatch.setattr(trajectory_route, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(trajectory_route, "resolve_plugin_id", lambda plugin: plugin)
+    monkeypatch.setattr(trajectory_route, "analyze_growth_trajectory", fake_analyze_growth_trajectory)
+
+    result = await trajectory_route.analyze_trajectory_one_off(
+        request_body={
+            "repo_url": "https://github.com/yyx990803/shell-task",
+            "username": "yyx990803",
+            "author_aliases": ["yyx990803", "Evan You"],
+        },
+        plugin="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+        forced_checker="",
+        worktree_base="build",
+        checkpoint_strategy="none",
+        start_sha="",
+        end_sha="",
+    )
+
+    assert result["success"] is False
+    assert captured_args["aliases"] == ["yyx990803", "Evan You"]
+
+
+@pytest.mark.anyio
+async def test_analyze_one_off_stream_accepts_author_aliases(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+
+    captured_args = {}
+
+    def fake_analyze_growth_trajectory(*args):
+        captured_args["aliases"] = args[2]
+        return SimpleNamespace(success=False, trajectory=None, message="done")
+
+    monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(trajectory_route, "get_github_token", lambda: "github-token")
+    monkeypatch.setattr(trajectory_route, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(trajectory_route, "resolve_plugin_id", lambda plugin: plugin)
+    monkeypatch.setattr(trajectory_route, "analyze_growth_trajectory", fake_analyze_growth_trajectory)
+
+    response = await trajectory_route.analyze_trajectory_one_off_stream(
+        request_body={
+            "repo_url": "https://github.com/yyx990803/shell-task",
+            "username": "yyx990803",
+            "author_aliases": ["yyx990803", "Evan You"],
+        },
+        plugin="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+        forced_checker="",
+        worktree_base="build",
+        checkpoint_strategy="none",
+        start_sha="",
+        end_sha="",
+    )
+
+    async for _chunk in response.body_iterator:
+        pass
+
+    assert captured_args["aliases"] == ["yyx990803", "Evan You"]
+
+
+@pytest.mark.anyio
 async def test_analyze_one_off_route_uses_deepseek_only_without_synthesis(monkeypatch):
     from evaluator.routes import trajectory as trajectory_route
 

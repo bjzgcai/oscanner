@@ -3,6 +3,20 @@
 from typing import Dict, Any, Optional
 
 
+def _identity_values(identity: Any) -> list[str]:
+    if isinstance(identity, str):
+        return [identity]
+    if not isinstance(identity, dict):
+        return []
+
+    values = []
+    for key in ("login", "name", "email"):
+        value = identity.get(key)
+        if isinstance(value, str) and value.strip():
+            values.append(value)
+    return values
+
+
 def get_author_from_commit(commit_data: Dict[str, Any]) -> Optional[str]:
     """
     Extract author name from commit data, supporting both formats:
@@ -40,14 +54,24 @@ def get_author_from_commit(commit_data: Dict[str, Any]) -> Optional[str]:
 
 def is_commit_by_author(commit: Dict[str, Any], username: str) -> bool:
     """Check if commit is by the specified author"""
-    # Try custom extraction format first
-    if "author" in commit and isinstance(commit["author"], str):
-        return commit["author"].lower() == username.lower()
+    normalized_username = username.lower().strip()
+    if not normalized_username:
+        return False
 
-    # Try GitHub API format
-    if "commit" in commit:
-        author = commit.get("commit", {}).get("author", {}).get("name", "")
-        if author:
-            return author.lower() == username.lower()
+    candidates = []
+
+    # Custom extraction format and provider user objects.
+    candidates.extend(_identity_values(commit.get("author")))
+    candidates.extend(_identity_values(commit.get("committer")))
+
+    # GitHub/Gitee commit metadata.
+    commit_data = commit.get("commit", {})
+    if isinstance(commit_data, dict):
+        candidates.extend(_identity_values(commit_data.get("author")))
+        candidates.extend(_identity_values(commit_data.get("committer")))
+
+    for candidate in candidates:
+        if candidate.lower().strip() == normalized_username:
+            return True
 
     return False
