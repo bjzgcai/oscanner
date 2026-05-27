@@ -127,6 +127,82 @@ def test_run_all_uses_forwarded_tag_message(monkeypatch, tmp_path):
     assert calls["run_grading_rubric"] == "Grade API correctness before UI polish."
 
 
+def test_run_all_uses_readme_as_requirements_when_no_tag_message(monkeypatch, tmp_path):
+    calls = {
+        "explore_tag_message": None,
+        "run_tag_message": None,
+    }
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+    (clone_dir / "README.md").write_text(
+        """# Course Demo
+
+## Features
+
+- Login with username and password.
+- Export reports as CSV.
+
+## TODO
+
+- Payment workflow is planned but not implemented.
+""",
+        encoding="utf-8",
+    )
+    report_path = clone_dir / "TEST_REPORT.md"
+    report_path.write_text("report body", encoding="utf-8")
+
+    async def _fake_clone_repository(_repo_url, _sha, _tag, timeout=300):
+        return {"clone_path": str(clone_dir), "repo_name": "repo"}
+
+    async def _fake_explore_repository(_clone_path, _progress_callback, tag_message, tag=None):
+        calls["explore_tag_message"] = tag_message
+        overview_path = clone_dir / "REPO_OVERVIEW.md"
+        overview_path.write_text("overview", encoding="utf-8")
+        return str(overview_path)
+
+    async def _fake_run_tests(
+        _clone_path,
+        _overview_path,
+        _progress_callback,
+        setup_timeout,
+        test_timeout,
+        tag_message=None,
+        tag=None,
+        grading_rubric=None,
+    ):
+        calls["run_tag_message"] = tag_message
+        return {
+            "repo_name": "org/repo",
+            "passed": 1,
+            "failed": 0,
+            "total": 1,
+            "score": 100,
+            "report_path": str(report_path),
+        }
+
+    monkeypatch.setattr(runner_route, "clone_repository", _fake_clone_repository)
+    monkeypatch.setattr(runner_route, "explore_repository", _fake_explore_repository)
+    monkeypatch.setattr(runner_route, "run_tests", _fake_run_tests)
+
+    response = asyncio.run(
+        runner_route.run_all_stream(RunAllRequest(repo_url="https://github.com/org/repo"))
+    )
+
+    async def _consume_response():
+        async for _chunk in response.body_iterator:
+            pass
+
+    asyncio.run(_consume_response())
+
+    assert calls["explore_tag_message"]
+    assert calls["run_tag_message"] == calls["explore_tag_message"]
+    assert "Repository README requirements" in calls["run_tag_message"]
+    assert "Login with username and password" in calls["run_tag_message"]
+    assert "Export reports as CSV" in calls["run_tag_message"]
+    assert "Payment workflow" not in calls["run_tag_message"]
+    assert "ignore TODO" in calls["run_tag_message"]
+
+
 def test_run_all_reports_accumulated_token_usage(monkeypatch, tmp_path):
     calls = {"run_grading_rubric": None}
     clone_dir = tmp_path / "repo"

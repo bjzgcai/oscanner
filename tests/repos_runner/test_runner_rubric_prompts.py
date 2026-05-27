@@ -34,6 +34,7 @@ def test_feature_extraction_prompt_includes_grading_rubric(monkeypatch):
     assert features == ["Health endpoint returns JSON"]
     assert "Require input validation evidence." in captured["prompt"]
     assert "do not invent features" in captured["prompt"]
+    assert "Ignore TODO" in captured["prompt"]
 
 
 def test_feature_extraction_prompt_uses_default_grading_rubric(monkeypatch):

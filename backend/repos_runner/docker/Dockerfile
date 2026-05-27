@@ -14,10 +14,13 @@ RUN apt-get update \
         chromium \
         default-jdk-headless \
         fonts-noto-cjk \
+        cargo \
         gradle \
+        golang-go \
         maven \
         meson \
         ninja-build \
+        rustc \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m venv "$VIRTUAL_ENV" \

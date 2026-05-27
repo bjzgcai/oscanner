@@ -5,6 +5,14 @@ from repos_runner.services.repo_service.parsing import _parse_test_output_with_r
 from repos_runner.services.repo_service.runner import _find_test_files
 
 
+def test_bundled_docker_image_installs_go_and_rust_toolchains():
+    dockerfile = Path("backend/repos_runner/docker/Dockerfile").read_text(encoding="utf-8")
+
+    assert "golang-go" in dockerfile
+    assert "cargo" in dockerfile
+    assert "rustc" in dockerfile
+
+
 def test_detects_cpp_cmake_project(tmp_path: Path):
     (tmp_path / "CMakeLists.txt").write_text("enable_testing()\n", encoding="utf-8")
 

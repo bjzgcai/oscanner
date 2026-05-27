@@ -49,6 +49,19 @@ router = APIRouter(prefix="/api/runner")
 
 _ALLOWED_ARTIFACT_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 _ACTIVE_RUN_ALL_REPORTS: set[tuple[str, str]] = set()
+_README_REQUIREMENT_FILES = ("README.md", "README.en.md", "README.txt", "README")
+_README_NON_REQUIREMENT_HEADING_RE = re.compile(
+    r"^\s{0,3}#+\s*(?:todo|to do|roadmap|future|planned|plan|backlog|"
+    r"not implemented|incomplete|known issues|limitations|"
+    r"待办|计划|规划|路线图|未完成|未实现|暂未实现|后续)\b",
+    re.IGNORECASE,
+)
+_README_NON_REQUIREMENT_LINE_RE = re.compile(
+    r"\b(?:todo|planned|planning|future work|roadmap|not implemented|not yet implemented|"
+    r"incomplete|coming soon|will support|will be supported)\b|"
+    r"(?:待办|计划|规划|未完成|未实现|暂未实现|尚未实现|待实现|后续|未来)",
+    re.IGNORECASE,
+)
 
 
 def _hide_grading_rubric(value: Any) -> Any:
@@ -96,6 +109,49 @@ def _extract_validation_features(feature_requirements: Optional[str]) -> list[st
         seen.add(key)
         features.append(cleaned)
     return features[:50]
+
+
+def _readme_requirements_from_clone(clone_path: str) -> Optional[str]:
+    clone_dir = Path(clone_path)
+    for filename in _README_REQUIREMENT_FILES:
+        readme_path = clone_dir / filename
+        if not readme_path.is_file():
+            continue
+        try:
+            readme_text = readme_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+
+        kept_lines: list[str] = []
+        in_non_requirement_section = False
+        for raw_line in readme_text.splitlines():
+            line = raw_line.rstrip()
+            if re.match(r"^\s{0,3}#+\s+", line):
+                in_non_requirement_section = bool(
+                    _README_NON_REQUIREMENT_HEADING_RE.search(line)
+                )
+                if in_non_requirement_section:
+                    continue
+            if in_non_requirement_section:
+                continue
+            if _README_NON_REQUIREMENT_LINE_RE.search(line):
+                continue
+            kept_lines.append(line)
+
+        cleaned = "\n".join(kept_lines).strip()
+        if not cleaned:
+            continue
+        if len(cleaned) > 12000:
+            cleaned = cleaned[:12000].rsplit("\n", 1)[0].strip() or cleaned[:12000]
+        return (
+            "## Repository README requirements\n\n"
+            "Use the repository README as the functional acceptance standard. "
+            "Only treat currently documented, implemented behavior as requirements; "
+            "ignore TODO, planned, roadmap, future, incomplete, or explicitly unimplemented items.\n\n"
+            f"Source: {filename}\n\n"
+            f"{cleaned}"
+        )
+    return None
 
 
 def _active_report_key(repo_url: str, tag: Optional[str] = None) -> tuple[str, str]:
@@ -505,7 +561,13 @@ async def run_all_stream(request: RunAllRequest):
                         await worker_progress_callback(f"Tag message: {tag_message}")
                     else:
                         await worker_progress_callback(
-                            "No tag annotation message found; running standard scoring."
+                            "No tag annotation message found; checking README requirements."
+                        )
+                if not tag_message:
+                    tag_message = _readme_requirements_from_clone(clone_path)
+                    if tag_message:
+                        await worker_progress_callback(
+                            "Using README as functional acceptance requirements."
                         )
 
                 # -- Explore step --
@@ -705,8 +767,12 @@ async def batch_run_stream(request: BatchRunRequest):
                                 await cb(f"Tag message: {tag_message}")
                             else:
                                 await cb(
-                                    "No tag annotation message found; running standard scoring."
+                                    "No tag annotation message found; checking README requirements."
                                 )
+                        if not tag_message:
+                            tag_message = _readme_requirements_from_clone(clone_path)
+                            if tag_message:
+                                await cb("Using README as functional acceptance requirements.")
 
                         if repo_req.skip_explore and Path(overview_path).exists():
                             await cb(f"Skipping exploration, reusing existing {overview_filename}")

@@ -38,6 +38,7 @@ Rules:
 - If the message mentions "CRUD", expand it to ["Create", "Read", "Update", "Delete"].
 - Keep feature names concise (1-4 words).
 - Only include features explicitly mentioned or clearly implied by the message.
+- Ignore TODO, planned, roadmap, future, incomplete, or explicitly unimplemented items.
 """
         result = _messages_create_with_fallback(
             model=_default_requested_model(),
