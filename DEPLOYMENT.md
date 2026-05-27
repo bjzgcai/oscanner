@@ -17,7 +17,7 @@ This will automatically:
 
 ### Local Machine
 1. Configure `.env.production` with remote server details (see below)
-2. Ensure SSH key access to the remote server
+2. Ensure SSH access to the remote server
 
 ### Remote Server (First-Time Setup)
 
@@ -25,10 +25,10 @@ This will automatically:
 
 Create these files on the remote server before first deployment:
 
-**`/home/ubuntu/git/oscanner/evaluator/.env.local`**
+**`/data/app/backend/evaluator/.env.local`**
 ```bash
 # Server Configuration
-PORT=8001
+PORT=8000
 
 # Open Router API Key (Required for LLM evaluations)
 # Get your API key from: https://openrouter.ai/keys
@@ -43,14 +43,14 @@ GITEE_TOKEN=your_enterprise_gitee_token_here
 # GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-**`/home/ubuntu/git/oscanner/webapp/.env.local`**
+**`/data/app/frontend/webapp/.env.local`**
 ```bash
 # Webapp Server Port
-PORT=3001
+PORT=3000
 
 # API Server URL (optional, for development proxy)
 # In production, this is ignored as webapp is served by FastAPI
-# NEXT_PUBLIC_API_SERVER_URL=http://localhost:8001
+# NEXT_PUBLIC_API_SERVER_URL=http://localhost:8000
 ```
 
 #### 2. Required Software
@@ -71,13 +71,13 @@ You only need to ensure these are available:
 
 ```bash
 # Remote server details
-REMOTE_HOST=10.101.1.253
+REMOTE_HOST=10.1.132.63
 REMOTE_USER=ubuntu
-REMOTE_PATH=/home/ubuntu/git/oscanner
+REMOTE_PATH=/data/app
 
 # Port configuration (for display only)
-EVALUATOR_PORT=8001
-WEBAPP_PORT=3001
+EVALUATOR_PORT=8000
+WEBAPP_PORT=3000
 ```
 
 ## Deployment Commands
@@ -94,8 +94,8 @@ WEBAPP_PORT=3001
 
 ### Manual Deployment (on remote server)
 ```bash
-ssh ubuntu@10.101.1.253
-cd /home/ubuntu/git/oscanner
+ssh ubuntu@10.1.132.63
+cd /data/app
 git pull origin main
 ./start_production.sh --daemon
 ```
@@ -105,17 +105,17 @@ git pull origin main
 ### View Logs
 ```bash
 # From local machine
-ssh ubuntu@10.101.1.253 'tail -f /home/ubuntu/git/oscanner/evaluator.log'
+ssh ubuntu@10.1.132.63 'tail -f /data/app/evaluator.log'
 
 # On remote server
-tail -f /home/ubuntu/git/oscanner/evaluator.log
-tail -f /home/ubuntu/git/oscanner/webapp.log
+tail -f /data/app/evaluator.log
+tail -f /data/app/frontend/webapp.log
 ```
 
 ### Stop Services
 ```bash
 # From local machine
-ssh ubuntu@10.101.1.253 "pkill -f 'oscanner serve|next start'"
+ssh ubuntu@10.1.132.63 "pkill -f 'oscanner serve|next start'"
 
 # On remote server
 pkill -f "oscanner serve"
@@ -132,34 +132,34 @@ pkill -f "next start"
 ## Access URLs
 
 After deployment, services will be available at:
-- **Evaluator API**: http://10.101.1.253:8001
-- **Webapp Dashboard**: http://10.101.1.253:3001
+- **Evaluator API**: http://10.1.132.63:8000
+- **Webapp Dashboard**: http://10.1.132.63:3000
 
 ## Troubleshooting
 
 ### Deployment fails with "Permission denied"
 Ensure your SSH key is added to the remote server:
 ```bash
-ssh-copy-id ubuntu@10.101.1.253
+ssh-copy-id ubuntu@10.1.132.63
 ```
 
 ### Services fail to start
 Check the logs on remote server:
 ```bash
-ssh ubuntu@10.101.1.253 'cat /home/ubuntu/git/oscanner/evaluator.log'
+ssh ubuntu@10.1.132.63 'cat /data/app/evaluator.log'
 ```
 
 ### Port already in use
 Stop existing processes:
 ```bash
-ssh ubuntu@10.101.1.253 "pkill -f 'oscanner serve|next start'"
+ssh ubuntu@10.1.132.63 "pkill -f 'oscanner serve|next start'"
 ```
 
 ### Missing environment variables
 Verify `.env.local` files exist on remote server with required API keys:
 ```bash
-ssh ubuntu@10.101.1.253 'ls -la /home/ubuntu/git/oscanner/evaluator/.env.local'
-ssh ubuntu@10.101.1.253 'ls -la /home/ubuntu/git/oscanner/webapp/.env.local'
+ssh ubuntu@10.1.132.63 'ls -la /data/app/backend/evaluator/.env.local'
+ssh ubuntu@10.1.132.63 'ls -la /data/app/frontend/webapp/.env.local'
 ```
 
 ## Security Notes
@@ -170,22 +170,22 @@ These secrets **MUST** be set manually on each new remote server:
 
 1. **OPEN_ROUTER_KEY** - Required for LLM evaluations
    - Get from: https://openrouter.ai/keys
-   - File: `evaluator/.env.local`
+   - File: `backend/evaluator/.env.local`
 
 2. **GITEE_TOKEN** - Required for Gitee repository analysis
    - Get from: https://gitee.com/profile/personal_access_tokens
-   - File: `evaluator/.env.local`
+   - File: `backend/evaluator/.env.local`
 
 3. **GITHUB_TOKEN** (Optional) - For higher GitHub API rate limits
    - Get from: https://github.com/settings/tokens
-   - File: `evaluator/.env.local`
+   - File: `backend/evaluator/.env.local`
 
 ### Security Best Practices
 
 - Never commit `.env.local` files to git
 - Use SSH keys instead of passwords
 - Keep API tokens secure and rotate them regularly
-- Use environment-specific ports (dev: 3000/8000, prod: 3001/8001)
+- Use environment-specific ports (dev and internal prod: 3000/8000)
 
 ## Script Options
 

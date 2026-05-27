@@ -12,7 +12,7 @@ Deploy Oscanner services to the internal server.
 - Host: `10.1.132.63`
 - User: `ubuntu`
 - SSH command: `ssh ubuntu@10.1.132.63`
-- Remote path: `/data` by default; allow `REMOTE_PATH=...` to override
+- Remote path: `/data/app` by default; allow `REMOTE_PATH=...` to override
 - Data path: `/data`
 - Evaluator port: `8000`
 - Repos Runner port: `8001`
@@ -77,7 +77,7 @@ If this fails, stop and report the exact error. Common causes:
 
 ## Step 3: Determine Remote Path
 
-Use `/data` unless the user passed `REMOTE_PATH=...`. Assign this to `RPATH`.
+Use `/data/app` unless the user passed `REMOTE_PATH=...`. Assign this to `RPATH`.
 
 ## Step 4: Status Only
 
@@ -217,7 +217,7 @@ Services running on 10.1.132.63:
 
 Useful commands:
   Check status: deploy-inner-oscanner --status
-  View logs: ssh ubuntu@10.1.132.63 'tail -f /data/evaluator.log /data/repos_runner.log'
+  View logs: ssh ubuntu@10.1.132.63 'tail -f /data/app/evaluator.log /data/app/repos_runner.log'
   Stop services: ssh ubuntu@10.1.132.63 "pkill -f 'backend.evaluator.server|repos_runner.server|serve out -l'"
   Restart: deploy-inner-oscanner
 ```
@@ -236,7 +236,7 @@ Useful commands:
 
 - The server is reached through the default SSH configuration with `ssh ubuntu@10.1.132.63`; do not add an explicit key unless the user provides one.
 - Backend `.env.local` with API keys must exist on the remote server before first deploy.
-- The app repository and served data live under `/data` unless the user overrides `REMOTE_PATH`.
+- The app repository lives under `/data/app`; served runtime data lives under `/data`.
 - Never print raw API keys or tokens from remote configuration.
 - The `uv` Python package manager is auto-installed by `start_production.sh` if missing.
 - Node.js v18 or newer must be installed on the remote server.

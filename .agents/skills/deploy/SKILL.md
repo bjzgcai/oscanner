@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: Use when deploying or checking production status for evaluator, repos_runner, or webapp services on 112.126.63.117.
+description: Use when deploying or checking production status for evaluator, repos_runner, or webapp services on 10.1.132.63.
 ---
 
 # Deploy
@@ -9,10 +9,10 @@ Deploy all services to the remote production server.
 
 ## Server Details
 
-- Host: `112.126.63.117`
-- User: `ecs-user`
-- SSH key: `~/.ssh/wu.pem`
-- Remote path: `/home/ecs-user/oscanner` by default; allow `REMOTE_PATH=...` to override
+- Host: `10.1.132.63`
+- User: `ubuntu`
+- SSH command: `ssh ubuntu@10.1.132.63`
+- Remote path: `/data/app` by default; allow `REMOTE_PATH=...` to override
 - Evaluator port: `8000`
 - Repos Runner port: `8001`
 - Webapp port: `3000`
@@ -64,24 +64,24 @@ git push origin main
 Run:
 
 ```bash
-ssh -i ~/.ssh/wu.pem -o ConnectTimeout=10 -o BatchMode=yes ecs-user@112.126.63.117 "echo 'SSH OK'"
+ssh -o ConnectTimeout=10 -o BatchMode=yes ubuntu@10.1.132.63 "echo 'SSH OK'"
 ```
 
 If this fails, stop and report the exact error. Common causes:
-- SSH key not found at `~/.ssh/wu.pem`.
+- Server unreachable from the current network.
 - Server unreachable.
-- Key not authorized on server.
+- The local SSH key or SSH agent is not authorized for `ubuntu`.
 
 ## Step 3: Determine Remote Path
 
-Use `/home/ecs-user/oscanner` unless the user passed `REMOTE_PATH=...`. Assign this to `RPATH`.
+Use `/data/app` unless the user passed `REMOTE_PATH=...`. Assign this to `RPATH`.
 
 ## Step 4: Status Only
 
 When `--status` is passed, run:
 
 ```bash
-ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
+ssh ubuntu@10.1.132.63 "
   echo '=== Running Processes ==='
   pgrep -fa 'backend.evaluator.server' || echo 'Evaluator: NOT RUNNING'
   pgrep -fa 'repos_runner.server' || echo 'Repos Runner: NOT RUNNING'
@@ -108,7 +108,7 @@ Then stop.
 When `--setup` is passed, check whether the repo already exists:
 
 ```bash
-ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "test -d ${RPATH}/.git && echo EXISTS || echo MISSING"
+ssh ubuntu@10.1.132.63 "test -d ${RPATH}/.git && echo EXISTS || echo MISSING"
 ```
 
 If missing, get the local remote URL:
@@ -120,7 +120,7 @@ git remote get-url origin
 Clone on the remote server:
 
 ```bash
-ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
+ssh ubuntu@10.1.132.63 "
   mkdir -p $(dirname ${RPATH}) &&
   git clone <remote_url> ${RPATH}
 "
@@ -142,7 +142,7 @@ Then stop and ask the user to run deploy again after the environment file exists
 Use the auto branch identified in Step 1, or `origin/main` if no push was needed:
 
 ```bash
-ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
+ssh ubuntu@10.1.132.63 "
   cd ${RPATH} &&
   git fetch origin &&
   git reset --hard <auto_branch_or_origin/main> &&
@@ -155,7 +155,7 @@ If the directory does not exist, suggest running deploy with `--setup` first.
 ## Step 7: Start or Restart Services
 
 ```bash
-ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
+ssh ubuntu@10.1.132.63 "
   cd ${RPATH} &&
   chmod +x scripts/start_production.sh &&
   bash scripts/start_production.sh --daemon ${REBUILD_FLAG}
@@ -169,7 +169,7 @@ Set `REBUILD_FLAG` to `--rebuild` only when the user passed `--rebuild`.
 Wait about 5 seconds, then check:
 
 ```bash
-ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "
+ssh ubuntu@10.1.132.63 "
   echo '=== Service Health Check ==='
   pgrep -fa 'backend.evaluator.server' && echo 'Evaluator: RUNNING' || echo 'Evaluator: NOT RUNNING'
   pgrep -fa 'repos_runner.server' && echo 'Repos Runner: RUNNING' || echo 'Repos Runner: NOT RUNNING'
@@ -190,22 +190,22 @@ Print a clear summary:
 ```text
 Deployment Complete
 
-Services running on 112.126.63.117:
-  Evaluator API:   http://112.126.63.117:8000
-  Evaluator Docs:  http://112.126.63.117:8000/docs
-  Repos Runner:    http://112.126.63.117:8001
-  Webapp:          http://112.126.63.117:3000
+Services running on 10.1.132.63:
+  Evaluator API:   http://10.1.132.63:8000
+  Evaluator Docs:  http://10.1.132.63:8000/docs
+  Repos Runner:    http://10.1.132.63:8001
+  Webapp:          http://10.1.132.63:3000
 
 Useful commands:
   Check status: deploy --status
-  View logs: ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 'tail -f /home/ecs-user/oscanner/evaluator.log /home/ecs-user/oscanner/repos_runner.log'
-  Stop services: ssh -i ~/.ssh/wu.pem ecs-user@112.126.63.117 "pkill -f 'backend.evaluator.server|repos_runner.server|serve out -l'"
+  View logs: ssh ubuntu@10.1.132.63 'tail -f /data/app/evaluator.log /data/app/repos_runner.log'
+  Stop services: ssh ubuntu@10.1.132.63 "pkill -f 'backend.evaluator.server|repos_runner.server|serve out -l'"
   Restart: deploy
 ```
 
 ## Error Handling
 
-- SSH connection fails: report the exact error and check key path/server reachability.
+- SSH connection fails: report the exact error and check network reachability and SSH authorization.
 - Git push fails: show error output, do not proceed, and do not force push.
 - Remote git update fails: show error output and do not proceed.
 - `start_production.sh` fails: show the last 30 lines of evaluator or repos_runner logs and suggest `--rebuild` when appropriate.
@@ -214,7 +214,7 @@ Useful commands:
 
 ## Important Notes
 
-- The SSH key at `~/.ssh/wu.pem` must have permissions `600`.
+- The server is reached through the default SSH configuration with `ssh ubuntu@10.1.132.63`.
 - Backend `.env.local` with API keys must exist on the remote server before first deploy.
 - The `uv` Python package manager is auto-installed by `start_production.sh` if missing.
 - Node.js v18 or newer must be installed on the remote server.

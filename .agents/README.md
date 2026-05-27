@@ -15,7 +15,7 @@ agentic develope dir
 在 .agents/skills 配置各种 AI Coding 工具支持的 skill
 
 - `skills/test-explore/SKILL.md`: explore tests, coverage, quality score, and report gaps
-- `skills/deploy/SKILL.md`: deploy or inspect production services on `112.126.63.117`
+- `skills/deploy/SKILL.md`: deploy or inspect production services on `10.1.132.63`
 
 ## tasks
 

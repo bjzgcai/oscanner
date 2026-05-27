@@ -125,7 +125,7 @@ Follow `.agents/rules/testing.md` for test strategy.
 
 ## Local Agent Assets
 
-- `.agents/skills/deploy/SKILL.md`: use for deploy, redeploy, setup, or production status on `112.126.63.117`.
+- `.agents/skills/deploy/SKILL.md`: use for deploy, redeploy, setup, or production status on `10.1.132.63`.
 - `.agents/skills/test-explore/SKILL.md`: use when asked to evaluate test coverage, quality, or gaps.
 - `.agents/rules/security.md`: security and token handling rules.
 - `.agents/rules/testing.md`: testing strategy and expected coverage areas.
@@ -135,9 +135,9 @@ Follow `.agents/rules/testing.md` for test strategy.
 
 Use `.agents/skills/deploy/SKILL.md` for production work.
 
-- Host: `ecs-user@112.126.63.117`
-- SSH key: `~/.ssh/wu.pem`
-- Default remote path: `/home/ecs-user/oscanner`
+- Host: `ubuntu@10.1.132.63`
+- SSH command: `ssh ubuntu@10.1.132.63`
+- Default remote path: `/data/app`
 - Evaluator API: port `8000`
 - Repos Runner: port `8001`
 - Webapp: port `3000`

@@ -23,7 +23,7 @@ echo -e "${BLUE}Checking environment...${NC}"
 if [ ! -d "${PROJECT_ROOT}/.git" ]; then
     echo -e "${RED}✗${NC} Error: Not in a git repository"
     echo "Please clone the repository first:"
-    echo "  git clone <repository-url> /home/ubuntu/git/oscanner"
+    echo "  git clone <repository-url> /data/app"
     exit 1
 fi
 
