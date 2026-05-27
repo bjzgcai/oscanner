@@ -17,6 +17,7 @@ from evaluator.services import (
     analyze_group_repositories,
     resolve_plugin_id,
 )
+from evaluator.services.collaboration_evidence import normalize_evidence_sources
 from evaluator.paths import get_platform_data_dir
 from evaluator.services.trajectory_service import ensure_repo_data_synced
 from evaluator.services.trajectory_poll_store import SQLiteTrajectoryPollStore
@@ -114,6 +115,13 @@ def _aliases_from_request(request_body: Dict[str, Any]) -> List[str]:
         elif isinstance(value, str):
             aliases.extend(part.strip() for part in value.split(",") if part.strip())
     return aliases
+
+
+def _evidence_sources_from_request(request_body: Dict[str, Any]) -> List[str]:
+    try:
+        return normalize_evidence_sources((request_body or {}).get("evidence_sources"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _check_platform_tokens_for_repos(repo_urls: List[str]) -> None:
@@ -620,6 +628,7 @@ async def analyze_trajectory_stream(
                 None,
                 None,
                 None,
+                None,
                 emit,
             )
             return response.model_dump()
@@ -729,6 +738,7 @@ async def group_analyse_code(
             expected_feature = expected_feature.strip() or None
         elif expected_feature is not None:
             raise HTTPException(status_code=400, detail="expected_feature must be a string")
+        evidence_sources = _evidence_sources_from_request(request_body)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
@@ -742,6 +752,7 @@ async def group_analyse_code(
                 forced_checker_id=forced_checker_id,
                 worktree_base=worktree_base_value,
                 full_repo=True,
+                evidence_sources=evidence_sources,
                 expected_feature=expected_feature,
             ),
         )
@@ -803,6 +814,10 @@ async def _group_analyse_code_event_stream(
             expected_feature = expected_feature.strip() or None
         elif expected_feature is not None:
             raise ValueError("expected_feature must be a string")
+        try:
+            evidence_sources = _evidence_sources_from_request(request_body)
+        except HTTPException as exc:
+            raise ValueError(str(exc.detail)) from exc
 
         emit("section", {
             "title": "开始团体仓库评估",
@@ -819,6 +834,7 @@ async def _group_analyse_code_event_stream(
             forced_checker_id=forced_checker_id,
             worktree_base=worktree_base_value,
             full_repo=True,
+            evidence_sources=evidence_sources,
             expected_feature=expected_feature,
             progress_callback=emit,
         )
@@ -924,6 +940,7 @@ async def analyze_trajectory_one_off(
             expected_feature = expected_feature.strip() or None
         elif expected_feature is not None:
             raise HTTPException(status_code=400, detail="expected_feature must be a string")
+        evidence_sources = _evidence_sources_from_request(request_body)
 
         if isinstance(username, str):
             username = username.strip()
@@ -1064,6 +1081,7 @@ async def analyze_trajectory_one_off(
             checkpoint_strategy_value,
             start_sha_value,
             end_sha_value,
+            evidence_sources,
             expected_feature,
         )
 
@@ -1154,6 +1172,10 @@ async def analyze_trajectory_one_off_stream(
                 expected_feature = expected_feature.strip() or None
             elif expected_feature is not None:
                 raise ValueError("expected_feature must be a string")
+            try:
+                evidence_sources = _evidence_sources_from_request(request_body)
+            except HTTPException as exc:
+                raise ValueError(str(exc.detail)) from exc
 
             if isinstance(username, str):
                 username = username.strip()
@@ -1270,6 +1292,7 @@ async def analyze_trajectory_one_off_stream(
                 checkpoint_strategy_value,
                 start_sha_value,
                 end_sha_value,
+                evidence_sources,
                 expected_feature,
                 emit,
             )

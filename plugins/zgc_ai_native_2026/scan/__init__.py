@@ -103,6 +103,7 @@ def create_commit_evaluator(
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
     expected_feature: Optional[str] = None,
+    collaboration_evidence: Optional[Dict[str, Any]] = None,
     progress_callback: Optional[ProgressCallback] = None,
     max_input_tokens: Optional[int] = None,
 ):
@@ -116,6 +117,7 @@ def create_commit_evaluator(
         forced_checker_id=forced_checker_id,
         worktree_base=worktree_base,
         expected_feature=expected_feature,
+        collaboration_evidence=collaboration_evidence,
         progress_callback=progress_callback,
         max_input_tokens=max_input_tokens,
     )
@@ -147,6 +149,7 @@ class CommitEvaluatorModerate:
         forced_checker_id: Optional[str] = None,
         worktree_base: str = "build",
         expected_feature: Optional[str] = None,
+        collaboration_evidence: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[ProgressCallback] = None,
     ):
         self.api_key = (
@@ -184,6 +187,7 @@ class CommitEvaluatorModerate:
         self.forced_checker_id = forced_checker_id
         self.worktree_base = worktree_base  # 'build' or 'temp'
         self.expected_feature = (expected_feature or "").strip()
+        self.external_collaboration_evidence = collaboration_evidence if isinstance(collaboration_evidence, dict) else {}
         self.progress_callback = progress_callback
         self._token_usage_records: List[Dict[str, Any]] = []
         self._latest_dimension_evidence: Dict[str, List[Dict[str, Any]]] = {}
@@ -191,6 +195,7 @@ class CommitEvaluatorModerate:
         # Checker API base URL (default to localhost, can be overridden via env)
         self.checker_api_base = os.getenv("OSCANNER_CHECKER_API_BASE", "http://localhost:8000")
         self._checker_cache: Dict[str, Any] = {}  # Cache checker results
+        self._latest_collaboration_evidence: Optional[Dict[str, Any]] = None
         
         # Create HTTP client with connection pooling for better performance
         # httpx.Client is more efficient than requests for concurrent operations
@@ -206,7 +211,7 @@ class CommitEvaluatorModerate:
             "spec_quality": "Evidence: refactors, tests (unit/integration/property), type discipline, edge cases, schema validation, modularity, reproducible builds (docker/compose), lint/format, CI/CD.",
             "cloud_architecture": "Evidence: containerization, IaC (Terraform/Pulumi), K8s configs, deployment automation, resource optimization, architecture docs/ADR, API design, migration patterns (anti-corruption layer).",
             "ai_engineering": "Evidence: agent orchestration, tool definitions, structured prompts, LLM traces/logs, eval datasets, feedback loops, automation scripts, intelligent workflows.",
-            "mastery_professionalism": "Evidence: open source collaboration, meaningful commits/PRs, code reviews, documentation, trade-off analysis, security/performance fixes, mentorship, standards definition.",
+            "mastery_professionalism": "Evidence: open source collaboration, meaningful commits/PRs, code reviews, documentation, handoff quality, team hygiene, trade-off analysis, security/performance fixes, mentorship, standards definition.",
         }
         self.dimension_titles_zh = {
             "spec_quality": "规范与内建质量",
@@ -375,6 +380,277 @@ class CommitEvaluatorModerate:
                 for entry in fallback_commits:
                     add_entry(dimension, entry)
         return evidence
+
+    @staticmethod
+    def _commit_author_name(commit: Dict[str, Any]) -> str:
+        author = commit.get("author")
+        if isinstance(author, str):
+            return author.strip()
+        if isinstance(author, dict):
+            return str(author.get("name") or author.get("login") or "").strip()
+        nested = commit.get("commit") if isinstance(commit.get("commit"), dict) else {}
+        nested_author = nested.get("author") if isinstance(nested.get("author"), dict) else {}
+        return str(nested_author.get("name") or "").strip()
+
+    @staticmethod
+    def _collaboration_repo_paths(repo_structure: Optional[Dict[str, Any]]) -> Set[str]:
+        paths: Set[str] = set()
+
+        def visit(value: Any) -> None:
+            if isinstance(value, str):
+                if "/" in value or "." in value:
+                    paths.add(value)
+            elif isinstance(value, list):
+                for item in value:
+                    visit(item)
+            elif isinstance(value, dict):
+                for key, item in value.items():
+                    if key in {"path", "name", "file", "filename"} and isinstance(item, str):
+                        paths.add(item)
+                    visit(item)
+
+        visit(repo_structure or {})
+        return paths
+
+    @staticmethod
+    def _signal_score(count: int, full_at: int) -> int:
+        if count <= 0:
+            return 0
+        return min(100, int(round((count / max(full_at, 1)) * 100)))
+
+    @staticmethod
+    def _signal_entry(label: str, score: int, evidence: List[str]) -> Dict[str, Any]:
+        return {"label": label, "score": int(max(0, min(100, score))), "evidence": evidence[:4]}
+
+    @staticmethod
+    def _external_collaboration_signal_label(source: str) -> str:
+        return {
+            "pr_discussions": "PR discussions",
+            "review_comments": "review comments",
+            "issue_triage": "issue triage",
+            "approvals": "approvals",
+            "maintainer_decisions": "maintainer decisions",
+        }.get(source, source.replace("_", " "))
+
+    def _external_collaboration_signals(self) -> Tuple[List[Dict[str, Any]], int]:
+        evidence = self.external_collaboration_evidence if isinstance(self.external_collaboration_evidence, dict) else {}
+        requested = evidence.get("requested_sources")
+        requested_sources = {str(item) for item in requested} if isinstance(requested, list) else set()
+        items = evidence.get("items") if isinstance(evidence.get("items"), list) else []
+        grouped: Dict[str, List[str]] = {}
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            source = str(item.get("source") or "").strip()
+            if not source or source == "commit_diffs":
+                continue
+            if requested_sources and source not in requested_sources:
+                continue
+            label = str(item.get("label") or source).strip()
+            detail = str(item.get("detail") or "").strip()
+            repo = str(item.get("repo") or "").strip()
+            prefix = f"{repo}: " if repo else ""
+            text = f"{prefix}{label}"
+            if detail:
+                text = f"{text} - {detail}"
+            grouped.setdefault(source, []).append(text)
+
+        signals = [
+            self._signal_entry(
+                self._external_collaboration_signal_label(source),
+                self._signal_score(len(values), 2 if source != "approvals" else 1),
+                values,
+            )
+            for source, values in grouped.items()
+        ]
+        return signals, sum(len(values) for values in grouped.values())
+
+    def _build_collaboration_evidence(
+        self,
+        commits: List[Dict[str, Any]],
+        repo_structure: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        changed_paths: List[str] = []
+        authors: Set[str] = set()
+        reviewable: List[str] = []
+        handoff: List[str] = []
+        team_hygiene: List[str] = []
+        shared_surface: List[str] = []
+        negatives: List[str] = []
+        requested = self.external_collaboration_evidence.get("requested_sources") if isinstance(self.external_collaboration_evidence, dict) else None
+        include_commit_diffs = not isinstance(requested, list) or "commit_diffs" in requested
+
+        repo_paths = self._collaboration_repo_paths(repo_structure)
+        repo_hygiene_paths = [
+            path for path in repo_paths
+            if re.search(
+                r"(^|/)(CONTRIBUTING|CODEOWNERS|SECURITY|CHANGELOG|LICENSE|README)(\.|$)"
+                r"|(^|/)\.github/(workflows|ISSUE_TEMPLATE|PULL_REQUEST_TEMPLATE)",
+                path,
+                re.IGNORECASE,
+            )
+        ]
+
+        if include_commit_diffs:
+            for commit in commits:
+                sha = self._commit_sha(commit)[:8] or "unknown"
+                message = self._commit_message(commit)
+                message_lc = message.lower()
+                author = self._commit_author_name(commit)
+                if author:
+                    authors.add(author.lower())
+
+                files = self._commit_files(commit, limit=100)
+                changed_paths.extend(files)
+                evidence_prefix = f"{sha}: {message[:90] or '(no commit message)'}"
+
+                if re.search(
+                    r"^(feat|fix|docs|test|refactor|perf|ci|chore|build)(\(.+\))?:"
+                    r"|#\d+\b|pull request|review|reviewed-by|co-authored-by|breaking|migration|trade-?off",
+                    message,
+                    re.IGNORECASE,
+                ):
+                    reviewable.append(evidence_prefix)
+
+                if any(
+                    re.search(
+                        r"(^|/)(docs?|README|CHANGELOG|CONTRIBUTING|examples?|adr)(/|\.|$)",
+                        path,
+                        re.IGNORECASE,
+                    )
+                    for path in files
+                ) or re.search(r"\b(doc|docs|readme|changelog|migration|adr|example|guide|handoff)\b", message_lc):
+                    handoff.append(evidence_prefix)
+
+                if any(
+                    re.search(
+                        r"(^|/)(\.github/workflows|CONTRIBUTING|CODEOWNERS|SECURITY|PULL_REQUEST_TEMPLATE|ISSUE_TEMPLATE)"
+                        r"|(^|/)(package-lock|pnpm-lock|uv\.lock|poetry\.lock|Makefile|Dockerfile)(\.|$)"
+                        r"|(^|/)(pyproject\.toml|package\.json|eslint|prettier|ruff|mypy|pytest|tox)",
+                        path,
+                        re.IGNORECASE,
+                    )
+                    for path in files
+                ) or re.search(r"\b(ci|lint|format|contributing|security|workflow|template|lockfile)\b", message_lc):
+                    team_hygiene.append(evidence_prefix)
+
+                if any(
+                    re.search(
+                        r"(^|/)(api|schema|schemas|routes|services|config|migrations?|packages?|shared|core|backend|frontend)"
+                        r"(/|\.|$)|(^|/)(pyproject\.toml|package\.json|docker-compose\.yml|openapi|proto)",
+                        path,
+                        re.IGNORECASE,
+                    )
+                    for path in files
+                ):
+                    shared_surface.append(evidence_prefix)
+
+                stats = commit.get("stats", {}) if isinstance(commit.get("stats"), dict) else {}
+                total_change = int(stats.get("total", 0) or 0)
+                if len(files) >= 15 or total_change >= 1200 or re.search(r"\b(wip|tmp|temporary|quick fix|misc)\b", message_lc):
+                    negatives.append(evidence_prefix)
+
+        changed_unique = set(changed_paths)
+        author_count = len(authors)
+        if author_count > 1:
+            shared_surface.append(f"{author_count} authors visible in analyzed commits")
+
+        signals = [
+            self._signal_entry(
+                "shared surfaces",
+                max(self._signal_score(len(shared_surface), 3), 35 if author_count > 1 else 0),
+                shared_surface,
+            ),
+            self._signal_entry(
+                "reviewable commits",
+                self._signal_score(len(reviewable), max(2, math.ceil(len(commits) * 0.5))),
+                reviewable,
+            ),
+            self._signal_entry(
+                "handoff artifacts",
+                self._signal_score(len(handoff), 2),
+                handoff,
+            ),
+            self._signal_entry(
+                "team hygiene",
+                max(self._signal_score(len(team_hygiene), 2), 25 if repo_hygiene_paths else 0),
+                team_hygiene or [f"repository contains {path}" for path in repo_hygiene_paths[:4]],
+            ),
+        ]
+        external_signals, external_item_count = self._external_collaboration_signals()
+        signals.extend(external_signals)
+
+        weighted_score = (
+            signals[0]["score"] * 0.25
+            + signals[1]["score"] * 0.25
+            + signals[2]["score"] * 0.25
+            + signals[3]["score"] * 0.15
+        )
+        if external_signals:
+            external_avg = sum(signal["score"] for signal in external_signals) / len(external_signals)
+            weighted_score = max(weighted_score, weighted_score * 0.4 + external_avg * 0.6)
+        penalty = min(25, len(negatives) * 8)
+        subscore = max(0, min(100, int(round(weighted_score - penalty))))
+
+        return {
+            "subscore": subscore,
+            "level": self._score_to_level(subscore),
+            "signals": signals,
+            "negative_signals": negatives[:4],
+            "summary": {
+                "authors_seen": author_count,
+                "commits_analyzed": len(commits),
+                "files_changed": len(changed_unique),
+                "external_items": external_item_count,
+            },
+        }
+
+    @staticmethod
+    def _format_collaboration_evidence_block(evidence: Optional[Dict[str, Any]], *, is_chinese: bool) -> str:
+        if not evidence:
+            return ""
+
+        subscore = int(evidence.get("subscore", 0) or 0)
+        level = evidence.get("level") or CommitEvaluatorModerate._score_to_level(subscore)
+        signals = evidence.get("signals") if isinstance(evidence.get("signals"), list) else []
+        negatives = evidence.get("negative_signals") if isinstance(evidence.get("negative_signals"), list) else []
+        summary = evidence.get("summary") if isinstance(evidence.get("summary"), dict) else {}
+
+        if is_chinese:
+            lines = [
+                "协作证据（mastery_professionalism 子分）:",
+                f"Subscore: {subscore}/100 ({level})",
+                (
+                    f"范围: {summary.get('commits_analyzed', 0)} 个提交，"
+                    f"{summary.get('files_changed', 0)} 个文件，"
+                    f"{summary.get('authors_seen', 0)} 个可见作者"
+                ),
+            ]
+        else:
+            lines = [
+                "COLLABORATION EVIDENCE (mastery_professionalism subscore):",
+                f"Subscore: {subscore}/100 ({level})",
+                (
+                    f"Scope: {summary.get('commits_analyzed', 0)} commits, "
+                    f"{summary.get('files_changed', 0)} files, "
+                    f"{summary.get('authors_seen', 0)} visible authors"
+                ),
+            ]
+
+        for signal in signals:
+            label = str(signal.get("label") or "signal")
+            score = int(signal.get("score", 0) or 0)
+            evidence_items = signal.get("evidence") if isinstance(signal.get("evidence"), list) else []
+            evidence_text = "; ".join(str(item) for item in evidence_items[:2]) if evidence_items else (
+                "no direct commit evidence" if not is_chinese else "暂无直接提交证据"
+            )
+            lines.append(f"- {label}: {score}/100; {evidence_text}")
+
+        if negatives:
+            negative_text = "; ".join(str(item) for item in negatives[:2])
+            lines.append(f"- negative signals: {negative_text}")
+        return "\n".join(lines)
 
     @staticmethod
     def _format_evidence_entry(entry: Dict[str, Any], *, is_chinese: bool) -> str:
@@ -575,6 +851,16 @@ class CommitEvaluatorModerate:
                 label = "检查器摘要" if is_chinese else "Checker Summary"
                 sections.append("")
                 sections.append(f"{label}：{checker_raw_analysis[:800]}")
+            if key == "mastery_professionalism" and self._latest_collaboration_evidence:
+                sections.append("")
+                label = "协作证据" if is_chinese else "Collaboration Evidence"
+                block = self._format_collaboration_evidence_block(
+                    self._latest_collaboration_evidence,
+                    is_chinese=is_chinese,
+                )
+                block_body = re.sub(r"^[^\n]+:\n?", "", block, count=1).strip()
+                sections.append(f"{label}:")
+                sections.append(block_body)
             sections.append("")
 
         sections.extend(self._build_conclusion(final_scores, all_reasonings, is_chinese=is_chinese))
@@ -1437,6 +1723,7 @@ class CommitEvaluatorModerate:
         # Extract checker raw analysis for final result
         checker_raw_analysis_parts: List[str] = []
         self._latest_dimension_evidence = self._build_dimension_evidence(commits, checker_results_summary)
+        self._latest_collaboration_evidence = self._build_collaboration_evidence(commits, repo_structure)
         
         # Build checker results part
         if checker_results_summary:
@@ -1469,6 +1756,13 @@ class CommitEvaluatorModerate:
             commits_parts.append("BACKGROUND REPOSITORY FILES (not scoring evidence; use only to understand files referenced by commit diffs/messages):")
             for p, content in file_contents.items():
                 commits_parts.append(f"\n--- FILE: {p} ---\n{content}")
+            commits_parts.append("")
+        collaboration_block = self._format_collaboration_evidence_block(
+            self._latest_collaboration_evidence,
+            is_chinese=self.language == "zh-CN",
+        )
+        if collaboration_block:
+            commits_parts.append(collaboration_block)
             commits_parts.append("")
         commits_parts.append("COMMITS:")
         commits_for_context = commits if commit_limit is None else commits[:commit_limit]
@@ -1579,6 +1873,7 @@ class CommitEvaluatorModerate:
         print(f"[Checker] [Plugin] Checker processing completed in {checker_elapsed:.3f}s, found {len(checker_results_summary)} results")
         
         self._latest_dimension_evidence = self._build_dimension_evidence(commits, checker_results_summary)
+        self._latest_collaboration_evidence = self._build_collaboration_evidence(commits, repo_structure)
 
         # Append checker results FIRST (before other content) to prevent truncation
         if checker_results_summary:
@@ -1606,6 +1901,13 @@ class CommitEvaluatorModerate:
             parts.append("BACKGROUND REPOSITORY FILES (not scoring evidence; use only to understand files referenced by commit diffs/messages):")
             for p, content in file_contents.items():
                 parts.append(f"\n--- FILE: {p} ---\n{content}")
+            parts.append("")
+        collaboration_block = self._format_collaboration_evidence_block(
+            self._latest_collaboration_evidence,
+            is_chinese=self.language == "zh-CN",
+        )
+        if collaboration_block:
+            parts.append(collaboration_block)
             parts.append("")
         
         parts.append("COMMITS:")
@@ -1903,8 +2205,8 @@ class CommitEvaluatorModerate:
         if is_chinese:
             base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的{part_label}数据，并对每个维度评分（0-100分）。'
             mode_note = (
-                "\n注意：这是多阶段评估的一部分。只有提交信息、提交差异（commit diffs）和代码检查器结果可以作为评分证据。"
-                "仓库快照文件和仓库结构只能作为背景帮助理解提交，不得单独用于评分或作为证据引用。"
+                "\n注意：这是多阶段评估的一部分。只有提交信息、提交差异（commit diffs）、代码检查器结果和系统生成的协作证据块可以作为评分证据。"
+                "原始仓库快照文件和原始仓库结构只能作为背景帮助理解提交；除非已被协作证据块汇总，否则不得单独用于评分或作为证据引用。"
             )
             chunked_instruction = ""
             if chunk_idx:
@@ -1916,8 +2218,8 @@ class CommitEvaluatorModerate:
             base_instruction = f'You are an expert engineering evaluator. Analyze {part_label} data from user "{username}" and score each dimension 0-100.'
             mode_note = (
                 "\nNOTE: This is part of a multi-stage evaluation. "
-                "Only commit messages, commit diffs, and checker results are scoring evidence. "
-                "Repository snapshot files and repo structure are background only. "
+                "Only commit messages, commit diffs, checker results, and the computed collaboration evidence block are scoring evidence. "
+                "Raw repository snapshot files and raw repo structure are background only unless summarized by the collaboration evidence block. "
                 "Do not cite repository snapshot files or repo structure as evidence unless the same path appears in a commit message or diff."
             )
             chunked_instruction = ""
@@ -2051,6 +2353,10 @@ class CommitEvaluatorModerate:
                     final_scores[dim] = 0
             else:
                 final_scores[dim] = 0
+        if self._latest_collaboration_evidence:
+            final_scores["mastery_professionalism_collaboration"] = int(
+                self._latest_collaboration_evidence.get("subscore", 0) or 0
+            )
         
         final_scores["reasoning"] = self._format_structured_reasoning(
             final_scores,
@@ -2083,7 +2389,12 @@ class CommitEvaluatorModerate:
 
                 content = self._complete_chat(m, prompt, label="生成整体评估")
                 print(f"[LLM] Response received ({len(content)} chars), parsing...")
-                return self._parse_llm_response_with_retry(content, prompt, m)
+                result = self._parse_llm_response_with_retry(content, prompt, m)
+                if self._latest_collaboration_evidence:
+                    result["mastery_professionalism_collaboration"] = int(
+                        self._latest_collaboration_evidence.get("subscore", 0) or 0
+                    )
+                return result
 
             except KeyError as e:
                 last_err = f"KeyError accessing response structure: {e}"
@@ -2120,8 +2431,8 @@ class CommitEvaluatorModerate:
         if is_chinese:
             base_instruction = f'你是一位专业的工程能力评估员。分析用户 "{username}" 的数据，并对每个维度评分（0-100分）。'
             mode_note = (
-                "\n注意：只有提交信息、提交差异（commit diffs）和代码检查器结果可以作为评分证据。"
-                "仓库快照文件和仓库结构只能作为背景帮助理解提交，不得单独用于评分或作为证据引用。"
+                "\n注意：只有提交信息、提交差异（commit diffs）、代码检查器结果和系统生成的协作证据块可以作为评分证据。"
+                "原始仓库快照文件和原始仓库结构只能作为背景帮助理解提交；除非已被协作证据块汇总，否则不得单独用于评分或作为证据引用。"
             )
             chunked_instruction = ""
             if chunk_idx:
@@ -2132,8 +2443,8 @@ class CommitEvaluatorModerate:
         else:
             base_instruction = f'You are an expert engineering evaluator. Analyze data from user "{username}" and score each dimension 0-100.'
             mode_note = (
-                "\nNOTE: Only commit messages, commit diffs, and checker results are scoring evidence. "
-                "Repository snapshot files and repo structure are background only. "
+                "\nNOTE: Only commit messages, commit diffs, checker results, and the computed collaboration evidence block are scoring evidence. "
+                "Raw repository snapshot files and raw repo structure are background only unless summarized by the collaboration evidence block. "
                 "Do not cite repository snapshot files or repo structure as evidence unless the same path appears in a commit message or diff."
             )
             chunked_instruction = ""
@@ -2367,6 +2678,16 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
         out: Dict[str, Any] = {}
         for k in self.dimensions.keys():
             out[k] = int(round((int(prev.get(k, 0)) + int(new.get(k, 0))) / 2))
+        if "mastery_professionalism_collaboration" in prev or "mastery_professionalism_collaboration" in new:
+            out["mastery_professionalism_collaboration"] = int(
+                round(
+                    (
+                        int(prev.get("mastery_professionalism_collaboration", 0) or 0)
+                        + int(new.get("mastery_professionalism_collaboration", 0) or 0)
+                    )
+                    / 2
+                )
+            )
         # Use the new reasoning which already consolidates previous + new evidence
         nr = str(new.get("reasoning", "")).strip()
         out["reasoning"] = nr if nr else str(prev.get("reasoning", "")).strip()

@@ -22,6 +22,10 @@ from evaluator.services.evaluation_service import (
     ensure_repo_evaluation_input_within_limit,
     get_or_create_evaluator,
 )
+from evaluator.services.collaboration_evidence import (
+    fetch_collaboration_evidence,
+    normalize_evidence_sources,
+)
 from evaluator.services.extraction_service import (
     extract_github_data,
     extract_gitee_data,
@@ -418,6 +422,7 @@ def analyze_group_repositories(
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
     full_repo: bool = True,
+    evidence_sources: Optional[List[str]] = None,
     expected_feature: Optional[str] = None,
     progress_callback: Optional[ProgressCallback] = None,
 ) -> Dict[str, Any]:
@@ -437,6 +442,7 @@ def analyze_group_repositories(
         }
 
     max_workers = max(1, int(max_fetch_workers or 1))
+    normalized_evidence_sources = normalize_evidence_sources(evidence_sources)
     repo_urls = []
     seen_urls = set()
     for item in repositories:
@@ -621,6 +627,13 @@ def analyze_group_repositories(
 
             sync_result, _ = _refresh_group_repo_snapshot_for_end_sha(repo_url, item, sync_result, data_dir)
             ensure_repo_evaluation_input_within_limit(commits=commits, data_dir=data_dir)
+            collaboration_evidence = fetch_collaboration_evidence(
+                platform=sync_result.get("platform") or parse_repo_url(repo_url)[0],
+                owner=sync_result.get("owner") or parse_repo_url(repo_url)[1],
+                repo=sync_result.get("repo") or parse_repo_url(repo_url)[2],
+                data_dir=data_dir,
+                evidence_sources=normalized_evidence_sources,
+            )
 
             evaluator_kwargs = {
                 "data_dir": str(data_dir),
@@ -630,15 +643,21 @@ def analyze_group_repositories(
                 "forced_checker_id": forced_checker_id,
                 "worktree_base": worktree_base,
                 "expected_feature": expected_feature,
+                "collaboration_evidence": collaboration_evidence,
                 "max_input_tokens": 1_000_000,
                 "progress_callback": progress_callback,
             }
-            accepted_kwargs = set(inspect.signature(scan_mod.create_commit_evaluator).parameters)
+            signature = inspect.signature(scan_mod.create_commit_evaluator)
+            accepts_var_kwargs = any(
+                parameter.kind == inspect.Parameter.VAR_KEYWORD
+                for parameter in signature.parameters.values()
+            )
+            accepted_kwargs = set(signature.parameters)
             evaluator = scan_mod.create_commit_evaluator(
                 **{
                     key: value
                     for key, value in evaluator_kwargs.items()
-                    if key in accepted_kwargs
+                    if accepts_var_kwargs or key in accepted_kwargs
                 }
             )
 
@@ -829,6 +848,7 @@ def create_checkpoint_evaluation(
     forced_checker_id: Optional[str] = None,
     worktree_base: str = "build",
     checkpoint_strategy: str = "period",
+    evidence_sources: Optional[List[str]] = None,
     expected_feature: Optional[str] = None,
     progress_callback: Optional[ProgressCallback] = None,
 ) -> TrajectoryCheckpoint:
@@ -891,18 +911,36 @@ def create_checkpoint_evaluation(
 
     # Load scan module and create evaluator
     meta, scan_mod, _ = load_scan_module(plugin_id)
+    collaboration_evidence = _fetch_combined_collaboration_evidence(
+        repo_urls=repos_analyzed,
+        evidence_sources=evidence_sources,
+    )
 
     # Create evaluator with previous checkpoint scores support
+    evaluator_kwargs = {
+        "data_dir": str(eval_data_dir),
+        "api_key": get_llm_api_key(),
+        "model": model,
+        "language": language,
+        "previous_checkpoint_scores": previous_scores,
+        "forced_checker_id": forced_checker_id,
+        "worktree_base": worktree_base,
+        "expected_feature": expected_feature,
+        "collaboration_evidence": collaboration_evidence,
+        "progress_callback": progress_callback,
+    }
+    signature = inspect.signature(scan_mod.create_commit_evaluator)
+    accepts_var_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
+    accepted_kwargs = set(signature.parameters)
     evaluator = scan_mod.create_commit_evaluator(
-        data_dir=str(eval_data_dir),
-        api_key=get_llm_api_key(),
-        model=model,
-        language=language,
-        previous_checkpoint_scores=previous_scores,
-        forced_checker_id=forced_checker_id,
-        worktree_base=worktree_base,
-        expected_feature=expected_feature,
-        progress_callback=progress_callback,
+        **{
+            key: value
+            for key, value in evaluator_kwargs.items()
+            if accepts_var_kwargs or key in accepted_kwargs
+        }
     )
 
     # Evaluate
@@ -1449,6 +1487,46 @@ def filter_commits_by_range(
     return filtered
 
 
+def _fetch_combined_collaboration_evidence(
+    *,
+    repo_urls: List[str],
+    evidence_sources: Optional[List[str]],
+) -> Dict[str, Any]:
+    sources = normalize_evidence_sources(evidence_sources)
+    combined: Dict[str, Any] = {
+        "requested_sources": sources,
+        "items": [],
+        "repos": [],
+        "warnings": [],
+    }
+
+    for repo_url in repo_urls:
+        try:
+            platform, owner, repo, data_dir = _repo_data_dir_from_url(repo_url)
+            evidence = fetch_collaboration_evidence(
+                platform=platform,
+                owner=owner,
+                repo=repo,
+                data_dir=data_dir,
+                evidence_sources=sources,
+            )
+            repo_key = f"{platform}/{owner}/{repo}"
+            combined["repos"].append({
+                "repo": repo_key,
+                "cache": evidence.get("cache"),
+            })
+            for item in evidence.get("items") or []:
+                if isinstance(item, dict):
+                    combined["items"].append({**item, "repo": repo_key})
+            warnings = evidence.get("warnings")
+            if isinstance(warnings, list):
+                combined["warnings"].extend(str(warning) for warning in warnings)
+        except Exception as exc:
+            combined["warnings"].append(f"{repo_url}: {exc}")
+
+    return combined
+
+
 def analyze_growth_trajectory(
     username: str,
     repo_urls: List[str],
@@ -1461,6 +1539,7 @@ def analyze_growth_trajectory(
     checkpoint_strategy: str = "period",
     start_sha: Optional[str] = None,
     end_sha: Optional[str] = None,
+    evidence_sources: Optional[List[str]] = None,
     expected_feature: Optional[str] = None,
     progress_callback: Optional[ProgressCallback] = None,
 ) -> TrajectoryResponse:
@@ -1691,6 +1770,7 @@ def analyze_growth_trajectory(
                 worktree_base=worktree_base,
                 forced_checker_id=forced_checker_id,
                 checkpoint_strategy=checkpoint_strategy,
+                evidence_sources=evidence_sources,
                 expected_feature=expected_feature,
                 progress_callback=progress_callback,
             )
