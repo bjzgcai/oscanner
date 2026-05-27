@@ -9,9 +9,10 @@ reproducible runs, and honest limits.
 
 Use one recognized public developer per language track, but avoid treating fame
 as the same thing as evaluation ground truth. Prefer non-fork repositories under
-the developer's personal account. Use organization-owned repositories only when
-there is no credible personal repository for the intended level, and document
-that exception in `exclusion_notes`.
+the developer's personal account when the evidence is comparable. Use
+organization-owned repositories when they provide stronger level evidence and
+the target developer's authorship or maintainership is attributable enough for
+the benchmark.
 
 For each selected developer, record:
 

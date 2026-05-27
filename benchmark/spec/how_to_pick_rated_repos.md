@@ -59,7 +59,7 @@ The intended benchmark shape is:
 
 - six language tracks;
 - one recognized public developer per language track;
-- five non-fork personal repositories, tags, SHAs, or commit windows per
+- five public non-fork repositories, tags, SHAs, or commit windows per
   developer;
 - L1-L5 ordering based mainly on chronology, with maturity and design complexity
   as tie-breakers;
@@ -67,9 +67,11 @@ The intended benchmark shape is:
 
 ## Selection Principles
 
-Prefer personal, non-fork repositories under the developer's own account. This
-keeps author attribution simpler and reduces the chance that organization-level
-work is being attributed to one person too strongly.
+Prefer personal, non-fork repositories under the developer's own account when
+the evidence is comparable. Organization repositories are allowed when they
+provide stronger evidence for the intended level, but the selection must record
+why the target developer's authorship or maintainership is attributable enough
+for the benchmark.
 
 Use chronology as the first ordering signal. Earlier work is usually a better
 candidate for lower levels, and later mature work is usually a better candidate
@@ -114,7 +116,8 @@ candidates. Human-reviewed evidence creates benchmark labels.
 ## Recommended Workflow
 
 1. Pick one recognized public developer for the language track.
-2. List candidate personal, non-fork repositories for that developer.
+2. List candidate public, non-fork repositories for that developer, including
+   organization repositories where attribution is clear.
 3. Remove repos that cannot be fetched publicly, cannot be attributed to the
    target author, require private credentials, or are unsafe to run.
 4. Order candidates chronologically.

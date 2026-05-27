@@ -8,7 +8,7 @@ The intended benchmark shape is:
 - 6 programming language tracks: Python, JavaScript/TypeScript, Go, Rust, Java,
   and C/C++.
 - 1 highly recognized public developer per language track.
-- 5 non-fork personal repositories, tags, or commit windows per developer,
+- 5 public non-fork repositories, tags, or commit windows per developer,
   mapped to L1 through L5 career stages where possible.
 - 30 benchmark entries total.
 
@@ -21,8 +21,9 @@ standalone repository such as `oscanner-benchmark` with minimal changes.
 
 ## What Belongs Here
 
-- Public repository URLs, preferring personal repositories over organization
-  repositories.
+- Public repository URLs; prefer personal repositories when evidence is
+  comparable, but allow organization repositories when attribution is clear and
+  the repo exposes stronger engineering evidence.
 - Pinned tags, branches, SHAs, or commit ranges.
 - Developer identity and author aliases.
 - L1-L5 stage labels and evidence for each label.
@@ -50,7 +51,8 @@ standalone repository such as `oscanner-benchmark` with minimal changes.
 ## First Workflow
 
 1. Choose one public developer per language.
-2. Fill the five L1-L5 entries for that developer with non-fork personal repos.
+2. Fill the five L1-L5 entries for that developer with public non-fork repos,
+   tags, SHAs, or commit windows.
 3. Use chronology as a main factor and maturity/design complexity as the
    tie-breaker.
 4. Pin each candidate to a tag or SHA before using it in locked benchmark runs.

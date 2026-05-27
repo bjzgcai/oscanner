@@ -100,8 +100,8 @@ entries:
       test_command_policy: auto_detect
       known_test_constraints:
         - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
-    fairness: &personal_candidate_fairness
-      selection_rule: Prefer a non-fork personal repo; use chronology as the main factor and maturity/design complexity as the tie-breaker.
+    fairness: &public_candidate_fairness
+      selection_rule: Prefer the strongest public non-fork repo or ref for the level; prefer personal repos when evidence is comparable, but allow organization repos when attribution is clear and the repo exposes stronger engineering signals.
       public_evidence_urls: []
       exclusion_notes: []
       review_status: unreviewed
@@ -127,7 +127,7 @@ entries:
       - Early form library with broader scope than a demo utility.
     evaluator: *python_evaluator
     repos_runner: *python_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: python-l3
     language: python
@@ -150,7 +150,7 @@ entries:
       - Flask extension that introduces integration and protocol concerns.
     evaluator: *python_evaluator
     repos_runner: *python_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: python-l4
     language: python
@@ -173,7 +173,7 @@ entries:
       - Personal static site generator with more complete product shape.
     evaluator: *python_evaluator
     repos_runner: *python_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: python-l5
     language: python
@@ -196,7 +196,7 @@ entries:
       - Larger personal Python application; best personal-repo substitute for mature framework work.
     evaluator: *python_evaluator
     repos_runner: *python_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: javascript-typescript-l1
     language: javascript-typescript
@@ -224,13 +224,14 @@ entries:
       expected_strengths: []
       expected_risks:
         - Early demo repositories may have limited tests and sparse commit history.
+        - Organization repositories include team work; target-author filtering and selection evidence must stay explicit.
     repos_runner: &js_runner
       feature_requirements_file: benchmark/feature_requirements/javascript-typescript.yaml
       feature_requirements_override: []
       test_command_policy: auto_detect
       known_test_constraints:
-        - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
-    fairness: *personal_candidate_fairness
+        - Pinned to reviewed SHAs on 2026-05-27; update SHAs only through benchmark review.
+    fairness: *public_candidate_fairness
 
   - id: javascript-typescript-l2
     language: javascript-typescript
@@ -253,7 +254,7 @@ entries:
       - Small proof-of-concept Node tool; between practice and reusable utility.
     evaluator: *js_evaluator
     repos_runner: *js_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: javascript-typescript-l3
     language: javascript-typescript
@@ -264,19 +265,26 @@ entries:
     author_aliases: [yyx990803, Evan You]
     repo:
       platform: github
-      owner: yyx990803
-      name: semi
-      url: https://github.com/yyx990803/semi
+      owner: vuejs
+      name: petite-vue
+      url: https://github.com/vuejs/petite-vue
       ref_type: sha
-      ref: c37db74cd888ab710b2ed3340bbc69c7e9a73d8d
+      ref: 9ff3b98b844033b935143c221176c81244aae32e
       start_sha: null
       end_sha: null
-      license: null
+      license: MIT
     selection_evidence:
-      - More complete developer tool with clearer product intent than early demos.
+      - Focused Vue subset with TypeScript, build/release scripts, package exports, and clearer reusable product boundaries than the early personal utilities.
     evaluator: *js_evaluator
     repos_runner: *js_runner
-    fairness: *personal_candidate_fairness
+    fairness:
+      selection_rule: Organization repo selected after removing the personal-repo-only constraint because it exposes stronger L3 AI-native rubric evidence than nearby personal utilities while preserving Evan You authorship attribution.
+      public_evidence_urls:
+        - https://github.com/vuejs/petite-vue
+        - https://github.com/vuejs/petite-vue/blob/9ff3b98b844033b935143c221176c81244aae32e/package.json
+      exclusion_notes:
+        - Earlier personal repos such as semi remain useful but provide weaker current evidence for TypeScript, package exports, and release workflow.
+      review_status: self_reviewed
 
   - id: javascript-typescript-l4
     language: javascript-typescript
@@ -287,19 +295,27 @@ entries:
     author_aliases: [yyx990803, Evan You]
     repo:
       platform: github
-      owner: yyx990803
-      name: vue-hooks
-      url: https://github.com/yyx990803/vue-hooks
+      owner: vuejs
+      name: core
+      url: https://github.com/vuejs/core
       ref_type: sha
-      ref: 09de396a89461513098cbe1c501567dba20ab3ac
+      ref: ac8b84912a7b42edfdcc5ab4b9465477af41d321
       start_sha: null
       end_sha: null
-      license: null
+      license: MIT
     selection_evidence:
-      - Vue ecosystem experiment that reflects framework-level design thinking.
+      - Vue core framework monorepo exposes architecture, TypeScript discipline, CI/test gates, release automation, ecosystem compatibility work, and maintainer collaboration.
     evaluator: *js_evaluator
     repos_runner: *js_runner
-    fairness: *personal_candidate_fairness
+    fairness:
+      selection_rule: Organization repo selected after removing the personal-repo-only constraint because Vue core exposes framework-level architecture, quality gates, and ecosystem maintenance evidence.
+      public_evidence_urls:
+        - https://github.com/vuejs/core
+        - https://github.com/vuejs/core/blob/ac8b84912a7b42edfdcc5ab4b9465477af41d321/package.json
+        - https://github.com/vuejs/core/tree/ac8b84912a7b42edfdcc5ab4b9465477af41d321/.github/workflows
+      exclusion_notes:
+        - Organization history includes team contributions, so evaluator runs must keep target_author set to yyx990803 with Evan You aliases.
+      review_status: self_reviewed
 
   - id: javascript-typescript-l5
     language: javascript-typescript
@@ -310,19 +326,27 @@ entries:
     author_aliases: [yyx990803, Evan You]
     repo:
       platform: github
-      owner: yyx990803
-      name: launch-editor
-      url: https://github.com/yyx990803/launch-editor
+      owner: vitejs
+      name: vite
+      url: https://github.com/vitejs/vite
       ref_type: sha
-      ref: c63b5b13bee21a1f1209bc29d487f07cebfb5391
+      ref: b089c2bab9a92543678e07af6997435542d738c5
       start_sha: null
       end_sha: null
-      license: null
+      license: MIT
     selection_evidence:
-      - Mature personal tooling repo used across the Vue developer experience ecosystem.
+      - Vite is an ecosystem-shaping TypeScript tooling monorepo with extensive tests, CI, release workflows, issue/PR automation, and broad frontend impact.
     evaluator: *js_evaluator
     repos_runner: *js_runner
-    fairness: *personal_candidate_fairness
+    fairness:
+      selection_rule: Organization repo selected after removing the personal-repo-only constraint because Vite best represents L5 ecosystem-level tooling impact and mature automation evidence for Evan You.
+      public_evidence_urls:
+        - https://github.com/vitejs/vite
+        - https://github.com/vitejs/vite/blob/b089c2bab9a92543678e07af6997435542d738c5/package.json
+        - https://github.com/vitejs/vite/tree/b089c2bab9a92543678e07af6997435542d738c5/.github/workflows
+      exclusion_notes:
+        - Organization history includes team contributions, so evaluator runs must keep target_author set to yyx990803 with Evan You aliases.
+      review_status: self_reviewed
 
   - id: go-l1
     language: go
@@ -356,7 +380,7 @@ entries:
       test_command_policy: auto_detect
       known_test_constraints:
         - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: go-l2
     language: go
@@ -379,7 +403,7 @@ entries:
       - Early personal Go client library with more reusable-package shape.
     evaluator: *go_evaluator
     repos_runner: *go_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: go-l3
     language: go
@@ -402,7 +426,7 @@ entries:
       - Widely used Go memcached client; stronger library design and compatibility surface.
     evaluator: *go_evaluator
     repos_runner: *go_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: go-l4
     language: go
@@ -425,7 +449,7 @@ entries:
       - Developer tooling with ecosystem impact and more mature workflow integration.
     evaluator: *go_evaluator
     repos_runner: *go_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: go-l5
     language: go
@@ -448,7 +472,7 @@ entries:
       - Personal HTTP/2 implementation work; strongest personal-repo proxy for advanced systems design.
     evaluator: *go_evaluator
     repos_runner: *go_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: rust-l1
     language: rust
@@ -482,7 +506,7 @@ entries:
       test_command_policy: auto_detect
       known_test_constraints:
         - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: rust-l2
     language: rust
@@ -505,7 +529,7 @@ entries:
       - Practical parser/library crate with broader API concerns.
     evaluator: *rust_evaluator
     repos_runner: *rust_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: rust-l3
     language: rust
@@ -528,7 +552,7 @@ entries:
       - Algorithmic crate with performance-sensitive internals and reusable API surface.
     evaluator: *rust_evaluator
     repos_runner: *rust_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: rust-l4
     language: rust
@@ -551,7 +575,7 @@ entries:
       - Advanced regex engine internals in a personal repository, replacing the org-owned regex repo.
     evaluator: *rust_evaluator
     repos_runner: *rust_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: rust-l5
     language: rust
@@ -574,7 +598,7 @@ entries:
       - Mature flagship Rust application combining search algorithms, UX, performance, and portability.
     evaluator: *rust_evaluator
     repos_runner: *rust_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: java-l1
     language: java
@@ -608,7 +632,7 @@ entries:
       test_command_policy: auto_detect
       known_test_constraints:
         - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: java-l2
     language: java
@@ -631,7 +655,7 @@ entries:
       - Reusable personal Java library with larger API and compatibility concerns.
     evaluator: *java_evaluator
     repos_runner: *java_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: java-l3
     language: java
@@ -654,7 +678,7 @@ entries:
       - Performance-oriented Java library with more specialized implementation tradeoffs.
     evaluator: *java_evaluator
     repos_runner: *java_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: java-l4
     language: java
@@ -677,7 +701,7 @@ entries:
       - Larger storage-oriented personal Java project with system design concerns.
     evaluator: *java_evaluator
     repos_runner: *java_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: java-l5
     language: java
@@ -700,7 +724,7 @@ entries:
       - Distributed-systems building blocks; strongest personal-repo proxy for advanced Java design.
     evaluator: *java_evaluator
     repos_runner: *java_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: cpp-l1
     language: cpp
@@ -734,7 +758,7 @@ entries:
       test_command_policy: auto_detect
       known_test_constraints:
         - Pinned to default-branch HEAD on 2026-05-25; update the SHA only through benchmark review.
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: cpp-l2
     language: cpp
@@ -757,7 +781,7 @@ entries:
       - Small but polished readline alternative with reusable API design.
     evaluator: *cpp_evaluator
     repos_runner: *cpp_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: cpp-l3
     language: cpp
@@ -780,7 +804,7 @@ entries:
       - C data-structure library extracted from mature systems work.
     evaluator: *cpp_evaluator
     repos_runner: *cpp_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: cpp-l4
     language: cpp
@@ -803,7 +827,7 @@ entries:
       - Mature networking tool with broader systems and protocol concerns.
     evaluator: *cpp_evaluator
     repos_runner: *cpp_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
 
   - id: cpp-l5
     language: cpp
@@ -826,4 +850,4 @@ entries:
       - Distributed message broker; strongest personal-repo substitute for Redis-level advanced design.
     evaluator: *cpp_evaluator
     repos_runner: *cpp_runner
-    fairness: *personal_candidate_fairness
+    fairness: *public_candidate_fairness
