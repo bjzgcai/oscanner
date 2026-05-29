@@ -104,6 +104,12 @@ ssh ubuntu@10.1.132.63 "
   echo ''
   echo '=== Recent Webapp Log (last 20 lines) ==='
   tail -n 20 ${RPATH}/frontend/webapp.log 2>/dev/null || echo 'No webapp log found'
+  echo ''
+  echo '=== Webapp HTTP Status ==='
+  curl -I http://127.0.0.1:3000/ 2>/dev/null || true
+  if test -d ${RPATH}/frontend/webapp/out/oscanner; then
+    curl -I http://127.0.0.1:3000/oscanner/ 2>/dev/null || true
+  fi
 "
 ```
 
@@ -179,6 +185,8 @@ ssh ubuntu@10.1.132.63 "
 
 Set `REBUILD_FLAG` to `--rebuild` only when the user passed `--rebuild`.
 
+When frontend route or static-export path handling changed, prefer `deploy-inner-oscanner --rebuild` so `frontend/webapp/out` is regenerated. If a subpath route exists, the static export should include `frontend/webapp/out/oscanner/index.html`.
+
 ## Step 8: Verify Services
 
 Wait about 5 seconds, then check:
@@ -198,6 +206,12 @@ ssh ubuntu@10.1.132.63 "
   echo ''
   echo '=== Last 10 lines of repos_runner.log ==='
   tail -n 10 ${RPATH}/repos_runner.log 2>/dev/null || echo 'No log yet'
+  echo ''
+  echo '=== Webapp HTTP Check ==='
+  curl -I http://127.0.0.1:3000/ 2>/dev/null || true
+  if test -d ${RPATH}/frontend/webapp/out/oscanner; then
+    curl -I http://127.0.0.1:3000/oscanner/ 2>/dev/null || true
+  fi
 "
 ```
 
@@ -242,3 +256,4 @@ Useful commands:
 - Node.js v18 or newer must be installed on the remote server.
 - Logs are at `${RPATH}/evaluator.log`, `${RPATH}/repos_runner.log`, and `${RPATH}/frontend/webapp.log`.
 - Pushing to Gitee creates an `auto***` branch; deploy from that branch rather than `origin/main`.
+- For frontend subpath pages, verify the static export under `${RPATH}/frontend/webapp/out/oscanner` and the served route `http://10.1.132.63:3000/oscanner/` after rebuild.

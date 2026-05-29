@@ -1,7 +1,0 @@
-interface:
-  display_name: "Deploy"
-  short_description: "Deploy or inspect production services"
-  default_prompt: "Use $deploy to deploy the evaluator, repos_runner, and webapp services."
-
-policy:
-  allow_implicit_invocation: true
