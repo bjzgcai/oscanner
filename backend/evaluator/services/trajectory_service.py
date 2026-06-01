@@ -955,9 +955,16 @@ def create_checkpoint_evaluation(
             "status": "running",
             "commit_count": len(commits),
         })
+    evaluator_username = ",".join(
+        dict.fromkeys(
+            identity.strip()
+            for identity in [username, *aliases_used]
+            if isinstance(identity, str) and identity.strip()
+        )
+    ) or username
     evaluation_result = evaluator.evaluate_engineer(
         commits=sorted_commits,
-        username=username,
+        username=evaluator_username,
         max_commits=len(commits),
         load_files=True,
     )
@@ -977,6 +984,7 @@ def create_checkpoint_evaluation(
         raise TypeError(f"Expected dict from evaluate_engineer, got {type(evaluation_result)}")
 
     # Add required metadata fields
+    evaluation_result['username'] = username
     evaluation_result['evaluated_at'] = datetime.utcnow().isoformat()
     evaluation_result['plugin'] = plugin_id
     if expected_feature:

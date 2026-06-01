@@ -34,6 +34,47 @@ def _load_rubric_summary() -> str:
 _RUBRIC_SUMMARY = _load_rubric_summary()
 
 
+def _commit_identity_values(identity: Any) -> List[str]:
+    if isinstance(identity, str):
+        return [identity]
+    if not isinstance(identity, dict):
+        return []
+    return [
+        str(identity.get(key)).strip()
+        for key in ("login", "name", "email")
+        if str(identity.get(key) or "").strip()
+    ]
+
+
+def _commit_email_values(identity: Any) -> List[str]:
+    if isinstance(identity, str):
+        return [identity] if "@" in identity else []
+    if not isinstance(identity, dict):
+        return []
+    email = str(identity.get("email") or "").strip()
+    return [email] if email else []
+
+
+def _commit_emails(commit: Dict[str, Any]) -> List[str]:
+    emails: List[str] = []
+    seen: Set[str] = set()
+    for identity in (commit.get("author"), commit.get("committer")):
+        for email in _commit_email_values(identity):
+            key = email.lower()
+            if key not in seen:
+                seen.add(key)
+                emails.append(email)
+    nested = commit.get("commit", {})
+    if isinstance(nested, dict):
+        for identity in (nested.get("author"), nested.get("committer")):
+            for email in _commit_email_values(identity):
+                key = email.lower()
+                if key not in seen:
+                    seen.add(key)
+                    emails.append(email)
+    return emails
+
+
 ProgressCallback = Callable[[str, Dict[str, Any]], None]
 CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 
@@ -1145,14 +1186,28 @@ class CommitEvaluatorModerate:
         return result
 
     def _is_commit_by_author(self, commit: Dict[str, Any], username: str) -> bool:
-        # Handle comma-separated usernames as multiple aliases
-        aliases = [alias.strip().lower() for alias in username.split(',')]
+        aliases = [alias.strip().lower() for alias in username.split(',') if alias.strip()]
+        if not aliases:
+            return False
 
-        if "author" in commit and isinstance(commit["author"], str):
-            return commit["author"].lower() in aliases
-        if "commit" in commit:
-            author = commit.get("commit", {}).get("author", {}).get("name", "")
-            return bool(author) and author.lower() in aliases
+        email_aliases = {alias for alias in aliases if "@" in alias}
+        if email_aliases and any(email.lower() in email_aliases for email in _commit_emails(commit)):
+            return True
+
+        name_aliases = set(aliases) - email_aliases
+        if not name_aliases:
+            return False
+
+        candidates: List[str] = []
+        candidates.extend(_commit_identity_values(commit.get("author")))
+        candidates.extend(_commit_identity_values(commit.get("committer")))
+        nested = commit.get("commit", {})
+        if isinstance(nested, dict):
+            candidates.extend(_commit_identity_values(nested.get("author")))
+            candidates.extend(_commit_identity_values(nested.get("committer")))
+
+        if any(candidate.lower().strip() in name_aliases for candidate in candidates):
+            return True
         return False
 
     def _evaluate_engineer_standard(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:

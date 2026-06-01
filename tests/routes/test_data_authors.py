@@ -160,6 +160,25 @@ def test_fetch_github_contributors_authors_groups_graphql_commit_authors(monkeyp
     }
 
 
+def test_github_author_discovery_groups_same_email_across_names():
+    authors = data._normalize_github_commit_author_nodes([
+        {"author": {"name": "Laptop User", "email": "student@example.com", "user": None}},
+        {"author": {"name": "Student", "email": "student@example.com", "user": None}},
+    ])
+
+    assert authors == [
+        {
+            "author": "Laptop User",
+            "email": "student@example.com",
+            "commits": 2,
+            "aliases": ["Laptop User", "Student"],
+            "provider_login": "",
+            "avatar_url": "",
+            "html_url": "",
+        }
+    ]
+
+
 def test_fetch_github_contributors_authors_paginates_graphql_history(monkeypatch):
     """GitHub GraphQL history pagination should be aggregated across pages."""
     first_response = Mock()

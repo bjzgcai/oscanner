@@ -47,9 +47,11 @@ def test_create_checkpoint_evaluation_passes_expected_feature_to_plugin():
     from evaluator.services.trajectory_service import create_checkpoint_evaluation
 
     captured_kwargs = {}
+    captured_evaluation_kwargs = {}
 
     class FakeEvaluator:
         def evaluate_engineer(self, **_kwargs):
+            captured_evaluation_kwargs.update(_kwargs)
             return {
                 "username": "alice",
                 "total_commits_analyzed": 1,
@@ -98,12 +100,14 @@ def test_create_checkpoint_evaluation_passes_expected_feature_to_plugin():
             model="test-model",
             language="zh-CN",
             repos_analyzed=["https://github.com/example/repo"],
-            aliases_used=["alice"],
+            aliases_used=["alice", "alice@example.com"],
             expected_feature="实现用户登录功能",
             checkpoint_strategy="none",
         )
 
     assert captured_kwargs["expected_feature"] == "实现用户登录功能"
+    assert captured_evaluation_kwargs["username"] == "alice,alice@example.com"
+    assert checkpoint.evaluation.username == "alice"
     assert checkpoint.evaluation.expected_feature == "实现用户登录功能"
 
 

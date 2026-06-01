@@ -17,6 +17,46 @@ def _identity_values(identity: Any) -> list[str]:
     return values
 
 
+def _identity_emails(identity: Any) -> list[str]:
+    if isinstance(identity, str):
+        return [identity] if "@" in identity else []
+    if not isinstance(identity, dict):
+        return []
+
+    email = identity.get("email")
+    if isinstance(email, str) and email.strip():
+        return [email]
+    return []
+
+
+def get_emails_from_commit(commit_data: Dict[str, Any]) -> list[str]:
+    """Extract all author/committer emails from supported commit shapes."""
+    emails = []
+    seen = set()
+
+    for identity in (commit_data.get("author"), commit_data.get("committer")):
+        for email in _identity_emails(identity):
+            key = email.lower().strip()
+            if key and key not in seen:
+                seen.add(key)
+                emails.append(email.strip())
+
+    nested = commit_data.get("commit", {})
+    if isinstance(nested, dict):
+        for identity in (nested.get("author"), nested.get("committer")):
+            for email in _identity_emails(identity):
+                key = email.lower().strip()
+                if key and key not in seen:
+                    seen.add(key)
+                    emails.append(email.strip())
+
+    return emails
+
+
+def is_email_identity(value: str) -> bool:
+    return "@" in value.strip()
+
+
 def get_author_from_commit(commit_data: Dict[str, Any]) -> Optional[str]:
     """
     Extract author name from commit data, supporting both formats:
@@ -52,11 +92,25 @@ def get_author_from_commit(commit_data: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def is_commit_by_author_email(commit: Dict[str, Any], email: str) -> bool:
+    normalized_email = email.lower().strip()
+    if not normalized_email:
+        return False
+    return any(candidate.lower().strip() == normalized_email for candidate in get_emails_from_commit(commit))
+
+
 def is_commit_by_author(commit: Dict[str, Any], username: str) -> bool:
-    """Check if commit is by the specified author"""
+    """Check if commit is by the specified author identity.
+
+    Email identities are matched against commit email fields only. Name/login
+    identities keep the legacy exact name/login matching for direct API callers.
+    """
     normalized_username = username.lower().strip()
     if not normalized_username:
         return False
+
+    if is_email_identity(normalized_username):
+        return is_commit_by_author_email(commit, normalized_username)
 
     candidates = []
 

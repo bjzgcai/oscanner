@@ -19,6 +19,22 @@ MAX_REPO_EVALUATION_INPUT_TOKENS = 10_000_000
 REPO_TOO_BIG_MESSAGE = "the repo is too big exceeding 10M tokens!"
 
 
+def _plugin_filter_identity(author: str, aliases: Optional[List[str]]) -> str:
+    identities = [*(aliases or []), author]
+    unique: List[str] = []
+    seen = set()
+    for identity in identities:
+        cleaned = str(identity or "").strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(cleaned)
+    return ",".join(unique) if unique else author
+
+
 def _estimate_text_tokens(text: str) -> int:
     return len(text or "")
 
@@ -197,7 +213,7 @@ def evaluate_author_incremental(
             print(f"[LLM] Starting evaluation (author={author}, commits={len(author_commits)})")
             evaluation = evaluator.evaluate_engineer(
                 commits=author_commits,
-                username=author,
+                username=_plugin_filter_identity(author, aliases),
                 max_commits=150,
                 load_files=True,
             )
@@ -209,6 +225,7 @@ def evaluate_author_incremental(
             elapsed = int(time.time() - started_at)
             print(f"[LLM] Evaluation finished in {elapsed}s (author={author})")
 
+        evaluation["username"] = author
         evaluation["last_commit_sha"] = author_commits[0].get("sha") or author_commits[0].get("hash")
         evaluation["total_commits_evaluated"] = len(author_commits) if len(author_commits) <= 150 else 150
         evaluation["new_commits_count"] = evaluation["total_commits_evaluated"]
@@ -272,7 +289,7 @@ def evaluate_author_incremental(
         print(f"[LLM] Starting incremental evaluation (author={author}, new_commits={len(new_commits)})")
         new_evaluation = evaluator.evaluate_engineer(
             commits=new_commits,
-            username=author,
+            username=_plugin_filter_identity(author, aliases),
             max_commits=len(new_commits),
             load_files=True,
         )

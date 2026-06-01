@@ -13,7 +13,7 @@ from evaluator.services import (
     fetch_gitee_commits,
 )
 from evaluator.services.extraction_service import get_requests_session
-from evaluator.utils import get_author_from_commit
+from evaluator.utils import get_author_from_commit, get_emails_from_commit
 
 router = APIRouter()
 
@@ -47,6 +47,72 @@ query($owner: String!, $name: String!, $cursor: String) {
   }
 }
 """
+
+
+def _author_identity_key(name: str, email: str) -> str:
+    email = str(email or "").strip().lower()
+    if email:
+        return f"email:{email}"
+    return f"name:{str(name or '').strip().lower()}"
+
+
+def _merge_author_group(
+    authors_map: Dict[str, Dict[str, Any]],
+    *,
+    name: str,
+    email: str,
+    commits: int = 1,
+    provider_login: str = "",
+    avatar_url: str = "",
+    html_url: str = "",
+) -> None:
+    name = str(name or "").strip()
+    email = str(email or "").strip()
+    if not name and not email:
+        return
+
+    key = _author_identity_key(name, email)
+    name_key = _author_identity_key(name, "")
+    if email and name and key not in authors_map and name_key in authors_map:
+        authors_map[key] = authors_map.pop(name_key)
+    elif not email and name:
+        for existing_key, existing in authors_map.items():
+            if existing_key.startswith("email:") and name in existing.get("aliases", []):
+                key = existing_key
+                break
+
+    if key not in authors_map:
+        authors_map[key] = {
+            "author": name or email,
+            "email": email,
+            "commits": 0,
+            "aliases": [],
+        }
+
+    group = authors_map[key]
+    if name and name not in group["aliases"]:
+        group["aliases"].append(name)
+    if name and (not group.get("author") or group.get("author") == group.get("email")):
+        group["author"] = name
+    if email and not group.get("email"):
+        group["email"] = email
+    if provider_login and not group.get("provider_login"):
+        group["provider_login"] = provider_login
+    if avatar_url and not group.get("avatar_url"):
+        group["avatar_url"] = avatar_url
+    if html_url and not group.get("html_url"):
+        group["html_url"] = html_url
+
+    group["commits"] += commits
+
+
+def _finalize_author_groups(authors_map: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+    results = []
+    for item in authors_map.values():
+        if len(item.get("aliases") or []) <= 1:
+            item.pop("aliases", None)
+        results.append(item)
+    return sorted(results, key=lambda x: x["commits"], reverse=True)
 
 
 def _extract_platform_data(platform: str, owner: str, repo: str) -> bool:
@@ -85,10 +151,6 @@ def _normalize_gitee_contributors(contributors: Any) -> List[Dict[str, Any]]:
             or nested_author.get("username")
             or ""
         )
-        author = str(author).strip()
-        if not author:
-            continue
-
         email = (
             item.get("email")
             or item.get("author_email")
@@ -101,16 +163,9 @@ def _normalize_gitee_contributors(contributors: Any) -> List[Dict[str, Any]]:
             or item.get("commit_count")
             or item.get("total")
         )
+        _merge_author_group(authors_map, name=str(author or ""), email=str(email or ""), commits=commits)
 
-        if author not in authors_map:
-            authors_map[author] = {"author": author, "email": str(email or ""), "commits": 0}
-        elif not authors_map[author].get("email") and email:
-            authors_map[author]["email"] = str(email)
-
-        authors_map[author]["commits"] += commits
-
-    return sorted(authors_map.values(), key=lambda x: x["commits"], reverse=True)
-
+    return _finalize_author_groups(authors_map)
 
 def _normalize_github_commit_author_nodes(nodes: Any) -> List[Dict[str, Any]]:
     if not isinstance(nodes, list):
@@ -127,36 +182,25 @@ def _normalize_github_commit_author_nodes(nodes: Any) -> List[Dict[str, Any]]:
 
         name = str(author_data.get("name") or "").strip()
         email = str(author_data.get("email") or "").strip()
-        if not name and not email:
-            continue
-
         user_data = author_data.get("user")
         if not isinstance(user_data, dict):
             user_data = {}
 
-        key = f"{name.lower()}\0{email.lower()}"
-        if key not in authors_map:
-            authors_map[key] = {
-                "author": name or email,
-                "email": email,
-                "commits": 0,
-                "provider_login": str(user_data.get("login") or ""),
-                "avatar_url": str(user_data.get("avatarUrl") or ""),
-                "html_url": str(user_data.get("url") or ""),
-            }
-        else:
-            author = authors_map[key]
-            if not author.get("provider_login") and user_data.get("login"):
-                author["provider_login"] = str(user_data.get("login"))
-            if not author.get("avatar_url") and user_data.get("avatarUrl"):
-                author["avatar_url"] = str(user_data.get("avatarUrl"))
-            if not author.get("html_url") and user_data.get("url"):
-                author["html_url"] = str(user_data.get("url"))
+        _merge_author_group(
+            authors_map,
+            name=name,
+            email=email,
+            commits=1,
+            provider_login=str(user_data.get("login") or ""),
+            avatar_url=str(user_data.get("avatarUrl") or ""),
+            html_url=str(user_data.get("url") or ""),
+        )
 
-        authors_map[key]["commits"] += 1
-
-    return sorted(authors_map.values(), key=lambda x: x["commits"], reverse=True)
-
+    for item in authors_map.values():
+        item.setdefault("provider_login", "")
+        item.setdefault("avatar_url", "")
+        item.setdefault("html_url", "")
+    return _finalize_author_groups(authors_map)
 
 def _fetch_github_contributors_authors(owner: str, repo: str) -> List[Dict[str, Any]]:
     """
@@ -274,38 +318,15 @@ def _load_authors_from_commit_files(commits_dir) -> List[Dict[str, Any]]:
         try:
             with open(commit_file, 'r', encoding='utf-8') as f:
                 commit_data = json.load(f)
-                author = get_author_from_commit(commit_data)
-
-                # Get email from commit data (GitHub/Gitee shapes differ)
-                email = ""
-                if "commit" in commit_data:
-                    email = commit_data.get("commit", {}).get("author", {}).get("email", "") or ""
-                if not email and isinstance(commit_data.get("author"), dict):
-                    email = commit_data.get("author", {}).get("email", "") or ""
-                if not email and isinstance(commit_data.get("committer"), dict):
-                    email = commit_data.get("committer", {}).get("email", "") or ""
-
-                if author:
-                    author = author.strip()
-                    if author not in authors_map:
-                        authors_map[author] = {
-                            "author": author,
-                            "email": email,
-                            "commits": 0
-                        }
-                    elif not authors_map[author].get("email") and email:
-                        authors_map[author]["email"] = email
-                    authors_map[author]["commits"] += 1
+                author = (get_author_from_commit(commit_data) or "").strip()
+                emails = get_emails_from_commit(commit_data)
+                email = emails[0] if emails else ""
+                _merge_author_group(authors_map, name=author, email=email, commits=1)
         except Exception as e:
             print(f"⚠ Error reading {commit_file}: {e}")
             continue
 
-    return sorted(
-        authors_map.values(),
-        key=lambda x: x["commits"],
-        reverse=True
-    )
-
+    return _finalize_author_groups(authors_map)
 
 def _authors_response(owner: str, repo: str, authors_list: List[Dict[str, Any]]) -> Dict[str, Any]:
     return {

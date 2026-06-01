@@ -21,7 +21,13 @@ from evaluator.services.collaboration_evidence import normalize_evidence_sources
 from evaluator.paths import get_platform_data_dir
 from evaluator.services.trajectory_service import ensure_repo_data_synced
 from evaluator.services.trajectory_poll_store import SQLiteTrajectoryPollStore
-from evaluator.utils import parse_repo_url, parse_repo_url_with_ref, load_commits_from_local, get_author_from_commit
+from evaluator.utils import (
+    parse_repo_url,
+    parse_repo_url_with_ref,
+    load_commits_from_local,
+    get_author_from_commit,
+    get_emails_from_commit,
+)
 
 router = APIRouter()
 EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME = {"吴衍标"}
@@ -254,8 +260,8 @@ def _get_oldest_commit(commits: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 def _infer_username_from_first_commit(repo_urls: List[str]) -> Optional[str]:
     """
-    Infer default username from the earliest ("first") commit author
-    across all provided repositories.
+    Infer default identity from the earliest ("first") commit.
+    Prefer commit email so subsequent matching is email-based.
     """
     inferred_username: Optional[str] = None
     inferred_commit_date: Optional[datetime] = None
@@ -283,7 +289,8 @@ def _infer_username_from_first_commit(repo_urls: List[str]) -> Optional[str]:
             continue
 
         oldest_commit = _get_oldest_commit(commits)
-        author = (get_author_from_commit(oldest_commit) or "").strip()
+        emails = get_emails_from_commit(oldest_commit)
+        author = (emails[0] if emails else (get_author_from_commit(oldest_commit) or "")).strip()
         if not author:
             continue
 
@@ -302,8 +309,8 @@ def _infer_username_from_first_commit(repo_urls: List[str]) -> Optional[str]:
 
 def _infer_gitee_authors_from_commits(repo_urls: List[str]) -> List[str]:
     """
-    Infer all author names from Gitee repositories in repo_urls.
-    Authors are returned in descending commit-count order.
+    Infer all author email identities from Gitee repositories in repo_urls.
+    Falls back to names only for commits that do not expose an email.
     """
     author_counts: Dict[str, int] = {}
     author_display_names: Dict[str, str] = {}
@@ -332,7 +339,8 @@ def _infer_gitee_authors_from_commits(repo_urls: List[str]) -> List[str]:
             continue
 
         for commit in commits:
-            author = (get_author_from_commit(commit) or "").strip()
+            emails = get_emails_from_commit(commit)
+            author = (emails[0] if emails else (get_author_from_commit(commit) or "")).strip()
             if not author:
                 continue
 
