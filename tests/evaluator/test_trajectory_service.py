@@ -346,6 +346,83 @@ class TestEnsureRepoDataSynced:
             assert mock_sync.call_args.kwargs["force_sync"] is True
             assert mock_new_commits.call_args.kwargs["last_synced_sha"] is None
 
+    def test_create_checkpoint_evaluation_adds_structured_evidence_links(self, temp_data_dir):
+        """One-off trajectory checkpoints should carry commit/file evidence links."""
+        from evaluator.services.trajectory_service import create_checkpoint_evaluation
+
+        commit_sha = "abc1234567890abcdef"
+        commits = [
+            {
+                "sha": commit_sha,
+                "commit": {
+                    "author": {"name": "Alice", "email": "alice@example.com", "date": "2026-01-01T00:00:00Z"},
+                    "message": "Add parser",
+                },
+                "files": [{"filename": "src/parser.py"}],
+            },
+        ]
+
+        mock_evaluator = Mock()
+        mock_evaluator.evaluate_engineer.return_value = {
+            "username": "Alice",
+            "total_commits_analyzed": 1,
+            "files_loaded": 0,
+            "mode": "moderate",
+            "scores": {
+                "spec_quality": 70,
+                "cloud_architecture": 40,
+                "ai_engineering": 50,
+                "mastery_professionalism": 60,
+                "reasoning": "Evidence based reasoning",
+            },
+            "commits_summary": {
+                "total_additions": 1,
+                "total_deletions": 0,
+                "files_changed": 1,
+                "languages": ["py"],
+            },
+        }
+        mock_scan_mod = Mock()
+        mock_scan_mod.create_commit_evaluator.return_value = mock_evaluator
+        mock_meta = Mock(version="0.1.0")
+
+        with patch("evaluator.services.trajectory_service.get_platform_data_dir") as mock_data_dir, \
+             patch("evaluator.services.trajectory_service.load_scan_module") as mock_load_scan, \
+             patch("evaluator.services.trajectory_service.get_llm_api_key") as mock_api_key, \
+             patch("evaluator.services.trajectory_service._fetch_combined_collaboration_evidence") as mock_collab:
+            mock_data_dir.return_value = temp_data_dir
+            mock_load_scan.return_value = (mock_meta, mock_scan_mod, "scan/path")
+            mock_api_key.return_value = "fake_key"
+            mock_collab.return_value = {}
+
+            checkpoint = create_checkpoint_evaluation(
+                commits=commits,
+                username="Alice",
+                checkpoint_id=1,
+                plugin_id="zgc_ai_native_2026",
+                model="test-model",
+                language="zh-CN",
+                repos_analyzed=["https://gitee.com/test_owner/test_repo"],
+                aliases_used=["Alice"],
+                checkpoint_strategy="none",
+            )
+
+        assert checkpoint.evaluation.evidence_links == [
+            {
+                "type": "commit",
+                "label": "abc12345",
+                "sha": commit_sha,
+                "url": f"https://gitee.com/test_owner/test_repo/commit/{commit_sha}",
+            },
+            {
+                "type": "file",
+                "label": "src/parser.py",
+                "path": "src/parser.py",
+                "commit_sha": commit_sha,
+                "url": f"https://gitee.com/test_owner/test_repo/blob/{commit_sha}/src/parser.py",
+            },
+        ]
+
     def test_one_off_route_has_no_cache_parameter(self):
         """The public one-off trajectory route should not expose cache strategy."""
         import inspect

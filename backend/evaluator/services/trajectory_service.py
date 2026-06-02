@@ -19,6 +19,7 @@ from evaluator.schemas import (
 )
 from evaluator.utils import load_commits_from_local, is_commit_by_author, parse_repo_url_with_ref
 from evaluator.services.evaluation_service import (
+    build_evidence_links,
     ensure_repo_evaluation_input_within_limit,
     get_or_create_evaluator,
 )
@@ -989,6 +990,14 @@ def create_checkpoint_evaluation(
     evaluation_result['plugin'] = plugin_id
     if expected_feature:
         evaluation_result['expected_feature'] = expected_feature
+    evidence_links = build_evidence_links(
+        sorted_commits,
+        platform=platform,
+        owner=owner,
+        repo=repo,
+    )
+    if evidence_links:
+        evaluation_result['evidence_links'] = evidence_links
 
     # Load plugin version
     try:

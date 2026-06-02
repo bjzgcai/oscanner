@@ -8,7 +8,7 @@ import asyncio
 from evaluator.paths import get_platform_data_dir
 from evaluator.plugin_registry import load_scan_module, PluginLoadError
 from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL, get_gitee_token
-from evaluator.utils import load_commits_from_local
+from evaluator.utils import is_commit_by_author, load_commits_from_local
 from evaluator.schemas import EvaluationResponseSchema
 from evaluator.services import (
     resolve_plugin_id,
@@ -17,6 +17,7 @@ from evaluator.services import (
     fetch_gitee_commits,
     merge_evaluations_logic,
     ensure_repo_evaluation_input_within_limit,
+    build_evidence_links,
 )
 
 router = APIRouter()
@@ -99,6 +100,9 @@ async def evaluate_author(
                     model=model,
                     api_key=api_key,
                     aliases=[alias],
+                    platform=platform,
+                    owner=owner,
+                    repo=repo,
                     evaluator_factory=_factory,
                 )
                 evaluation["plugin"] = plugin_id
@@ -155,6 +159,9 @@ async def evaluate_author(
             model=model,
             api_key=api_key,
             aliases=aliases,
+            platform=platform,
+            owner=owner,
+            repo=repo,
             evaluator_factory=_factory,
         )
         evaluation["plugin"] = plugin_id
@@ -240,6 +247,14 @@ async def evaluate_gitee_contributor(
         if not evaluation or "scores" not in evaluation:
             raise HTTPException(status_code=404, detail=f"Contributor '{contributor}' not found")
 
+        contributor_commits = [c for c in commits if is_commit_by_author(c, contributor)]
+        evidence_links = build_evidence_links(
+            contributor_commits[:limit],
+            platform=platform,
+            owner=owner,
+            repo=repo,
+        )
+
         return {
             "success": True,
             "evaluation": {
@@ -251,6 +266,7 @@ async def evaluate_gitee_contributor(
                 "commits_summary": evaluation.get("commits_summary", {}),
                 "plugin": plugin_id,
                 "plugin_version": meta.version,
+                "evidence_links": evidence_links,
             },
             "metadata": {"timestamp": datetime.now().isoformat()}
         }

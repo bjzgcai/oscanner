@@ -1,6 +1,6 @@
 """Evaluation API response schemas."""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -67,6 +67,10 @@ class EvaluationSchema(BaseModel):
 
     # Optional fields
     commit_ids: Optional[List[str]] = Field(None, description="List of commit IDs analyzed")
+    evidence_links: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Structured commit/file review links for evidence used by downstream UIs",
+    )
 
     class Config:
         extra = "allow"  # Allow additional plugin-specific fields

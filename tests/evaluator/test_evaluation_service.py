@@ -171,6 +171,140 @@ class TestEvaluateAuthorIncremental:
         assert result.get("scores", {}).get("ai_fullstack") == 5
         mock_evaluator.evaluate_engineer.assert_called_once()
 
+    def test_evaluate_author_incremental_adds_structured_evidence_links(self, temp_data_dir):
+        """Evaluations should include review links for commits and changed files."""
+        commit_sha = "abc1234567890abcdef"
+        commits = [
+            {
+                "sha": commit_sha,
+                "commit": {
+                    "author": {"name": "test_user", "email": "test@example.com"},
+                    "message": "Add parser",
+                },
+                "files": [
+                    {"filename": "src/parser.py", "additions": 12, "deletions": 1},
+                    {"filename": "docs/usage guide.md", "additions": 4, "deletions": 0},
+                ],
+            },
+        ]
+
+        mock_evaluator = Mock()
+        mock_evaluator.evaluate_engineer = Mock(return_value={
+            "scores": {"ai_fullstack": 5, "reasoning": "Test reasoning"},
+            "commits_summary": {
+                "total_additions": 16,
+                "total_deletions": 1,
+                "files_changed": 2,
+                "languages": ["Python"],
+            },
+        })
+
+        result = evaluate_author_incremental(
+            commits=commits,
+            author="test_user",
+            previous_evaluation=None,
+            data_dir=temp_data_dir,
+            model="test-model",
+            api_key="fake_key",
+            platform="github",
+            owner="test_owner",
+            repo="test_repo",
+            evaluator_factory=lambda: mock_evaluator,
+        )
+
+        assert result["evidence_links"] == [
+            {
+                "type": "commit",
+                "label": "abc12345",
+                "sha": commit_sha,
+                "url": f"https://github.com/test_owner/test_repo/commit/{commit_sha}",
+            },
+            {
+                "type": "file",
+                "label": "src/parser.py",
+                "path": "src/parser.py",
+                "commit_sha": commit_sha,
+                "url": f"https://github.com/test_owner/test_repo/blob/{commit_sha}/src/parser.py",
+            },
+            {
+                "type": "file",
+                "label": "docs/usage guide.md",
+                "path": "docs/usage guide.md",
+                "commit_sha": commit_sha,
+                "url": f"https://github.com/test_owner/test_repo/blob/{commit_sha}/docs/usage%20guide.md",
+            },
+        ]
+
+    def test_evaluate_author_incremental_merges_previous_evidence_links(self, temp_data_dir):
+        """Incremental evaluations should preserve old review links and append new ones."""
+        previous_evaluation = {
+            "last_commit_sha": "old123",
+            "total_commits_evaluated": 1,
+            "scores": {"ai_fullstack": 3, "reasoning": "Previous reasoning"},
+            "commits_summary": {
+                "total_additions": 1,
+                "total_deletions": 0,
+                "files_changed": 1,
+                "languages": ["Python"],
+            },
+            "evidence_links": [
+                {
+                    "type": "commit",
+                    "label": "old123",
+                    "sha": "old123",
+                    "url": "https://github.com/test_owner/test_repo/commit/old123",
+                },
+            ],
+        }
+        commits = [
+            {
+                "sha": "new456",
+                "commit": {
+                    "author": {"name": "test_user", "email": "test@example.com"},
+                    "message": "New commit",
+                },
+                "files": [{"filename": "src/new.py"}],
+            },
+            {
+                "sha": "old123",
+                "commit": {
+                    "author": {"name": "test_user", "email": "test@example.com"},
+                    "message": "Old commit",
+                },
+            },
+        ]
+
+        mock_evaluator = Mock()
+        mock_evaluator.evaluate_engineer = Mock(return_value={
+            "scores": {"ai_fullstack": 7, "reasoning": "New reasoning"},
+            "commits_summary": {
+                "total_additions": 2,
+                "total_deletions": 0,
+                "files_changed": 1,
+                "languages": ["Python"],
+            },
+        })
+
+        result = evaluate_author_incremental(
+            commits=commits,
+            author="test_user",
+            previous_evaluation=previous_evaluation,
+            data_dir=temp_data_dir,
+            model="test-model",
+            api_key="fake_key",
+            platform="github",
+            owner="test_owner",
+            repo="test_repo",
+            evaluator_factory=lambda: mock_evaluator,
+        )
+
+        urls = [link["url"] for link in result["evidence_links"]]
+        assert urls == [
+            "https://github.com/test_owner/test_repo/commit/old123",
+            "https://github.com/test_owner/test_repo/commit/new456",
+            "https://github.com/test_owner/test_repo/blob/new456/src/new.py",
+        ]
+
     def test_evaluate_author_incremental_with_previous(self, temp_data_dir):
         """Test incremental evaluation with previous evaluation."""
         old_commits = [

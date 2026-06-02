@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from urllib.parse import quote
 from fastapi import HTTPException
 
 from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL
@@ -17,6 +18,7 @@ from evaluator.services.extraction_service import get_repo_data_dir
 
 MAX_REPO_EVALUATION_INPUT_TOKENS = 10_000_000
 REPO_TOO_BIG_MESSAGE = "the repo is too big exceeding 10M tokens!"
+MAX_EVIDENCE_LINKS = 500
 
 
 def _plugin_filter_identity(author: str, aliases: Optional[List[str]]) -> str:
@@ -44,6 +46,97 @@ def _commit_message(commit: Dict[str, Any]) -> str:
     if raw is None and isinstance(commit.get("commit"), dict):
         raw = commit.get("commit", {}).get("message")
     return str(raw or "")
+
+
+def _commit_sha(commit: Dict[str, Any]) -> str:
+    return str(commit.get("sha") or commit.get("hash") or "").strip()
+
+
+def _commit_file_path(file_item: Any) -> str:
+    if isinstance(file_item, dict):
+        return str(file_item.get("filename") or file_item.get("path") or file_item.get("name") or "").strip()
+    return str(file_item or "").strip()
+
+
+def _review_base_url(platform: Optional[str], owner: Optional[str], repo: Optional[str]) -> Optional[str]:
+    platform_key = str(platform or "").strip().lower()
+    host = {"github": "github.com", "gitee": "gitee.com"}.get(platform_key)
+    owner_text = str(owner or "").strip().strip("/")
+    repo_text = str(repo or "").strip().strip("/")
+    if not host or not owner_text or not repo_text:
+        return None
+    return f"https://{host}/{quote(owner_text, safe='')}/{quote(repo_text, safe='')}"
+
+
+def _dedupe_evidence_links(links: List[Dict[str, Any]], *, max_links: int = MAX_EVIDENCE_LINKS) -> List[Dict[str, Any]]:
+    deduped: List[Dict[str, Any]] = []
+    seen = set()
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        key = (
+            str(link.get("type") or ""),
+            str(link.get("url") or ""),
+            str(link.get("sha") or ""),
+            str(link.get("commit_sha") or ""),
+            str(link.get("path") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(link)
+        if len(deduped) >= max_links:
+            break
+    return deduped
+
+
+def build_evidence_links(
+    commits: List[Dict[str, Any]],
+    *,
+    platform: Optional[str] = None,
+    owner: Optional[str] = None,
+    repo: Optional[str] = None,
+    max_links: int = MAX_EVIDENCE_LINKS,
+) -> List[Dict[str, Any]]:
+    """Build structured review links for evaluated commits and changed files."""
+    base_url = _review_base_url(platform, owner, repo)
+    if not base_url:
+        return []
+
+    links: List[Dict[str, Any]] = []
+    for commit in commits:
+        sha = _commit_sha(commit)
+        if not sha:
+            continue
+        links.append({
+            "type": "commit",
+            "label": sha[:8],
+            "sha": sha,
+            "url": f"{base_url}/commit/{quote(sha, safe='')}",
+        })
+
+        for file_item in commit.get("files") or []:
+            path = _commit_file_path(file_item).replace("\\", "/").strip("/")
+            if not path:
+                continue
+            links.append({
+                "type": "file",
+                "label": path,
+                "path": path,
+                "commit_sha": sha,
+                "url": f"{base_url}/blob/{quote(sha, safe='')}/{quote(path, safe='/')}",
+            })
+            if len(links) >= max_links:
+                return _dedupe_evidence_links(links, max_links=max_links)
+
+    return _dedupe_evidence_links(links, max_links=max_links)
+
+
+def _merge_evidence_links(
+    previous_links: Optional[List[Dict[str, Any]]],
+    new_links: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    return _dedupe_evidence_links([*(previous_links or []), *new_links])
 
 
 def _repo_snapshot_file_paths(data_dir: Path):
@@ -158,6 +251,9 @@ def evaluate_author_incremental(
     api_key: str,
     aliases: Optional[List[str]] = None,
     evaluator_factory=None,
+    platform: Optional[str] = None,
+    owner: Optional[str] = None,
+    repo: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Evaluate author incrementally with weighted merge
@@ -231,6 +327,14 @@ def evaluate_author_incremental(
         evaluation["new_commits_count"] = evaluation["total_commits_evaluated"]
         evaluation["evaluated_at"] = datetime.now().isoformat()
         evaluation["incremental"] = False
+        evidence_links = build_evidence_links(
+            author_commits[: evaluation["total_commits_evaluated"]],
+            platform=platform,
+            owner=owner,
+            repo=repo,
+        )
+        if evidence_links:
+            evaluation["evidence_links"] = evidence_links
 
         return evaluation
 
@@ -250,6 +354,9 @@ def evaluate_author_incremental(
             api_key=api_key,
             aliases=aliases,
             evaluator_factory=evaluator_factory,
+            platform=platform,
+            owner=owner,
+            repo=repo,
         )
 
     # Find new commits
@@ -359,7 +466,14 @@ def evaluate_author_incremental(
         "languages": list(set(prev_summary.get("languages", []) + new_summary.get("languages", [])))[:10]
     }
 
-    return {
+    new_evidence_links = build_evidence_links(
+        new_commits,
+        platform=platform,
+        owner=owner,
+        repo=repo,
+    )
+
+    result = {
         "username": author,
         "total_commits_evaluated": total_count,
         "new_commits_count": new_count,
@@ -373,6 +487,10 @@ def evaluate_author_incremental(
         "chunked": new_evaluation.get("chunked", False),
         "chunks_processed": new_evaluation.get("chunks_processed", 0)
     }
+    merged_evidence_links = _merge_evidence_links(previous_evaluation.get("evidence_links"), new_evidence_links)
+    if merged_evidence_links:
+        result["evidence_links"] = merged_evidence_links
+    return result
 
 
 def get_empty_evaluation(username: str) -> Dict[str, Any]:

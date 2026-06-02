@@ -132,6 +132,9 @@ async def evaluation_function_wrapper(repo_url: str, author: str, plugin_id: str
         model=model,
         api_key=api_key,
         aliases=None,
+        platform=platform,
+        owner=owner,
+        repo=repo,
         evaluator_factory=evaluator_factory,
     )
 
