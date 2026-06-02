@@ -15,12 +15,18 @@ import { parseRepoUrl, validateRepoUrl } from '@/utils/repoUrl.mjs';
 import { TrajectoryData, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
 import { LOCALES } from '../i18n';
 
+type AuthorRow = { author: string; email: string; commits: number };
+
+function getAuthorSelectionKey(record?: Partial<AuthorRow>) {
+  return String(record?.email || record?.author || '').trim();
+}
+
 export default function TrajectoryAnalysis() {
   const [loading, setLoading] = useState(false);
   const [trajectory, setTrajectory] = useState<TrajectoryData | null>(null);
   const [repoUrl, setRepoUrl] = useState('');
   const [isRepoUrlValid, setIsRepoUrlValid] = useState(false);
-  const [authors, setAuthors] = useState<Array<{ author: string; email: string; commits: number }>>([]);
+  const [authors, setAuthors] = useState<AuthorRow[]>([]);
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [fetchingAuthors, setFetchingAuthors] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -91,15 +97,13 @@ export default function TrajectoryAnalysis() {
         const data = await response.json();
         if (data.success && data.data.authors) {
           setAuthors(data.data.authors);
-          // Auto-select first author if available
-          if (data.data.authors.length > 0) {
-            setSelectedAuthors([data.data.authors[0].author]);
-          }
+          const firstAuthorKey = getAuthorSelectionKey(data.data.authors[0]);
+          setSelectedAuthors(firstAuthorKey ? [firstAuthorKey] : []);
         } else {
           setAuthors([]);
           setSelectedAuthors([]);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Failed to fetch authors:', error);
         message.error('Failed to fetch authors from repository');
         setAuthors([]);
@@ -304,9 +308,9 @@ export default function TrajectoryAnalysis() {
         message.error(errorMsg, 8); // Show for 8 seconds
         setTrajectory(null);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Trajectory] Analysis error:', error);
-      const rawErrorMsg = error?.message || error?.toString() || t('trajectory.analysis_failed');
+      const rawErrorMsg = error instanceof Error ? error.message : String(error || t('trajectory.analysis_failed'));
       const errorMsg = formatErrorMessage(rawErrorMsg);
       setErrorMessage(errorMsg);
       message.error(errorMsg, 8); // Show for 8 seconds
@@ -514,7 +518,7 @@ export default function TrajectoryAnalysis() {
                   <Table
                     size="small"
                     dataSource={authors}
-                    rowKey="author"
+                    rowKey={(record) => getAuthorSelectionKey(record)}
                     pagination={authors.length > 10 ? { pageSize: 10 } : false}
                     rowSelection={{
                       type: 'checkbox',
@@ -525,12 +529,14 @@ export default function TrajectoryAnalysis() {
                     }}
                     onRow={(record) => ({
                       onClick: () => {
-                        // Toggle selection
+                        const authorKey = getAuthorSelectionKey(record);
+                        if (!authorKey) return;
+
                         setSelectedAuthors(prev => {
-                          if (prev.includes(record.author)) {
-                            return prev.filter(a => a !== record.author);
+                          if (prev.includes(authorKey)) {
+                            return prev.filter(a => a !== authorKey);
                           } else {
-                            return [...prev, record.author];
+                            return [...prev, authorKey];
                           }
                         });
                       },
