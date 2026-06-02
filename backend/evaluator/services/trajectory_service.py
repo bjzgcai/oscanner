@@ -37,6 +37,7 @@ from evaluator.services.extraction_service import (
 from evaluator.plugin_registry import load_scan_module
 
 ProgressCallback = Callable[[str, Dict[str, Any]], None]
+ONE_OFF_MAX_COMMITS = 10000
 
 
 def parse_repo_url(repo_url: str) -> Tuple[str, str, str]:
@@ -67,6 +68,57 @@ def _repo_data_dir_from_url(repo_url: str) -> Tuple[str, str, str, Path]:
         else None
     )
     return platform, owner, repo, get_platform_data_dir(platform, owner, repo, ref=branch)
+
+
+def _commit_index_count(data_dir: Path) -> int:
+    commits_index_path = data_dir / "commits_index.json"
+    if not commits_index_path.exists():
+        return 0
+    try:
+        with open(commits_index_path, "r", encoding="utf-8") as f:
+            commits_index = json.load(f)
+        return len(commits_index) if isinstance(commits_index, list) else 0
+    except Exception as exc:
+        print(f"[Trajectory] Warning: Failed to read {commits_index_path}: {exc}")
+        return 0
+
+
+def _repo_hits_commit_cap(repo_urls: List[str], max_commits: int) -> bool:
+    if max_commits <= 0:
+        return False
+
+    for repo_url in repo_urls:
+        try:
+            _, _, _, data_dir = _repo_data_dir_from_url(repo_url)
+            if _commit_index_count(data_dir) >= max_commits:
+                return True
+        except Exception as exc:
+            print(f"[Trajectory] Warning: Failed to inspect commit cap for {repo_url}: {exc}")
+            continue
+    return False
+
+
+def _no_author_commits_message(
+    username: str,
+    aliases: List[str],
+    repo_urls: List[str],
+    max_commits: int,
+) -> str:
+    identities = [username, *aliases]
+    identity_label = (
+        "email"
+        if any(isinstance(identity, str) and "@" in identity.strip() for identity in identities)
+        else "author"
+    )
+
+    if _repo_hits_commit_cap(repo_urls, max_commits):
+        return (
+            f"No commits found for the specified {identity_label} since we only fetch "
+            f"{max_commits} commits at most, and this repo contains more than "
+            f"{max_commits} commits."
+        )
+
+    return f"No commits found for the specified {identity_label}."
 
 
 def ensure_repo_data_synced(
@@ -1613,7 +1665,7 @@ def analyze_growth_trajectory(
         try:
             platform, owner, repo, was_synced = ensure_repo_data_synced(
                 repo_url,
-                max_commits=500,
+                max_commits=ONE_OFF_MAX_COMMITS,
                 force_sync=True,
                 snapshot_sha=end_sha if checkpoint_strategy == "none" and end_sha else None,
             )
@@ -1694,7 +1746,12 @@ def analyze_growth_trajectory(
         if sync_errors:
             error_message = "Could not determine repository start date. " + "; ".join(sync_errors)
         else:
-            error_message = "Could not determine repository start date. No commits found for the specified author."
+            error_message = _no_author_commits_message(
+                username=username,
+                aliases=aliases,
+                repo_urls=repo_urls,
+                max_commits=ONE_OFF_MAX_COMMITS,
+            )
         return TrajectoryResponse(
             success=False,
             trajectory=trajectory,

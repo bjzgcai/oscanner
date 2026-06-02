@@ -322,7 +322,7 @@ class TestEnsureRepoDataSynced:
 
     def test_analyze_growth_trajectory_uses_fresh_repo_data_and_all_commits(self, temp_data_dir):
         """Trajectory analysis should force sync and evaluate without previous trajectory state."""
-        from evaluator.services.trajectory_service import analyze_growth_trajectory
+        from evaluator.services.trajectory_service import analyze_growth_trajectory, ONE_OFF_MAX_COMMITS
 
         with patch('evaluator.services.trajectory_service.ensure_repo_data_synced') as mock_sync, \
              patch('evaluator.services.trajectory_service.get_new_commits_from_repos') as mock_new_commits, \
@@ -344,7 +344,44 @@ class TestEnsureRepoDataSynced:
 
             assert response.success is True
             assert mock_sync.call_args.kwargs["force_sync"] is True
+            assert mock_sync.call_args.kwargs["max_commits"] == ONE_OFF_MAX_COMMITS
             assert mock_new_commits.call_args.kwargs["last_synced_sha"] is None
+
+    def test_analyze_growth_trajectory_warns_when_one_off_cap_hides_author_commits(self, temp_data_dir):
+        """When a capped one-off sync finds no author commits, explain the cap in the failure."""
+        from evaluator.services import trajectory_service
+        from evaluator.services.trajectory_service import analyze_growth_trajectory
+
+        repo_dir = temp_data_dir / "github" / "test_owner" / "test_repo"
+        repo_dir.mkdir(parents=True)
+        with open(repo_dir / "commits_index.json", "w", encoding="utf-8") as f:
+            json.dump([{"sha": f"commit-{idx}"} for idx in range(3)], f)
+
+        with patch.object(trajectory_service, "ONE_OFF_MAX_COMMITS", 3), \
+             patch('evaluator.services.trajectory_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.trajectory_service.ensure_repo_data_synced') as mock_sync, \
+             patch('evaluator.services.trajectory_service.get_new_commits_from_repos') as mock_new_commits, \
+             patch('evaluator.services.trajectory_service.get_repo_start_date') as mock_start_date:
+
+            mock_get_dir.return_value = repo_dir
+            mock_sync.return_value = ("github", "test_owner", "test_repo", True)
+            mock_new_commits.return_value = (0, [], ["https://github.com/test_owner/test_repo"])
+            mock_start_date.return_value = None
+
+            response = analyze_growth_trajectory(
+                username="vczh@163.com",
+                repo_urls=["https://github.com/test_owner/test_repo"],
+                aliases=["vczh@163.com"],
+                plugin_id="zgc_ai_native_2026",
+                model="deepseek/deepseek-v4-pro",
+                language="zh-CN",
+                checkpoint_strategy="none",
+            )
+
+            assert response.success is False
+            assert "No commits found for the specified email" in response.message
+            assert "we only fetch 3 commits at most" in response.message
+            assert "this repo contains more than 3 commits" in response.message
 
     def test_create_checkpoint_evaluation_adds_structured_evidence_links(self, temp_data_dir):
         """One-off trajectory checkpoints should carry commit/file evidence links."""
