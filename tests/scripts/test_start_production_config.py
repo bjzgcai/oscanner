@@ -83,3 +83,40 @@ def test_start_production_exposes_oscanner_home_from_env(tmp_path):
     )
 
     assert f"OSCANNER_HOME={oscanner_home}" in result.stdout
+
+
+def test_start_production_exposes_webapp_publish_dir(tmp_path):
+    project_root = Path(__file__).resolve().parents[2]
+    test_root = tmp_path / "oscanner"
+    scripts_dir = test_root / "scripts"
+    evaluator_dir = test_root / "backend" / "evaluator"
+    webapp_dir = test_root / "frontend" / "webapp"
+    publish_dir = tmp_path / "published-webapp"
+    scripts_dir.mkdir(parents=True)
+    evaluator_dir.mkdir(parents=True)
+    webapp_dir.mkdir(parents=True)
+    publish_dir.mkdir()
+
+    script_path = scripts_dir / "start_production.sh"
+    script_path.write_text(
+        (project_root / "scripts" / "start_production.sh").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    script_path.chmod(0o755)
+
+    (evaluator_dir / ".env.local").write_text("PORT=8000\n", encoding="utf-8")
+
+    env = os.environ.copy()
+    env["OSCANNER_START_PRODUCTION_PRINT_CONFIG"] = "1"
+    env["OSCANNER_WEBAPP_PUBLISH_DIR"] = str(publish_dir)
+    result = subprocess.run(
+        [str(script_path), "--daemon"],
+        check=True,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=10,
+    )
+
+    assert f"WEBAPP_PUBLISH_DIR={publish_dir}" in result.stdout

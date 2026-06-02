@@ -83,11 +83,19 @@ else
 fi
 export PORT=$WEBAPP_PORT
 
+WEBAPP_PUBLISH_DIR=${OSCANNER_WEBAPP_PUBLISH_DIR:-}
+if [ -z "$WEBAPP_PUBLISH_DIR" ] && [ -d "/data/www/oscanner" ] && [ -w "/data/www/oscanner" ]; then
+    WEBAPP_PUBLISH_DIR="/data/www/oscanner"
+fi
+
 echo ""
 echo -e "${BLUE}Configuration:${NC}"
 echo -e "  Evaluator Port:    ${GREEN}${EVALUATOR_PORT}${NC}"
 echo -e "  Repos Runner Port: ${GREEN}${REPOS_RUNNER_PORT}${NC}"
 echo -e "  Webapp Port:       ${GREEN}${WEBAPP_PORT}${NC}"
+if [ -n "$WEBAPP_PUBLISH_DIR" ]; then
+    echo -e "  Webapp Publish:    ${GREEN}${WEBAPP_PUBLISH_DIR}${NC}"
+fi
 if [ -n "${OSCANNER_HOME:-}" ]; then
     echo -e "  Oscanner Home:     ${GREEN}${OSCANNER_HOME}${NC}"
 fi
@@ -99,6 +107,9 @@ if [ "${OSCANNER_START_PRODUCTION_PRINT_CONFIG:-}" = "1" ]; then
     echo "EVALUATOR_PORT=${EVALUATOR_PORT}"
     echo "REPOS_RUNNER_PORT=${REPOS_RUNNER_PORT}"
     echo "WEBAPP_PORT=${WEBAPP_PORT}"
+    if [ -n "$WEBAPP_PUBLISH_DIR" ]; then
+        echo "WEBAPP_PUBLISH_DIR=${WEBAPP_PUBLISH_DIR}"
+    fi
     if [ -n "${OSCANNER_HOME:-}" ]; then
         echo "OSCANNER_HOME=${OSCANNER_HOME}"
     fi
@@ -178,6 +189,18 @@ else
     echo -e "${GREEN}✓${NC} Webapp already built"
 fi
 
+if [ -n "$WEBAPP_PUBLISH_DIR" ]; then
+    case "$WEBAPP_PUBLISH_DIR" in
+        "/"|"") echo -e "${RED}✗${NC} Error: Unsafe webapp publish directory: ${WEBAPP_PUBLISH_DIR}"; exit 1 ;;
+    esac
+
+    echo -e "${YELLOW}Publishing webapp to ${WEBAPP_PUBLISH_DIR}...${NC}"
+    mkdir -p "$WEBAPP_PUBLISH_DIR"
+    find "$WEBAPP_PUBLISH_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    cp -a out/. "$WEBAPP_PUBLISH_DIR"/
+    echo -e "${GREEN}✓${NC} Webapp published"
+fi
+
 # Function to cleanup on exit
 cleanup() {
     echo -e "\n${YELLOW}Shutting down services...${NC}"
@@ -244,22 +267,33 @@ echo ""
 echo -e "${BLUE}Starting webapp frontend...${NC}"
 cd "${PROJECT_ROOT}/frontend/webapp"
 
-if [ "$DAEMON" = true ]; then
-    nohup bash -c "npx serve out -l $WEBAPP_PORT -s" > ../webapp.log 2>&1 &
+WEBAPP_PID=""
+if ss -tln 2>/dev/null | grep -Eq "[:.]${WEBAPP_PORT}[[:space:]]"; then
+    if [ -n "$WEBAPP_PUBLISH_DIR" ] && curl -fsI "http://127.0.0.1:${WEBAPP_PORT}/" >/dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} Webapp is served by existing process on port ${WEBAPP_PORT}"
+        echo -e "  Static root: ${WEBAPP_PUBLISH_DIR}"
+    else
+        echo -e "${RED}✗${NC} Error: Webapp port ${WEBAPP_PORT} is already in use."
+        exit 1
+    fi
 else
-    npx serve out -l $WEBAPP_PORT -s > ../webapp.log 2>&1 &
-fi
-WEBAPP_PID=$!
-echo -e "${GREEN}✓${NC} Webapp started (PID: ${WEBAPP_PID})"
-echo -e "  Logs: ${PROJECT_ROOT}/frontend/webapp.log"
-echo -e "  URL:  http://localhost:${WEBAPP_PORT}"
+    if [ "$DAEMON" = true ]; then
+        nohup bash -c "npx serve out -l $WEBAPP_PORT -s" > ../webapp.log 2>&1 &
+    else
+        npx serve out -l $WEBAPP_PORT -s > ../webapp.log 2>&1 &
+    fi
+    WEBAPP_PID=$!
+    echo -e "${GREEN}✓${NC} Webapp started (PID: ${WEBAPP_PID})"
+    echo -e "  Logs: ${PROJECT_ROOT}/frontend/webapp.log"
+    echo -e "  URL:  http://localhost:${WEBAPP_PORT}"
 
-sleep 2
+    sleep 2
 
-if ! kill -0 $WEBAPP_PID 2>/dev/null; then
-    echo -e "${RED}✗${NC} Error: Webapp failed to start. Check frontend/webapp.log for details."
-    tail -n 20 "${PROJECT_ROOT}/frontend/webapp.log"
-    exit 1
+    if ! kill -0 $WEBAPP_PID 2>/dev/null; then
+        echo -e "${RED}✗${NC} Error: Webapp failed to start. Check frontend/webapp.log for details."
+        tail -n 20 "${PROJECT_ROOT}/frontend/webapp.log"
+        exit 1
+    fi
 fi
 
 echo ""
@@ -274,5 +308,9 @@ if [ "$DAEMON" = true ]; then
 else
     echo -e "\nPress Ctrl+C to stop all services\n"
     # Wait for processes
-    wait $EVALUATOR_PID $REPOS_RUNNER_PID $WEBAPP_PID
+    if [ -n "$WEBAPP_PID" ]; then
+        wait $EVALUATOR_PID $REPOS_RUNNER_PID $WEBAPP_PID
+    else
+        wait $EVALUATOR_PID $REPOS_RUNNER_PID
+    fi
 fi
