@@ -1,0 +1,56 @@
+{
+  "platform": "github",
+  "owner": "example-org",
+  "repo": "example-repo",
+  "requested_sources": [
+    "pr_discussions",
+    "review_comments",
+    "issue_triage",
+    "approvals",
+    "maintainer_decisions"
+  ],
+  "fetched_at": "2026-06-02T00:00:00+00:00",
+  "items": [
+    {
+      "source": "pr_discussions",
+      "label": "PR #12: Add export flow",
+      "detail": "3 discussion comments",
+      "url": "https://github.com/example-org/example-repo/pull/12",
+      "updated_at": "2026-05-24T10:30:00Z"
+    },
+    {
+      "source": "review_comments",
+      "label": "PR #12: Add export flow review discussion",
+      "detail": "2 review comments",
+      "url": "https://github.com/example-org/example-repo/pull/12",
+      "updated_at": "2026-05-24T11:15:00Z"
+    },
+    {
+      "source": "issue_triage",
+      "label": "Issue #8: Export fails for large reports",
+      "detail": "labels: bug, backend; 1 assignees; closed",
+      "url": "https://github.com/example-org/example-repo/issues/8",
+      "updated_at": "2026-05-20T08:00:00Z"
+    },
+    {
+      "source": "approvals",
+      "label": "PR #12: Add export flow approved",
+      "detail": "1 approval reviews",
+      "url": "https://github.com/example-org/example-repo/pull/12",
+      "updated_at": "2026-05-24T11:20:00Z"
+    },
+    {
+      "source": "maintainer_decisions",
+      "label": "PR #12: Add export flow merged",
+      "detail": "maintainer decision: merged",
+      "url": "https://github.com/example-org/example-repo/pull/12",
+      "updated_at": "2026-05-24T11:30:00Z"
+    }
+  ],
+  "warnings": [],
+  "cache": {
+    "hit": false,
+    "skipped": false,
+    "path": "backend/evaluator/example/collaboration_evidence_without_commits.json"
+  }
+}

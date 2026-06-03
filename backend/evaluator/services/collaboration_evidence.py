@@ -37,6 +37,11 @@ def normalize_evidence_sources(value: Any) -> List[str]:
 
     normalized: List[str] = []
     seen = set()
+
+    for source in DEFAULT_EVIDENCE_SOURCES:
+        seen.add(source)
+        normalized.append(source)
+
     for item in raw_items:
         if not item:
             continue

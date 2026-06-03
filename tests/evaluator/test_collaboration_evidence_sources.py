@@ -23,6 +23,16 @@ def _load_ai_native_plugin():
     return module
 
 
+def test_normalize_evidence_sources_always_includes_commit_diffs():
+    from evaluator.services.collaboration_evidence import normalize_evidence_sources
+
+    assert normalize_evidence_sources(["pr_discussions", "approvals"]) == [
+        "commit_diffs",
+        "pr_discussions",
+        "approvals",
+    ]
+
+
 def test_ai_native_collaboration_block_uses_external_pr_issue_evidence():
     plugin = _load_ai_native_plugin()
     evaluator = plugin.create_commit_evaluator(
