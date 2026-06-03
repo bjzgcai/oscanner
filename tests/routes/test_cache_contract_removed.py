@@ -110,7 +110,7 @@ async def test_evaluate_author_does_not_touch_evaluation_cache(monkeypatch, tmp_
 
     monkeypatch.setattr(evaluation, "get_llm_api_key", lambda: "fake-key")
     monkeypatch.setattr(evaluation, "resolve_plugin_id", lambda plugin: "zgc_simple")
-    monkeypatch.setattr(evaluation, "get_platform_data_dir", lambda platform, owner, repo: tmp_path)
+    monkeypatch.setattr(evaluation, "get_platform_data_dir", lambda platform, owner, repo, ref=None: tmp_path)
     monkeypatch.setattr(
         evaluation,
         "load_commits_from_local",

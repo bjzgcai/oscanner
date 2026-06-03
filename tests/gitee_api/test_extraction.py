@@ -213,14 +213,95 @@ class TestGiteeExtraction:
             file_resp.status_code = 200
             file_resp.json.return_value = {"content": "cHJpbnQoJ29rJykK", "size": 12}
 
+            tree_resp = Mock()
+            tree_resp.status_code = 200
+            tree_resp.json.return_value = {
+                "sha": "abc123",
+                "tree": [{"path": "src/app.py", "type": "blob", "size": 12}],
+                "truncated": False,
+            }
+
             mock_sess = Mock()
-            mock_sess.get.side_effect = [commits_resp, detail_resp, file_resp]
+            mock_sess.get.side_effect = [commits_resp, detail_resp, file_resp, tree_resp]
             mock_session.return_value = mock_sess
 
             result = extract_gitee_data("test_owner", "test_repo", max_commits=1)
 
             assert result is True
             mock_snapshot.assert_called_once_with("gitee", "test_owner", "test_repo", temp_data_dir)
+            assert json.loads((temp_data_dir / "repo_tree.json").read_text(encoding="utf-8"))["sha"] == "abc123"
+
+    def test_extract_gitee_data_fetches_recursive_tree_when_git_snapshot_fails(self, temp_data_dir):
+        """Gitee extraction should use recursive tree API to build repo_files when git snapshot is unavailable."""
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_requests_session') as mock_session, \
+             patch('evaluator.services.extraction_service.get_gitee_token') as mock_token, \
+             patch('evaluator.services.extraction_service._try_write_latest_repo_snapshot') as mock_snapshot:
+
+            mock_get_dir.return_value = temp_data_dir
+            mock_token.return_value = "fake_token_for_test"
+            mock_snapshot.return_value = False
+
+            commits_resp = Mock()
+            commits_resp.status_code = 200
+            commits_resp.json.return_value = [{"sha": "abc123"}]
+
+            detail_resp = Mock()
+            detail_resp.status_code = 200
+            detail_resp.json.return_value = {
+                "sha": "abc123",
+                "commit": {"author": {"name": "Ada", "date": "2026-01-01T00:00:00+00:00"}, "message": "feat"},
+                "files": [{"filename": "src/app.py"}],
+            }
+
+            file_context_resp = Mock()
+            file_context_resp.status_code = 200
+            file_context_resp.json.return_value = {"content": "cHJpbnQoJ2hpJykK", "size": 12}
+
+            tree_resp = Mock()
+            tree_resp.status_code = 200
+            tree_resp.json.return_value = {
+                "sha": "abc123",
+                "tree": [
+                    {"path": "src/app.py", "type": "blob", "size": 12},
+                    {"path": "node_modules/pkg/index.js", "type": "blob", "size": 12},
+                    {"path": "src", "type": "tree"},
+                ],
+                "truncated": False,
+            }
+
+            repo_file_resp = Mock()
+            repo_file_resp.status_code = 200
+            repo_file_resp.json.return_value = {"content": "cHJpbnQoJ3RyZWUnKQo=", "size": 14}
+
+            mock_sess = Mock()
+            mock_sess.get.side_effect = [
+                commits_resp,
+                detail_resp,
+                file_context_resp,
+                tree_resp,
+                repo_file_resp,
+            ]
+            mock_session.return_value = mock_sess
+
+            result = extract_gitee_data("test_owner", "test_repo", max_commits=1)
+
+            assert result is True
+            assert (temp_data_dir / "repo_tree.json").exists()
+            assert (temp_data_dir / "repo_files" / "src" / "app.py").read_text(encoding="utf-8") == "print('tree')\n"
+
+            manifest = json.loads((temp_data_dir / "repo_files_manifest.json").read_text(encoding="utf-8"))
+            assert manifest["snapshot_type"] == "gitee_api_recursive_tree"
+            assert manifest["end_sha"] == "abc123"
+            assert manifest["included_files"] == [{"path": "src/app.py", "size": 14}]
+            assert manifest["skipped_files"] == [
+                {"path": "node_modules/pkg/index.js", "reason": "excluded_path"}
+            ]
+
+            tree_call = mock_sess.get.call_args_list[3]
+            assert tree_call.args[0] == "https://gitee.com/api/v5/repos/test_owner/test_repo/git/trees/abc123"
+            assert tree_call.kwargs["params"]["recursive"] == 1
+            assert tree_call.kwargs["params"]["access_token"] == "fake_token_for_test"
 
     def test_sync_gitee_data_incremental_fetches_only_missing_latest_commits(self, temp_data_dir):
         """Existing Gitee data should be extended by fetching only the latest missing commits."""
@@ -296,6 +377,69 @@ class TestGiteeExtraction:
         requested_urls = [call.args[0] for call in mock_sess.get.call_args_list]
         assert any("/contributors" in url for url in requested_urls)
         assert sum("/commits" in url and not url.endswith("/newsha") for url in requested_urls) == 1
+
+    def test_sync_gitee_data_incremental_uses_tree_snapshot_fallback(self, temp_data_dir):
+        """Incremental Gitee sync should build repo_files from recursive tree when git snapshot fails."""
+        repo_dir = temp_data_dir / "gitee" / "test_owner" / "test_repo"
+        commits_dir = repo_dir / "commits"
+        commits_dir.mkdir(parents=True)
+        (repo_dir / "files").mkdir(parents=True)
+        (repo_dir / "commits_list.json").write_text("[]", encoding="utf-8")
+        (repo_dir / "commits_index.json").write_text("[]", encoding="utf-8")
+
+        contributors_resp = Mock()
+        contributors_resp.status_code = 200
+        contributors_resp.json.return_value = [{"name": "Alice", "contributions": 1}]
+
+        commits_page_resp = Mock()
+        commits_page_resp.status_code = 200
+        commits_page_resp.json.return_value = [
+            {
+                "sha": "newsha",
+                "commit": {"author": {"name": "Alice", "date": "2026-01-02T00:00:00+00:00"}, "message": "new"},
+            },
+        ]
+
+        detail_resp = Mock()
+        detail_resp.status_code = 200
+        detail_resp.json.return_value = {
+            "sha": "newsha",
+            "commit": {"author": {"name": "Alice", "date": "2026-01-02T00:00:00+00:00"}, "message": "new"},
+            "files": [],
+        }
+
+        tree_resp = Mock()
+        tree_resp.status_code = 200
+        tree_resp.json.return_value = {
+            "sha": "newsha",
+            "tree": [{"path": "README.md", "type": "blob", "size": 6}],
+            "truncated": False,
+        }
+
+        readme_resp = Mock()
+        readme_resp.status_code = 200
+        readme_resp.json.return_value = {"content": "SGVsbG8K", "size": 6}
+
+        mock_sess = Mock()
+        mock_sess.get.side_effect = [contributors_resp, commits_page_resp, detail_resp, tree_resp, readme_resp]
+
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_requests_session') as mock_session, \
+             patch('evaluator.services.extraction_service.get_gitee_token') as mock_token, \
+             patch('evaluator.services.extraction_service._try_write_latest_repo_snapshot') as mock_snapshot:
+            mock_get_dir.return_value = repo_dir
+            mock_session.return_value = mock_sess
+            mock_token.return_value = "fake_token_for_test"
+            mock_snapshot.return_value = False
+
+            result = sync_gitee_data_incremental("test_owner", "test_repo", max_commits=500)
+
+        assert result is True
+        assert (repo_dir / "repo_files" / "README.md").read_text(encoding="utf-8") == "Hello\n"
+
+        tree_call = mock_sess.get.call_args_list[3]
+        assert tree_call.args[0] == "https://gitee.com/api/v5/repos/test_owner/test_repo/git/trees/newsha"
+        assert tree_call.kwargs["params"]["recursive"] == 1
 
     def test_sync_gitee_data_incremental_verifies_latest_page_when_counts_match(self, temp_data_dir):
         """When contributor count matches local data, verify latest SHAs before skipping details."""

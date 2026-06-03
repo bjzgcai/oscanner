@@ -23,6 +23,7 @@ from evaluator.utils.data_loader import is_eval_relevant_path
 
 
 DEFAULT_REPO_SNAPSHOT_MAX_FILE_BYTES = 1_000_000
+DEFAULT_GITEE_TREE_SNAPSHOT_MAX_FILES = 500
 _GIT_CLONE_ATTEMPTS = 3
 _TRANSIENT_GIT_CLONE_ERRORS = (
     "GnuTLS recv error",
@@ -152,6 +153,153 @@ def _merge_by_sha(new_items: List[Dict[str, Any]], existing_items: List[Dict[str
             break
 
     return merged
+
+
+def _requested_unique_shas(shas: List[str]) -> List[str]:
+    requested_shas: List[str] = []
+    seen_requested = set()
+    for sha in shas:
+        text = str(sha or "").strip()
+        if text and text not in seen_requested:
+            seen_requested.add(text)
+            requested_shas.append(text)
+    return requested_shas
+
+
+def _github_api_headers() -> Dict[str, str]:
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "oscanner-skill-evaluator",
+    }
+    gh_token = get_github_token()
+    if gh_token:
+        headers["Authorization"] = f"token {gh_token}"
+    return headers
+
+
+def _write_commit_diff_file(commits_dir: Path, sha: str, detail: Dict[str, Any]) -> None:
+    diff_parts: List[str] = []
+    for file_obj in detail.get("files") or []:
+        if not isinstance(file_obj, dict):
+            continue
+        filename = file_obj.get("filename")
+        patch = file_obj.get("patch") or ""
+        if not filename or not patch:
+            continue
+        diff_parts.append(f"*** FILE: {filename} ***\n{patch}\n")
+
+    with open(commits_dir / f"{sha}.diff", "w", encoding="utf-8", errors="ignore") as f:
+        f.write("\n".join(diff_parts))
+
+
+def _fetch_github_commit_page(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    page: int,
+    per_page: int,
+    branch: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/commits"
+    params = {"page": page, "per_page": per_page}
+    if branch:
+        params["sha"] = branch
+
+    resp = session.get(api_url, headers=_github_api_headers(), params=params, timeout=30)
+    if resp.status_code != 200:
+        error_detail = resp.text[:200] if resp.text else "Unknown error"
+        raise Exception(f"GitHub API error ({resp.status_code}): {error_detail}")
+
+    batch = resp.json()
+    return batch if isinstance(batch, list) else []
+
+
+def _fetch_github_commit_detail(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    commit: Dict[str, Any],
+) -> Dict[str, Any]:
+    sha = _get_commit_sha(commit)
+    if not sha:
+        return commit
+
+    detail_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{sha}"
+    try:
+        dresp = session.get(detail_url, headers=_github_api_headers(), timeout=30)
+        if dresp.status_code == 200:
+            detail = dresp.json()
+            return detail if isinstance(detail, dict) else commit
+    except requests.exceptions.RequestException:
+        pass
+    return commit
+
+
+def sync_github_commits_by_sha(owner: str, repo: str, shas: List[str]) -> bool:
+    """Fetch specific GitHub commit details and merge them into local extracted data."""
+    requested_shas = _requested_unique_shas(shas)
+    if not requested_shas:
+        return False
+
+    data_dir = get_platform_data_dir("github", owner, repo)
+    commits_list_path = data_dir / "commits_list.json"
+    commits_index_path = data_dir / "commits_index.json"
+    commits_dir = data_dir / "commits"
+    commits_dir.mkdir(parents=True, exist_ok=True)
+
+    local_commits = _load_json_list(commits_list_path)
+    local_index = _load_json_list(commits_index_path)
+    local_index_shas = {_get_commit_sha(commit) for commit in local_index if _get_commit_sha(commit)}
+    missing_shas = [
+        sha
+        for sha in requested_shas
+        if sha not in local_index_shas or not (commits_dir / f"{sha}.json").exists()
+    ]
+    if not missing_shas:
+        return False
+
+    print(f"[GitHub Boundary Sync] Fetching {len(missing_shas)} requested commits for {owner}/{repo}")
+    session = get_requests_session()
+    new_details: List[Dict[str, Any]] = []
+    new_index_entries: List[Dict[str, Any]] = []
+
+    for sha in missing_shas:
+        detail = _fetch_github_commit_detail(session, owner, repo, {"sha": sha})
+        if _get_commit_sha(detail) != sha or not isinstance(detail.get("commit"), dict):
+            print(f"[GitHub Boundary Sync] Commit {sha} could not be fetched as a usable commit")
+            continue
+
+        _save_json(commits_dir / f"{sha}.json", detail)
+        _write_commit_diff_file(commits_dir, sha, detail)
+        new_details.append(detail)
+        new_index_entries.append(_build_commit_index_entry(detail))
+
+    if not new_details:
+        return False
+
+    _save_json(commits_list_path, _merge_by_sha(new_details, local_commits, 0))
+    _save_json(commits_index_path, _merge_by_sha(new_index_entries, local_index, 0))
+    _save_json(
+        data_dir / "repo_info.json",
+        {"name": repo, "full_name": f"{owner}/{repo}", "owner": {"login": owner}, "platform": "github"},
+    )
+    _save_json(
+        data_dir / "sync_state.json",
+        {
+            "last_synced_at": datetime.now().isoformat(),
+            "last_commit_sha": _get_commit_sha(new_index_entries[0]) if new_index_entries else None,
+            "total_commits_fetched": len(_load_json_list(commits_index_path)),
+            "sync_history": [
+                {
+                    "synced_at": datetime.now().isoformat(),
+                    "commits_added": len(new_index_entries),
+                    "mode": "boundary_sha_sync",
+                }
+            ],
+        },
+    )
+    _try_write_latest_repo_snapshot("github", owner, repo, data_dir)
+    return True
 
 
 def _sum_gitee_contributor_commits(contributors: Any) -> Optional[int]:
@@ -346,7 +494,7 @@ def sync_gitee_commits_by_sha(owner: str, repo: str, shas: List[str]) -> bool:
             ],
         },
     )
-    _try_write_latest_repo_snapshot("gitee", owner, repo, data_dir)
+    _try_write_gitee_repo_snapshot(session, owner, repo, gitee_token, data_dir)
     return True
 
 
@@ -396,6 +544,237 @@ def _write_gitee_file_context(
             continue
 
     return files_fetched
+
+
+def _is_safe_repo_api_path(path: str) -> bool:
+    raw = str(path or "").replace("\\", "/")
+    if raw.startswith("/"):
+        return False
+    normalized = raw.strip("/")
+    if not normalized:
+        return False
+    return all(part and part not in {".", ".."} for part in normalized.split("/"))
+
+
+def _decode_base64_text(content_b64: str) -> Optional[str]:
+    if not content_b64:
+        return None
+    try:
+        content_bytes = base64.b64decode(content_b64)
+        if b"\x00" in content_bytes[:8192]:
+            return None
+        return content_bytes.decode("utf-8", errors="ignore")
+    except Exception:
+        return None
+
+
+def _fetch_gitee_tree(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    gitee_token: str,
+    sha: str,
+) -> Optional[Dict[str, Any]]:
+    tree_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/git/trees/{sha}"
+    try:
+        response = session.get(
+            tree_url,
+            params={"access_token": gitee_token, "recursive": 1},
+            timeout=30,
+        )
+        if response.status_code != 200:
+            print(f"⚠ Gitee tree API returned {response.status_code}; skipping API snapshot fallback")
+            return None
+        payload = response.json()
+        return payload if isinstance(payload, dict) else None
+    except requests.exceptions.RequestException as exc:
+        print(f"⚠ Gitee tree API request failed: {exc}")
+        return None
+    except Exception as exc:
+        print(f"⚠ Gitee tree API response could not be parsed: {exc}")
+        return None
+
+
+def _write_gitee_repo_snapshot_from_tree_api(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    gitee_token: str,
+    output_dir: Path,
+    end_sha: str,
+    *,
+    max_files: int = DEFAULT_GITEE_TREE_SNAPSHOT_MAX_FILES,
+    max_file_bytes: int = DEFAULT_REPO_SNAPSHOT_MAX_FILE_BYTES,
+) -> bool:
+    """Fetch Gitee recursive tree and write filtered blob contents for evaluation."""
+    end_sha = str(end_sha or "").strip()
+    if not end_sha:
+        return False
+
+    tree_obj = _fetch_gitee_tree(session, owner, repo, gitee_token, end_sha)
+    if not tree_obj:
+        return False
+
+    return _write_gitee_repo_snapshot_from_tree_obj(
+        session,
+        owner,
+        repo,
+        gitee_token,
+        output_dir,
+        end_sha,
+        tree_obj,
+        max_files=max_files,
+        max_file_bytes=max_file_bytes,
+    )
+
+
+def _write_gitee_repo_snapshot_from_tree_obj(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    gitee_token: str,
+    output_dir: Path,
+    end_sha: str,
+    tree_obj: Dict[str, Any],
+    *,
+    max_files: int = DEFAULT_GITEE_TREE_SNAPSHOT_MAX_FILES,
+    max_file_bytes: int = DEFAULT_REPO_SNAPSHOT_MAX_FILE_BYTES,
+) -> bool:
+    """Write filtered Gitee tree blob contents into repo_files for evaluation."""
+    _save_json(output_dir / "repo_tree.json", tree_obj)
+
+    repo_files_dir = output_dir / "repo_files"
+    shutil.rmtree(repo_files_dir, ignore_errors=True)
+    repo_files_dir.mkdir(parents=True, exist_ok=True)
+
+    included: List[Dict[str, Any]] = []
+    skipped: List[Dict[str, str]] = []
+    total_bytes = 0
+
+    tree_entries = tree_obj.get("tree") or []
+    if not isinstance(tree_entries, list):
+        tree_entries = []
+
+    for entry in tree_entries:
+        if len(included) >= max_files:
+            break
+        if not isinstance(entry, dict) or entry.get("type") != "blob":
+            continue
+
+        rel = str(entry.get("path") or "").replace("\\", "/").strip("/")
+        if not _is_safe_repo_api_path(rel):
+            skipped.append({"path": rel, "reason": "unsafe_path"})
+            continue
+        if not is_eval_relevant_path(rel):
+            skipped.append({"path": rel, "reason": "excluded_path"})
+            continue
+
+        try:
+            declared_size = int(entry.get("size") or 0)
+        except (TypeError, ValueError):
+            declared_size = 0
+        if declared_size > max_file_bytes:
+            skipped.append({"path": rel, "reason": "too_large"})
+            continue
+
+        file_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/contents/{rel}"
+        try:
+            file_resp = session.get(
+                file_url,
+                params={"access_token": gitee_token, "ref": end_sha},
+                timeout=30,
+            )
+            if file_resp.status_code != 200:
+                skipped.append({"path": rel, "reason": f"api_{file_resp.status_code}"})
+                continue
+            file_obj = file_resp.json()
+            if not isinstance(file_obj, dict):
+                skipped.append({"path": rel, "reason": "unexpected_response"})
+                continue
+
+            actual_size = file_obj.get("size", declared_size)
+            try:
+                actual_size_int = int(actual_size or 0)
+            except (TypeError, ValueError):
+                actual_size_int = declared_size
+            if actual_size_int > max_file_bytes:
+                skipped.append({"path": rel, "reason": "too_large"})
+                continue
+
+            content = _decode_base64_text(str(file_obj.get("content") or ""))
+            if content is None:
+                skipped.append({"path": rel, "reason": "binary_or_decode_failed"})
+                continue
+
+            dest = repo_files_dir / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            with dest.open("w", encoding="utf-8", errors="ignore") as handle:
+                handle.write(content)
+
+            included.append({"path": rel, "size": actual_size_int})
+            total_bytes += actual_size_int
+        except requests.exceptions.RequestException:
+            skipped.append({"path": rel, "reason": "network_error"})
+        except Exception:
+            skipped.append({"path": rel, "reason": "write_failed"})
+
+    manifest = {
+        "snapshot_type": "gitee_api_recursive_tree",
+        "end_sha": end_sha,
+        "max_file_bytes": max_file_bytes,
+        "max_files": max_files,
+        "included_count": len(included),
+        "skipped_count": len(skipped),
+        "total_bytes": total_bytes,
+        "included_files": included,
+        "skipped_files": skipped,
+        "tree_truncated": bool(tree_obj.get("truncated")),
+    }
+    _save_json(output_dir / "repo_files_manifest.json", manifest)
+
+    print(
+        f"✓ Gitee API tree snapshot stored for {owner}/{repo}@{end_sha[:8]} "
+        f"({len(included)} files, {len(skipped)} skipped)"
+    )
+    return bool(included)
+
+
+def _try_write_gitee_repo_snapshot(
+    session: requests.Session,
+    owner: str,
+    repo: str,
+    gitee_token: str,
+    output_dir: Path,
+) -> bool:
+    latest_sha = _latest_index_sha(output_dir)
+    if not latest_sha:
+        return False
+
+    tree_obj = _fetch_gitee_tree(session, owner, repo, gitee_token, latest_sha)
+    if tree_obj:
+        _save_json(output_dir / "repo_tree.json", tree_obj)
+
+    if _try_write_latest_repo_snapshot("gitee", owner, repo, output_dir):
+        return True
+
+    if tree_obj:
+        return _write_gitee_repo_snapshot_from_tree_obj(
+            session,
+            owner,
+            repo,
+            gitee_token,
+            output_dir,
+            latest_sha,
+            tree_obj,
+        )
+    return _write_gitee_repo_snapshot_from_tree_api(
+        session,
+        owner,
+        repo,
+        gitee_token,
+        output_dir,
+        latest_sha,
+    )
 
 
 def _run_git(cmd: List[str], cwd: Optional[Path] = None, timeout: int = 120) -> subprocess.CompletedProcess:
@@ -1090,6 +1469,112 @@ def fetch_gitee_commits(owner: str, repo: str, limit: int = 100, is_enterprise: 
         raise HTTPException(status_code=500, detail=f"Failed to fetch Gitee commits: {str(e)}")
 
 
+def sync_github_data_incremental(
+    owner: str,
+    repo: str,
+    max_commits: int = 500,
+    branch: Optional[str] = None,
+) -> bool:
+    """
+    Fast GitHub sync for existing local data.
+
+    Fetches latest commit pages until it reaches a locally known SHA, then stores
+    details for missing commits and refreshes the complete filtered repo snapshot.
+    """
+    print(f"[GitHub Incremental] Checking {owner}/{repo} for new commits")
+
+    data_dir = get_platform_data_dir("github", owner, repo, ref=branch)
+    commits_list_path = data_dir / "commits_list.json"
+    commits_index_path = data_dir / "commits_index.json"
+    commits_dir = data_dir / "commits"
+    commits_dir.mkdir(parents=True, exist_ok=True)
+
+    local_commits = _load_json_list(commits_list_path)
+    local_index = _load_json_list(commits_index_path)
+    local_shas = {
+        _get_commit_sha(commit)
+        for commit in [*local_commits, *local_index]
+        if _get_commit_sha(commit)
+    }
+
+    session = get_requests_session()
+    per_page = 100
+    max_pages = None if max_commits <= 0 else max(1, (max_commits + per_page - 1) // per_page)
+    latest_commits: List[Dict[str, Any]] = []
+    reached_existing = False
+    page = 1
+
+    while max_pages is None or page <= max_pages:
+        batch = _fetch_github_commit_page(session, owner, repo, page, per_page, branch=branch)
+        if not batch:
+            break
+
+        for commit in batch:
+            sha = _get_commit_sha(commit)
+            if sha and sha in local_shas:
+                reached_existing = True
+                break
+            latest_commits.append(commit)
+            if max_commits > 0 and len(latest_commits) >= max_commits:
+                reached_existing = True
+                break
+
+        if reached_existing or len(batch) < per_page:
+            break
+        page += 1
+
+    if not latest_commits:
+        print("[GitHub Incremental] No new commit SHAs found in fetched latest pages")
+        return False
+
+    print(f"[GitHub Incremental] Fetching details for {len(latest_commits)} new commits")
+    new_details: List[Dict[str, Any]] = []
+    new_index_entries: List[Dict[str, Any]] = []
+
+    for commit in latest_commits:
+        detail = _fetch_github_commit_detail(session, owner, repo, commit)
+        sha = _get_commit_sha(detail)
+        if not sha:
+            continue
+
+        _save_json(commits_dir / f"{sha}.json", detail)
+        _write_commit_diff_file(commits_dir, sha, detail)
+        new_details.append(detail)
+        new_index_entries.append(_build_commit_index_entry(detail))
+
+    if not new_details:
+        print("[GitHub Incremental] No usable commit details fetched")
+        return False
+
+    merged_commits = _merge_by_sha(new_details, local_commits, max_commits)
+    merged_index = _merge_by_sha(new_index_entries, local_index, max_commits)
+    _save_json(commits_list_path, merged_commits)
+    _save_json(commits_index_path, merged_index)
+    _save_json(
+        data_dir / "repo_info.json",
+        {"name": repo, "full_name": f"{owner}/{repo}", "owner": {"login": owner}, "platform": "github"},
+    )
+    _save_json(
+        data_dir / "sync_state.json",
+        {
+            "last_synced_at": datetime.now().isoformat(),
+            "last_commit_sha": _get_commit_sha(merged_index[0]) if merged_index else None,
+            "total_commits_fetched": len(merged_index),
+            "sync_history": [
+                {
+                    "synced_at": datetime.now().isoformat(),
+                    "commits_added": len(new_details),
+                    "mode": "incremental_api",
+                }
+            ],
+        },
+    )
+
+    print(f"[GitHub Incremental] Added {len(new_details)} commits")
+    _try_write_latest_repo_snapshot("github", owner, repo, data_dir)
+    return True
+
+
 def sync_gitee_data_incremental(
     owner: str,
     repo: str,
@@ -1230,7 +1715,7 @@ def sync_gitee_data_incremental(
         f"[Gitee Incremental] Added {len(new_details)} commits, "
         f"updated {files_fetched} file contents"
     )
-    _try_write_latest_repo_snapshot("gitee", owner, repo, data_dir)
+    _try_write_gitee_repo_snapshot(session, owner, repo, gitee_token, data_dir)
     return True
 
 
@@ -1435,7 +1920,7 @@ def extract_gitee_data(
         with open(data_dir / "repo_info.json", "w", encoding="utf-8") as f:
             json.dump(repo_info, f, indent=2, ensure_ascii=False)
 
-        _try_write_latest_repo_snapshot("gitee", owner, repo, data_dir)
+        _try_write_gitee_repo_snapshot(session, owner, repo, gitee_token, data_dir)
 
         print(f"\n✓ Gitee extraction complete:")
         print(f"  - {len(commits_index)} commits")

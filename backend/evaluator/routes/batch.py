@@ -557,6 +557,7 @@ async def compare_contributor_across_repos(request: dict):
                 contributor,
                 model=model,
                 platform=repo_platform,
+                branch=branch or "",
                 plugin=plugin_id,
                 request_body={"aliases": contributor_aliases},
             )

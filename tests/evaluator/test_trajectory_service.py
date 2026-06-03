@@ -190,10 +190,12 @@ class TestEnsureRepoDataSynced:
 
         with patch('evaluator.services.trajectory_service.parse_repo_url') as mock_parse, \
              patch('evaluator.services.trajectory_service.get_platform_data_dir') as mock_data_dir, \
+             patch('evaluator.services.trajectory_service.sync_github_data_incremental') as mock_incremental, \
              patch('evaluator.services.trajectory_service.extract_github_data') as mock_extract:
 
             mock_parse.return_value = ("github", "test_owner", "test_repo")
             mock_data_dir.return_value = repo_dir
+            mock_incremental.return_value = False
 
             platform, owner, repo, success = ensure_repo_data_synced(
                 "https://github.com/test_owner/test_repo",
@@ -204,6 +206,7 @@ class TestEnsureRepoDataSynced:
             assert owner == "test_owner"
             assert repo == "test_repo"
             assert success is False
+            mock_incremental.assert_called_once_with("test_owner", "test_repo", max_commits=500)
             mock_extract.assert_not_called()
 
     def test_ensure_repo_data_synced_refreshes_snapshot_for_requested_end_sha(self, temp_data_dir):
@@ -216,11 +219,13 @@ class TestEnsureRepoDataSynced:
 
         with patch('evaluator.services.trajectory_service.parse_repo_url') as mock_parse, \
              patch('evaluator.services.trajectory_service.get_platform_data_dir') as mock_data_dir, \
+             patch('evaluator.services.trajectory_service.sync_github_data_incremental') as mock_incremental, \
              patch('evaluator.services.trajectory_service.extract_repo_files_at_commit_via_git') as mock_snapshot, \
              patch('evaluator.services.trajectory_service.extract_github_data') as mock_extract:
 
             mock_parse.return_value = ("github", "test_owner", "test_repo")
             mock_data_dir.return_value = repo_dir
+            mock_incremental.return_value = False
             mock_snapshot.return_value = True
 
             platform, owner, repo, success = ensure_repo_data_synced(
@@ -233,6 +238,7 @@ class TestEnsureRepoDataSynced:
             assert owner == "test_owner"
             assert repo == "test_repo"
             assert success is True
+            mock_incremental.assert_called_once_with("test_owner", "test_repo", max_commits=500)
             mock_snapshot.assert_called_once_with("github", "test_owner", "test_repo", repo_dir, "end123")
             mock_extract.assert_not_called()
 
@@ -314,6 +320,35 @@ class TestEnsureRepoDataSynced:
             )
 
             assert platform == "gitee"
+            assert owner == "test_owner"
+            assert repo == "test_repo"
+            assert success is True
+            mock_incremental.assert_called_once_with("test_owner", "test_repo", max_commits=500)
+            mock_extract.assert_not_called()
+
+    def test_ensure_repo_data_synced_github_uses_incremental_sync_when_not_forced(self, temp_data_dir):
+        """Existing GitHub data should check for new commits instead of silently reusing stale data."""
+        from evaluator.services.trajectory_service import ensure_repo_data_synced
+
+        repo_dir = temp_data_dir / "github" / "test_owner" / "test_repo"
+        repo_dir.mkdir(parents=True)
+        (repo_dir / "commits_index.json").write_text("[]", encoding="utf-8")
+
+        with patch('evaluator.services.trajectory_service.parse_repo_url') as mock_parse, \
+             patch('evaluator.services.trajectory_service.get_platform_data_dir') as mock_data_dir, \
+             patch('evaluator.services.trajectory_service.sync_github_data_incremental') as mock_incremental, \
+             patch('evaluator.services.trajectory_service.extract_github_data') as mock_extract:
+
+            mock_parse.return_value = ("github", "test_owner", "test_repo")
+            mock_data_dir.return_value = repo_dir
+            mock_incremental.return_value = True
+
+            platform, owner, repo, success = ensure_repo_data_synced(
+                "https://github.com/test_owner/test_repo",
+                force_sync=False,
+            )
+
+            assert platform == "github"
             assert owner == "test_owner"
             assert repo == "test_repo"
             assert success is True

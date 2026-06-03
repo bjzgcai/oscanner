@@ -18,3 +18,5 @@ It now runs before evaluator/LLM work in the main incremental evaluator path, Gi
 ## forks and stars are not considered in the evaluation, as they can be easily manipulated and do not necessarily reflect the quality of the code or the contribution.
 
 ## vercel how to set up and deploy
+
+## use the user's email to get all the footprints of the user, including the repos they have contributed to, the PRs they have made, and the issues they have opened. This can be done by using the GitHub API to fetch the user's activity data based on their email address. However, this approach may raise privacy concerns and may not be allowed by GitHub's terms of service. It is important to ensure that any data collection and usage complies with relevant privacy laws and regulations.

@@ -30,6 +30,7 @@ async def evaluate_author(
     author: str,
     model: str = Query(DEFAULT_LLM_MODEL),
     platform: str = Query("github"),
+    branch: str = Query(""),
     plugin: str = Query(""),
     language: str = Query("en-US"),
     request_body: Optional[Dict[str, Any]] = None
@@ -63,9 +64,10 @@ async def evaluate_author(
         # When this function is called programmatically, Query objects aren't resolved by FastAPI
         if not isinstance(model, str):
             model = DEFAULT_LLM_MODEL
+        branch_ref = branch.strip() if isinstance(branch, str) and branch.strip() else None
 
         # Check data directory
-        data_dir = get_platform_data_dir(platform, owner, repo)
+        data_dir = get_platform_data_dir(platform, owner, repo, ref=branch_ref)
         if not data_dir.exists():
             raise HTTPException(status_code=404, detail=f"No local data found for {platform}/{owner}/{repo}. Please extract data first.")
 

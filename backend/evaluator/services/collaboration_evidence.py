@@ -293,6 +293,15 @@ def _fetch_gitee_evidence(owner: str, repo: str, sources: List[str]) -> Dict[str
                 items.append(_item("pr_discussions", label, f"{comments_count} discussion comments", url, pull.get("updated_at")))
             if "approvals" in sources and (pull.get("testers") or pull.get("assignees")):
                 items.append(_item("approvals", f"{label} reviewed", "visible reviewer/tester assignment", url, pull.get("updated_at")))
+            if "review_comments" in sources and number:
+                review_comments = _get_json_list(
+                    client,
+                    f"{base_url}/pulls/{number}/comments",
+                    params={**base_params, "per_page": 100},
+                    warnings=warnings,
+                )
+                if review_comments:
+                    items.append(_item("review_comments", f"{label} review discussion", f"{len(review_comments)} review comments", url, pull.get("updated_at")))
             if "maintainer_decisions" in sources and (pull.get("merged_at") or pull.get("state") in {"merged", "closed"}):
                 decision = "merged" if pull.get("merged_at") or pull.get("state") == "merged" else "closed"
                 items.append(_item("maintainer_decisions", f"{label} {decision}", f"maintainer decision: {decision}", url, pull.get("updated_at")))

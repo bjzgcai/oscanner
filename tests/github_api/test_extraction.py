@@ -7,6 +7,7 @@ import tempfile
 import shutil
 import subprocess
 import sys
+import json
 
 # Add project root to path if not already there
 project_root = Path(__file__).parent.parent.parent
@@ -22,6 +23,7 @@ from evaluator.services.extraction_service import (
     extract_github_data,
     extract_repo_files_at_commit_via_git,
     fetch_github_commits,
+    sync_github_data_incremental,
     _extract_github_data_via_git,
     _write_filtered_repo_snapshot,
 )
@@ -125,6 +127,65 @@ class TestGitHubExtraction:
             assert git_commands[2] == ["git", "fetch", "--depth", "1", "--no-tags", "origin", "abcdef1234567890"]
             assert git_commands[3] == ["git", "checkout", "--detach", "abcdef1234567890"]
             mock_write_snapshot.assert_called_once()
+
+    def test_sync_github_data_incremental_fetches_only_missing_latest_commits(self, temp_data_dir):
+        """Existing GitHub data should be extended by fetching only latest missing commits."""
+        repo_dir = temp_data_dir / "github" / "test_owner" / "test_repo"
+        commits_dir = repo_dir / "commits"
+        commits_dir.mkdir(parents=True)
+        old_commit = {
+            "sha": "oldsha",
+            "commit": {"author": {"name": "Ada", "date": "2026-01-01T00:00:00Z"}, "message": "old"},
+        }
+        (repo_dir / "commits_list.json").write_text(json.dumps([old_commit]), encoding="utf-8")
+        (repo_dir / "commits_index.json").write_text(
+            json.dumps([{"sha": "oldsha", "author": "Ada", "date": "2026-01-01T00:00:00Z"}]),
+            encoding="utf-8",
+        )
+        (commits_dir / "oldsha.json").write_text(json.dumps(old_commit), encoding="utf-8")
+
+        page_resp = Mock()
+        page_resp.status_code = 200
+        page_resp.json.return_value = [
+            {
+                "sha": "newsha",
+                "commit": {"author": {"name": "Ada", "date": "2026-01-02T00:00:00Z"}, "message": "new"},
+            },
+            old_commit,
+        ]
+
+        detail_resp = Mock()
+        detail_resp.status_code = 200
+        detail_resp.json.return_value = {
+            "sha": "newsha",
+            "commit": {"author": {"name": "Ada", "date": "2026-01-02T00:00:00Z"}, "message": "new"},
+            "files": [{"filename": "src/app.py", "patch": "+print('new')"}],
+        }
+
+        mock_sess = Mock()
+        mock_sess.get.side_effect = [page_resp, detail_resp]
+
+        with patch('evaluator.services.extraction_service.get_platform_data_dir') as mock_get_dir, \
+             patch('evaluator.services.extraction_service.get_requests_session') as mock_session, \
+             patch('evaluator.services.extraction_service.get_github_token') as mock_token, \
+             patch('evaluator.services.extraction_service._try_write_latest_repo_snapshot') as mock_snapshot:
+            mock_get_dir.return_value = repo_dir
+            mock_session.return_value = mock_sess
+            mock_token.return_value = "fake_github_token"
+            mock_snapshot.return_value = True
+
+            result = sync_github_data_incremental("test_owner", "test_repo", max_commits=500)
+
+        assert result is True
+        saved_commits = json.loads((repo_dir / "commits_list.json").read_text(encoding="utf-8"))
+        assert [commit["sha"] for commit in saved_commits] == ["newsha", "oldsha"]
+        assert (commits_dir / "newsha.json").exists()
+        assert (commits_dir / "newsha.diff").read_text(encoding="utf-8") == "*** FILE: src/app.py ***\n+print('new')\n"
+        page_call = mock_sess.get.call_args_list[0]
+        assert page_call.args[0] == "https://api.github.com/repos/test_owner/test_repo/commits"
+        assert page_call.kwargs["params"] == {"page": 1, "per_page": 100}
+        assert page_call.kwargs["headers"]["Authorization"] == "token fake_github_token"
+        mock_snapshot.assert_called_once_with("github", "test_owner", "test_repo", repo_dir)
 
     def test_parse_repo_url_with_ref_accepts_tree_branch_urls(self):
         github = parse_repo_url_with_ref("https://github.com/carterwu/carterwu.github.io/tree/main")

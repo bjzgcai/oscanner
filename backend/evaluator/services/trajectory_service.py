@@ -30,6 +30,8 @@ from evaluator.services.collaboration_evidence import (
 from evaluator.services.extraction_service import (
     extract_github_data,
     extract_gitee_data,
+    sync_github_data_incremental,
+    sync_github_commits_by_sha,
     sync_gitee_data_incremental,
     sync_gitee_commits_by_sha,
     extract_repo_files_at_commit_via_git,
@@ -161,6 +163,15 @@ def ensure_repo_data_synced(
 
     if data_exists and not force_sync:
         print(f"[Trajectory] Found existing data for {platform}/{owner}/{repo}")
+        if platform == "github":
+            sync_kwargs = {"max_commits": max_commits}
+            if branch:
+                sync_kwargs["branch"] = branch
+            was_synced = sync_github_data_incremental(owner, repo, **sync_kwargs)
+            if snapshot_sha:
+                snapshot_synced = extract_repo_files_at_commit_via_git(platform, owner, repo, data_dir, snapshot_sha)
+                was_synced = was_synced or snapshot_synced
+            return platform, owner, repo, was_synced
         if platform == "gitee":
             sync_kwargs = {"max_commits": max_commits}
             if branch:
@@ -398,7 +409,7 @@ def _requested_group_boundary_shas(item: Dict[str, Any]) -> List[str]:
     return shas
 
 
-def _sync_gitee_boundary_commits(
+def _sync_platform_boundary_commits(
     repo_url: str,
     item: Dict[str, Any],
     sync_result: Dict[str, Any],
@@ -408,14 +419,19 @@ def _sync_gitee_boundary_commits(
         return sync_result, False
 
     try:
+        platform = str(sync_result.get("platform") or "").strip()
         owner = str(sync_result.get("owner") or "").strip()
         repo = str(sync_result.get("repo") or "").strip()
-        if not owner or not repo:
+        if not platform or not owner or not repo:
             platform, owner, repo = parse_repo_url(repo_url)
-            if platform != "gitee":
-                return sync_result, False
 
-        changed = sync_gitee_commits_by_sha(owner, repo, shas)
+        if platform == "github":
+            changed = sync_github_commits_by_sha(owner, repo, shas)
+        elif platform == "gitee":
+            changed = sync_gitee_commits_by_sha(owner, repo, shas)
+        else:
+            return sync_result, False
+
         return {
             **sync_result,
             "boundary_sync": True,
@@ -427,6 +443,17 @@ def _sync_gitee_boundary_commits(
             "boundary_sync": False,
             "boundary_sync_error": str(e),
         }, False
+
+
+def _sync_gitee_boundary_commits(
+    repo_url: str,
+    item: Dict[str, Any],
+    sync_result: Dict[str, Any],
+) -> Tuple[Dict[str, Any], bool]:
+    """Backward-compatible wrapper for tests/callers using the old Gitee-only name."""
+    if str(sync_result.get("platform") or "gitee").strip() != "gitee":
+        return sync_result, False
+    return _sync_platform_boundary_commits(repo_url, item, sync_result)
 
 
 def _refresh_group_repo_snapshot_for_end_sha(
@@ -589,7 +616,7 @@ def analyze_group_repositories(
             if (
                 isinstance(filtered_commits, dict)
                 and not filtered_commits.get("success", True)
-                and sync_result.get("platform") == "gitee"
+                and sync_result.get("platform") in {"github", "gitee"}
             ):
                 print(
                     "[Trajectory] Requested group SHA was missing after sync; "
@@ -613,13 +640,13 @@ def analyze_group_repositories(
             if (
                 isinstance(filtered_commits, dict)
                 and not filtered_commits.get("success", True)
-                and sync_result.get("platform") == "gitee"
+                and sync_result.get("platform") in {"github", "gitee"}
             ):
                 print(
                     "[Trajectory] Requested group SHA was not in branch history; "
-                    f"fetching explicit Gitee boundary commits for {repo_url}"
+                    f"fetching explicit boundary commits for {repo_url}"
                 )
-                sync_result, boundary_synced = _sync_gitee_boundary_commits(repo_url, item, sync_result)
+                sync_result, boundary_synced = _sync_platform_boundary_commits(repo_url, item, sync_result)
                 if boundary_synced:
                     commits, data_dir = _load_all_repo_commits(repo_url)
                     filtered_commits = _filter_group_repo_commits(commits, item)

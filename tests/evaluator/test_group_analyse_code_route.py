@@ -1281,3 +1281,95 @@ def test_analyze_group_repositories_fetches_missing_gitee_boundary_sha(monkeypat
     ]
     assert evaluated_commits == ["tag-sha", "existing-sha"]
     assert result["results"][0]["sync"]["boundary_sync"] is True
+
+
+def test_analyze_group_repositories_fetches_missing_github_boundary_sha(monkeypatch):
+    from types import SimpleNamespace
+
+    from evaluator.services import trajectory_service
+
+    load_calls = []
+    boundary_sync_calls = []
+    evaluated_commits = []
+
+    class FakeEvaluator:
+        def evaluate_repository(self, commits, repo_label, **_kwargs):
+            evaluated_commits.extend(commit["sha"] for commit in commits)
+            return {
+                "username": repo_label,
+                "total_commits_analyzed": len(commits),
+                "files_loaded": 0,
+                "mode": "moderate",
+                "scores": {
+                    "total": len(commits),
+                    "reasoning": "github tag boundary synced",
+                },
+                "commits_summary": {},
+            }
+
+    def fake_load(repo_url):
+        load_calls.append(repo_url)
+        if len(load_calls) < 3:
+            return (
+                [
+                    {
+                        "sha": "existing-sha",
+                        "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                    }
+                ],
+                PROJECT_ROOT,
+            )
+        return (
+            [
+                {
+                    "sha": "tag-sha",
+                    "commit": {"author": {"date": "2026-01-02T00:00:00Z"}, "message": "tag"},
+                },
+                {
+                    "sha": "existing-sha",
+                    "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                },
+            ],
+            PROJECT_ROOT,
+        )
+
+    def fake_sync_boundary(owner, repo, shas):
+        boundary_sync_calls.append((owner, repo, shas))
+        return True
+
+    fake_scan = SimpleNamespace(create_commit_evaluator=lambda **_kwargs: FakeEvaluator())
+    fake_meta = SimpleNamespace(version="0.1.0")
+
+    monkeypatch.setattr(
+        trajectory_service,
+        "_sync_repo_for_group_eval",
+        lambda repo_url: ("github", "org", "repo", True),
+    )
+    monkeypatch.setattr(trajectory_service, "_load_all_repo_commits", fake_load)
+    monkeypatch.setattr(trajectory_service, "sync_github_commits_by_sha", fake_sync_boundary, raising=False)
+    monkeypatch.setattr(trajectory_service, "load_scan_module", lambda _plugin_id: (fake_meta, fake_scan, PROJECT_ROOT))
+    monkeypatch.setattr(trajectory_service, "get_llm_api_key", lambda: "test-key")
+
+    result = trajectory_service.analyze_group_repositories(
+        repositories=[
+            {
+                "id": "s1",
+                "repo_url": "https://github.com/org/repo",
+                "tag": "Coursework_Submit_2.3",
+                "end_sha": "tag-sha",
+            }
+        ],
+        plugin_id="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+
+    assert result["success"] is True
+    assert boundary_sync_calls == [("org", "repo", ["tag-sha"])]
+    assert load_calls == [
+        "https://github.com/org/repo",
+        "https://github.com/org/repo",
+        "https://github.com/org/repo",
+    ]
+    assert evaluated_commits == ["tag-sha", "existing-sha"]
+    assert result["results"][0]["sync"]["boundary_sync"] is True

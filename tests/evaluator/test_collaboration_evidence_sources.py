@@ -132,6 +132,68 @@ def test_collaboration_evidence_fetcher_reuses_fresh_cache(tmp_path, monkeypatch
     assert evidence["cache"]["hit"] is True
 
 
+def test_gitee_collaboration_fetcher_includes_review_comments(monkeypatch):
+    from evaluator.services.collaboration_evidence import _fetch_gitee_evidence
+
+    requested = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def get(self, url, headers=None, params=None):
+            requested.append((url, params))
+            if url.endswith("/pulls"):
+                return FakeResponse([
+                    {
+                        "number": 7,
+                        "title": "Add export",
+                        "html_url": "https://gitee.com/org/repo/pulls/7",
+                        "updated_at": "2026-01-01T00:00:00+08:00",
+                    }
+                ])
+            if url.endswith("/pulls/7/comments"):
+                return FakeResponse([
+                    {"body": "Please cover the edge case"},
+                    {"body": "Looks better"},
+                ])
+            return FakeResponse([])
+
+    monkeypatch.setattr("evaluator.services.collaboration_evidence.get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr("evaluator.services.collaboration_evidence.httpx.Client", FakeClient)
+
+    evidence = _fetch_gitee_evidence("org", "repo", ["review_comments"])
+
+    assert evidence["warnings"] == []
+    assert evidence["items"] == [
+        {
+            "source": "review_comments",
+            "label": "PR #7: Add export review discussion",
+            "detail": "2 review comments",
+            "url": "https://gitee.com/org/repo/pulls/7",
+            "updated_at": "2026-01-01T00:00:00+08:00",
+        }
+    ]
+    assert requested[1][0] == "https://gitee.com/api/v5/repos/org/repo/pulls/7/comments"
+    assert requested[1][1]["access_token"] == "gitee-token"
+
+
 def test_analyze_group_repositories_passes_collaboration_evidence_to_plugin(tmp_path, monkeypatch):
     from evaluator.services import trajectory_service
 

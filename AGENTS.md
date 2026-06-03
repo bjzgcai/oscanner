@@ -86,6 +86,7 @@ External checker implementations and `checker_list.yaml`; currently includes `cc
 - Keep FastAPI route handlers thin; put reusable behavior in `services/`, `collectors/`, `analyzers/`, or `utils/`.
 - Use Pydantic schemas from `backend/evaluator/schemas/` for API contracts.
 - Preserve GitHub/Gitee collector behavior around rate limits, tokens, incremental sync, and cached data.
+- Treat GitHub and Gitee as first-class providers in shared workflows. When adding extraction, sync, trajectory, batch, author, collaboration, checker, or URL behavior for one provider, either implement and test the equivalent path for the other provider or document an intentional limitation.
 - Prefer XDG/user-local storage helpers from `paths.py`; avoid hardcoded absolute data paths.
 - Keep plugin discovery and scan contracts stable unless updating all affected plugins and views.
 - For repository URL handling, use the existing parser and security checks rather than ad hoc string handling.
