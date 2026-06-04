@@ -170,9 +170,9 @@ def get_default_plugin_id(plugins: List[Tuple[PluginMeta, Path]]) -> Optional[st
     for meta, _ in plugins:
         if meta.default:
             return meta.plugin_id
-    # Prefer zgc_simple if present.
+    # Prefer the current bundled rubric plugin when no index marks a default.
     for meta, _ in plugins:
-        if meta.plugin_id == "zgc_simple":
+        if meta.plugin_id == "zgc_ai_native_2026":
             return meta.plugin_id
     return plugins[0][0].plugin_id
 
@@ -214,5 +214,4 @@ def load_scan_module(plugin_id: str) -> Tuple[PluginMeta, ModuleType, Path]:
 
     available = [m.plugin_id for m, _ in plugins]
     raise PluginLoadError(f"Unknown plugin '{plugin_id}'. Available: {available}")
-
 

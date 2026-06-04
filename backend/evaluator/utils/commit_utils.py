@@ -1,6 +1,10 @@
 """Commit data utility functions."""
 
+import re
 from typing import Dict, Any, Optional
+
+
+EMAIL_IDENTITY_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _identity_values(identity: Any) -> list[str]:
@@ -55,6 +59,16 @@ def get_emails_from_commit(commit_data: Dict[str, Any]) -> list[str]:
 
 def is_email_identity(value: str) -> bool:
     return "@" in value.strip()
+
+
+def normalize_email_identity(value: str) -> str:
+    """Normalize a user-provided email identity for exact commit matching."""
+    return str(value or "").strip().lower()
+
+
+def is_valid_email_identity(value: str) -> bool:
+    """Return True when value is a usable email identity for UI/API input."""
+    return bool(EMAIL_IDENTITY_RE.fullmatch(normalize_email_identity(value)))
 
 
 def get_author_from_commit(commit_data: Dict[str, Any]) -> Optional[str]:

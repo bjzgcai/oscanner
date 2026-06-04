@@ -53,7 +53,7 @@ def evaluate_engineer(
   - `author` (or `commit.author.name`)
   - `files`: list of `{ filename, patch, ... }`
   - `stats`: `{ additions, deletions, total }`
-- **username**: selected contributor name (string).
+- **username**: selected contributor identity. Prefer commit email addresses; multiple identities may be passed as a comma-separated string by host services.
 
 ## Output Contract (Must / Should)
 
@@ -62,13 +62,7 @@ def evaluate_engineer(
 Return a JSON-serializable dict that contains at least:
 
 - `scores`: a dict containing:
-  - **six dimension scores** (0–100; int/float are both acceptable), keys:
-    - `ai_fullstack`
-    - `ai_architecture`
-    - `cloud_native`
-    - `open_source`
-    - `intelligent_dev`
-    - `leadership`
+  - plugin-defined numeric score keys (0–100; int/float are both acceptable)
   - `reasoning`: a markdown-friendly string (recommended)
 
 ### Recommended output (Should)

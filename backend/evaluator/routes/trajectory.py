@@ -27,6 +27,8 @@ from evaluator.utils import (
     load_commits_from_local,
     get_author_from_commit,
     get_emails_from_commit,
+    is_valid_email_identity,
+    normalize_email_identity,
 )
 
 router = APIRouter()
@@ -68,7 +70,7 @@ def _repository_scoped_group_item(item: Dict[str, Any]) -> Dict[str, Any]:
     scoped = {
         key: value
         for key, value in item.items()
-        if key not in {"username", "aliases", "author_aliases"}
+        if key not in {"email", "username", "emails", "author_emails", "aliases", "author_aliases"}
     }
     scoped["repo_url"] = _repo_url_with_courses_branch(scoped)
     return scoped
@@ -113,14 +115,49 @@ def _extract_group_repository_items(request_body: Dict[str, Any]) -> List[Dict[s
 
 
 def _aliases_from_request(request_body: Dict[str, Any]) -> List[str]:
-    aliases: List[str] = []
-    for key in ("aliases", "author_aliases"):
+    identities: List[str] = []
+    for key in ("emails", "author_emails", "aliases", "author_aliases"):
         value = request_body.get(key)
         if isinstance(value, list):
-            aliases.extend(value)
+            items = value
         elif isinstance(value, str):
-            aliases.extend(part.strip() for part in value.split(",") if part.strip())
-    return aliases
+            items = [part.strip() for part in value.split(",") if part.strip()]
+        else:
+            continue
+
+        for item in items:
+            if not isinstance(item, str):
+                continue
+            cleaned = normalize_email_identity(item) if key in {"emails", "author_emails"} else item.strip()
+            if cleaned:
+                identities.append(cleaned)
+    return identities
+
+
+def _primary_identity_from_request(request_body: Dict[str, Any]) -> tuple[Any, bool]:
+    """Return preferred primary identity plus whether legacy username was explicitly null."""
+    if "email" in request_body:
+        email = request_body.get("email")
+        if isinstance(email, str):
+            normalized = normalize_email_identity(email)
+            if not normalized:
+                return "", False
+            if not is_valid_email_identity(normalized):
+                raise HTTPException(status_code=400, detail=f"Invalid email format: {email}")
+            return normalized, False
+        if email is None:
+            return None, False
+        raise HTTPException(status_code=400, detail="email must be a string")
+
+    username = request_body.get("username")
+    return username, "username" in request_body and request_body.get("username") is None
+
+
+def _primary_identity_from_request_or_error(request_body: Dict[str, Any]) -> tuple[Any, bool]:
+    try:
+        return _primary_identity_from_request(request_body)
+    except HTTPException as exc:
+        raise ValueError(str(exc.detail)) from exc
 
 
 def _evidence_sources_from_request(request_body: Dict[str, Any]) -> List[str]:
@@ -374,9 +411,9 @@ async def analyze_trajectory(
 
     Request body format:
     {
-        "username": "CarterWu",
+        "username": "alice@example.com",
         "repo_urls": ["https://gitee.com/zgcai/oscanner"],
-        "aliases": ["CarterWu", "wu-yanbiao"]
+        "emails": ["alice@example.com", "alice@work.com"]
     }
 
     Returns TrajectoryResponse with:
@@ -391,7 +428,7 @@ async def analyze_trajectory(
         if not isinstance(request_body, dict):
             raise HTTPException(status_code=400, detail="Request body must be a JSON object")
 
-        username = request_body.get("username")
+        username, _ = _primary_identity_from_request(request_body)
 
         # Handle both repo_url (singular) and repo_urls (plural) for backwards compatibility
         repo_urls = request_body.get("repo_urls", [])
@@ -399,10 +436,10 @@ async def analyze_trajectory(
             # If repo_urls is empty but repo_url exists, use it
             repo_urls = [request_body.get("repo_url")]
 
-        aliases = request_body.get("aliases", [])
+        aliases = _aliases_from_request(request_body)
 
         if not username:
-            raise HTTPException(status_code=400, detail="Missing required field: username")
+            raise HTTPException(status_code=400, detail="Missing required field: email")
 
         if not isinstance(repo_urls, list):
             raise HTTPException(status_code=400, detail="repo_urls must be a list (can be empty)")
@@ -473,7 +510,7 @@ async def analyze_trajectory(
 
         print(f"[Trajectory API] Analyzing trajectory for {username}")
         print(f"[Trajectory API] Repos: {repo_urls}")
-        print(f"[Trajectory API] Aliases: {aliases}")
+        print(f"[Trajectory API] Identities: {aliases}")
 
         # Call trajectory analysis service
         # Run synchronous blocking operations in thread pool to avoid blocking event loop
@@ -539,17 +576,15 @@ async def analyze_trajectory_stream(
             if not isinstance(request_body, dict):
                 raise ValueError("Request body must be a JSON object")
 
-            username = request_body.get("username")
+            username, _ = _primary_identity_from_request_or_error(request_body)
             repo_urls = request_body.get("repo_urls", [])
             if not repo_urls and request_body.get("repo_url"):
                 repo_urls = [request_body.get("repo_url")]
 
-            aliases = request_body.get("aliases", [])
-            if not isinstance(aliases, list):
-                aliases = []
+            aliases = _aliases_from_request(request_body)
 
             if not username:
-                raise ValueError("Missing required field: username")
+                raise ValueError("Missing required field: email")
 
             if not isinstance(repo_urls, list):
                 raise ValueError("repo_urls must be a list (can be empty)")
@@ -893,7 +928,7 @@ async def analyze_trajectory_one_off(
     {
         "username": "CarterWu",
         "repo_urls": ["https://gitee.com/zgcai/oscanner"],
-        "aliases": ["CarterWu", "wu-yanbiao"],
+        "emails": ["alice@example.com", "alice@work.com"],
         "expected_feature": "Optional feature description used as an evaluation baseline"
     }
     Note: `username` is optional.
@@ -930,8 +965,7 @@ async def analyze_trajectory_one_off(
         if not isinstance(request_body, dict):
             raise HTTPException(status_code=400, detail="Request body must be a JSON object")
 
-        username = request_body.get("username")
-        username_is_explicit_null = "username" in request_body and request_body.get("username") is None
+        username, username_is_explicit_null = _primary_identity_from_request(request_body)
 
         # Handle both repo_url (singular) and repo_urls (plural) for backwards compatibility
         repo_urls = request_body.get("repo_urls", [])
@@ -1031,7 +1065,7 @@ async def analyze_trajectory_one_off(
                 if not username:
                     raise HTTPException(
                         status_code=400,
-                        detail="Missing required field: username. Unable to infer default username from first commit author."
+                        detail="Missing required field: email. Unable to infer default email from first commit author."
                     )
                 print(f"[Trajectory API One-Off] Inferred username from first commit author: {username}")
             elif username_is_explicit_null and inferred_all_authors:
@@ -1058,7 +1092,7 @@ async def analyze_trajectory_one_off(
 
         print(f"[Trajectory API One-Off] Analyzing trajectory for {username}")
         print(f"[Trajectory API One-Off] Repos: {repo_urls}")
-        print(f"[Trajectory API One-Off] Aliases: {aliases}")
+        print(f"[Trajectory API One-Off] Identities: {aliases}")
 
         # Call trajectory analysis service
         # Run synchronous blocking operations in thread pool to avoid blocking event loop
@@ -1166,8 +1200,7 @@ async def analyze_trajectory_one_off_stream(
             if not isinstance(request_body, dict):
                 raise ValueError("Request body must be a JSON object")
 
-            username = request_body.get("username")
-            username_is_explicit_null = "username" in request_body and request_body.get("username") is None
+            username, username_is_explicit_null = _primary_identity_from_request_or_error(request_body)
 
             repo_urls = request_body.get("repo_urls", [])
             if not repo_urls and request_body.get("repo_url"):
@@ -1250,7 +1283,7 @@ async def analyze_trajectory_one_off_stream(
                     username = _infer_username_from_first_commit(repo_urls)
                     if not username:
                         raise RuntimeError(
-                            "Missing required field: username. Unable to infer default username from first commit author."
+                            "Missing required field: email. Unable to infer default email from first commit author."
                         )
 
             merged_aliases: List[str] = []

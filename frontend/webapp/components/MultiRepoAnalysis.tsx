@@ -17,6 +17,7 @@ import type { ContributorComparisonData } from '../types';
 import { useAppSettings } from './AppSettingsContext';
 import { useUserSettings } from './UserSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
+import { formatEmailListError, parseEmailList } from '../utils/emailIdentity.mjs';
 import { parseRepoUrl } from '../utils/repoUrl.mjs';
 import PluginViewRenderer from './PluginViewRenderer';
 import PluginComparisonRenderer from './PluginComparisonRenderer';
@@ -101,7 +102,7 @@ export default function MultiRepoAnalysis() {
   const [giteeTokenMasked, setGiteeTokenMasked] = useState('');
   const [githubToken, setGithubToken] = useState('');
   const [githubTokenMasked, setGithubTokenMasked] = useState('');
-  const [authorAliases, setAuthorAliases] = useState('');
+  const [authorEmails, setAuthorEmails] = useState('');
 
   // Single-repo state (merged UI)
   const [singleRepo, setSingleRepo] = useState<{ platform: 'github' | 'gitee'; owner: string; repo: string; full_name: string } | null>(null);
@@ -137,18 +138,18 @@ export default function MultiRepoAnalysis() {
     if (isExecuting) setLogsExpanded(true);
   }, [isExecuting]);
 
-  // Auto-populate repo URLs and username groups from user settings
+  // Auto-populate repo URLs and email identity groups from user settings
   useEffect(() => {
     if (!isInitialized && !repoUrls.trim()) {
       if (userSettings.repoUrls.length > 0) {
         setRepoUrls(userSettings.repoUrls.join('\n'));
       }
-      if (!authorAliases.trim() && userSettings.usernameGroups) {
-        setAuthorAliases(userSettings.usernameGroups);
+      if (!authorEmails.trim() && userSettings.usernameGroups) {
+        setAuthorEmails(userSettings.usernameGroups);
       }
       setIsInitialized(true);
     }
-  }, [isInitialized, repoUrls, authorAliases, userSettings]);
+  }, [isInitialized, repoUrls, authorEmails, userSettings]);
 
   const stopTicker = useCallback(
     (pinToLatest: boolean) => {
@@ -278,7 +279,7 @@ export default function MultiRepoAnalysis() {
     } catch (e: unknown) {
       appendLog(`LLM settings save failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
     }
-  }, [appendLog, giteeToken, githubToken, llmApiKey, llmBaseUrl, llmChatUrl, llmFallbackModels, llmMode, model, openRouterKey, refreshLlmConfig]);
+  }, [appendLog, giteeToken, githubToken, llmApiKey, llmBaseUrl, llmChatUrl, llmFallbackModels, llmMode, model, openRouterKey, refreshLlmConfig, setLlmModalOpen]);
 
   const tickerLine = useMemo(() => {
     if (logs.length === 0) return null;
@@ -370,25 +371,38 @@ export default function MultiRepoAnalysis() {
         });
       }, 1000);
 
-      // Parse author aliases and check if current author matches any
-      let requestBody: { aliases?: string[] } | undefined = undefined;
-      if (authorAliases.trim()) {
-        const aliases = authorAliases.split(',').map(a => a.trim().toLowerCase()).filter(a => a);
-        // Check if the current author matches any of the aliases
-        if (aliases.includes(author.author.toLowerCase().trim())) {
-          requestBody = { aliases };
-          appendLog(`Using ${aliases.length} aliases: ${aliases.join(', ')}`);
-        }
+      const parsedEmails = parseEmailList(authorEmails);
+      if (parsedEmails.invalidEmails.length > 0) {
+        appendLog(formatEmailListError(parsedEmails.invalidEmails), 'error');
+        setLoading(false);
+        setLoadingText('');
+        setEvaluationLoading(false);
+        setIsExecuting(false);
+        return;
       }
+
+      const fallbackEmail = (author.email || '').trim().toLowerCase();
+      const emails = parsedEmails.emails.length > 0 ? parsedEmails.emails : (fallbackEmail ? [fallbackEmail] : []);
+      if (emails.length === 0) {
+        appendLog(`Evaluation failed: ${author.author} has no commit email to evaluate.`, 'error');
+        setLoading(false);
+        setLoadingText('');
+        setEvaluationLoading(false);
+        setIsExecuting(false);
+        return;
+      }
+      const requestBody: { emails: string[] } = { emails };
+      const evaluationIdentity = emails[0];
+      appendLog(`Using ${emails.length} email identity${emails.length === 1 ? '' : 'ies'}: ${emails.join(', ')}`);
 
       try {
         setEvaluationProgress(10);
         const response = await fetch(
-          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&language=${encodeURIComponent(locale)}`,
+          `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(evaluationIdentity)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&language=${encodeURIComponent(locale)}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: requestBody ? JSON.stringify(requestBody) : undefined
+            body: JSON.stringify(requestBody)
           }
         );
         if (!response.ok) {
@@ -418,7 +432,7 @@ export default function MultiRepoAnalysis() {
         setIsExecuting(false);
       }
     },
-    [appendLog, authorsData, model, authorAliases, singleRepo?.platform, pluginId]
+    [appendLog, authorsData, model, authorEmails, singleRepo?.platform, pluginId, locale]
   );
 
   const compareContributor = useCallback(
@@ -429,6 +443,14 @@ export default function MultiRepoAnalysis() {
       appendLog(`Evaluating "${contributorName}" across ${reposToCompare.length} repositories...`);
 
       try {
+        const parsedEmails = parseEmailList(authorEmails);
+        if (parsedEmails.invalidEmails.length > 0) {
+          throw new Error(formatEmailListError(parsedEmails.invalidEmails));
+        }
+        const selected = commonContributors?.common_contributors.find((c) => c.author === contributorName);
+        const fallbackEmail = (selected?.email || '').trim().toLowerCase();
+        const emails = parsedEmails.emails.length > 0 ? parsedEmails.emails : (fallbackEmail ? [fallbackEmail] : []);
+
         const response = await fetch(`${API_SERVER_URL}/api/batch/compare-contributor`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -437,7 +459,7 @@ export default function MultiRepoAnalysis() {
             repos: reposToCompare,
             model,
             plugin: pluginId || undefined,
-            author_aliases: authorAliases.trim() ? authorAliases : undefined,
+            author_emails: emails.length > 0 ? emails : undefined,
           }),
         });
 
@@ -469,7 +491,7 @@ export default function MultiRepoAnalysis() {
         setIsExecuting(false);
       }
     },
-    [appendLog, model, authorAliases, pluginId]
+    [appendLog, model, authorEmails, pluginId, commonContributors]
   );
 
   const handleEvaluateContributor = useCallback(() => {
@@ -511,6 +533,14 @@ export default function MultiRepoAnalysis() {
       setIsExecuting(false);
       return;
     }
+
+    const parsedAuthorEmails = parseEmailList(authorEmails);
+    if (parsedAuthorEmails.invalidEmails.length > 0) {
+      appendLog(formatEmailListError(parsedAuthorEmails.invalidEmails), 'error');
+      setIsExecuting(false);
+      return;
+    }
+    const authorEmailPayload = parsedAuthorEmails.emails.length > 0 ? parsedAuthorEmails.emails : undefined;
 
     setLoading(true);
 
@@ -634,7 +664,7 @@ export default function MultiRepoAnalysis() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             repos: reposWithData.map((r) => ({ owner: r.owner, repo: r.repo, platform: r.platform })),
-            author_aliases: authorAliases.trim() ? authorAliases : undefined,
+            author_emails: authorEmailPayload,
           }),
         });
 
@@ -777,8 +807,8 @@ export default function MultiRepoAnalysis() {
                 <span>{t('multi.author_aliases.label')}</span>
               </label>
               <TextArea
-                value={authorAliases}
-                onChange={(e) => setAuthorAliases(e.target.value)}
+                value={authorEmails}
+                onChange={(e) => setAuthorEmails(e.target.value)}
                 placeholder={t('multi.author_aliases.placeholder')}
                 rows={2}
                 disabled={loading}
@@ -942,10 +972,10 @@ export default function MultiRepoAnalysis() {
                 <h2>
                   {(() => {
                     const currentAuthor = authorsData[selectedAuthorIndex]?.author;
-                    if (authorAliases.trim()) {
-                      const aliases = authorAliases.split(',').map(a => a.trim()).filter(a => a);
-                      if (aliases.some(a => a.toLowerCase() === currentAuthor?.toLowerCase())) {
-                        return aliases.join(', ');
+                    if (authorEmails.trim()) {
+                      const emails = parseEmailList(authorEmails).emails;
+                      if (emails.length > 0) {
+                        return emails.join(', ');
                       }
                     }
                     return currentAuthor;
@@ -964,9 +994,9 @@ export default function MultiRepoAnalysis() {
             </div>
 
             <PluginViewRenderer
-              pluginId={pluginId || 'zgc_simple'}
+              pluginId={pluginId || 'zgc_ai_native_2026'}
               evaluation={evaluation}
-              title={`Analysis View (${pluginId || 'zgc_simple'})`}
+              title={`Analysis View (${pluginId || 'zgc_ai_native_2026'})`}
               loading={loading}
             />
           </Card>
@@ -1080,7 +1110,7 @@ export default function MultiRepoAnalysis() {
 
             {comparisonData && selectedContributor && (
               <PluginComparisonRenderer
-                pluginId={pluginId || 'zgc_simple'}
+                pluginId={pluginId || 'zgc_ai_native_2026'}
                 data={comparisonData}
                 loading={loadingComparison}
                 error={comparisonData === null && !loadingComparison ? 'Failed to load comparison data' : undefined}

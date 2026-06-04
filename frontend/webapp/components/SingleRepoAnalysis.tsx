@@ -167,9 +167,17 @@ export default function SingleRepoAnalysis() {
 
     try {
       setProgress(10);
+      const authorEmail = (author.email || '').trim().toLowerCase();
+      if (!authorEmail) {
+        throw new Error(`No commit email found for ${author.author}`);
+      }
       const response = await fetch(
-        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(author.author)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}`,
-        { method: 'POST' }
+        `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(authorEmail)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emails: [authorEmail] }),
+        }
       );
       if (!response.ok) throw new Error('Failed to evaluate author');
       const result = await response.json();
@@ -315,9 +323,9 @@ export default function SingleRepoAnalysis() {
             </div>
 
             <PluginViewRenderer
-              pluginId={pluginId || 'zgc_simple'}
+              pluginId={pluginId || 'zgc_ai_native_2026'}
               evaluation={evaluation}
-              title={`Analysis View (${pluginId || 'zgc_simple'})`}
+              title={`Analysis View (${pluginId || 'zgc_ai_native_2026'})`}
               loading={loading}
               error={evalError}
             />

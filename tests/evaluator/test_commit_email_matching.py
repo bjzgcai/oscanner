@@ -23,13 +23,3 @@ def test_ai_native_plugin_filters_by_email_identity():
 
     assert evaluator._is_commit_by_author(commit, "student@example.com") is True
     assert evaluator._is_commit_by_author(commit, "github-login") is False
-
-
-def test_simple_plugin_filters_by_email_identity():
-    from plugins.zgc_simple.scan import CommitEvaluatorModerate
-
-    evaluator = CommitEvaluatorModerate(api_key="test", data_dir=".")
-    commit = {"commit": {"author": {"name": "Laptop", "email": "student@example.com"}}}
-
-    assert evaluator._is_commit_by_author(commit, "student@example.com") is True
-    assert evaluator._is_commit_by_author(commit, "github-login") is False

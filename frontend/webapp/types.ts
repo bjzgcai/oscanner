@@ -1,11 +1,4 @@
-export interface Score {
-  ai_model_fullstack: number;
-  ai_native_architecture: number;
-  cloud_native: number;
-  open_source_collaboration: number;
-  intelligent_development: number;
-  engineering_leadership: number;
-}
+export type Score = Record<string, number>;
 
 export interface Comparison {
   repo: string;
@@ -34,5 +27,4 @@ export interface ContributorComparisonData {
   };
   failed_repos?: Array<{ repo: string; reason: string }>;
 }
-
 

@@ -1,6 +1,6 @@
 # Oscanner Skill Evaluator - Agent Instructions
 
-These instructions apply to `/home/carter/working/eval`.
+These instructions apply to `/home/carter/working/oscanner`.
 
 ## Project Overview
 
@@ -53,8 +53,7 @@ Optional GitHub Pages/Jekyll static site. Keep this separate from the Next.js da
 
 ### Plugins: `plugins/`
 
-- `zgc_simple/`: traditional six-dimension evaluator
-- `zgc_ai_native_2026/`: AI-Native 2026 rubric evaluator
+- `zgc_ai_native_2026/`: default AI-Native 2026 rubric evaluator
 - `_shared/`: shared scan/view utilities
 - Each plugin uses `index.yaml`, backend scan code in `scan/`, React views in `view/`, and optional `i18n/`.
 - When changing plugin UI, keep backend scan output shape and frontend view expectations aligned.

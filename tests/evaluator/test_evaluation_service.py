@@ -56,8 +56,8 @@ class TestGetOrCreateEvaluator:
              patch('evaluator.services.evaluation_service.get_llm_api_key') as mock_api_key:
             
             mock_get_dir.return_value = temp_data_dir
-            mock_resolve.return_value = "zgc_simple"
-            mock_load.return_value = ({"id": "zgc_simple"}, mock_scan_mod, "scan/path")
+            mock_resolve.return_value = "zgc_ai_native_2026"
+            mock_load.return_value = ({"id": "zgc_ai_native_2026"}, mock_scan_mod, "scan/path")
             mock_api_key.return_value = "fake_api_key"
             
             evaluator = get_or_create_evaluator(
@@ -65,7 +65,7 @@ class TestGetOrCreateEvaluator:
                 owner="test_owner",
                 repo="test_repo",
                 commits=commits,
-                plugin_id="zgc_simple"
+                plugin_id="zgc_ai_native_2026"
             )
             
             assert evaluator == mock_evaluator
@@ -85,8 +85,8 @@ class TestGetOrCreateEvaluator:
              patch('evaluator.services.evaluation_service.get_llm_api_key') as mock_api_key:
             
             mock_get_dir.return_value = temp_data_dir
-            mock_resolve.return_value = "zgc_simple"
-            mock_load.return_value = ({"id": "zgc_simple"}, Mock(), "scan/path")
+            mock_resolve.return_value = "zgc_ai_native_2026"
+            mock_load.return_value = ({"id": "zgc_ai_native_2026"}, Mock(), "scan/path")
             mock_api_key.return_value = None
             
             with pytest.raises(HTTPException) as exc_info:
@@ -133,12 +133,10 @@ class TestEvaluateAuthorIncremental:
         mock_evaluator = Mock()
         mock_evaluator.evaluate_engineer = Mock(return_value={
             "scores": {
-                "ai_fullstack": 5,
-                "ai_architecture": 4,
-                "cloud_native": 3,
-                "open_source": 2,
-                "intelligent_dev": 1,
-                "leadership": 0,
+                "spec_quality": 5,
+                "cloud_architecture": 4,
+                "ai_engineering": 3,
+                "mastery_professionalism": 2,
                 "reasoning": "Test reasoning"
             },
             "commits_summary": {
@@ -168,7 +166,7 @@ class TestEvaluateAuthorIncremental:
         assert result.get("total_commits_evaluated") == 2
         assert result.get("new_commits_count") == 2
         assert result.get("incremental") is False
-        assert result.get("scores", {}).get("ai_fullstack") == 5
+        assert result.get("scores", {}).get("spec_quality") == 5
         mock_evaluator.evaluate_engineer.assert_called_once()
 
     def test_evaluate_author_incremental_adds_structured_evidence_links(self, temp_data_dir):
@@ -190,7 +188,7 @@ class TestEvaluateAuthorIncremental:
 
         mock_evaluator = Mock()
         mock_evaluator.evaluate_engineer = Mock(return_value={
-            "scores": {"ai_fullstack": 5, "reasoning": "Test reasoning"},
+            "scores": {"spec_quality": 5, "reasoning": "Test reasoning"},
             "commits_summary": {
                 "total_additions": 16,
                 "total_deletions": 1,
@@ -240,7 +238,7 @@ class TestEvaluateAuthorIncremental:
         previous_evaluation = {
             "last_commit_sha": "old123",
             "total_commits_evaluated": 1,
-            "scores": {"ai_fullstack": 3, "reasoning": "Previous reasoning"},
+            "scores": {"spec_quality": 3, "reasoning": "Previous reasoning"},
             "commits_summary": {
                 "total_additions": 1,
                 "total_deletions": 0,
@@ -276,7 +274,7 @@ class TestEvaluateAuthorIncremental:
 
         mock_evaluator = Mock()
         mock_evaluator.evaluate_engineer = Mock(return_value={
-            "scores": {"ai_fullstack": 7, "reasoning": "New reasoning"},
+            "scores": {"spec_quality": 7, "reasoning": "New reasoning"},
             "commits_summary": {
                 "total_additions": 2,
                 "total_deletions": 0,
@@ -331,12 +329,10 @@ class TestEvaluateAuthorIncremental:
             "last_commit_sha": "old123",
             "total_commits_evaluated": 1,
             "scores": {
-                "ai_fullstack": 3,
-                "ai_architecture": 2,
-                "cloud_native": 1,
-                "open_source": 0,
-                "intelligent_dev": 0,
-                "leadership": 0,
+                "spec_quality": 3,
+                "cloud_architecture": 2,
+                "ai_engineering": 1,
+                "mastery_professionalism": 0,
                 "reasoning": "Previous reasoning"
             },
             "commits_summary": {
@@ -350,12 +346,10 @@ class TestEvaluateAuthorIncremental:
         mock_evaluator = Mock()
         mock_evaluator.evaluate_engineer = Mock(return_value={
             "scores": {
-                "ai_fullstack": 7,
-                "ai_architecture": 6,
-                "cloud_native": 5,
-                "open_source": 4,
-                "intelligent_dev": 3,
-                "leadership": 2,
+                "spec_quality": 7,
+                "cloud_architecture": 6,
+                "ai_engineering": 5,
+                "mastery_professionalism": 4,
                 "reasoning": "New reasoning"
             },
             "commits_summary": {
@@ -384,7 +378,7 @@ class TestEvaluateAuthorIncremental:
         assert result["new_commits_count"] == 1
         assert result["incremental"] is True
         # Verify weighted average: (3*1 + 7*1) / 2 = 5
-        assert result["scores"]["ai_fullstack"] == 5
+        assert result["scores"]["spec_quality"] == 5
         # Verify reasoning is combined
         assert "Recent Activity" in result["scores"]["reasoning"]
         assert "Previous Assessment" in result["scores"]["reasoning"]
@@ -430,7 +424,7 @@ class TestEvaluateAuthorIncremental:
         previous_evaluation = {
             "last_commit_sha": "abc123",
             "total_commits_evaluated": 1,
-            "scores": {"ai_fullstack": 5},
+            "scores": {"spec_quality": 5},
         }
         
         result = evaluate_author_incremental(

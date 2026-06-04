@@ -63,10 +63,9 @@ oscanner/
 │       ├── cli.py
 │       └── ...
 │
-├── plugins/                          # 插件系统（共享）
-│   ├── zgc_simple/
-│   ├── zgc_ai_native_2026/
-│   └── _shared/
+	├── plugins/                          # 插件系统（共享）
+	│   ├── zgc_ai_native_2026/
+	│   └── _shared/
 │
 ├── scripts/                          # 工具脚本
 │   ├── start_dev.sh

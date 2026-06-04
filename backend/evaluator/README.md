@@ -71,7 +71,7 @@ The Next.js dashboard provides three evaluation workflows:
    - Auto-extracts commits if not cached
    - Lists all authors with commit counts
    - Click author to evaluate with default plugin
-   - View six-dimensional scores with radar chart
+   - View plugin rubric scores with charts
    - Export to PDF with one click
 
 2. **Multi-Repository Analysis** (`/repos`)
@@ -83,7 +83,7 @@ The Next.js dashboard provides three evaluation workflows:
 
 3. **Contributor Comparison** (from multi-repo page)
    - Compare one contributor across multiple repositories
-   - Six-dimensional score comparison
+   - Plugin rubric score comparison
    - Multiple chart types: radar, bar, heatmap, line
    - Identify specialization and context-aware capabilities
    - Export comparison report to PDF
@@ -97,10 +97,10 @@ The Next.js dashboard provides three evaluation workflows:
 ## Key Features
 
 - **Plugin-Based Architecture**: Extensible evaluation strategies with self-contained backend logic and React UI components
-- **Six-Dimensional Evaluation Framework**: Comprehensive assessment across AI/ML, architecture, cloud native, collaboration, intelligent development, and leadership
+- **AI-Native 2026 Rubric**: Default plugin evaluates specification quality, cloud architecture, AI engineering, and mastery/professionalism
 - **Multi-Platform Support**: Works with both GitHub and Gitee repositories (public + enterprise z.gitee.cn)
 - **Incremental Sync**: Efficiently fetches only new commits since last sync, tracking sync state (`last_commit_sha`, `last_commit_date`) per repository
-- **Multi-Alias Aggregation**: Automatically merges contributor identities (e.g., "CarterWu", "wu-yanbiao") with weighted averaging (~88% token savings)
+- **Multi-Email Aggregation**: Merges contributor commit email identities with commit-count weighted averaging
 - **Smart Caching**: Three-tier caching strategy:
   1. API responses (GitHub/Gitee) cached locally
   2. Extracted commit data and diffs
@@ -145,67 +145,21 @@ evaluator/
 └── requirements.txt                     # (legacy) Python dependencies; prefer pyproject.toml + uv
 
 plugins/                                 # Plugin system (extensible evaluators)
-├── zgc_simple/                          # Default plugin
-│   ├── index.yaml                       # Plugin metadata
-│   ├── scan/__init__.py                 # CommitEvaluatorModerate
-│   └── view/                            # React UI components
-│       ├── single/                      # Single-repo analysis view
-│       └── compare/                     # Multi-repo comparison view
-└── zgc_ai_native_2026/                  # AI-Native 2026 rubric plugin
-    ├── index.yaml
-    ├── scan/__init__.py
-    └── view/
+├── zgc_ai_native_2026/                  # Default AI-Native 2026 rubric plugin
+│   ├── index.yaml
+│   ├── scan/__init__.py
+│   └── view/
+└── _shared/                             # Shared plugin scan/view utilities
 ```
 
-## Six Evaluation Dimensions
+## AI-Native 2026 Rubric
 
-### 1. AI Model Full-Stack & Trade-off Capability
-Evaluates AI/ML model development, training, optimization, and deployment capabilities.
-- ML framework usage (TensorFlow, PyTorch, etc.)
-- Model architecture and design
-- Training pipelines and optimization
-- Model serving and inference optimization
-- End-to-end ML pipeline implementation
+The bundled default plugin emits four numeric score keys:
 
-### 2. AI Native Architecture & Communication Design
-Assesses AI-first system design, API design, and microservices architecture.
-- AI service API design
-- Microservices and distributed systems
-- Architecture documentation
-- Communication patterns and design
-- Integration patterns and scalability
-
-### 3. Cloud Native & Constraint Engineering
-Measures containerization, infrastructure as code, and DevOps practices.
-- Docker and containerization
-- Kubernetes and orchestration
-- CI/CD pipelines
-- Infrastructure as Code (Terraform, CloudFormation)
-- Resource optimization
-
-### 4. Open Source Collaboration & Requirements Translation
-Evaluates collaboration quality, communication, and community engagement.
-- Contribution frequency and quality
-- Code review participation
-- Issue management
-- Cross-repository collaboration
-- Requirements-to-code translation
-
-### 5. Intelligent Development & Human-Machine Collaboration
-Assesses automation, tooling, testing, and AI-assisted development.
-- Automation scripts and tools
-- AI-assisted development practices
-- Test automation
-- Custom tooling development
-- Development efficiency
-
-### 6. Engineering Leadership & System Trade-offs
-Measures technical decision-making, mentorship, and architectural leadership.
-- Mentorship and code review quality
-- Architectural decisions
-- Technical decision documentation
-- Project ownership
-- Team collaboration and leadership
+- `spec_quality`: specification implementation, tests, validation, maintainability
+- `cloud_architecture`: architecture evolution, cloud-native readiness, reproducibility
+- `ai_engineering`: AI workflows, automation, prompts/tools/evaluation loops
+- `mastery_professionalism`: engineering maturity, documentation, collaboration, trade-off quality
 
 ## Installation
 
@@ -817,15 +771,15 @@ Fetch Gitee commits directly from API.
 
 **Evaluation Endpoints:**
 ```
-POST /api/evaluate/{owner}/{repo}/{author}?limit=30&plugin_id=zgc_simple
+POST /api/evaluate/{owner}/{repo}/{email}?plugin=zgc_ai_native_2026
 ```
 **Primary evaluation endpoint** with advanced features:
-- Supports **author aliases**: Pass `{"aliases": ["name1", "name2"]}` in request body
-- Evaluates each alias separately and merges the results
+- Supports **multiple commit emails**: pass `{"emails": ["name@example.com", "name@work.com"]}` in request body
+- Evaluates each email identity separately and merges the results
 - Weighted merge based on commit count (~88% token savings)
 - LLM-synthesized unified analysis across identities
 - Auto-syncs repository with incremental fetch (only new commits)
-- Plugin-specific evaluation (`plugin_id` parameter)
+- Plugin-specific evaluation (`plugin` parameter)
 
 ```
 POST /api/merge-evaluations
@@ -834,8 +788,8 @@ Merge multiple author evaluations with weighted averaging:
 ```json
 {
   "evaluations": [
-    {"author": "name1", "evaluation": {...}, "commit_count": 50},
-    {"author": "name2", "evaluation": {...}, "commit_count": 30}
+    {"author": "name@example.com", "evaluation": {...}, "weight": 50},
+    {"author": "name@work.com", "evaluation": {...}, "weight": 30}
   ]
 }
 ```
@@ -882,12 +836,13 @@ POST /api/batch/compare-contributor
 Compare a contributor's capability scores across multiple repositories:
 ```json
 {
-  "contributor": "John Doe",
+  "contributor": "john@example.com",
+  "author_emails": ["john@example.com", "john@work.com"],
   "repos": [
     {"owner": "facebook", "repo": "react"},
     {"owner": "vercel", "repo": "next.js"}
   ],
-  "plugin_id": "zgc_simple"
+  "plugin": "zgc_ai_native_2026"
 }
 ```
 Returns evaluation data for visualization (radar, bar, heatmap, line charts).
@@ -919,17 +874,17 @@ curl -X POST "http://localhost:8000/api/config/llm" \
 # Get authors list (auto-fetches and caches if needed)
 curl "http://localhost:8000/api/authors/anthropics/anthropic-sdk-python"
 
-# Evaluate a specific author with default plugin
-curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?limit=30"
+# Evaluate a specific commit email with default plugin
+curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat%40example.com"
 
 # Evaluate with specific plugin
-curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat?plugin_id=zgc_ai_native_2026"
+curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat%40example.com?plugin=zgc_ai_native_2026"
 
-# Evaluate author with aliases (multi-identity aggregation)
-curl -X POST "http://localhost:8000/api/evaluate/facebook/react/Dan%20Abramov?limit=30" \
+# Evaluate author with multiple emails (multi-identity aggregation)
+curl -X POST "http://localhost:8000/api/evaluate/facebook/react/dan%40example.com?plugin=zgc_ai_native_2026" \
   -H "Content-Type: application/json" \
   -d '{
-    "aliases": ["Dan Abramov", "dan_abramov", "gaearon"]
+    "emails": ["dan@example.com", "dan@work.com"]
   }'
 
 # Merge multiple evaluations with weighted averaging
@@ -963,7 +918,7 @@ curl -X POST "http://localhost:8000/api/batch/common-contributors" \
 # Compare contributor across multiple repositories
 curl -X POST "http://localhost:8000/api/batch/compare-contributor" \
   -H "Content-Type: application/json" \
-  -d '{"contributor": "Sebastian Markbage", "repos": [{"owner": "facebook", "repo": "react"}, {"owner": "vercel", "repo": "next.js"}], "plugin_id": "zgc_simple"}'
+  -d '{"contributor": "sebastian@example.com", "author_emails": ["sebastian@example.com"], "repos": [{"owner": "facebook", "repo": "react"}, {"owner": "vercel", "repo": "next.js"}], "plugin": "zgc_ai_native_2026"}'
 
 # Gitee-specific: Get commits
 curl "http://localhost:8000/api/gitee/commits/owner/repo?limit=100&is_enterprise=false"
@@ -1267,24 +1222,18 @@ The system uses a **plugin-based architecture** for extensible evaluation strate
 
 **Plugin Metadata (index.yaml):**
 ```yaml
-id: zgc_simple
-name: "Simple Commit Evaluator"
-description: "Moderate-complexity evaluation using CommitEvaluatorModerate"
-version: "1.0.0"
+id: zgc_ai_native_2026
+name: "ZGC AI-Native 2026"
+description: "Rubric-guided evaluation based on engineer_level.md (2026 AI-Native standard)."
+version: "0.1.0"
 scan_entry: "scan/__init__.py"          # Backend evaluator module
-view_single_entry: "view/single"        # Single-repo React component
-view_compare_entry: "view/compare"      # Multi-repo comparison component
+view_single_entry: "view/single_repo.tsx"
+view_compare_entry: "view/multi_repo_compare.tsx"
 default: true                           # Mark as default plugin
 ```
 
 **Available Plugins:**
-1. **zgc_simple** (default)
-   - Uses `CommitEvaluatorModerate` class
-   - Analyzes commit diffs + local file contents
-   - Max input tokens: 190,000
-   - Six-dimensional evaluation framework
-
-2. **zgc_ai_native_2026**
+1. **zgc_ai_native_2026** (default)
    - Rubric-guided evaluation
    - 2026 AI-Native engineering standard
    - Specialized for AI-first architectures
@@ -1350,7 +1299,7 @@ Plugin evaluators compute fresh results from local repository data:
 ```python
 from evaluator.plugin_registry import load_scan_module
 
-meta, scan_mod, scan_path = load_scan_module("zgc_simple")
+meta, scan_mod, scan_path = load_scan_module("zgc_ai_native_2026")
 evaluator = scan_mod.create_commit_evaluator(data_dir="data/github/owner/repo", api_key="your_key")
 
 result = evaluator.evaluate_contributor(

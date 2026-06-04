@@ -34,33 +34,23 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
     );
   }
 
-  const shortDimensionNames = [
-    'AI Model\nFull-Stack',
-    'AI Native\nArchitecture',
-    'Cloud\nNative',
-    'Open Source\nCollaboration',
-    'Intelligent\nDevelopment',
-    'Engineering\nLeadership',
-  ];
-
   const colors =
     theme === 'rubric'
       ? ['#7C3AED', '#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE', '#5B21B6']
       : ['#0891B2', '#1E40AF', '#059669', '#D97706', '#DC2626', '#6D28D9'];
 
-  const dimensionKeys = [
-    'ai_model_fullstack',
-    'ai_native_architecture',
-    'cloud_native',
-    'open_source_collaboration',
-    'intelligent_development',
-    'engineering_leadership',
-  ] as const;
+  const dimensionKeys = data.dimension_keys?.length
+    ? data.dimension_keys
+    : Object.keys(data.comparisons[0]?.scores || {});
+  const dimensionNames = data.dimension_names?.length === dimensionKeys.length
+    ? data.dimension_names
+    : dimensionKeys.map((key) => key.replace(/_/g, ' '));
+  const chartLabels = dimensionNames.map((name) => String(name).replace(/\s+/g, '\n'));
 
   const getRadarOptions = () => {
     const seriesData = data.comparisons.map((comp, idx) => ({
       name: comp.repo,
-      value: Object.values(comp.scores),
+      value: dimensionKeys.map((key) => Number(comp.scores[key] || 0)),
       itemStyle: { color: colors[idx % colors.length] },
     }));
 
@@ -79,7 +69,7 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
         bottom: 0,
       },
       radar: {
-        indicator: shortDimensionNames.map((name) => ({ name, max: 100 })),
+        indicator: chartLabels.map((name) => ({ name, max: 100 })),
         splitArea: { areaStyle: { color: ['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.06)'] } },
         axisLine: { lineStyle: { color: 'rgba(0, 0, 0, 0.15)' } },
         splitLine: { lineStyle: { color: 'rgba(0, 0, 0, 0.15)' } },
@@ -99,11 +89,11 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
   };
 
   const getBarOptions = () => {
-    const categories = shortDimensionNames;
+    const categories = chartLabels;
     const series = data.comparisons.map((comp, idx) => ({
       name: comp.repo,
       type: 'bar',
-      data: Object.values(comp.scores),
+      data: dimensionKeys.map((key) => Number(comp.scores[key] || 0)),
       itemStyle: { color: colors[idx % colors.length] },
     }));
 
@@ -225,5 +215,4 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
     </div>
   );
 }
-
 

@@ -1,10 +1,55 @@
 """Multi-evaluation merging service."""
 
+import os
 import requests
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 
 from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL
+
+
+NON_NUMERIC_SCORE_KEYS = {"reasoning", "summary", "analysis", "evidence", "recommendations"}
+
+
+def _numeric_score(value: Any) -> Optional[float]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _score_keys_for_evaluations(evaluations: List[Dict[str, Any]]) -> List[str]:
+    keys: List[str] = []
+    seen = set()
+    for eval_data in evaluations:
+        scores = eval_data.get("scores", {})
+        if not isinstance(scores, dict):
+            continue
+        for key, value in scores.items():
+            if key in NON_NUMERIC_SCORE_KEYS or _numeric_score(value) is None:
+                continue
+            if key not in seen:
+                seen.add(key)
+                keys.append(key)
+    return keys
+
+
+def _chat_completions_url() -> str:
+    configured_url = (os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL") or "").strip()
+    if configured_url:
+        return configured_url
+    base_url = (
+        os.getenv("OSCANNER_LLM_BASE_URL")
+        or os.getenv("OPENAI_BASE_URL")
+        or "https://openrouter.ai/api/v1"
+    ).strip()
+    return f"{base_url.rstrip('/')}/chat/completions"
 
 
 def merge_evaluations_logic(evaluations_data: List[Dict[str, Any]], model: str = DEFAULT_LLM_MODEL) -> Dict[str, Any]:
@@ -45,27 +90,24 @@ def merge_evaluations_logic(evaluations_data: List[Dict[str, Any]], model: str =
 
         print(f"[Merge] Merging {len(evaluations)} evaluations with weights: {weights}")
 
-        # Step 1: Calculate weighted average scores
+        # Step 1: Calculate weighted average scores from the plugin's numeric score keys.
         merged_scores = {}
-        dimension_keys = ['ai_fullstack', 'ai_architecture', 'cloud_native', 'open_source', 'intelligent_dev', 'leadership']
+        dimension_keys = _score_keys_for_evaluations(evaluations)
 
         for key in dimension_keys:
             weighted_sum = 0
             for eval_data, weight in zip(evaluations, weights):
                 scores = eval_data.get("scores", {})
-                score_value = scores.get(key, 0)
-                # Handle both numeric and string scores
-                if isinstance(score_value, str):
-                    try:
-                        score_value = float(score_value)
-                    except:
-                        score_value = 0
+                score_value = _numeric_score(scores.get(key, 0)) or 0.0
                 weighted_sum += score_value * weight
 
             merged_scores[key] = round(weighted_sum / total_weight, 1)
 
         # Step 2: Merge commit summaries
-        total_commits = sum(eval_data.get("total_commits_analyzed", 0) for eval_data in evaluations)
+        total_commits = sum(
+            eval_data.get("total_commits_analyzed", eval_data.get("total_commits_evaluated", 0))
+            for eval_data in evaluations
+        )
 
         merged_commits_summary = {
             "total_additions": sum(eval_data.get("commits_summary", {}).get("total_additions", 0) for eval_data in evaluations),
@@ -88,7 +130,12 @@ def merge_evaluations_logic(evaluations_data: List[Dict[str, Any]], model: str =
             percentage = round((weight / total_weight) * 100, 1)
             summaries_text += f"\n### {author} ({weight} commits, {percentage}% weight):\n{reasoning}\n"
 
-        merge_prompt = f"""You are analyzing a software engineer who uses multiple names/identities in their commits. You have separate evaluations for each identity, and you need to create a unified, comprehensive analysis.
+        score_lines = "\n".join(
+            f"- {key.replace('_', ' ').title()}: {merged_scores[key]}/100"
+            for key in dimension_keys
+        ) or "- No numeric plugin scores were available."
+
+        merge_prompt = f"""You are analyzing a software engineer who uses multiple email identities in their commits. You have separate evaluations for each identity, and you need to create a unified, comprehensive analysis.
 
 Below are the individual analyses with their weights (based on commit count):
 
@@ -96,12 +143,7 @@ Below are the individual analyses with their weights (based on commit count):
 
 Total commits: {total_commits}
 Weighted average scores:
-- AI Model Full-Stack: {merged_scores['ai_fullstack']}/100
-- AI Native Architecture: {merged_scores['ai_architecture']}/100
-- Cloud Native Engineering: {merged_scores['cloud_native']}/100
-- Open Source Collaboration: {merged_scores['open_source']}/100
-- Intelligent Development: {merged_scores['intelligent_dev']}/100
-- Engineering Leadership: {merged_scores['leadership']}/100
+{score_lines}
 
 Create a unified analysis that:
 1. Synthesizes insights from all identities
@@ -121,7 +163,7 @@ Write the unified analysis (3-5 paragraphs):"""
         else:
             try:
                 llm_response = requests.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
+                    _chat_completions_url(),
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json"

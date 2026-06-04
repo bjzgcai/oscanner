@@ -2,15 +2,88 @@
 
 import json
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 from evaluator.services import extract_github_data, extract_gitee_data, resolve_plugin_id
 from evaluator.paths import get_platform_data_dir
-from evaluator.utils import parse_repo_url, parse_repo_url_with_ref, get_author_from_commit
+from evaluator.utils import (
+    get_author_from_commit,
+    get_emails_from_commit,
+    is_valid_email_identity,
+    normalize_email_identity,
+    parse_repo_url,
+    parse_repo_url_with_ref,
+)
 from evaluator.config import DEFAULT_LLM_MODEL
 from evaluator.routes.evaluation import evaluate_author
 
 router = APIRouter()
+
+
+NON_NUMERIC_SCORE_KEYS = {"reasoning", "summary", "analysis", "evidence", "recommendations"}
+
+
+def _request_values(value: Any) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        normalized = value.replace("\n", ",")
+        return [part.strip() for part in normalized.split(",") if part.strip()]
+    return [str(value).strip()] if str(value).strip() else []
+
+
+def _parse_request_emails(request: Dict[str, Any], fallback_identity: Optional[str] = None) -> Optional[List[str]]:
+    raw_emails: List[str] = []
+    has_explicit_email_key = False
+    for key in ("author_emails", "emails"):
+        if key in request:
+            has_explicit_email_key = True
+            raw_emails.extend(_request_values(request.get(key)))
+
+    if has_explicit_email_key:
+        emails = [normalize_email_identity(email) for email in raw_emails if normalize_email_identity(email)]
+        invalid = [email for email in emails if not is_valid_email_identity(email)]
+        if invalid:
+            raise HTTPException(status_code=400, detail=f"Invalid email format: {', '.join(invalid)}")
+        return list(dict.fromkeys(emails))
+
+    identity = normalize_email_identity(fallback_identity or "")
+    if "@" in identity:
+        if not is_valid_email_identity(identity):
+            raise HTTPException(status_code=400, detail=f"Invalid email format: {fallback_identity}")
+        return [identity]
+
+    return None
+
+
+def _numeric_score(value: Any):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _plugin_numeric_scores(scores: Dict[str, Any]) -> Dict[str, float]:
+    output: Dict[str, float] = {}
+    for key, value in scores.items():
+        if key in NON_NUMERIC_SCORE_KEYS:
+            continue
+        numeric = _numeric_score(value)
+        if numeric is not None:
+            output[key] = numeric
+    return output
+
+
+def _dimension_label(key: str) -> str:
+    return key.replace("_", " ").title()
 
 
 @router.post("/api/batch/extract")
@@ -146,7 +219,8 @@ async def find_common_contributors(request: dict):
     }
     """
     repos = request.get("repos", [])
-    author_aliases = request.get("author_aliases", "")  # Comma-separated list of names belonging to the same person
+    author_aliases = request.get("author_aliases", "")  # Legacy comma-separated names belonging to the same person
+    author_emails = _parse_request_emails(request)
 
     if not repos:
         raise HTTPException(status_code=400, detail="No repositories provided")
@@ -162,6 +236,9 @@ async def find_common_contributors(request: dict):
         user_defined_aliases = set(aliases)
         if user_defined_aliases:
             print(f"📝 User-defined aliases: {user_defined_aliases}")
+    user_defined_emails = set(author_emails or [])
+    if user_defined_emails:
+        print(f"📝 User-defined emails: {user_defined_emails}")
 
     # Load authors from each repository
     repo_authors = {}  # {repo_key: {author: {commits, email}}}
@@ -196,8 +273,9 @@ async def find_common_contributors(request: dict):
                     github_id = None
                     github_login = None
 
-                    if "commit" in commit_data:
-                        email = commit_data.get("commit", {}).get("author", {}).get("email", "")
+                    emails = get_emails_from_commit(commit_data)
+                    if emails:
+                        email = emails[0]
 
                     # Get GitHub user info if available
                     if "author" in commit_data and isinstance(commit_data["author"], dict):
@@ -293,30 +371,36 @@ async def find_common_contributors(request: dict):
                 "data": author_data
             })
 
-    # Pass 1.5: Handle user-defined aliases
-    # Merge all identity groups that match any of the user-defined aliases
-    if user_defined_aliases:
-        print(f"🔗 Grouping identities by user-defined aliases...")
+    # Pass 1.5: Handle user-defined emails/aliases
+    # Merge all identity groups that match any of the user-defined identities.
+    if user_defined_aliases or user_defined_emails:
+        print(f"🔗 Grouping identities by user-defined identities...")
         matched_keys = []
 
-        # Find all identity groups that contain names matching the user-defined aliases
+        # Find all identity groups that contain names/emails matching user input.
         for canonical_key, identities in identity_groups.items():
             for identity in identities:
-                if identity["author"].lower().strip() in user_defined_aliases:
+                identity_email = normalize_email_identity(identity["data"].get("email", ""))
+                if (
+                    identity["author"].lower().strip() in user_defined_aliases
+                    or identity_email in user_defined_emails
+                ):
                     matched_keys.append(canonical_key)
                     break
 
         # Also check orphaned authors
         orphaned_matches = []
         for orphan in orphaned_authors:
-            if orphan["author"].lower().strip() in user_defined_aliases:
+            orphan_email = normalize_email_identity(orphan["data"].get("email", ""))
+            if orphan["author"].lower().strip() in user_defined_aliases or orphan_email in user_defined_emails:
                 orphaned_matches.append(orphan)
 
         # If we found multiple groups/orphans matching the aliases, merge them
         if len(matched_keys) > 0 or len(orphaned_matches) > 0:
             # Create or use the first matched group as the primary group
+            identity_key = ",".join(sorted(user_defined_emails or user_defined_aliases))
             if matched_keys:
-                primary_key = f"aliases:{','.join(sorted(user_defined_aliases))}"
+                primary_key = f"user_identities:{identity_key}"
                 # Merge all matched groups into the primary group
                 merged_identities = []
                 for key in matched_keys:
@@ -334,7 +418,7 @@ async def find_common_contributors(request: dict):
                 print(f"✓ Merged {len(matched_keys)} groups + {len(orphaned_matches)} orphans by aliases")
             else:
                 # Only orphaned matches - create new group
-                primary_key = f"aliases:{','.join(sorted(user_defined_aliases))}"
+                primary_key = f"user_identities:{identity_key}"
                 identity_groups[primary_key] = orphaned_matches
                 orphaned_authors = [o for o in orphaned_authors if o not in orphaned_matches]
                 print(f"✓ Created group from {len(orphaned_matches)} orphaned authors matching aliases")
@@ -443,7 +527,7 @@ async def find_common_contributors(request: dict):
 @router.post("/api/batch/compare-contributor")
 async def compare_contributor_across_repos(request: dict):
     """
-    Compare a contributor's six-dimensional scores across multiple repositories
+    Compare a contributor's plugin rubric scores across multiple repositories
 
     Request body:
     {
@@ -483,11 +567,22 @@ async def compare_contributor_across_repos(request: dict):
     if not isinstance(model, str):
         model = DEFAULT_LLM_MODEL
 
-    # Parse author aliases
+    if not contributor:
+        raise HTTPException(status_code=400, detail="Contributor name or email is required")
+
+    contributor = str(contributor).strip()
+    contributor_emails = _parse_request_emails(request, contributor)
+
+    # Parse legacy author aliases.
     author_aliases_str = request.get("author_aliases", "")
     contributor_aliases = None
 
-    if author_aliases_str and isinstance(author_aliases_str, str):
+    if contributor_emails:
+        contributor_aliases = contributor_emails
+        evaluation_identity = contributor_emails[0]
+        request_body = {"emails": contributor_emails}
+        print(f"🔗 Using {len(contributor_emails)} email identities for contributor '{contributor}': {contributor_emails}")
+    elif author_aliases_str and isinstance(author_aliases_str, str):
         # Split by comma and normalize
         aliases = [name.strip().lower() for name in author_aliases_str.split(',') if name.strip()]
         # Check if contributor matches any of the aliases
@@ -497,12 +592,13 @@ async def compare_contributor_across_repos(request: dict):
         else:
             # Contributor not in aliases list, just use the contributor name
             contributor_aliases = [contributor.lower().strip()]
+        evaluation_identity = contributor
+        request_body = {"aliases": contributor_aliases}
     else:
         # No aliases provided, use contributor name only
         contributor_aliases = [contributor.lower().strip()]
-
-    if not contributor:
-        raise HTTPException(status_code=400, detail="Contributor name is required")
+        evaluation_identity = contributor
+        request_body = {"aliases": contributor_aliases}
 
     if not repos:
         raise HTTPException(status_code=400, detail="At least one repository is required")
@@ -554,30 +650,25 @@ async def compare_contributor_across_repos(request: dict):
             eval_result = await evaluate_author(
                 owner,
                 repo,
-                contributor,
+                evaluation_identity,
                 model=model,
                 platform=repo_platform,
                 branch=branch or "",
                 plugin=plugin_id,
-                request_body={"aliases": contributor_aliases},
+                request_body=request_body,
             )
 
             if eval_result.get("success"):
                 evaluation = eval_result["evaluation"]
                 scores = evaluation.get("scores", {})
 
+                numeric_scores = _plugin_numeric_scores(scores)
+
                 results.append({
                     "repo": f"{owner}/{repo}",
                     "owner": owner,
                     "repo_name": repo,
-                    "scores": {
-                        "ai_model_fullstack": scores.get("ai_fullstack", 0),
-                        "ai_native_architecture": scores.get("ai_architecture", 0),
-                        "cloud_native": scores.get("cloud_native", 0),
-                        "open_source_collaboration": scores.get("open_source", 0),
-                        "intelligent_development": scores.get("intelligent_dev", 0),
-                        "engineering_leadership": scores.get("leadership", 0)
-                    },
+                    "scores": numeric_scores,
                     "total_commits": evaluation.get("total_commits_analyzed", 0),
                     "commits_summary": evaluation.get("commits_summary", {}),
                     "plugin": evaluation.get("plugin", plugin_id),
@@ -612,18 +703,18 @@ async def compare_contributor_across_repos(request: dict):
         }
 
     # Calculate aggregate statistics
+    dimension_keys = []
+    seen_dimensions = set()
+    for result in results:
+        for key in result["scores"].keys():
+            if key not in seen_dimensions:
+                seen_dimensions.add(key)
+                dimension_keys.append(key)
+
     avg_scores = {}
-    dimension_keys = [
-        "ai_model_fullstack",
-        "ai_native_architecture",
-        "cloud_native",
-        "open_source_collaboration",
-        "intelligent_development",
-        "engineering_leadership"
-    ]
 
     for dim in dimension_keys:
-        scores_list = [r["scores"][dim] for r in results]
+        scores_list = [r["scores"].get(dim, 0) for r in results]
         avg_scores[dim] = sum(scores_list) / len(scores_list) if scores_list else 0
 
     total_commits_all_repos = sum(r["total_commits"] for r in results)
@@ -635,14 +726,7 @@ async def compare_contributor_across_repos(request: dict):
         "plugin_used": plugin_id,
         "comparisons": results,
         "dimension_keys": dimension_keys,
-        "dimension_names": [
-            "AI Model Full-Stack & Trade-off Capability",
-            "AI Native Architecture & Communication Design",
-            "Cloud Native & Constraint Engineering",
-            "Open Source Collaboration & Requirements Translation",
-            "Intelligent Development & Human-Machine Collaboration",
-            "Engineering Leadership & System Trade-offs"
-        ],
+        "dimension_names": [_dimension_label(key) for key in dimension_keys],
         "aggregate": {
             "total_repos_evaluated": len(results),
             "total_commits": total_commits_all_repos,

@@ -24,7 +24,7 @@ class TrajectoryCheckpoint(BaseModel):
     commits_range: CommitsRange = Field(..., description="Range of commits analyzed")
     evaluation: EvaluationSchema = Field(..., description="Full evaluation result for this checkpoint")
     repos_analyzed: Optional[List[str]] = Field(None, description="List of repo URLs analyzed")
-    aliases_used: Optional[List[str]] = Field(None, description="Author aliases used in filtering")
+    aliases_used: Optional[List[str]] = Field(None, description="Contributor identities used in filtering; prefer commit emails")
     previous_checkpoint_id: Optional[int] = Field(None, description="ID of the previous checkpoint for comparison")
     growth_comparison: Optional[Dict[str, Any]] = Field(None, description="Comparison metrics with previous checkpoint")
 

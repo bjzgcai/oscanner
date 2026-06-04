@@ -1,6 +1,6 @@
 """Evaluation routes - author evaluation endpoints."""
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query
 import asyncio
@@ -8,7 +8,12 @@ import asyncio
 from evaluator.paths import get_platform_data_dir
 from evaluator.plugin_registry import load_scan_module, PluginLoadError
 from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL, get_gitee_token
-from evaluator.utils import is_commit_by_author, load_commits_from_local
+from evaluator.utils import (
+    is_commit_by_author,
+    is_valid_email_identity,
+    load_commits_from_local,
+    normalize_email_identity,
+)
 from evaluator.schemas import EvaluationResponseSchema
 from evaluator.services import (
     resolve_plugin_id,
@@ -21,6 +26,44 @@ from evaluator.services import (
 )
 
 router = APIRouter()
+
+
+def _request_values(value: Any) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        normalized = value.replace("\n", ",")
+        return [part.strip() for part in normalized.split(",") if part.strip()]
+    return [str(value).strip()] if str(value).strip() else []
+
+
+def _parse_email_identities(author: str, request_body: Optional[Dict[str, Any]]) -> Optional[List[str]]:
+    """Parse preferred email identities from request body or route identity."""
+    raw_emails: List[str] = []
+    has_explicit_email_key = False
+
+    if request_body and isinstance(request_body, dict):
+        for key in ("email", "emails", "author_emails"):
+            if key in request_body:
+                has_explicit_email_key = True
+                raw_emails.extend(_request_values(request_body.get(key)))
+
+    if has_explicit_email_key:
+        emails = [normalize_email_identity(email) for email in raw_emails if normalize_email_identity(email)]
+        invalid = [email for email in emails if not is_valid_email_identity(email)]
+        if invalid:
+            raise HTTPException(status_code=400, detail=f"Invalid email format: {', '.join(invalid)}")
+        return list(dict.fromkeys(emails))
+
+    normalized_author = normalize_email_identity(author)
+    if "@" in normalized_author:
+        if not is_valid_email_identity(normalized_author):
+            raise HTTPException(status_code=400, detail=f"Invalid email format: {author}")
+        return [normalized_author]
+
+    return None
 
 
 @router.post("/api/evaluate/{owner}/{repo}/{author}", response_model=EvaluationResponseSchema)
@@ -53,12 +96,17 @@ async def evaluate_author(
         except PluginLoadError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-        # Parse aliases
+        email_identities = _parse_email_identities(author, request_body)
+        primary_author = email_identities[0] if email_identities else author
+
+        # Parse legacy aliases for compatibility with direct callers. New UI sends emails.
         aliases = None
         if request_body and isinstance(request_body, dict):
             aliases_list = request_body.get("aliases")
             if aliases_list and isinstance(aliases_list, list):
                 aliases = [str(a).lower().strip() for a in aliases_list if a]
+        if email_identities:
+            aliases = email_identities
 
         # Normalize parameters (handle Query objects and type conversion)
         # When this function is called programmatically, Query objects aren't resolved by FastAPI
@@ -71,16 +119,23 @@ async def evaluate_author(
         if not data_dir.exists():
             raise HTTPException(status_code=404, detail=f"No local data found for {platform}/{owner}/{repo}. Please extract data first.")
 
-        # Handle multi-alias evaluation
+        # Handle multi-email / multi-identity evaluation
         if aliases and len(aliases) > 1:
-            print(f"[Aliases] Evaluating {len(aliases)} identities separately then merging...")
+            identity_kind = "Emails" if email_identities else "Aliases"
+            metadata_source = "merged_emails" if email_identities else "merged_aliases"
+            single_source = "single_email" if email_identities else "single_alias"
+            print(f"[{identity_kind}] Evaluating {len(aliases)} identities separately then merging...")
             evaluations_to_merge = []
+            commits = load_commits_from_local(data_dir, limit=None)
+            if not commits:
+                raise HTTPException(status_code=404, detail=f"No commits found in local data for {owner}/{repo}")
 
             for alias in aliases:
-                print(f"[Aliases] Evaluating identity: {alias}")
-                commits = load_commits_from_local(data_dir, limit=None)
-                if not commits:
+                alias_commits = [c for c in commits if is_commit_by_author(c, alias)]
+                if not alias_commits:
+                    print(f"[{identity_kind}] Skipping identity with no commits: {alias}")
                     continue
+                print(f"[{identity_kind}] Evaluating identity: {alias} ({len(alias_commits)} commits)")
 
                 # Evaluate (api_key already checked at the start)
 
@@ -111,7 +166,6 @@ async def evaluate_author(
                 if meta:
                     evaluation["plugin_version"] = meta.version
 
-                alias_commits = [c for c in commits if any(a.lower() in str(c.get("author", "")).lower() for a in [alias])]
                 evaluations_to_merge.append({
                     "author": alias,
                     "weight": len(alias_commits),
@@ -121,22 +175,27 @@ async def evaluate_author(
             # Merge
             if len(evaluations_to_merge) >= 2:
                 merged_eval = merge_evaluations_logic(evaluations_to_merge, model)
+                if email_identities:
+                    merged_eval["email"] = email_identities[0]
                 return {
                     "success": True,
                     "evaluation": merged_eval,
-                    "metadata": {"timestamp": datetime.now().isoformat(), "source": "merged_aliases"}
+                    "metadata": {"timestamp": datetime.now().isoformat(), "source": metadata_source}
                 }
             elif len(evaluations_to_merge) == 1:
+                if email_identities:
+                    evaluations_to_merge[0]["evaluation"]["email"] = email_identities[0]
                 return {
                     "success": True,
                     "evaluation": evaluations_to_merge[0]["evaluation"],
-                    "metadata": {"timestamp": datetime.now().isoformat(), "source": "single_alias"}
+                    "metadata": {"timestamp": datetime.now().isoformat(), "source": single_source}
                 }
             else:
-                raise HTTPException(status_code=404, detail="No commits found for any aliases")
+                detail = "No commits found for any emails" if email_identities else "No commits found for any aliases"
+                raise HTTPException(status_code=404, detail=detail)
 
         # Single author evaluation
-        print(f"[Evaluation] Loading commits for {author}...")
+        print(f"[Evaluation] Loading commits for {primary_author}...")
         commits = load_commits_from_local(data_dir, limit=None)
         if not commits:
             raise HTTPException(status_code=404, detail=f"No commits found in local data for {owner}/{repo}")
@@ -155,7 +214,7 @@ async def evaluate_author(
         evaluation = await asyncio.to_thread(
             evaluate_author_incremental,
             commits=commits,
-            author=author,
+            author=primary_author,
             previous_evaluation=None,
             data_dir=data_dir,
             model=model,
@@ -166,6 +225,8 @@ async def evaluate_author(
             repo=repo,
             evaluator_factory=_factory,
         )
+        if email_identities:
+            evaluation["email"] = primary_author
         evaluation["plugin"] = plugin_id
         if meta:
             evaluation["plugin_version"] = meta.version

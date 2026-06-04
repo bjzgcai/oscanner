@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Descriptions, Input, Dropdown, Table, Radio } from 'antd';
+import { useState, useEffect } from 'react';
+import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Input, Dropdown, Table } from 'antd';
 import { RiseOutlined, LoadingOutlined, CheckCircleOutlined, GithubOutlined, UserOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons';
-import { useUserSettings } from './UserSettingsContext';
 import { useAppSettings } from './AppSettingsContext';
 import { useI18n } from './I18nContext';
 import TrajectoryCharts from './TrajectoryCharts';
@@ -11,6 +10,7 @@ import GrowthReport from './GrowthReport';
 import LlmConfigModal from './LlmConfigModal';
 import PluginCheckpointRenderer from './PluginCheckpointRenderer';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { isValidEmail } from '@/utils/emailIdentity.mjs';
 import { parseRepoUrl, validateRepoUrl } from '@/utils/repoUrl.mjs';
 import { TrajectoryData, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
 import { LOCALES } from '../i18n';
@@ -18,7 +18,7 @@ import { LOCALES } from '../i18n';
 type AuthorRow = { author: string; email: string; commits: number };
 
 function getAuthorSelectionKey(record?: Partial<AuthorRow>) {
-  return String(record?.email || record?.author || '').trim();
+  return String(record?.email || '').trim().toLowerCase();
 }
 
 export default function TrajectoryAnalysis() {
@@ -30,7 +30,6 @@ export default function TrajectoryAnalysis() {
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [fetchingAuthors, setFetchingAuthors] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { defaultUsername, repoUrls, usernameGroups } = useUserSettings();
   const { model, setModel, pluginId, setPluginId, plugins, locale, setLocale, setLlmModalOpen, forcedCheckerId, setForcedCheckerId, checkers, worktreeBase, setWorktreeBase } = useAppSettings();
   const { t } = useI18n();
 
@@ -96,8 +95,9 @@ export default function TrajectoryAnalysis() {
 
         const data = await response.json();
         if (data.success && data.data.authors) {
-          setAuthors(data.data.authors);
-          const firstAuthorKey = getAuthorSelectionKey(data.data.authors[0]);
+          const emailAuthors = data.data.authors.filter((author: AuthorRow) => isValidEmail(author.email));
+          setAuthors(emailAuthors);
+          const firstAuthorKey = getAuthorSelectionKey(emailAuthors[0]);
           setSelectedAuthors(firstAuthorKey ? [firstAuthorKey] : []);
         } else {
           setAuthors([]);
@@ -115,12 +115,6 @@ export default function TrajectoryAnalysis() {
 
     fetchAuthors();
   }, [isRepoUrlValid, repoUrl]);
-
-  // Prepare autocomplete options for repo URLs
-  const repoUrlOptions = useMemo(() => {
-    if (!repoUrls || repoUrls.length === 0) return [];
-    return repoUrls.map((url) => ({ value: url }));
-  }, [repoUrls]);
 
   // Check if both inputs are valid
   const isFormValid = isRepoUrlValid && selectedAuthors.length > 0;
@@ -143,10 +137,9 @@ export default function TrajectoryAnalysis() {
           label: `${p.name}${p.version ? ` (${p.version})` : ''}`,
         }))
       : [
-          { key: 'zgc_simple', label: 'ZGC Simple (Default)' },
-          { key: 'zgc_ai_native_2026', label: 'ZGC AI-Native 2026' },
+          { key: 'zgc_ai_native_2026', label: 'ZGC AI-Native 2026 (Default)' },
         ];
-  const currentPluginLabel = (plugins || []).find((p) => p.id === pluginId)?.name || pluginId || 'zgc_simple';
+  const currentPluginLabel = (plugins || []).find((p) => p.id === pluginId)?.name || pluginId || 'zgc_ai_native_2026';
 
   const checkerItems = [
     { key: '', label: t('trajectory.checker.none') || 'None' },
@@ -216,10 +209,16 @@ export default function TrajectoryAnalysis() {
         // Continue with analysis even if check fails (non-blocking)
       }
 
-      // Use selected authors as aliases
-      const aliases = selectedAuthors.map(a => a.trim());
-      // Create a grouped username from all selected authors (sorted for consistency)
-      const groupedUsername = aliases.slice().sort().join(',');
+      const emails = selectedAuthors.map(email => email.trim().toLowerCase()).filter(Boolean);
+      const invalidEmails = emails.filter(email => !isValidEmail(email));
+      if (invalidEmails.length > 0) {
+        const errorMsg = `Invalid email format: ${invalidEmails.join(', ')}`;
+        setErrorMessage(errorMsg);
+        message.error(errorMsg);
+        setLoading(false);
+        return;
+      }
+      const primaryEmail = emails[0];
 
       const url = `${apiBase}/api/trajectory/analyze?plugin=${encodeURIComponent(
         pluginId
@@ -227,7 +226,7 @@ export default function TrajectoryAnalysis() {
         locale
       )}${forcedCheckerId ? `&forced_checker=${encodeURIComponent(forcedCheckerId)}` : ''}&worktree_base=${worktreeBase}`;
 
-      console.log('[Trajectory] Starting analysis:', { url, username: groupedUsername, repoUrl: repoUrl.trim() });
+      console.log('[Trajectory] Starting analysis:', { url, email: primaryEmail, emails, repoUrl: repoUrl.trim() });
 
       const response = await fetch(url, {
         method: 'POST',
@@ -235,9 +234,9 @@ export default function TrajectoryAnalysis() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: groupedUsername,
+          email: primaryEmail,
           repo_urls: [repoUrl.trim()],
-          aliases: aliases,
+          emails,
         }),
       });
 
@@ -248,7 +247,7 @@ export default function TrajectoryAnalysis() {
         try {
           const errorData = await response.json();
           errorMessage = errorData.detail || errorData.message || errorMessage;
-        } catch (e) {
+        } catch {
           const text = await response.text();
           if (text) {
             errorMessage = text.substring(0, 200);
@@ -320,16 +319,6 @@ export default function TrajectoryAnalysis() {
     }
   };
 
-  // Helper function to get dimension label
-  const getDimensionLabel = (dimensionKey: string, pluginId: string): string => {
-    const pluginSpecificKey = `plugin.${pluginId}.dim.${dimensionKey}`;
-    const translated = t(pluginSpecificKey);
-    if (translated === pluginSpecificKey) {
-      return t(`dimensions.${dimensionKey}`) || dimensionKey;
-    }
-    return translated;
-  };
-
   // Render checkpoint details using plugin view
   const renderCheckpointDetails = (checkpoint: TrajectoryCheckpoint, index: number) => {
     const pluginId = checkpoint.evaluation.plugin;
@@ -379,7 +368,7 @@ export default function TrajectoryAnalysis() {
             menu={{
               items: pluginItems,
               selectable: true,
-              selectedKeys: [pluginId || 'zgc_simple'],
+              selectedKeys: [pluginId || 'zgc_ai_native_2026'],
               onClick: ({ key }) => setPluginId(String(key)),
             }}
             trigger={['click']}

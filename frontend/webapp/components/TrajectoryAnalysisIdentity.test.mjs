@@ -12,3 +12,9 @@ test('trajectory author selection uses email instead of author name as the row i
   assert.doesNotMatch(source, /rowKey="author"/);
   assert.doesNotMatch(source, /prev\.includes\(record\.author\)/);
 });
+
+test('trajectory request sends semantic email field instead of username identity field', () => {
+  assert.match(source, /email:\s*primaryEmail/);
+  assert.match(source, /emails,/);
+  assert.doesNotMatch(source, /username:\s*primaryEmail/);
+});

@@ -50,18 +50,7 @@ interface MDTexts {
   repositoryBreakdown: string;
   failedRepos: string;
   commits: string;
-  dimensions: {
-    ai_fullstack?: string;
-    ai_architecture?: string;
-    cloud_native?: string;
-    open_source?: string;
-    intelligent_dev?: string;
-    leadership?: string;
-    spec_quality?: string;
-    cloud_architecture?: string;
-    ai_engineering?: string;
-    mastery_professionalism?: string;
-  };
+  dimensions: Record<string, string | undefined>;
 }
 
 /**
@@ -128,20 +117,27 @@ function getMDTexts(translations: Messages): MDTexts {
     failedRepos: translations['pdf.failed_repos'],
     commits: translations['pdf.commits'],
     dimensions: {
-      // zgc_simple dimensions (6)
-      ai_fullstack: translations['pdf.dimension.ai_fullstack'],
-      ai_architecture: translations['pdf.dimension.ai_architecture'],
-      cloud_native: translations['pdf.dimension.cloud_native'],
-      open_source: translations['pdf.dimension.open_source'],
-      intelligent_dev: translations['pdf.dimension.intelligent_dev'],
-      leadership: translations['pdf.dimension.leadership'],
-      // zgc_ai_native_2026 dimensions (4)
       spec_quality: translations['plugin.zgc_ai_native_2026.dim.spec_quality'],
       cloud_architecture: translations['plugin.zgc_ai_native_2026.dim.cloud_architecture'],
       ai_engineering: translations['plugin.zgc_ai_native_2026.dim.ai_engineering'],
       mastery_professionalism: translations['plugin.zgc_ai_native_2026.dim.mastery_professionalism'],
     },
   };
+}
+
+function getDimensionName(texts: MDTexts, key: string): string {
+  return texts.dimensions[key] || key.replace(/_/g, ' ');
+}
+
+function coerceScore(value: number | string | undefined): number | null {
+  if (typeof value === 'number') {
+    return Math.max(0, Math.min(100, value));
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : null;
+  }
+  return null;
 }
 
 /**
@@ -270,40 +266,13 @@ export async function exportHomePageMD(
   // Skill Dimensions
   md += `## ${texts.skillDimensions}\n\n`;
 
-  // Dynamically determine dimensions based on evaluation scores
-  const allDimensions = [
-    // zgc_simple dimensions (6)
-    { name: texts.dimensions.ai_fullstack, key: "ai_fullstack" },
-    { name: texts.dimensions.ai_architecture, key: "ai_architecture" },
-    { name: texts.dimensions.cloud_native, key: "cloud_native" },
-    { name: texts.dimensions.open_source, key: "open_source" },
-    { name: texts.dimensions.intelligent_dev, key: "intelligent_dev" },
-    { name: texts.dimensions.leadership, key: "leadership" },
-    // zgc_ai_native_2026 dimensions (4)
-    { name: texts.dimensions.spec_quality, key: "spec_quality" },
-    { name: texts.dimensions.cloud_architecture, key: "cloud_architecture" },
-    { name: texts.dimensions.ai_engineering, key: "ai_engineering" },
-    { name: texts.dimensions.mastery_professionalism, key: "mastery_professionalism" }
-  ];
-
-  // Filter to only include dimensions that exist in the evaluation scores
-  const dimensions = allDimensions
-    .filter(dim => dim.name && evaluation.scores[dim.key] !== undefined && evaluation.scores[dim.key] !== null)
-    .map(dim => {
-      const rawScore = evaluation.scores[dim.key];
-      let score: number;
-      if (typeof rawScore === 'number') {
-        score = rawScore;
-      } else if (typeof rawScore === 'string') {
-        const parsed = Number(rawScore);
-        score = Number.isFinite(parsed) ? parsed : 0;
-      } else {
-        score = 0;
-      }
-      // Clamp score to 0-100 range
-      score = Math.max(0, Math.min(100, score));
-      return { name: dim.name!, score };
-    });
+  const dimensions = Object.entries(evaluation.scores)
+    .filter(([key]) => key !== 'reasoning')
+    .map(([key, rawScore]) => {
+      const score = coerceScore(rawScore);
+      return score === null ? null : { name: getDimensionName(texts, key), score };
+    })
+    .filter((item): item is { name: string; score: number } => item !== null);
 
   md += createRadarTable(dimensions);
   md += '\n';
@@ -374,17 +343,7 @@ export async function exportMultiRepoMD(
   const chartData = comparisonData.comparisons.map(comp => ({
     repo: `${comp.owner}/${comp.repo_name}`,
     values: dimensionKeys.map((key, idx) => {
-      const rawScore = (comp.scores as unknown as Record<string, any>)[key];
-      let score: number;
-      if (typeof rawScore === 'number') {
-        score = rawScore;
-      } else if (typeof rawScore === 'string') {
-        const parsed = Number(rawScore);
-        score = Number.isFinite(parsed) ? parsed : 0;
-      } else {
-        score = 0;
-      }
-      score = Math.max(0, Math.min(100, score));
+      const score = coerceScore(comp.scores[key]) ?? 0;
       return { dimension: dimensionNames[idx], score };
     })
   }));
@@ -402,17 +361,7 @@ export async function exportMultiRepoMD(
     md += `**${texts.skillDimensions}:**\n\n`;
 
     const dimensions = dimensionKeys.map((key, idx) => {
-      const rawScore = (comp.scores as unknown as Record<string, any>)[key];
-      let score: number;
-      if (typeof rawScore === 'number') {
-        score = rawScore;
-      } else if (typeof rawScore === 'string') {
-        const parsed = Number(rawScore);
-        score = Number.isFinite(parsed) ? parsed : 0;
-      } else {
-        score = 0;
-      }
-      score = Math.max(0, Math.min(100, score));
+      const score = coerceScore(comp.scores[key]) ?? 0;
       return { name: dimensionNames[idx], score };
     });
 

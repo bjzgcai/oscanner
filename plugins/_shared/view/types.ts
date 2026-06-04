@@ -15,8 +15,7 @@ export type SingleRepoCommitsSummary = {
 };
 
 // Note:
-// - `scores` is intentionally flexible because different scan plugins may add extra keys
-//   (but the dashboard expects six dimension keys + optional reasoning string).
+// - `scores` is intentionally flexible because different scan plugins may add extra keys.
 export type SingleRepoEvaluation = {
   scores: Record<string, number | string>;
   total_commits_analyzed?: number;
@@ -40,14 +39,7 @@ export type PluginSingleRepoViewProps = {
 // Multi repo compare (view/multi_repo_compare.tsx)
 // -----------------------------
 
-export type ComparisonScore = {
-  ai_model_fullstack: number;
-  ai_native_architecture: number;
-  cloud_native: number;
-  open_source_collaboration: number;
-  intelligent_development: number;
-  engineering_leadership: number;
-};
+export type ComparisonScore = Record<string, number>;
 
 export type Comparison = {
   repo: string;
@@ -135,5 +127,4 @@ export type PluginTrajectoryCheckpointViewProps = {
   locale?: string;
   t?: (key: string, params?: Record<string, string | number>) => string;
 };
-
 

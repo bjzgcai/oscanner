@@ -14,15 +14,6 @@ def _load_ai_native_plugin():
     return plugin
 
 
-def _load_simple_plugin():
-    scan_path = PROJECT_ROOT / "plugins" / "zgc_simple" / "scan" / "__init__.py"
-    spec = importlib.util.spec_from_file_location("test_zgc_simple_token_budget", scan_path)
-    plugin = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(plugin)
-    return plugin
-
-
 def _commit(idx: int, patch: str = "+print('ok')") -> dict:
     return {
         "sha": f"sha-{idx}",
@@ -149,45 +140,3 @@ def test_ai_native_truncates_single_commit_that_exceeds_token_budget(monkeypatch
     assert "warnings" in result
     assert result["input_budget_errors"][0]["type"] == "single_commit_exceeds_budget"
     assert "A single commit exceeds the LLM input budget" in result["input_budget_errors"][0]["message"]
-
-
-def test_simple_truncates_single_commit_that_exceeds_token_budget(monkeypatch):
-    plugin = _load_simple_plugin()
-    evaluator = plugin.create_commit_evaluator(
-        data_dir="",
-        api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
-        language="en-US",
-    )
-    evaluator.max_input_tokens = 3500
-    monkeypatch.setattr(evaluator, "_estimate_tokens", lambda text: len(text))
-
-    seen_contexts = []
-
-    def fake_evaluate(context, username, chunk_idx=None):
-        seen_contexts.append(context)
-        assert "truncated to fit LLM input budget" in context
-        assert len(evaluator._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)) <= evaluator.max_input_tokens
-        return {
-            "code_quality": 70,
-            "problem_solving": 70,
-            "collaboration": 70,
-            "learning": 70,
-            "delivery": 70,
-            "impact": 70,
-            "reasoning": "simple evaluated from truncated input",
-        }
-
-    monkeypatch.setattr(evaluator, "_evaluate_with_llm", fake_evaluate)
-
-    result = evaluator.evaluate_engineer(
-        commits=[_commit(1, patch="+" + ("x" * 20_000))],
-        username="alice",
-        max_commits=None,
-        load_files=False,
-    )
-
-    assert seen_contexts
-    assert result["scores"]["reasoning"] == "simple evaluated from truncated input"
-    assert result["input_truncated"] is True
-    assert result["input_budget_errors"][0]["type"] == "single_commit_exceeds_budget"

@@ -17,7 +17,7 @@ def _load_plugin(plugin_id: str):
     return plugin
 
 
-@pytest.mark.parametrize("plugin_id", ["zgc_simple", "zgc_ai_native_2026"])
+@pytest.mark.parametrize("plugin_id", ["zgc_ai_native_2026"])
 def test_plugin_factory_and_constructor_do_not_accept_mode(plugin_id):
     plugin = _load_plugin(plugin_id)
 

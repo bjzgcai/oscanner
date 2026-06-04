@@ -3,7 +3,7 @@
 [English README](README_en.md) | [中文 README](README.md)
 
 基于 GitHub / Gitee 的 commit、diff、仓库结构与协作信号，对工程师贡献者进行 **多维度能力评估** 的工具链，包含 FastAPI 后端与可选的前端 Dashboard。
-[评选标准参考](http://https://gitee.com/zgcai/oscanner/blob/main/engineer_level.md)
+[评选标准参考](https://gitee.com/zgcai/oscanner/blob/main/engineer_level.md)
 
 ## 概览
 
@@ -20,22 +20,9 @@
 
 ## 评估标准 (Evaluation Standards)
 
-本系统支持两套评估标准，通过 **插件机制** 实现不同的评估逻辑：
+本系统通过 **插件机制** 实现不同的评估逻辑。当前内置并默认启用的标准是 `zgc_ai_native_2026`。
 
-### 1. **传统六维度标准** (`zgc_simple`)
-- **文档**: [engineer_level_old.md](engineer_level_old.md)
-- **适用场景**: 传统软件工程能力评估
-- **评估重点**: 技术广度和深度，基于量化指标（提交数、代码行数等）
-- **评分方式**: 基础的关键词和模式匹配，适合快速评估
-- **六维度**:
-  1. AI 模型全栈开发 (AI Model Full-Stack Development)
-  2. AI 原生架构设计 (AI Native Architecture Design)
-  3. 云原生工程 (Cloud Native Engineering)
-  4. 开源协作 (Open Source Collaboration)
-  5. 智能开发 (Intelligent Development)
-  6. 工程领导力 (Engineering Leadership)
-
-### 2. **AI-Native 2026 标准** (`zgc_ai_native_2026`)
+### **AI-Native 2026 标准** (`zgc_ai_native_2026`)
 - **文档**: [engineer_level.md](engineer_level.md)
 - **适用场景**: 2026 年 AI 辅助开发时代的工程能力评估
 - **评估重点**: 区分"AI 搬运工"与"系统构建者"，强调行为证据
@@ -59,11 +46,7 @@
 
 ### 如何选择标准？
 
-在 Dashboard 中，可以通过选择不同的插件来使用不同的评估标准：
-- 使用 `zgc_simple` 插件 → 传统六维度评估
-- 使用 `zgc_ai_native_2026` 插件 → AI-Native 2026 四维度评估
-
-两种标准输出不同数量的维度分数，采用不同的评估标准和侧重点。
+在 Dashboard 或 API 中选择插件 ID 即可切换评估标准；未指定时使用 `zgc_ai_native_2026`。合并评估、导出和对比视图会根据插件实际输出的数字分数动态生成维度，不再依赖固定维度键。
 
 ## 快速开始
 
@@ -233,281 +216,103 @@ uv run pytest --cov=evaluator --cov-report=html
 - data：`~/.local/share/oscanner/data`（或 `XDG_DATA_HOME/oscanner/data`）
 - runner repos：`~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source`
 
-## Author Aliases (作者别名) - 跨名称贡献聚合
+## Commit Email Identities（提交邮箱身份）
 
 ### 功能说明
 
-同一个工程师可能在不同的 commit 中使用不同的名称（如 "CarterWu"、"wu-yanbiao"、"吴衍标"等）。**Author Aliases** 功能可以将这些不同名称的贡献聚合到一起进行统一评估。
+Oscanner 现在以 commit email 作为贡献者评估身份。同一个工程师可能在不同仓库或不同时间使用多个邮箱，例如 `alice@example.com` 和 `alice@work.com`。Dashboard 和 API 都支持一次提交多个邮箱，并在合并结果时按各邮箱对应的 commit 数量加权。
 
-> **注意**：评估缓存文件名采用小写规范化（如 `CarterWu` / `carterwu` / `CARTERWU` 均使用 `carterwu.json`），确保不同大小写请求都能复用缓存。
+前端会在发送请求前校验邮箱格式；后端也会拒绝格式不合法的 `emails` / `author_emails` 输入。
 
 ### 使用方式
 
-#### 1. **单仓库模式（Single Repo）**
+#### 1. 单仓库模式
 
-在 Dashboard 的 "Author Aliases" 输入框中填入多个名称（逗号分隔）：
+选择贡献者后，系统优先使用该贡献者的 commit email。也可以在 Dashboard 的 "Author Emails" 输入框中填写多个邮箱（逗号或换行分隔）：
 
+```text
+alice@example.com, alice@work.com
 ```
-CarterWu, wu-yanbiao, 吴衍标
-```
 
-然后点击任意一个匹配的作者头像，系统会：
+系统会分别评估每个邮箱身份，统计每个身份命中的 commit 数量，并调用 `/api/merge-evaluations` 合并为一个报告。合并分数根据插件实际输出的数字维度动态计算，不依赖固定维度名称。
 
-1. **分别评估每个名称**：
-   - CarterWu (42 commits) → 评估结果 1
-   - wu-yanbiao (3 commits) → 评估结果 2
-   - 吴衍标 (5 commits) → 评估结果 3
+#### 2. 多仓库模式
 
-2. **使用 LLM 合并分析**：
-   - 根据 commit 数量计算权重：[42, 3, 5]
-   - 对六维能力分数进行加权平均
-   - 调用 `/api/merge-evaluations` 接口，使用 LLM 综合生成统一的分析总结
-
-3. **展示合并结果**：
-   - `.eval-header` 显示所有别名："CarterWu, wu-yanbiao, 吴衍标"
-   - `.chart-container` 显示加权平均后的六维分数
-   - `.reasoning-section` 显示 LLM 生成的综合分析
-
-#### 2. **多仓库模式（Multi Repo）**
-
-在分析多个仓库时，填入 Author Aliases 后：
-
-- **Common Contributors** 表格会自动识别并分组同一个人的不同名称
-- 显示格式："主要名称 (also known as: 别名1, 别名2)"
-- 点击该贡献者进行跨仓库对比时，会聚合所有别名的 commits
-
-### 技术实现
-
-#### 核心优势：Token 效率优化
-
-传统方式需要重新评估所有 commits（如 50 个 commits 的总 token 消耗），而采用 **分别评估 + LLM 合并** 的方式：
-
-1. **按身份独立评估**：每个名称独立过滤 commits 并评估，避免别名之间互相污染证据。
-2. **LLM 仅合并摘要**：只调用一次 LLM 来合并已有的分析文本（~1500 tokens），而不是重新分析所有 commits。
-
-**Token 节省示例**：
-
-- 传统方式：50 commits × 平均 2000 tokens/commit = **100,000 tokens**
-- 优化方式：
-  - CarterWu (42 commits，已缓存) = 0 tokens
-  - wu-yanbiao (3 commits，已缓存) = 0 tokens
-  - 吴衍标 (5 commits，新评估) = 10,000 tokens
-  - 合并摘要 (LLM) = 1,500 tokens
-  - **总计：11,500 tokens（节省 88.5%）**
-
-#### API 端点
-
-##### `/api/evaluate/{owner}/{repo}/{author}` (POST)
-
-**支持 Request Body**：
+多仓库分析会把 `author_emails` 传给 Common Contributors 和 Compare Contributor 接口。跨仓库对比时，系统会聚合这些邮箱对应的 commits，并返回插件实际维度：
 
 ```json
 {
-  "aliases": ["CarterWu", "wu-yanbiao", "吴衍标"]
+  "dimension_keys": ["spec_quality", "cloud_architecture", "ai_engineering", "mastery_professionalism"],
+  "dimension_names": ["Specification & Built-in Quality", "Cloud-Native & Architecture Evolution", "AI Engineering & Automated Evolution", "Engineering Mastery & Professionalism"]
 }
 ```
 
-**处理流程**：
+### API 端点
 
-1. 如果提供 `aliases` 且数量 > 1：
-   - 遍历每个别名，分别调用 `evaluate_author_incremental()`
-   - 每个别名的评估结果独立缓存
-   - 收集所有评估结果和对应的 commit 数量作为权重
-   - 调用 `/api/merge-evaluations` 合并
+##### `/api/evaluate/{owner}/{repo}/{identity}` (POST)
 
-2. 如果只有单个作者或未提供 aliases：
-   - 按原有流程直接评估
+路径里的 `identity` 建议使用 URL 编码后的主邮箱；Body 中使用 `emails` 提供一个或多个邮箱：
+
+```json
+{
+  "emails": ["alice@example.com", "alice@work.com"]
+}
+```
 
 ##### `/api/merge-evaluations` (POST)
-
-**Request Body**：
 
 ```json
 {
   "evaluations": [
     {
-      "author": "CarterWu",
+      "identity": "alice@example.com",
       "weight": 42,
-      "evaluation": { /* 完整的评估对象 */ }
+      "evaluation": { "scores": { "spec_quality": 82 } }
     },
     {
-      "author": "wu-yanbiao",
-      "weight": 3,
-      "evaluation": { /* 完整的评估对象 */ }
+      "identity": "alice@work.com",
+      "weight": 8,
+      "evaluation": { "scores": { "spec_quality": 74 } }
     }
   ],
-  "model": "openai/gpt-4o"  // 可选
+  "model": "openai/gpt-4o"
 }
 ```
 
-**处理逻辑**：
-
-1. **加权平均分数**：
-   ```python
-   merged_score[dimension] = sum(eval[dimension] * weight) / total_weight
-   ```
-
-2. **LLM 合并摘要**：
-   - 提示词包含所有别名的分析文本和权重比例
-   - 要求 LLM 综合生成统一的、加权的分析报告
-   - 自动处理权重较高的贡献者的影响力
-
-3. **响应结果**：
-   ```json
-   {
-     "success": true,
-     "merged_evaluation": {
-       "username": "CarterWu + wu-yanbiao + 吴衍标",
-       "mode": "merged",
-       "total_commits_analyzed": 50,
-       "scores": { /* 加权平均后的六维分数 */ },
-       "commits_summary": { /* 聚合的统计信息 */ }
-     }
-   }
-   ```
+合并服务会动态读取各评估结果中的数字分数键，跳过 `reasoning` 等非数字字段，并按 `weight` 加权平均。
 
 ##### `/api/batch/common-contributors` (POST)
-
-**支持 `author_aliases` 参数**：
 
 ```json
 {
   "repos": [
-    { "owner": "facebook", "repo": "react" },
-    { "owner": "vercel", "repo": "next.js" }
+    { "owner": "facebook", "repo": "react", "platform": "github" },
+    { "owner": "vercel", "repo": "next.js", "platform": "github" }
   ],
-  "author_aliases": "John Doe, johndoe, John D, jdoe"
-}
-```
-
-**处理流程**：
-
-- Pass 1: 按 GitHub ID/login 分组
-- **Pass 1.5**：如果提供了 `author_aliases`，合并所有匹配别名的身份组
-- Pass 2: 模糊匹配孤立作者
-- Pass 3: 按精确名称分组未匹配的作者
-
-**响应新增字段**：
-
-```json
-{
-  "common_contributors": [
-    {
-      "author": "John Doe",
-      "aliases": ["John Doe", "johndoe", "John D"],  // 新增：所有匹配的名称
-      "repos": [...],
-      "total_commits": 225
-    }
-  ]
+  "author_emails": ["alice@example.com", "alice@work.com"]
 }
 ```
 
 ##### `/api/batch/compare-contributor` (POST)
 
-**支持 `author_aliases` 参数**：
-
 ```json
 {
-  "contributor": "John Doe",
-  "repos": [...],
-  "author_aliases": "John Doe, johndoe, John D"
-}
-```
-
-**处理逻辑**：
-
-- 解析别名列表并归一化（lowercase + trim）
-- 调用 `evaluate_author()` 时传入完整的别名列表
-- 每个仓库都会聚合所有别名的 commits 进行评估
-
-### 前端实现
-
-#### 组件：`MultiRepoAnalysis.tsx`
-
-**新增状态**：
-
-```tsx
-const [authorAliases, setAuthorAliases] = useState('');
-```
-
-**UI 输入**：
-
-```tsx
-<TextArea
-  value={authorAliases}
-  onChange={(e) => setAuthorAliases(e.target.value)}
-  placeholder={'e.g., John Doe, John D, johndoe, jdoe\nGroup multiple names that belong to the same contributor'}
-  rows={2}
-/>
-```
-
-**API 调用更新**：
-
-```tsx
-// 单仓库评估
-if (authorAliases.trim()) {
-  const aliases = authorAliases.split(',').map(a => a.trim().toLowerCase());
-  if (aliases.includes(author.author.toLowerCase())) {
-    requestBody = { aliases };
-  }
-}
-
-// 多仓库 Common Contributors
-body: JSON.stringify({
-  repos: [...],
-  author_aliases: authorAliases.trim() ? authorAliases : undefined
-})
-
-// 跨仓库对比
-body: JSON.stringify({
-  contributor: contributorName,
-  repos: [...],
-  author_aliases: authorAliases.trim() ? authorAliases : undefined
-})
-```
-
-**显示优化**：
-
-```tsx
-// .eval-header: 显示所有别名
-<h2>
-  {(() => {
-    const currentAuthor = authorsData[selectedAuthorIndex]?.author;
-    if (authorAliases.trim()) {
-      const aliases = authorAliases.split(',').map(a => a.trim()).filter(a => a);
-      if (aliases.some(a => a.toLowerCase() === currentAuthor?.toLowerCase())) {
-        return aliases.join(', ');  // "CarterWu, wu-yanbiao, 吴衍标"
-      }
-    }
-    return currentAuthor;
-  })()}
-</h2>
-
-// Common Contributors 表格: "also known as"
-render: (author, record) => {
-  const otherAliases = record.aliases.filter(a => a !== author);
-  return (
-    <Space direction="vertical">
-      <Space>
-        <Avatar src={...} />
-        <span>{author}</span>
-      </Space>
-      {otherAliases.length > 0 && (
-        <span style={{ fontSize: '0.85em', color: 'rgba(0,0,0,0.45)' }}>
-          also known as: {otherAliases.join(', ')}
-        </span>
-      )}
-    </Space>
-  );
+  "contributor": "alice@example.com",
+  "repos": [
+    { "owner": "owner", "repo": "repo1", "platform": "github" },
+    { "owner": "owner", "repo": "repo2", "platform": "gitee" }
+  ],
+  "author_emails": ["alice@example.com", "alice@work.com"],
+  "plugin": "zgc_ai_native_2026"
 }
 ```
 
 ### 最佳实践
 
-1. **提前配置别名**：在 Dashboard 中分析前先填入已知的别名
-2. **利用缓存**：系统会自动缓存每个名称的评估结果，后续合并几乎不消耗额外 token
-3. **跨仓库一致性**：在多仓库分析中使用相同的别名配置，确保 Common Contributors 正确识别
-4. **增量更新**：当某个别名有新 commits 时，只需重新评估该别名，然后重新合并即可
+1. **优先使用 commit email**：不要依赖 commit author name 作为主要身份。
+2. **一次填入同一人的全部邮箱**：例如个人邮箱、公司邮箱和 GitHub noreply 邮箱。
+3. **保持跨仓库一致**：单仓库评估、多仓库 Common Contributors 和对比分析使用同一组邮箱。
+4. **利用缓存**：每个邮箱身份可独立缓存；只有新增或变更的邮箱身份需要重新评估。
 
 ## 项目结构
 

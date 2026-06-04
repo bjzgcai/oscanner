@@ -45,7 +45,7 @@ Selection rules:
 
 - Prefer pinned tags, SHAs, or commit ranges.
 - Keep public evidence for every level assignment.
-- Record target author aliases.
+- Record target author email identities.
 - Mark review status as `unreviewed`, `self_reviewed`, `expert_reviewed`, or
   `locked`.
 
@@ -187,7 +187,7 @@ Each benchmark run should store a compact JSON result with:
 - Benchmark manifest version.
 - Dataset subset names.
 - Repository URL and pinned ref or commit range.
-- Target author and aliases.
+- Target author email identities.
 - Raw overall score.
 - Dimension scores.
 - Applicability flags per dimension.
@@ -237,4 +237,3 @@ Human review remains part of the benchmark contract. Cases can be `unreviewed`,
 `self_reviewed`, `expert_reviewed`, or `locked`. Public claims should rely only
 on `expert_reviewed` or `locked` cases. Draft cases can be useful for local
 development but must not be used as proof of evaluator justice.
-

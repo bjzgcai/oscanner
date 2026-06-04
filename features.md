@@ -68,17 +68,17 @@ Payload:
 
 ```json
 {
-  "username": "CarterWu",
+  "username": "carter@example.com",
   "repo_urls": ["https://gitee.com/zgcai/oscanner"],
-  "aliases": ["CarterWu", "wu-yanbiao"],
+  "emails": ["carter@example.com", "carter@work.com"],
   "expected_feature": "Optional feature description"
 }
 ```
 
 Rules:
 
-- `username` may be omitted; Oscanner tries to infer it from the first commit author.
-- `username=null` on Gitee can infer all authors and use aliases to approximate whole-repo author coverage.
+- `username` may be omitted; Oscanner tries to infer it from the first commit email, then falls back to the author name.
+- `username=null` on Gitee can infer all commit email identities to approximate whole-repo author coverage.
 - `checkpoint_strategy=none` creates one checkpoint with no minimum commit count.
 - The response contains one final `checkpoint` plus `commits_analyzed`.
 
@@ -123,7 +123,7 @@ POST /api/trajectory/analyze
 Behavior:
 
 - Syncs all configured repos.
-- Filters commits by username and aliases.
+- Filters commits by commit email identities, with legacy name matching retained for older callers.
 - Groups commits into two-week periods from the repository start date.
 - Accumulates periods until at least 10 commits are available.
 - Creates checkpoint evaluations and growth comparisons.
@@ -151,7 +151,7 @@ Courses stores course-level results in its own course data files:
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| Plugin code-quality scoring | Done | `zgc_ai_native_2026` and `zgc_simple` |
+| Plugin code-quality scoring | Done | Default plugin: `zgc_ai_native_2026` |
 | One-off commit-window scan | Done | Inclusive `start_sha` / `end_sha` |
 | Period growth trajectory | Done | Two-week periods, 10-commit minimum |
 | Course group code scan | Done | Whole-repo group endpoint in Oscanner |

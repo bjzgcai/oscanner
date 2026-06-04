@@ -30,15 +30,7 @@ export interface TestRepository {
   is_pinned?: boolean;
 }
 
-export interface DimensionScore {
-  ai_model?: number;
-  ai_native?: number;
-  cloud_native?: number;
-  open_source?: number;
-  intelligent_dev?: number;
-  leadership?: number;
-  [key: string]: number | undefined;
-}
+export type DimensionScore = Record<string, number | undefined>;
 
 export interface BenchmarkEvaluationResult {
   repo: {

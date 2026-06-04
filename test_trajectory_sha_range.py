@@ -23,7 +23,7 @@ from typing import Optional
 BASE_URL = "http://localhost:8000"
 USERNAME = "CarterWu"
 REPO_URL = "https://gitee.com/zgcai/oscanner"
-ALIASES = ["CarterWu", "wu-yanbiao"]
+EMAILS = ["carter@example.com", "carter@work.com"]
 
 # You'll need to replace these with actual commit SHAs from your repo
 # These are just examples - you need to fetch real commits first
@@ -36,7 +36,7 @@ INVALID_SHA = "0000000000000000000000000000000000000000"
 def test_analyze_one_off(
     username: str,
     repo_url: str,
-    aliases: list,
+    emails: list,
     start_sha: Optional[str] = None,
     end_sha: Optional[str] = None,
     test_name: str = "Test"
@@ -48,14 +48,14 @@ def test_analyze_one_off(
     print(f"Parameters:")
     print(f"  - username: {username}")
     print(f"  - repo_url: {repo_url}")
-    print(f"  - aliases: {aliases}")
+    print(f"  - emails: {emails}")
     print(f"  - start_sha: {start_sha or 'None (from first commit)'}")
     print(f"  - end_sha: {end_sha or 'None (to latest commit)'}")
     print(f"{'-'*80}")
 
     # Build query parameters
     params = {
-        "plugin": "zgc_simple",
+        "plugin": "zgc_ai_native_2026",
         "checkpoint_strategy": "none"
     }
 
@@ -68,7 +68,7 @@ def test_analyze_one_off(
     body = {
         "username": username,
         "repo_urls": [repo_url],
-        "aliases": aliases
+        "emails": emails
     }
 
     try:
@@ -151,7 +151,7 @@ def run_all_tests():
     print("  1. Ensure the evaluator service is running (port 8000)")
     print("  2. Configure LLM API keys (OPENAI_API_KEY or OPEN_ROUTER_KEY)")
     print("  3. Update the commit SHA constants at the top of this script")
-    print("  4. Optionally adjust USERNAME, REPO_URL, and ALIASES")
+    print("  4. Optionally adjust USERNAME, REPO_URL, and EMAILS")
 
     print("\n" + "="*80)
     print("CORNER CASE TESTS")
@@ -161,7 +161,7 @@ def run_all_tests():
     test_analyze_one_off(
         username=USERNAME,
         repo_url=REPO_URL,
-        aliases=ALIASES,
+        emails=EMAILS,
         start_sha=None,
         end_sha=None,
         test_name="Case 1: Both start_sha and end_sha are None (all commits)"
@@ -171,7 +171,7 @@ def run_all_tests():
     test_analyze_one_off(
         username=USERNAME,
         repo_url=REPO_URL,
-        aliases=ALIASES,
+        emails=EMAILS,
         start_sha=EXAMPLE_MIDDLE_SHA,
         end_sha=None,
         test_name="Case 2: Only start_sha provided (from start_sha to latest)"
@@ -181,7 +181,7 @@ def run_all_tests():
     test_analyze_one_off(
         username=USERNAME,
         repo_url=REPO_URL,
-        aliases=ALIASES,
+        emails=EMAILS,
         start_sha=None,
         end_sha=EXAMPLE_MIDDLE_SHA,
         test_name="Case 3: Only end_sha provided (from first to end_sha)"
@@ -191,7 +191,7 @@ def run_all_tests():
     test_analyze_one_off(
         username=USERNAME,
         repo_url=REPO_URL,
-        aliases=ALIASES,
+        emails=EMAILS,
         start_sha=EXAMPLE_OLDEST_SHA,
         end_sha=EXAMPLE_NEWEST_SHA,
         test_name="Case 4: Both provided (valid range, oldest to newest)"
@@ -201,7 +201,7 @@ def run_all_tests():
     test_analyze_one_off(
         username=USERNAME,
         repo_url=REPO_URL,
-        aliases=ALIASES,
+        emails=EMAILS,
         start_sha=INVALID_SHA,
         end_sha=None,
         test_name="Case 5: start_sha not found (should error)"
@@ -211,7 +211,7 @@ def run_all_tests():
     test_analyze_one_off(
         username=USERNAME,
         repo_url=REPO_URL,
-        aliases=ALIASES,
+        emails=EMAILS,
         start_sha=None,
         end_sha=INVALID_SHA,
         test_name="Case 6: end_sha not found (should error)"
@@ -221,7 +221,7 @@ def run_all_tests():
     test_analyze_one_off(
         username=USERNAME,
         repo_url=REPO_URL,
-        aliases=ALIASES,
+        emails=EMAILS,
         start_sha=EXAMPLE_NEWEST_SHA,
         end_sha=EXAMPLE_OLDEST_SHA,
         test_name="Case 7: start_sha newer than end_sha (should error - invalid range)"
@@ -231,7 +231,7 @@ def run_all_tests():
     test_analyze_one_off(
         username=USERNAME,
         repo_url=REPO_URL,
-        aliases=ALIASES,
+        emails=EMAILS,
         start_sha=EXAMPLE_MIDDLE_SHA,
         end_sha=EXAMPLE_MIDDLE_SHA,
         test_name="Case 8: start_sha == end_sha (single commit evaluation)"

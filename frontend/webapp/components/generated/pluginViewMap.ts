@@ -23,19 +23,16 @@ export type TrajectoryCheckpointViewProps = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const SINGLE_REPO_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/single_repo"),
-  "zgc_simple": () => import("../../../../plugins/zgc_simple/view/single_repo"),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const MULTI_REPO_COMPARE_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/multi_repo_compare"),
-  "zgc_simple": () => import("../../../../plugins/zgc_simple/view/multi_repo_compare"),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const TRAJECTORY_CHECKPOINT_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/trajectory_checkpoint"),
-  "zgc_simple": () => import("../../../../plugins/zgc_simple/view/trajectory_checkpoint"),
 };
 
 export type PluginI18nPack = {
@@ -45,5 +42,4 @@ export type PluginI18nPack = {
 
 export const PLUGIN_I18N_IMPORTERS: Record<string, () => Promise<{ default: PluginI18nPack }>> = {
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/i18n"),
-  "zgc_simple": () => import("../../../../plugins/zgc_simple/view/i18n"),
 };

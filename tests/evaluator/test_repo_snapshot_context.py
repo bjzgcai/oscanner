@@ -1,18 +1,8 @@
 import importlib.util
-import json
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-
-def _load_simple_plugin():
-    scan_path = PROJECT_ROOT / "plugins" / "zgc_simple" / "scan" / "__init__.py"
-    spec = importlib.util.spec_from_file_location("test_zgc_simple_repo_snapshot", scan_path)
-    plugin = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(plugin)
-    return plugin
 
 
 def _load_ai_native_plugin():
@@ -28,55 +18,6 @@ def _write_repo_file(data_dir: Path, rel_path: str, content: str):
     path = data_dir / "repo_files" / rel_path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-
-
-def test_simple_plugin_loads_context_cone_from_repo_snapshot(tmp_path):
-    plugin = _load_simple_plugin()
-    data_dir = tmp_path / "data"
-    _write_repo_file(data_dir, "src/app.py", "from src.util import helper\nhelper()\n")
-    _write_repo_file(data_dir, "src/util.py", "def helper(): pass\n")
-    _write_repo_file(data_dir, "src/unrelated.py", "print('not part of this change')\n")
-    _write_repo_file(data_dir, "pyproject.toml", "[project]\nname = 'demo'\n")
-    (data_dir / "repo_files_manifest.json").write_text(
-        json.dumps({"end_sha": "end123"}),
-        encoding="utf-8",
-    )
-
-    evaluator = plugin.create_commit_evaluator(
-        data_dir=str(data_dir),
-        api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
-    )
-    commits = [{"files": [{"filename": "src/app.py", "patch": "+helper()"}]}]
-
-    assert evaluator._load_context_files(commits) == {
-        "pyproject.toml": "[project]\nname = 'demo'\n",
-        "src/app.py": "from src.util import helper\nhelper()\n",
-        "src/util.py": "def helper(): pass\n",
-    }
-
-
-def test_simple_plugin_loads_cpp_context_cone_from_repo_snapshot(tmp_path):
-    plugin = _load_simple_plugin()
-    data_dir = tmp_path / "data"
-    _write_repo_file(data_dir, "src/main.cpp", '#include "app/service.h"\nint main() { return 0; }\n')
-    _write_repo_file(data_dir, "src/app/service.h", "int run_service();\n")
-    _write_repo_file(data_dir, "src/app/unrelated.h", "int unrelated();\n")
-    _write_repo_file(data_dir, "CMakeLists.txt", "add_executable(demo src/main.cpp)\n")
-    (data_dir / "repo_files_manifest.json").write_text("{}", encoding="utf-8")
-
-    evaluator = plugin.create_commit_evaluator(
-        data_dir=str(data_dir),
-        api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
-    )
-    commits = [{"files": [{"filename": "src/main.cpp", "patch": "+run_service()"}]}]
-
-    assert evaluator._load_context_files(commits) == {
-        "CMakeLists.txt": "add_executable(demo src/main.cpp)\n",
-        "src/app/service.h": "int run_service();\n",
-        "src/main.cpp": '#include "app/service.h"\nint main() { return 0; }\n',
-    }
 
 
 def test_ai_native_plugin_loads_context_cone_from_repo_snapshot(tmp_path):
@@ -135,57 +76,6 @@ def test_ai_native_plugin_loads_java_context_cone_from_repo_snapshot(tmp_path):
             "package com.example.service;\nclass UserService {}\n"
         ),
     }
-
-
-def test_simple_plugin_can_load_complete_snapshot_for_whole_repo_context(tmp_path):
-    plugin = _load_simple_plugin()
-    data_dir = tmp_path / "data"
-    _write_repo_file(data_dir, "src/app.py", "print('changed')\n")
-    _write_repo_file(data_dir, "src/unrelated.py", "print('whole repo context')\n")
-    (data_dir / "repo_files_manifest.json").write_text("{}", encoding="utf-8")
-
-    evaluator = plugin.create_commit_evaluator(
-        data_dir=str(data_dir),
-        api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
-    )
-    commits = [{"files": [{"filename": "src/app.py"}]}]
-
-    assert evaluator._load_context_files(commits, include_all_repo_snapshot=True) == {
-        "src/app.py": "print('changed')\n",
-        "src/unrelated.py": "print('whole repo context')\n",
-    }
-
-
-def test_simple_plugin_marks_repo_files_as_background_not_evidence(tmp_path):
-    plugin = _load_simple_plugin()
-    evaluator = plugin.create_commit_evaluator(
-        data_dir=str(tmp_path),
-        api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
-    )
-    commits = [
-        {
-            "sha": "abc123",
-            "commit": {"author": {"name": "Ada"}, "message": "add validation tests"},
-            "files": [{"filename": "tests/test_validation.py", "patch": "+def test_validation(): pass"}],
-        }
-    ]
-
-    context = evaluator._build_commit_context(
-        commits,
-        "Ada",
-        file_contents={"src/app.py": "print('background only')\n"},
-        repo_structure={"files": ["src/app.py"]},
-    )
-    prompt = evaluator._build_evaluation_prompt(context, "Ada")
-
-    assert "BACKGROUND REPOSITORY FILES" in context
-    assert "BACKGROUND REPO STRUCTURE" in context
-    assert "RELEVANT FILE CONTENTS" not in context
-    assert "Only commit messages, commit diffs, and checker results are scoring evidence." in prompt
-    assert "Do not cite repository snapshot files or repo structure as evidence" in prompt
-
 
 def test_ai_native_context_parts_keep_repo_files_inside_commit_background():
     plugin = _load_ai_native_plugin()
@@ -252,35 +142,6 @@ def test_ai_native_merge_ignores_background_only_partial_scores():
     assert result["ai_engineering"] == 50
     assert result["mastery_professionalism"] == 50
     assert "background-only repo snapshot" not in result["reasoning"]
-
-
-def test_simple_forced_checker_skips_unscoped_whole_repo_scan(tmp_path, monkeypatch):
-    plugin = _load_simple_plugin()
-    data_dir = tmp_path / "data" / "github" / "owner" / "repo"
-    data_dir.mkdir(parents=True)
-    evaluator = plugin.create_commit_evaluator(
-        data_dir=str(data_dir),
-        api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
-        forced_checker_id="ccn",
-    )
-
-    monkeypatch.setattr(evaluator, "_get_checker_list", lambda: [])
-
-    def fail_run_checker(*_args, **_kwargs):
-        raise AssertionError("forced checker must not scan the whole repo without changed Python files")
-
-    monkeypatch.setattr(evaluator, "_run_checker", fail_run_checker)
-
-    context = evaluator._build_commit_context(
-        [{"sha": "abc123", "files": [{"filename": "README.md", "patch": "+docs"}]}],
-        "Ada",
-        file_contents={},
-        repo_structure=None,
-    )
-
-    assert "Code Quality Checker Results" not in context
-
 
 def test_ai_native_forced_checker_skips_unscoped_whole_repo_scan(tmp_path, monkeypatch):
     plugin = _load_ai_native_plugin()

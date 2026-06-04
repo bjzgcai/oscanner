@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Space, Button, Dropdown } from 'antd';
-import { HomeOutlined, ApiOutlined, CheckCircleOutlined, SettingOutlined, RiseOutlined, CodeOutlined } from '@ant-design/icons';
+import { ApiOutlined, SettingOutlined, RiseOutlined, CodeOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import { LOCALES } from '../i18n';
@@ -42,10 +42,9 @@ export default function Navigation() {
           label: `${p.name}${p.version ? ` (${p.version})` : ''}`,
         }))
       : [
-          { key: 'zgc_simple', label: 'ZGC Simple (Default)' },
-          { key: 'zgc_ai_native_2026', label: 'ZGC AI-Native 2026' },
+          { key: 'zgc_ai_native_2026', label: 'ZGC AI-Native 2026 (Default)' },
         ];
-  const currentPluginLabel = (plugins || []).find((p) => p.id === pluginId)?.name || pluginId || 'zgc_simple';
+  const currentPluginLabel = (plugins || []).find((p) => p.id === pluginId)?.name || pluginId || 'zgc_ai_native_2026';
 
   return (
     <>
@@ -140,7 +139,7 @@ export default function Navigation() {
               menu={{
                 items: pluginItems,
                 selectable: true,
-                selectedKeys: [pluginId || 'zgc_simple'],
+                selectedKeys: [pluginId || 'zgc_ai_native_2026'],
                 onClick: ({ key }) => setPluginId(String(key)),
               }}
               trigger={['click']}

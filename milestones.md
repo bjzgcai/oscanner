@@ -21,7 +21,7 @@ Oscanner is now the evaluation backend used by the standalone dashboard and by t
 3. **Growth trajectory analysis**
    - API: `POST /api/trajectory/analyze`
    - Streaming API: `POST /api/trajectory/analyze_stream`
-   - Tracks author or alias groups across one or more repositories.
+   - Tracks commit email identity groups across one or more repositories.
    - Default strategy groups commits into two-week periods and creates a checkpoint only when at least 10 commits are accumulated.
    - Previous checkpoint scores are passed back into plugin prompts so later scores are continuity-aware.
 
@@ -47,7 +47,6 @@ Courses is the orchestration layer for classes, students, assignments, and repor
 - Syncs GitHub/Gitee repository data into XDG/user-local storage.
 - Evaluates code through plugin-defined rubrics:
   - `zgc_ai_native_2026`: AI-Native 2026 four-dimension rubric.
-  - `zgc_simple`: legacy six-dimension rubric.
 - Supports course-shaped payloads under `/api/courses/group_analyse_code`:
   - `students`, `repositories`, `repos`, or single `repo_url`
   - per-repo `start_sha` / `end_sha`
@@ -63,7 +62,7 @@ Courses is the orchestration layer for classes, students, assignments, and repor
 - Plugin-based LLM scoring is implemented.
 - Single-repo and multi-repo contributor evaluation exist.
 - One-off checkpoint scans support optional username inference.
-- `username=null` for Gitee one-off scans can infer all authors and use aliases to avoid single-author filtering.
+- `username=null` for Gitee one-off scans can infer commit email identities to avoid single-author filtering.
 - Commit range filtering supports:
   - no SHA: all commits
   - only `start_sha`: from start commit to latest

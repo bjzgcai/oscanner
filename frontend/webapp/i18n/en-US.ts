@@ -29,9 +29,9 @@ export const enUS: Messages = {
     'Single:\nhttps://gitee.com/owner/repo/tree/branch\n\nMulti:\nhttps://github.com/owner/repo1\nhttps://gitee.com/owner/repo2',
   'multi.use_test_repo': 'Use test repos',
   'multi.llm_settings': 'LLM Settings',
-  'multi.author_aliases.label': 'Author Aliases (optional, comma-separated names for the same person)',
+  'multi.author_aliases.label': 'Author Emails (optional, comma or newline separated)',
   'multi.author_aliases.placeholder':
-    'e.g., John Doe, John D, johndoe, jdoe\nGroup multiple names that belong to the same contributor',
+    'e.g., alice@example.com, alice@work.com\nGroup multiple commit emails that belong to the same contributor',
   'multi.execution': 'Execution',
   'multi.no_logs_yet': 'No logs yet.',
   'multi.loading.common_contributors': 'Finding Common Contributors...',
@@ -60,7 +60,7 @@ export const enUS: Messages = {
   'multi.evaluate': 'Evaluate',
   'multi.evaluating': 'Evaluating...',
   'multi.compare_hint':
-    'Select a contributor and click Evaluate to compare their six-dimensional capability scores across all repositories.',
+    'Select a contributor and click Evaluate to compare their plugin rubric scores across all repositories.',
   'multi.no_common.title': 'No Common Contributors Found',
   'multi.no_common.desc': 'The analyzed repositories do not have any contributors in common.',
 
@@ -241,16 +241,16 @@ export const enUS: Messages = {
 
   // Settings
   'settings.title': 'User Settings',
-  'settings.description': 'Manage your default repositories and author aliases',
+  'settings.description': 'Manage your default repositories and contributor email identities',
   'settings.default_username.label': 'Default Username',
   'settings.default_username.placeholder': 'e.g., CarterWu',
-  'settings.default_username.help': 'Used as default author name for analysis',
+  'settings.default_username.help': 'Used as the default contributor label for analysis',
   'settings.repo_urls.label': 'Repository URLs (one per line, max 5)',
   'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner/tree/branch\nhttps://github.com/owner/repo',
   'settings.repo_urls.help': 'Will be auto-filled when starting analysis',
-  'settings.username_groups.label': 'Author Aliases (comma-separated)',
-  'settings.username_groups.placeholder': 'e.g., CarterWu, wu-yanbiao, 吴衍标',
-  'settings.username_groups.help': 'Multiple names belonging to same contributor',
+  'settings.username_groups.label': 'Author Emails (comma-separated)',
+  'settings.username_groups.placeholder': 'e.g., alice@example.com, alice@work.com',
+  'settings.username_groups.help': 'Multiple commit emails belonging to the same contributor',
   'settings.save': 'Save',
   'settings.reset': 'Reset to Defaults',
   'settings.save_success': 'Settings saved successfully!',

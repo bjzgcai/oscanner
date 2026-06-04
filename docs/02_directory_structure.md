@@ -25,10 +25,9 @@ oscanner/
 │   ├── cli.py                  # CLI 入口
 │   └── __main__.py
 │
-├── plugins/                    # 插件系统（共享）
-│   ├── zgc_simple/             # 默认插件（传统六维度）
-│   ├── zgc_ai_native_2026/     # AI-Native 2026 插件（四维度）
-│   └── _shared/                 # 共享组件
+	├── plugins/                    # 插件系统（共享）
+	│   ├── zgc_ai_native_2026/     # 默认 AI-Native 2026 插件（四维度）
+	│   └── _shared/                 # 共享组件
 │
 ├── checkers/                   # 检查器系统
 │   ├── checker_list.yaml       # 检查器列表配置
@@ -211,20 +210,15 @@ oscanner/
 - 插件包含 `scan/`（评估逻辑）和 `view/`（前端视图）
 - `_shared/` 目录存放共享组件
 
-#### `plugins/zgc_simple/` - 默认插件
+#### `plugins/zgc_ai_native_2026/` - 默认 AI-Native 2026 插件
 
-**作用**：传统六维度评估标准插件。
+**作用**：AI-Native 2026 四维度评估标准插件。
 
 **结构**：
 - `scan/__init__.py` - 评估逻辑实现
 - `view/` - 前端视图组件
 - `i18n/` - 国际化文件
-
-#### `plugins/zgc_ai_native_2026/` - AI-Native 2026 插件
-
-**作用**：AI-Native 2026 四维度评估标准插件。
-
-**结构**：同 `zgc_simple/`
+- `rubric.md` - Rubric 文档
 
 #### `plugins/_shared/` - 共享组件
 

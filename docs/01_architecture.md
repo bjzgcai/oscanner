@@ -41,10 +41,9 @@ oscanner/
 │   ├── cli.py                  # CLI 入口
 │   └── __main__.py
 │
-├── plugins/                    # 插件系统（共享）
-│   ├── zgc_simple/            # 默认插件
-│   ├── zgc_ai_native_2026/    # AI-Native 2026 插件
-│   └── _shared/               # 共享组件
+	├── plugins/                    # 插件系统（共享）
+	│   ├── zgc_ai_native_2026/    # 默认 AI-Native 2026 插件
+	│   └── _shared/               # 共享组件
 │
 ├── scripts/                    # 工具脚本
 │   ├── start_dev.sh           # 启动开发环境

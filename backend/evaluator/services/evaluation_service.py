@@ -500,12 +500,6 @@ def get_empty_evaluation(username: str) -> Dict[str, Any]:
         "total_commits_evaluated": 0,
         "new_commits_count": 0,
         "scores": {
-            "ai_fullstack": 0,
-            "ai_architecture": 0,
-            "cloud_native": 0,
-            "open_source": 0,
-            "intelligent_dev": 0,
-            "leadership": 0,
             "reasoning": "No commits found for this author."
         },
         "commits_summary": {

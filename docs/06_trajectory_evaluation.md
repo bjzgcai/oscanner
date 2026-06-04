@@ -76,10 +76,9 @@ evaluator = scan_mod.create_commit_evaluator(
 ```
 
 ### 4. Updated Documentation
-**Files**: Both plugin scan modules
+**Files**: AI-Native plugin scan module
 
 Added trajectory evaluation notes to plugin docstrings:
-- zgc_simple: Traditional six-dimensional with trajectory support
 - zgc_ai_native_2026: AI-Native 2026 rubric with trajectory support
 
 ## Implementation Details
@@ -122,12 +121,11 @@ Both English and Chinese prompts are enhanced with trajectory context:
 2. **Second checkpoint**: Verify previous scores are passed and influence evaluation
 3. **Score trends**: Check that similar quality work maintains scores
 4. **Score decreases**: Verify decreases only occur with negative evidence
-5. **Multi-repo**: Test with multiple repositories and author aliases
+5. **Multi-repo**: Test with multiple repositories and contributor email identities
 
 ## Plugin Compatibility
 
-Both plugins now support trajectory evaluation:
-- **zgc_simple**: Traditional six-dimensional framework
+The bundled plugin supports trajectory evaluation:
 - **zgc_ai_native_2026**: AI-Native 2026 rubric (L1-L5 behavioral profiles)
 
-Both accept `previous_checkpoint_scores` parameter and include trajectory context in prompts.
+It accepts `previous_checkpoint_scores` and includes trajectory context in prompts.

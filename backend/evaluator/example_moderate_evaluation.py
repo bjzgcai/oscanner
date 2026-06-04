@@ -90,7 +90,7 @@ def evaluate_from_local_data(
 
     # Initialize evaluator
     api_key = os.getenv("OPEN_ROUTER_KEY")
-    meta, scan_mod, scan_path = load_scan_module("zgc_simple")
+    meta, scan_mod, scan_path = load_scan_module("zgc_ai_native_2026")
     evaluator = scan_mod.create_commit_evaluator(
         data_dir=str(data_path),
         api_key=api_key,

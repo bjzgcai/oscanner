@@ -49,7 +49,6 @@
 ### Task 4: Evaluation Context Implementation
 
 **Files:**
-- Modify: `plugins/zgc_simple/scan/__init__.py`
 - Modify: `plugins/zgc_ai_native_2026/scan/__init__.py`
 
 - [ ] Add Java and C/C++ root manifest groups.

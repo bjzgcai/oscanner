@@ -6,6 +6,8 @@ from evaluator.utils.commit_utils import (
     get_emails_from_commit,
     is_commit_by_author,
     is_commit_by_author_email,
+    is_valid_email_identity,
+    normalize_email_identity,
 )
 from evaluator.utils.data_loader import load_commits_from_local
 
@@ -17,5 +19,7 @@ __all__ = [
     "get_emails_from_commit",
     "is_commit_by_author",
     "is_commit_by_author_email",
+    "is_valid_email_identity",
+    "normalize_email_identity",
     "load_commits_from_local",
 ]

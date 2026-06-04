@@ -34,7 +34,7 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-pro';
 const LEGACY_MODEL_ALIASES = new Set([
   'qwen/qwen3-coder-flash',
 ]);
-const DEFAULT_PLUGIN = 'zgc_simple';
+const DEFAULT_PLUGIN = 'zgc_ai_native_2026';
 const DEFAULT_WORKTREE_BASE: 'build' | 'temp' = 'build';
 
 const AppSettingsContext = createContext<AppSettings | null>(null);

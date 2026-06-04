@@ -56,16 +56,10 @@ class _FakeValidRetryResponse:
 
 @pytest.mark.parametrize(
     ("plugin_id", "valid_content", "expected_key"),
-    [
-        (
-            "zgc_simple",
-            '{"ai_fullstack":81,"ai_architecture":82,"cloud_native":83,'
-            '"open_source":84,"intelligent_dev":85,"leadership":86,"reasoning":"fixed"}',
-            "ai_fullstack",
-        ),
-        (
-            "zgc_ai_native_2026",
-            '{"spec_quality":81,"cloud_architecture":82,'
+	    [
+	        (
+	            "zgc_ai_native_2026",
+	            '{"spec_quality":81,"cloud_architecture":82,'
             '"ai_engineering":83,"mastery_professionalism":84,"reasoning":"fixed"}',
             "spec_quality",
         ),
@@ -95,7 +89,7 @@ def test_plugin_parse_retry_returns_valid_retry_response(
     assert result["reasoning"] == "fixed"
 
 
-@pytest.mark.parametrize("plugin_id", ["zgc_simple", "zgc_ai_native_2026"])
+@pytest.mark.parametrize("plugin_id", ["zgc_ai_native_2026"])
 def test_plugin_parse_retry_exhaustion_raises_by_default(monkeypatch, plugin_id):
     plugin = _load_scan_plugin(plugin_id, f"test_{plugin_id}_parse_retry_raise")
     evaluator = plugin.create_commit_evaluator(data_dir="", api_key="test-key", model="test-model")
@@ -114,7 +108,7 @@ def test_plugin_parse_retry_exhaustion_raises_by_default(monkeypatch, plugin_id)
     assert len(retry_calls) == 1
 
 
-@pytest.mark.parametrize("plugin_id", ["zgc_simple", "zgc_ai_native_2026"])
+@pytest.mark.parametrize("plugin_id", ["zgc_ai_native_2026"])
 def test_plugin_parse_retry_handles_null_retry_content(monkeypatch, plugin_id):
     plugin = _load_scan_plugin(plugin_id, f"test_{plugin_id}_parse_retry_null_content")
     evaluator = plugin.create_commit_evaluator(data_dir="", api_key="test-key", model="test-model")

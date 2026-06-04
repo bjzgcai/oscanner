@@ -80,7 +80,7 @@ class EvaluationMetadata(BaseModel):
     """Metadata about the evaluation response."""
 
     timestamp: str = Field(..., description="ISO 8601 timestamp of the response")
-    source: Optional[str] = Field(None, description="Source of evaluation (e.g., merged_aliases, single_alias)")
+    source: Optional[str] = Field(None, description="Source of evaluation (e.g., merged_emails, single_email)")
 
 
 class EvaluationResponseSchema(BaseModel):
