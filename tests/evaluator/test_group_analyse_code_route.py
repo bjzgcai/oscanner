@@ -778,6 +778,50 @@ def test_ai_native_structured_reasoning_keeps_dimension_assessments_separate():
     assert "规范判断：质量门禁较弱。" not in conclusion
 
 
+def test_ai_native_structured_reasoning_accepts_spaced_ai_heading():
+    plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_spaced_ai_heading")
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+    evaluator._latest_dimension_evidence = {key: [] for key in evaluator.dimensions.keys()}
+
+    llm_reasoning = (
+        "## 云原生与架构演进\n"
+        "云原生判断：仓库缺少 Docker/K8s 或部署配置。\n\n"
+        "## AI 工程与自动演进\n"
+        "AI判断：具备自动化评测脚本，但缺少 agent/tooling 与反馈闭环。\n\n"
+        "## 工程修养与职业素养\n"
+        "职业判断：提交信息较清晰。\n\n"
+        "## 结论与建议\n"
+        "建议补齐云部署与 AI eval 闭环。"
+    )
+
+    reasoning = evaluator._format_structured_reasoning(
+        {
+            "spec_quality": 10,
+            "cloud_architecture": 10,
+            "ai_engineering": 30,
+            "mastery_professionalism": 20,
+        },
+        [llm_reasoning],
+        checker_raw_analysis=None,
+    )
+
+    def section(title: str) -> str:
+        start = reasoning.index(f"## {title}")
+        next_start = reasoning.find("\n## ", start + 1)
+        return reasoning[start:] if next_start == -1 else reasoning[start:next_start]
+
+    cloud_section = section("云原生与架构演进")
+    ai_section = section("AI工程与自动演进")
+    assert "AI 工程与自动演进" not in cloud_section
+    assert "AI判断：具备自动化评测脚本，但缺少 agent/tooling 与反馈闭环。" not in cloud_section
+    assert "AI判断：具备自动化评测脚本，但缺少 agent/tooling 与反馈闭环。" in ai_section
+
+
 def test_ai_native_structured_reasoning_retains_mid_length_assessments():
     plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_reasoning_retention_length")
     evaluator = plugin.create_commit_evaluator(

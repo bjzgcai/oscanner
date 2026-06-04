@@ -715,6 +715,10 @@ class CommitEvaluatorModerate:
             zh_title = self.dimension_titles_zh.get(key)
             if zh_title:
                 dimension_labels.append(zh_title)
+                if zh_title.startswith("AI"):
+                    spaced_zh_title = re.sub(r"^AI\s*", "AI ", zh_title)
+                    if spaced_zh_title != zh_title:
+                        dimension_labels.append(spaced_zh_title)
             labels[key] = dimension_labels
 
         labels["_conclusion"] = (
