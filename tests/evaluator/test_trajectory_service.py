@@ -493,6 +493,13 @@ class TestEnsureRepoDataSynced:
                 "commit_sha": commit_sha,
                 "url": f"https://gitee.com/test_owner/test_repo/blob/{commit_sha}/src/parser.py",
             },
+            {
+                "type": "dir",
+                "label": "src/",
+                "path": "src/",
+                "commit_sha": commit_sha,
+                "url": f"https://gitee.com/test_owner/test_repo/tree/{commit_sha}/src",
+            },
         ]
 
     def test_one_off_route_has_no_cache_parameter(self):

@@ -328,6 +328,7 @@ export default function SingleRepoAnalysis() {
               title={`Analysis View (${pluginId || 'zgc_ai_native_2026'})`}
               loading={loading}
               error={evalError}
+              repoUrl={repoData?.path}
             />
           </Spin>
         </Card>

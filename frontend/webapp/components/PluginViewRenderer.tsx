@@ -13,6 +13,16 @@ export type PluginEvaluation = {
   commits_summary?: { total_additions: number; total_deletions: number; files_changed: number; languages: string[] };
   plugin?: string;
   plugin_version?: string;
+  evidence_links?: Array<{
+    type?: 'commit' | 'file' | 'dir' | string;
+    label?: string;
+    text?: string;
+    url?: string;
+    sha?: string;
+    commit_sha?: string;
+    path?: string;
+    aliases?: string[];
+  }> | null;
 };
 
 type PluginViewProps = {
@@ -20,6 +30,7 @@ type PluginViewProps = {
   title?: string;
   loading?: boolean;
   error?: string;
+  repoUrl?: string;
   locale?: string;
   t?: (key: string, params?: I18nParams) => string;
 };
@@ -30,6 +41,7 @@ type Props = {
   title?: string;
   loading?: boolean;
   error?: string;
+  repoUrl?: string;
 };
 
 type Importer = () => Promise<{ default: React.ComponentType<PluginViewProps> }>;
@@ -41,7 +53,7 @@ const VIEW_MAP: Record<string, React.ComponentType<PluginViewProps>> = Object.fr
 ) as Record<string, React.ComponentType<PluginViewProps>>;
 
 export default function PluginViewRenderer(props: Props) {
-  const { pluginId, evaluation, title, loading, error } = props;
+  const { pluginId, evaluation, title, loading, error, repoUrl } = props;
   const i18n = useI18n();
 
   const View = VIEW_MAP[pluginId];
@@ -52,7 +64,15 @@ export default function PluginViewRenderer(props: Props) {
       </div>
     );
   }
-  return <View evaluation={evaluation} title={title} loading={loading} error={error} locale={i18n.locale} t={i18n.t} />;
+  return (
+    <View
+      evaluation={evaluation}
+      title={title}
+      loading={loading}
+      error={error}
+      repoUrl={repoUrl}
+      locale={i18n.locale}
+      t={i18n.t}
+    />
+  );
 }
-
-

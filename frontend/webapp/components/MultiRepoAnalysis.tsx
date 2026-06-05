@@ -105,7 +105,7 @@ export default function MultiRepoAnalysis() {
   const [authorEmails, setAuthorEmails] = useState('');
 
   // Single-repo state (merged UI)
-  const [singleRepo, setSingleRepo] = useState<{ platform: 'github' | 'gitee'; owner: string; repo: string; full_name: string } | null>(null);
+  const [singleRepo, setSingleRepo] = useState<{ platform: 'github' | 'gitee'; owner: string; repo: string; full_name: string; url: string } | null>(null);
   const [authorsData, setAuthorsData] = useState<Array<{ author: string; email: string; commits: number; avatar_url: string }>>([]);
   const [selectedAuthorIndex, setSelectedAuthorIndex] = useState<number>(-1);
   const [evaluation, setEvaluation] = useState<null | {
@@ -604,7 +604,7 @@ export default function MultiRepoAnalysis() {
           }))
           .slice(0, 20);
 
-        setSingleRepo({ platform, owner, repo, full_name: `${owner}/${repo}` });
+        setSingleRepo({ platform, owner, repo, full_name: `${owner}/${repo}`, url: urls[0] });
         setAuthorsData(authors);
         appendLog(`Loaded ${authors.length} authors. Select a contributor to evaluate.`);
 
@@ -998,6 +998,7 @@ export default function MultiRepoAnalysis() {
               evaluation={evaluation}
               title={`Analysis View (${pluginId || 'zgc_ai_native_2026'})`}
               loading={loading}
+              repoUrl={singleRepo.url}
             />
           </Card>
         )}

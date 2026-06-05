@@ -58,6 +58,13 @@ def _commit_file_path(file_item: Any) -> str:
     return str(file_item or "").strip()
 
 
+def _parent_dir_paths(path: str) -> List[str]:
+    parts = [part for part in str(path or "").replace("\\", "/").strip("/").split("/") if part]
+    if len(parts) <= 1:
+        return []
+    return ["/".join(parts[:index]) + "/" for index in range(1, len(parts))]
+
+
 def _review_base_url(platform: Optional[str], owner: Optional[str], repo: Optional[str]) -> Optional[str]:
     platform_key = str(platform or "").strip().lower()
     host = {"github": "github.com", "gitee": "gitee.com"}.get(platform_key)
@@ -126,6 +133,14 @@ def build_evidence_links(
                 "commit_sha": sha,
                 "url": f"{base_url}/blob/{quote(sha, safe='')}/{quote(path, safe='/')}",
             })
+            for dir_path in _parent_dir_paths(path):
+                links.append({
+                    "type": "dir",
+                    "label": dir_path,
+                    "path": dir_path,
+                    "commit_sha": sha,
+                    "url": f"{base_url}/tree/{quote(sha, safe='')}/{quote(dir_path.strip('/'), safe='/')}",
+                })
             if len(links) >= max_links:
                 return _dedupe_evidence_links(links, max_links=max_links)
 

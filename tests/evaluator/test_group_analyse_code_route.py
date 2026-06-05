@@ -862,6 +862,99 @@ def test_ai_native_structured_reasoning_retains_mid_length_assessments():
     assert "末尾结论保留" in reasoning
 
 
+def test_ai_native_structured_reasoning_breaks_inline_numbered_lists():
+    plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_reasoning_numbered_breaks")
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+    evaluator._latest_dimension_evidence = {key: [] for key in evaluator.dimensions.keys()}
+
+    llm_reasoning = (
+        "## 规范与内建质量\n"
+        "规范结论：1. lint/format 支架存在但被跳过。 2. 模式化和模块化程度中等。 3. 缺少实际测试与 CI。\n\n"
+        "## 云原生与架构演进\n"
+        "云原生判断：没有部署自动化。\n\n"
+        "## AI工程与自动演进\n"
+        "AI判断：1. 无 AI 工程实践。 2. 半自动化脚本存在但无关 AI。 3. 项目性质偏向系统集成。\n\n"
+        "## 工程修养与职业素养\n"
+        "职业判断：提交证据较少。\n\n"
+        "## 结论与建议\n"
+        "本次评估节点显示仍处于早期阶段。要提升工程评级，应优先做到：1. 添加一个最小集的集成测试。 2. 提供 Docker 或 devcontainer 文件。 3. 修复 package.xml 中的 TODO 项。"
+    )
+
+    reasoning = evaluator._format_structured_reasoning(
+        {
+            "spec_quality": 15,
+            "cloud_architecture": 0,
+            "ai_engineering": 15,
+            "mastery_professionalism": 20,
+        },
+        [llm_reasoning],
+        checker_raw_analysis=None,
+    )
+
+    def section(title: str) -> str:
+        start = reasoning.index(f"## {title}")
+        next_start = reasoning.find("\n## ", start + 1)
+        return reasoning[start:] if next_start == -1 else reasoning[start:next_start]
+
+    spec_section = section("规范与内建质量")
+    assert "评估判断：规范结论：\n1. lint/format 支架存在但被跳过。" in spec_section
+    assert "\n2. 模式化和模块化程度中等。" in spec_section
+    assert "\n3. 缺少实际测试与 CI。" in spec_section
+
+    ai_section = section("AI工程与自动演进")
+    assert "评估判断：AI判断：\n1. 无 AI 工程实践。" in ai_section
+    assert "\n2. 半自动化脚本存在但无关 AI。" in ai_section
+    assert "\n3. 项目性质偏向系统集成。" in ai_section
+
+    conclusion = reasoning[reasoning.rfind("## 结论与建议"):]
+    assert "应优先做到：\n1. 添加一个最小集的集成测试。" in conclusion
+    assert "\n2. 提供 Docker 或 devcontainer 文件。" in conclusion
+    assert "\n3. 修复 package.xml 中的 TODO 项。" in conclusion
+
+
+def test_ai_native_structured_reasoning_keeps_commit_evidence_raw_text_clean(tmp_path):
+    plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_reasoning_raw_commit_refs")
+    data_dir = tmp_path / "data" / "github" / "ZGCA-HMI-Lab" / "SceneParser"
+    data_dir.mkdir(parents=True)
+    evaluator = plugin.create_commit_evaluator(
+        data_dir=str(data_dir),
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+    evaluator._latest_dimension_evidence = {
+        key: [
+            {
+                "sha": "12a27bef",
+                "full_sha": "12a27befd11e81bbb73c914c00c73e6a93bac765",
+                "message": "init",
+                "files": ["evaluation/inference_sceneparser.py"],
+            }
+        ]
+        for key in evaluator.dimensions.keys()
+    }
+
+    reasoning = evaluator._format_structured_reasoning(
+        {
+            "spec_quality": 15,
+            "cloud_architecture": 0,
+            "ai_engineering": 15,
+            "mastery_professionalism": 20,
+        },
+        [],
+        checker_raw_analysis=None,
+    )
+
+    assert "commit 12a27bef" in reasoning
+    assert "https://github.com/ZGCA-HMI-Lab/SceneParser/commit/" not in reasoning
+    assert "[`12a27bef`](https://github.com" not in reasoning
+
+
 def test_ai_native_plugin_streaming_evaluation_reports_provider_token_usage(monkeypatch):
     import importlib.util
 
@@ -998,6 +1091,101 @@ def test_analyze_group_repositories_exposes_row_and_total_token_usage(monkeypatc
         "source": "provider",
     }
     assert result["results"][0]["token_usage"] == result["token_usage"]
+
+
+def test_analyze_group_repositories_adds_structured_evidence_links(monkeypatch):
+    from types import SimpleNamespace
+
+    from evaluator.services import trajectory_service
+
+    commit_sha = "12a27befd11e81bbb73c914c00c73e6a93bac765"
+
+    class FakeEvaluator:
+        def evaluate_repository(self, **_kwargs):
+            return {
+                "username": "https://github.com/ZGCA-HMI-Lab/SceneParser",
+                "total_commits_analyzed": 1,
+                "files_loaded": 0,
+                "mode": "moderate",
+                "scores": {
+                    "spec_quality": 80,
+                    "cloud_architecture": 70,
+                    "ai_engineering": 75,
+                    "mastery_professionalism": 85,
+                    "reasoning": "提交 12a27bef 添加 evaluation/inference_sceneparser.py 和 evaluation/。",
+                },
+                "commits_summary": {},
+            }
+
+    fake_scan = SimpleNamespace(create_commit_evaluator=lambda **_kwargs: FakeEvaluator())
+    fake_meta = SimpleNamespace(version="0.1.0")
+
+    monkeypatch.setattr(
+        trajectory_service,
+        "_sync_repo_for_group_eval",
+        lambda repo_url: ("github", "ZGCA-HMI-Lab", "SceneParser", False),
+    )
+    monkeypatch.setattr(
+        trajectory_service,
+        "_load_all_repo_commits",
+        lambda repo_url: (
+            [
+                {
+                    "sha": commit_sha,
+                    "commit": {"author": {"date": "2026-01-01T00:00:00Z"}, "message": "init"},
+                    "files": [
+                        {"filename": "evaluation/inference_sceneparser.py"},
+                        {"filename": "finetuning/train.py"},
+                    ],
+                }
+            ],
+            PROJECT_ROOT,
+        ),
+    )
+    monkeypatch.setattr(trajectory_service, "load_scan_module", lambda _plugin_id: (fake_meta, fake_scan, PROJECT_ROOT))
+    monkeypatch.setattr(trajectory_service, "get_llm_api_key", lambda: "test-key")
+
+    result = trajectory_service.analyze_group_repositories(
+        repositories=[
+            {
+                "id": "s1",
+                "username": "Alice",
+                "repo_url": "https://github.com/ZGCA-HMI-Lab/SceneParser",
+            }
+        ],
+        plugin_id="zgc_ai_native_2026",
+        model="deepseek/deepseek-v4-pro",
+        language="zh-CN",
+    )
+
+    evidence_links = result["results"][0]["checkpoint"]["evaluation"]["evidence_links"]
+    assert {
+        "type": "commit",
+        "label": "12a27bef",
+        "sha": commit_sha,
+        "url": f"https://github.com/ZGCA-HMI-Lab/SceneParser/commit/{commit_sha}",
+    } in evidence_links
+    assert {
+        "type": "file",
+        "label": "evaluation/inference_sceneparser.py",
+        "path": "evaluation/inference_sceneparser.py",
+        "commit_sha": commit_sha,
+        "url": f"https://github.com/ZGCA-HMI-Lab/SceneParser/blob/{commit_sha}/evaluation/inference_sceneparser.py",
+    } in evidence_links
+    assert {
+        "type": "dir",
+        "label": "evaluation/",
+        "path": "evaluation/",
+        "commit_sha": commit_sha,
+        "url": f"https://github.com/ZGCA-HMI-Lab/SceneParser/tree/{commit_sha}/evaluation",
+    } in evidence_links
+    assert {
+        "type": "dir",
+        "label": "finetuning/",
+        "path": "finetuning/",
+        "commit_sha": commit_sha,
+        "url": f"https://github.com/ZGCA-HMI-Lab/SceneParser/tree/{commit_sha}/finetuning",
+    } in evidence_links
 
 
 def test_analyze_group_repositories_applies_per_repo_commit_ranges(monkeypatch):

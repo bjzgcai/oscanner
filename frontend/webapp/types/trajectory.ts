@@ -31,6 +31,17 @@ export interface CommitsSummarySchema {
   languages: string[];
 }
 
+export interface EvidenceLink {
+  type?: 'commit' | 'file' | 'dir' | string;
+  label?: string;
+  text?: string;
+  url?: string;
+  sha?: string;
+  commit_sha?: string;
+  path?: string;
+  aliases?: string[];
+}
+
 export interface EvaluationSchema {
   // Core fields
   username: string;
@@ -60,6 +71,7 @@ export interface EvaluationSchema {
 
   // Optional fields
   commit_ids?: string[] | null;
+  evidence_links?: EvidenceLink[] | null;
 }
 
 export interface EvaluationMetadata {

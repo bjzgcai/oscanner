@@ -1,6 +1,5 @@
 import React from 'react';
 import { Alert, Card, Spin, Tag } from 'antd';
-import ReactMarkdown from 'react-markdown';
 import { Radar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -12,6 +11,7 @@ import {
   Legend,
 } from 'chart.js';
 import type { PluginSingleRepoViewProps } from '../../_shared/view/types';
+import ReasoningMarkdown from './ReasoningMarkdown';
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -32,7 +32,7 @@ function levelColor(level: string): string {
 }
 
 export default function PluginView(props: PluginSingleRepoViewProps) {
-  const { evaluation, title, loading, error, t: tFromProps } = props;
+  const { evaluation, title, loading, error, repoUrl, t: tFromProps } = props;
   if (typeof tFromProps !== 'function') {
     throw new Error('zgc_ai_native_2026 plugin view requires `t(key, params?)` prop from host app.');
   }
@@ -191,12 +191,10 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
             {t('plugin.zgc_ai_native_2026.single.section.summary')}
           </div>
           <div style={{ color: '#E5E7EB' }}>
-            <ReactMarkdown>{reasoning}</ReactMarkdown>
+            <ReasoningMarkdown reasoning={reasoning} repoUrl={repoUrl} evidenceLinks={evaluation.evidence_links} />
           </div>
         </Card>
       ) : null}
     </Card>
   );
 }
-
-

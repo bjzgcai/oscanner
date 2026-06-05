@@ -77,6 +77,12 @@ def _commit_emails(commit: Dict[str, Any]) -> List[str]:
 
 ProgressCallback = Callable[[str, Dict[str, Any]], None]
 CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+INLINE_NUMBERED_ITEM_RE = re.compile(
+    r"(?<!^)(?<!\n)\s+(?=(?:[1-9]|[1-9][0-9])\.\s*[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffA-Za-z])"
+)
+INLINE_NUMBERED_LIST_START_RE = re.compile(
+    r"([:：])\s*(?=(?:[1-9]|[1-9][0-9])\.\s*[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffA-Za-z])"
+)
 
 
 def extract_stream_delta(line: str) -> Optional[str]:
@@ -305,6 +311,16 @@ class CommitEvaluatorModerate:
         return "L1"
 
     @staticmethod
+    def _normalize_inline_list_breaks(text: str) -> str:
+        normalized = str(text or "")
+        normalized = INLINE_NUMBERED_LIST_START_RE.sub(r"\1\n", normalized)
+        normalized = INLINE_NUMBERED_ITEM_RE.sub("\n", normalized)
+        return normalized
+
+    def _format_commit_ref(self, sha: str, full_sha: Optional[str] = None) -> str:
+        return str(sha or full_sha or "").strip() or "unknown"
+
+    @staticmethod
     def _commit_sha(commit: Dict[str, Any]) -> str:
         return str(commit.get("sha") or commit.get("hash") or "").strip()
 
@@ -382,6 +398,7 @@ class CommitEvaluatorModerate:
                 continue
             entry = {
                 "sha": sha[:8] if sha else "",
+                "full_sha": sha,
                 "message": message[:180] if message else "(no commit message)",
                 "files": files,
             }
@@ -411,6 +428,7 @@ class CommitEvaluatorModerate:
             if sha or message or files:
                 fallback_commits.append({
                     "sha": sha[:8] if sha else "",
+                    "full_sha": sha,
                     "message": message[:180] if message else "(no commit message)",
                     "files": files,
                     "fallback": True,
@@ -693,9 +711,9 @@ class CommitEvaluatorModerate:
             lines.append(f"- negative signals: {negative_text}")
         return "\n".join(lines)
 
-    @staticmethod
-    def _format_evidence_entry(entry: Dict[str, Any], *, is_chinese: bool) -> str:
+    def _format_evidence_entry(self, entry: Dict[str, Any], *, is_chinese: bool) -> str:
         sha = entry.get("sha") or "unknown"
+        commit_ref = self._format_commit_ref(str(sha), str(entry.get("full_sha") or sha))
         message = entry.get("message") or "(no commit message)"
         files = entry.get("files") or []
         checker = entry.get("checker")
@@ -705,8 +723,8 @@ class CommitEvaluatorModerate:
             checker_suffix = f"；checker={checker}，score={score}/100" if is_chinese else f"; checker={checker}, score={score}/100"
         files_text = ", ".join(str(f) for f in files[:6]) if files else ("未记录文件路径" if is_chinese else "no file paths recorded")
         if is_chinese:
-            return f"- commit `{sha}`：{message}；文件：{files_text}{checker_suffix}"
-        return f"- commit `{sha}`: {message}; files: {files_text}{checker_suffix}"
+            return f"- commit {commit_ref}：{message}；文件：{files_text}{checker_suffix}"
+        return f"- commit {commit_ref}: {message}; files: {files_text}{checker_suffix}"
 
     def _reasoning_heading_labels(self, is_chinese: bool) -> Dict[str, List[str]]:
         labels: Dict[str, List[str]] = {}
@@ -777,6 +795,7 @@ class CommitEvaluatorModerate:
             cleaned_lines.append(stripped)
         compact = " ".join(cleaned_lines)
         compact = re.sub(r"\s+", " ", compact).strip()
+        compact = CommitEvaluatorModerate._normalize_inline_list_breaks(compact)
         if len(compact) <= max_chars:
             return compact
 
@@ -784,8 +803,8 @@ class CommitEvaluatorModerate:
         for separator in ("。", "；", ";", "."):
             pos = cut.rfind(separator)
             if pos >= max_chars * 0.55:
-                return cut[: pos + 1].strip()
-        return f"{cut.rstrip()}..."
+                return CommitEvaluatorModerate._normalize_inline_list_breaks(cut[: pos + 1].strip())
+        return CommitEvaluatorModerate._normalize_inline_list_breaks(f"{cut.rstrip()}...")
 
     def _dimension_assessment(
         self,
@@ -844,6 +863,7 @@ class CommitEvaluatorModerate:
             if conclusion_snippets:
                 summary = " ".join(conclusion_snippets)
                 summary = re.sub(r"^(结论|总结|建议)\s*[:：]\s*", "", summary).strip()
+                summary = self._normalize_inline_list_breaks(summary)
                 conclusion = f"结论：{summary}"
             else:
                 high_text = self.dimension_titles_zh.get(high_key, self.dimensions.get(high_key, "")) if high_key else "当前证据"
@@ -855,6 +875,7 @@ class CommitEvaluatorModerate:
         if conclusion_snippets:
             summary = " ".join(conclusion_snippets)
             summary = re.sub(r"^(conclusion|summary|suggestion)s?\s*:\s*", "", summary, flags=re.IGNORECASE).strip()
+            summary = self._normalize_inline_list_breaks(summary)
             conclusion = f"Conclusion: {summary}"
         else:
             high_text = self.dimensions.get(high_key, "available evidence") if high_key else "available evidence"
@@ -2309,6 +2330,7 @@ class CommitEvaluatorModerate:
                 f"基于{part_label}数据，按四个维度组织 reasoning："
                 "**规范与内建质量**、**云原生与架构演进**、**AI工程与自动演进**、**工程修养与职业素养**。"
                 "每个维度写出评分对应的 L1-L5 等级，并引用来自 commit sha、commit message 和 commit diff 的可见证据（文件名/路径必须来自提交差异或提交信息）。"
+                "如果列出 1.、2.、3. 项，请每一项单独换行。"
                 "最后写 **结论与建议**，该部分只给总结和建议，不重复证明细节。"
             )
             format_note = "每个维度评分范围：0-100"
@@ -2318,6 +2340,7 @@ class CommitEvaluatorModerate:
                 "**Specification & Built-in Quality**, **Cloud-Native & Architecture Evolution**, "
                 "**AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. "
                 "For each dimension include the L1-L5 level and visible evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). "
+                "When listing numbered items such as 1., 2., and 3., put each item on its own line. "
                 "End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details."
             )
             format_note = "Each dimension: score 0-100"
@@ -2534,6 +2557,7 @@ class CommitEvaluatorModerate:
                 "使用评分标准。reasoning 必须包含四个维度章节："
                 "**规范与内建质量**、**云原生与架构演进**、**AI工程与自动演进**、**工程修养与职业素养**。"
                 "每个章节写明该维度分数、L1-L5 等级，并列出来自 commit sha、commit message 和 commit diff 的证据（文件名/路径必须来自提交差异或提交信息）。"
+                "如果列出 1.、2.、3. 项，请每一项单独换行。"
                 "最后提供 **结论与建议**，只总结和给建议，不重复证明细节。"
             )
             format_note = "每个维度评分范围：0-100"
@@ -2544,6 +2568,7 @@ class CommitEvaluatorModerate:
                 "**Specification & Built-in Quality**, **Cloud-Native & Architecture Evolution**, "
                 "**AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. "
                 "Each section must include the dimension score, L1-L5 level, and evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). "
+                "When listing numbered items such as 1., 2., and 3., put each item on its own line. "
                 "End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details."
             )
             format_note = "Each dimension: score 0-100"
@@ -2731,7 +2756,7 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
 
     def _format_reasoning(self, reasoning: str) -> str:
         r = (reasoning or "").replace("\\n\\n", "\n\n").replace("\\n", "\n")
-        return r.strip()
+        return self._normalize_inline_list_breaks(r).strip()
 
     def _merge_evaluations(self, prev: Dict[str, Any], new: Dict[str, Any], chunk_idx: int) -> Dict[str, Any]:
         out: Dict[str, Any] = {}

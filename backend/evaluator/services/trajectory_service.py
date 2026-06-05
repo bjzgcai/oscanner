@@ -761,6 +761,14 @@ def analyze_group_repositories(
             evaluation_result["plugin_version"] = getattr(meta, "version", "0.1.0")
             if expected_feature:
                 evaluation_result["expected_feature"] = expected_feature
+            evidence_links = build_evidence_links(
+                commits,
+                platform=sync_result.get("platform"),
+                owner=sync_result.get("owner"),
+                repo=sync_result.get("repo"),
+            )
+            if evidence_links:
+                evaluation_result["evidence_links"] = evidence_links
 
             checkpoint = _build_group_checkpoint(
                 commits=commits,

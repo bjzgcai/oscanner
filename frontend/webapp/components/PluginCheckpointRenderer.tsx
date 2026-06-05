@@ -5,7 +5,7 @@ import React from 'react';
 
 import { TRAJECTORY_CHECKPOINT_VIEW_IMPORTERS } from './generated/pluginViewMap';
 import { useI18n } from './I18nContext';
-import type { TrajectoryCheckpoint } from '@/types/trajectory';
+import type { EvidenceLink, TrajectoryCheckpoint } from '@/types/trajectory';
 import type { I18nParams } from '../i18n/types';
 
 export type PluginCheckpointViewProps = {
@@ -37,6 +37,7 @@ type TrajectoryCheckpointData = {
     plugin: string;
     plugin_version: string;
     total_commits_analyzed: number;
+    evidence_links?: EvidenceLink[] | null;
   };
   repos_analyzed?: string[] | null;
   aliases_used?: string[] | null;
@@ -94,6 +95,7 @@ export default function PluginCheckpointRenderer(props: Props) {
       plugin: checkpoint.evaluation.plugin,
       plugin_version: checkpoint.evaluation.plugin_version,
       total_commits_analyzed: checkpoint.evaluation.total_commits_analyzed,
+      evidence_links: checkpoint.evaluation.evidence_links,
     },
     repos_analyzed: checkpoint.repos_analyzed,
     aliases_used: checkpoint.aliases_used,
@@ -118,6 +120,7 @@ export default function PluginCheckpointRenderer(props: Props) {
       plugin: previousCheckpoint.evaluation.plugin,
       plugin_version: previousCheckpoint.evaluation.plugin_version,
       total_commits_analyzed: previousCheckpoint.evaluation.total_commits_analyzed,
+      evidence_links: previousCheckpoint.evaluation.evidence_links,
     },
     repos_analyzed: previousCheckpoint.repos_analyzed,
     aliases_used: previousCheckpoint.aliases_used,

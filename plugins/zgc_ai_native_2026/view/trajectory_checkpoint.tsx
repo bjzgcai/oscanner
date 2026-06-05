@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, Descriptions, Space, Tag } from 'antd';
 import type { PluginTrajectoryCheckpointViewProps } from '../../_shared/view/types';
+import ReasoningMarkdown from './ReasoningMarkdown';
 
 export default function PluginTrajectoryCheckpointView(props: PluginTrajectoryCheckpointViewProps) {
   const { checkpoint, previousCheckpoint, t: tFromProps } = props;
@@ -12,6 +13,7 @@ export default function PluginTrajectoryCheckpointView(props: PluginTrajectoryCh
   
   const { evaluation } = checkpoint;
   const scores = evaluation.scores;
+  const repoUrl = Array.isArray(checkpoint.repos_analyzed) ? checkpoint.repos_analyzed[0] : undefined;
 
   // Get all dimension keys (excluding reasoning)
   const dimensionKeys = Object.keys(scores).filter(
@@ -63,8 +65,12 @@ export default function PluginTrajectoryCheckpointView(props: PluginTrajectoryCh
         <div>
           <h4 style={{ marginBottom: '12px' }}>{t('checkpoint.evaluation_reasoning')}</h4>
           <Card size="small" style={{ background: '#f5f5f5' }}>
-            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-              {scores.reasoning as string}
+            <div style={{ lineHeight: '1.6' }}>
+              <ReasoningMarkdown
+                reasoning={scores.reasoning as string}
+                repoUrl={repoUrl}
+                evidenceLinks={evaluation.evidence_links}
+              />
             </div>
           </Card>
         </div>

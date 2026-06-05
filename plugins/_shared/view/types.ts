@@ -14,6 +14,17 @@ export type SingleRepoCommitsSummary = {
   languages: string[];
 };
 
+export type EvidenceLink = {
+  type?: 'commit' | 'file' | 'dir' | string;
+  label?: string;
+  text?: string;
+  url?: string;
+  sha?: string;
+  commit_sha?: string;
+  path?: string;
+  aliases?: string[];
+};
+
 // Note:
 // - `scores` is intentionally flexible because different scan plugins may add extra keys.
 export type SingleRepoEvaluation = {
@@ -23,6 +34,7 @@ export type SingleRepoEvaluation = {
   plugin?: string;
   plugin_version?: string;
   plugin_scan_path?: string;
+  evidence_links?: EvidenceLink[] | null;
 };
 
 export type PluginSingleRepoViewProps = {
@@ -30,6 +42,7 @@ export type PluginSingleRepoViewProps = {
   title?: string;
   loading?: boolean;
   error?: string;
+  repoUrl?: string;
   // i18n support (optional): webapp may pass locale + t() for plugin views to localize labels.
   locale?: string;
   t?: (key: string, params?: Record<string, string | number>) => string;
@@ -108,6 +121,7 @@ export type TrajectoryCheckpointData = {
     plugin: string;
     plugin_version: string;
     total_commits_analyzed: number;
+    evidence_links?: EvidenceLink[] | null;
   };
   repos_analyzed?: string[] | null;
   aliases_used?: string[] | null;
@@ -127,4 +141,3 @@ export type PluginTrajectoryCheckpointViewProps = {
   locale?: string;
   t?: (key: string, params?: Record<string, string | number>) => string;
 };
-

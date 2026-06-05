@@ -225,11 +225,25 @@ class TestEvaluateAuthorIncremental:
                 "url": f"https://github.com/test_owner/test_repo/blob/{commit_sha}/src/parser.py",
             },
             {
+                "type": "dir",
+                "label": "src/",
+                "path": "src/",
+                "commit_sha": commit_sha,
+                "url": f"https://github.com/test_owner/test_repo/tree/{commit_sha}/src",
+            },
+            {
                 "type": "file",
                 "label": "docs/usage guide.md",
                 "path": "docs/usage guide.md",
                 "commit_sha": commit_sha,
                 "url": f"https://github.com/test_owner/test_repo/blob/{commit_sha}/docs/usage%20guide.md",
+            },
+            {
+                "type": "dir",
+                "label": "docs/",
+                "path": "docs/",
+                "commit_sha": commit_sha,
+                "url": f"https://github.com/test_owner/test_repo/tree/{commit_sha}/docs",
             },
         ]
 
@@ -301,6 +315,7 @@ class TestEvaluateAuthorIncremental:
             "https://github.com/test_owner/test_repo/commit/old123",
             "https://github.com/test_owner/test_repo/commit/new456",
             "https://github.com/test_owner/test_repo/blob/new456/src/new.py",
+            "https://github.com/test_owner/test_repo/tree/new456/src",
         ]
 
     def test_evaluate_author_incremental_with_previous(self, temp_data_dir):
