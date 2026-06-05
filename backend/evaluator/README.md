@@ -1,1470 +1,713 @@
-# Engineer Capability Assessment System
+# Oscanner Evaluator Backend
 
-A comprehensive evaluation system that analyzes engineer capabilities based on GitHub and Gitee activity. The system uses LLM-powered analysis with a **plugin-based architecture** to evaluate software engineers across multiple dimensions of engineering excellence.
+The evaluator backend is the FastAPI service for Oscanner Skill Evaluator. It
+loads GitHub/Gitee repository activity into local XDG storage, evaluates authors
+or repositories with plugin-defined rubrics, exposes trajectory and validation
+APIs, and can proxy the optional repository runner service.
 
-## Overview
+The current backend is route/service based: `server.py` wires middleware,
+routers, environment loading, and optional static dashboard serving; most
+business logic lives in `routes/` and `services/`.
 
-The Engineer Capability Assessment System collects data from GitHub/Gitee repositories and commits, then uses AI-powered analysis to evaluate engineering skills across multiple dimensions. It provides:
+## What It Provides
 
-- **FastAPI Backend** (port 8000) - RESTful API for data extraction and evaluation
-- **Next.js Dashboard** (port 3000) - Interactive web UI with charts and PDF export
-- **Plugin System** - Extensible evaluation strategies with custom UI components
-- **Multi-Alias Support** - Intelligent identity aggregation (~88% token savings)
-- **Incremental Sync** - Efficient updates with state tracking
-- **Smart Caching** - Three-tier caching (API → Data → Evaluations)
+- FastAPI API service on port `8000`
+- Optional bundled static dashboard served at `/` when packaged with
+  `cli/dashboard_dist/`
+- GitHub and Gitee extraction into local repository data directories
+- Author discovery using lightweight provider APIs when possible, then local
+  extraction as fallback
+- Plugin-driven evaluation with the default `zgc_ai_native_2026` rubric
+- Multi-email and legacy alias aggregation for author identity matching
+- Batch extraction, common contributor search, and cross-repo contributor
+  comparison
+- Growth trajectory APIs, including streaming and durable polling variants
+- Repository-wide group analysis for course/public evaluation integrations
+- Checker discovery/execution and benchmark validation endpoints
+- Runner proxy endpoints for the optional repos runner service on port `8001`
 
 ## Quick Start
 
-### From PyPI (Recommended)
+### Install From PyPI
 
 ```bash
-# Install
 pip install oscanner-skill-evaluator
-
-# Interactive setup (creates .env.local with LLM API keys)
 oscanner init
-
-# Start backend + dashboard together
-oscanner dev
-# Or backend only: oscanner serve
-# Or dashboard only: oscanner dashboard
+oscanner serve
 ```
 
-**Dashboard Access:** `http://localhost:3000`
-**API Access:** `http://localhost:8000`
-**API Docs:** `http://localhost:8000/docs`
+Open:
 
-### From Source (Development)
+- API root or bundled dashboard: `http://localhost:8000/`
+- API docs: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/health`
+
+If you want the source Next.js dashboard during development:
 
 ```bash
-# Install dependencies with uv
+oscanner dashboard --install
+```
+
+The dashboard dev server runs on `http://localhost:3000`.
+
+### Run From Source
+
+```bash
 uv sync
-
-# Interactive configuration
 uv run oscanner init
-
-# Start backend + dashboard together
-uv run oscanner dev --reload
-# Or start separately:
-# Backend: uv run oscanner serve --reload
-# Dashboard: uv run oscanner dashboard
+uv run oscanner dev --reload --install
 ```
 
-### oscanner CLI Commands
-
-The `oscanner` CLI provides unified management for the entire system:
+Useful variants:
 
 ```bash
-oscanner init           # Interactive setup with API key configuration
-oscanner dev            # Start backend + webapp together (development mode)
-oscanner serve          # Start FastAPI backend only (port 8000)
-oscanner dashboard      # Start Next.js webapp only (port 3000)
-oscanner --help         # Show all available commands
+uv run oscanner serve --reload
+uv run oscanner dashboard --install
+uv run pytest
 ```
 
-### Web Dashboard Features
+## CLI Commands
 
-The Next.js dashboard provides three evaluation workflows:
-
-1. **Single Repository Analysis** (`/`)
-   - Enter GitHub/Gitee repository URL
-   - Auto-extracts commits if not cached
-   - Lists all authors with commit counts
-   - Click author to evaluate with default plugin
-   - View plugin rubric scores with charts
-   - Export to PDF with one click
-
-2. **Multi-Repository Analysis** (`/repos`)
-   - Compare 2-5 repositories at once
-   - Find common contributors across repos
-   - Intelligent identity matching (GitHub ID → fuzzy name → exact name)
-   - View commit counts per repository
-   - Identify cross-project contributors
-
-3. **Contributor Comparison** (from multi-repo page)
-   - Compare one contributor across multiple repositories
-   - Plugin rubric score comparison
-   - Multiple chart types: radar, bar, heatmap, line
-   - Identify specialization and context-aware capabilities
-   - Export comparison report to PDF
-
-**Settings Page:**
-- Configure LLM API key, model, and base URL
-- Test LLM connection
-- View current configuration (API keys masked)
-- Persisted to localStorage + backend
-
-## Key Features
-
-- **Plugin-Based Architecture**: Extensible evaluation strategies with self-contained backend logic and React UI components
-- **AI-Native 2026 Rubric**: Default plugin evaluates specification quality, cloud architecture, AI engineering, and mastery/professionalism
-- **Multi-Platform Support**: Works with both GitHub and Gitee repositories (public + enterprise z.gitee.cn)
-- **Incremental Sync**: Efficiently fetches only new commits since last sync, tracking sync state (`last_commit_sha`, `last_commit_date`) per repository
-- **Multi-Email Aggregation**: Merges contributor commit email identities with commit-count weighted averaging
-- **Smart Caching**: Three-tier caching strategy:
-  1. API responses (GitHub/Gitee) cached locally
-  2. Extracted commit data and diffs
-  3. LLM evaluation results per author per plugin
-- **LLM-Powered Analysis**: Configurable LLM providers with automatic fallback:
-  - OpenRouter (default) with multi-model support
-  - OpenAI-compatible APIs (Azure, LocalAI, custom endpoints)
-  - Automatic fallback chain (primary → fallback → keyword-based)
-- **Dynamic Plugin UI**: React components loaded at runtime from plugin directories
-- **Interactive Web Dashboard**: Next.js app with three evaluation workflows:
-  - Single-repo author evaluation
-  - Multi-repo common contributor analysis
-  - Cross-repo contributor comparison with visualization
-- **oscanner CLI**: Unified command-line interface for setup (`init`), development (`dev`), and server management (`serve`, `dashboard`)
-- **RESTful API**: 15+ FastAPI endpoints for integration with external systems
-- **XDG-Compliant Storage**: Data stored in `~/.local/share/oscanner/` following Linux/Unix standards
-- **PDF Export**: One-click export of evaluation reports and comparison charts
-
-## Directory Structure
-
-```
-evaluator/
-├── __init__.py                          # Package initialization
-├── core.py                              # Core evaluation engine (legacy, for compatibility)
-├── dimensions.py                        # Six-dimensional evaluation framework (legacy)
-├── server.py                            # FastAPI web service (2,457 lines) - Main API engine
-├── plugin_registry.py                   # Plugin discovery and loading system
-├── sync_manager.py                      # Incremental repository sync management
-├── contributtor.py                      # Contributor identity clustering (~88% token savings)
-├── paths.py                             # XDG-compliant path management
-├── collectors/                          # Data collection modules
-│   ├── __init__.py
-│   ├── github.py                        # GitHub API collector (public repos)
-│   └── gitee.py                         # Gitee API collector (public + enterprise)
-├── analyzers/                           # Code analysis modules
-│   ├── code_analyzer.py                 # Code quality analyzer
-│   ├── commit_analyzer.py               # Commit pattern analyzer
-│   └── collaboration_analyzer.py        # Collaboration metrics
-├── reporters/                           # Report generation utilities
-├── tools/                               # Data extraction tools
-│   └── extract_repo_data_moderate.py
-└── requirements.txt                     # (legacy) Python dependencies; prefer pyproject.toml + uv
-
-plugins/                                 # Plugin system (extensible evaluators)
-├── zgc_ai_native_2026/                  # Default AI-Native 2026 rubric plugin
-│   ├── index.yaml
-│   ├── scan/__init__.py
-│   └── view/
-└── _shared/                             # Shared plugin scan/view utilities
-```
-
-## AI-Native 2026 Rubric
-
-The bundled default plugin emits four numeric score keys:
-
-- `spec_quality`: specification implementation, tests, validation, maintainability
-- `cloud_architecture`: architecture evolution, cloud-native readiness, reproducibility
-- `ai_engineering`: AI workflows, automation, prompts/tools/evaluation loops
-- `mastery_professionalism`: engineering maturity, documentation, collaboration, trade-off quality
-
-## Installation
-
-### Prerequisites
-- Python 3.8+
-- pip or [uv](https://github.com/astral-sh/uv) (recommended)
-
-### Recommended Installation
-
-See the [Quick Start](#quick-start) section above for the recommended installation method using `oscanner init`.
-
-### Manual Setup (Alternative)
-
-If you prefer manual configuration:
-
-1. **Install from PyPI:**
-```bash
-pip install oscanner-skill-evaluator
-# Or from source:
-# uv sync
-```
-
-2. **Create configuration file:**
-```bash
-# The config file location (choose one):
-# - .env.local (current directory)
-# - ~/.local/share/oscanner/.env.local (user-wide)
-```
-
-3. **Edit configuration with your API keys:**
-```env
-# LLM Configuration (at least one required)
-OPEN_ROUTER_KEY=sk-or-v1-your-key-here
-# Or:
-# OPENAI_API_KEY=sk-your-openai-key
-# Or:
-# OSCANNER_LLM_API_KEY=your-custom-api-key
-
-# Optional: Custom LLM configuration
-OSCANNER_LLM_MODEL=deepseek/deepseek-v4-pro
-OSCANNER_LLM_BASE_URL=https://openrouter.ai/api/v1
-OSCANNER_LLM_FALLBACK_MODELS=another-model-id
-
-# GitHub token (optional, for higher API rate limits: 5000/hr vs 60/hr)
-GITHUB_TOKEN=ghp_your_github_token
-
-# Gitee tokens (optional, for Gitee repositories)
-GITEE_TOKEN=your_gitee_token
-GITEE_ENTERPRISE_TOKEN=your_enterprise_token
-```
-
-4. **Start the system:**
-```bash
-oscanner dev  # Backend + Dashboard
-# Or separately:
-# oscanner serve    # Backend only (port 8000)
-# oscanner dashboard  # Dashboard only (port 3000)
-```
-
-## Complete Workflow
-
-### System Architecture
-
-The evaluation system reuses extracted repository data to minimize platform API calls while computing evaluations on request:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  User enters GitHub URL (e.g., github.com/owner/repo)          │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Frontend: GET /api/local/authors/{owner}/{repo}                │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Backend: Check local data at data/{platform}/{owner}/{repo}/   │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-         ┌───────────┴───────────┐
-         │                       │
-    Data Exists            Data Missing
-         │                       │
-         │                       ▼
-         │          ┌─────────────────────────────┐
-         │          │ Extract from GitHub/Gitee   │
-         │          │ into local repository data  │
-         │          └──────────┬──────────────────┘
-         │                     │
-         └──────────┬──────────┘
-                                │
-                                ▼
-                   ┌────────────────────────────┐
-                   │ Load all authors from      │
-                   │ commit data                │
-                   └────────────┬───────────────┘
-                                │
-                                ▼
-                   ┌────────────────────────────┐
-                   │ Return all authors list    │
-                   └────────────────────────────┘
-```
-
-### Evaluation Flow (Per Author)
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  User clicks on author                                          │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Frontend: POST /api/evaluate/{owner}/{repo}/{author}           │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Backend: Load commits from local extracted repository data      │
-└────────────────────┬────────────────────────────────────────────┘
-                     ▼
-                      ┌──────────────────────────┐
-                      │ Create evaluator with    │
-                      │ repository context       │
-                      └──────────┬───────────────┘
-                                 │
-                                 ▼
-                      ┌──────────────────────────┐
-                      │ Evaluate author with AI  │
-                      │ - Analyze commit diffs   │
-                      │ - Read relevant files    │
-                      │ - Score 6 dimensions     │
-                      └──────────┬───────────────┘
-                                 │
-                                 ▼
-                      ┌──────────────────────────┐
-                      │ Return evaluation        │
-                      └──────────────────────────┘
-```
-
-### Chunking and Linear Evaluation
-
-The system uses a **chunking and linear evaluation algorithm** to handle large commit histories while staying within LLM context limits. This approach prioritizes accuracy and correlation over raw speed.
-
-#### Algorithm Overview
-
-When evaluating an author with many commits (e.g., 50-100+), the system:
-
-1. **Divides commits into N chunks** based on LLM's maximum context window
-2. **Evaluates chunks sequentially** (one after another, not in parallel)
-3. **Accumulates insights** from previous chunks to inform subsequent evaluations
-4. **Produces coherent, contextualized results** across the entire commit history
-
-#### Why Linear Instead of Parallel?
-
-**Linear Evaluation (Current Approach):**
-- ✅ Better accuracy - LLM sees progression of work over time
-- ✅ Stronger correlation - Later chunks informed by earlier insights
-- ✅ Contextual understanding - Growth patterns and skill development visible
-- ✅ Coherent narrative - Single evaluation story across all commits
-- ❌ Slower - Must wait for each chunk to complete
-
-**Parallel Evaluation (Alternative):**
-- ✅ Faster - All chunks evaluated simultaneously
-- ❌ Worse accuracy - Missing temporal context
-- ❌ Weaker correlation - Chunks evaluated in isolation
-- ❌ Fragmented insights - Harder to synthesize overall assessment
-
-#### Chunking Strategy
-
-```python
-# Pseudocode for chunking algorithm
-def chunk_commits(commits, max_tokens_per_chunk):
-    """
-    Divide commits into chunks that fit within LLM context limits.
-
-    Args:
-        commits: List of commit objects (newest first)
-        max_tokens_per_chunk: Maximum tokens per chunk (e.g., 190,000)
-
-    Returns:
-        List of commit chunks, ordered chronologically
-    """
-    chunks = []
-    current_chunk = []
-    current_tokens = 0
-
-    # Process commits in reverse chronological order
-    for commit in commits:
-        commit_tokens = estimate_tokens(commit)
-
-        if current_tokens + commit_tokens > max_tokens_per_chunk:
-            # Start new chunk
-            chunks.append(current_chunk)
-            current_chunk = [commit]
-            current_tokens = commit_tokens
-        else:
-            current_chunk.append(commit)
-            current_tokens += commit_tokens
-
-    # Add final chunk
-    if current_chunk:
-        chunks.append(current_chunk)
-
-    return chunks
-```
-
-#### Linear Evaluation Process
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Load author's commits (e.g., 100 commits)                      │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Divide into N chunks based on token limits                     │
-│  Example: 100 commits → 4 chunks of 25 commits each             │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-         ┌───────────────────────┐
-         │  Chunk 1 (oldest 25)  │
-         │  Evaluate with LLM    │
-         │  Get initial scores   │
-         └───────────┬───────────┘
-                     │
-                     ▼
-         ┌───────────────────────────────────┐
-         │  Chunk 2 (next 25)                │
-         │  Evaluate with context from Ch1   │
-         │  Update accumulated scores        │
-         └───────────┬───────────────────────┘
-                     │
-                     ▼
-         ┌───────────────────────────────────┐
-         │  Chunk 3 (next 25)                │
-         │  Evaluate with context from Ch1-2 │
-         │  Refine scores based on patterns  │
-         └───────────┬───────────────────────┘
-                     │
-                     ▼
-         ┌───────────────────────────────────┐
-         │  Chunk 4 (newest 25)              │
-         │  Final evaluation with full       │
-         │  historical context               │
-         └───────────┬───────────────────────┘
-                     │
-                     ▼
-         ┌───────────────────────────────────┐
-         │  Synthesize final evaluation      │
-         │  - Overall scores (6 dimensions)  │
-         │  - Growth trajectory              │
-         │  - Key strengths/weaknesses       │
-         │  - Contextual insights            │
-         └───────────────────────────────────┘
-```
-
-#### Integration with Incremental Sync
-
-The chunking algorithm seamlessly integrates with incremental sync:
-
-```
-Initial Evaluation (100 commits):
-  Chunk 1 (commits 1-25)   → Evaluate
-  Chunk 2 (commits 26-50)  → Evaluate with Chunk 1 context
-  Chunk 3 (commits 51-75)  → Evaluate with Chunks 1-2 context
-  Chunk 4 (commits 76-100) → Evaluate with Chunks 1-3 context
-  → Final evaluation returned
-
-After 2 weeks (20 new commits):
-  Local repo data sync fetches new commits
-  Relevant chunks are evaluated in the current request
-  → Updated evaluation returned
-```
-
-**Key Benefits:**
-- **Token efficiency**: Earlier chunk results are summarized during the request
-- **Consistent baseline**: Previous in-request results guide later chunks
-- **Growth tracking**: Clear comparison between old and new contributions
-
-#### Implementation Example
-
-```python
-class ChunkedLinearEvaluator:
-    def evaluate_with_chunking(self, author: str, commits: list):
-        # Evaluate chunks for the current request and keep summaries in memory.
-        all_chunk_results = []
-        new_commits = commits
-
-        # 1. Chunk commits
-        new_chunks = self.chunk_commits(new_commits, max_tokens=190000)
-
-        # 2. Evaluate each chunk linearly
-        accumulated_context = self.summarize_chunks(all_chunk_results)
-
-        for chunk_idx, chunk in enumerate(new_chunks):
-            chunk_evaluation = self.evaluate_chunk(
-                chunk=chunk,
-                previous_context=accumulated_context,
-                chunk_number=len(all_chunk_results) + chunk_idx + 1
-            )
-
-            all_chunk_results.append(chunk_evaluation)
-
-            # Update accumulated context for next chunk
-            accumulated_context = self.update_context(
-                accumulated_context,
-                chunk_evaluation
-            )
-
-        # 3. Synthesize final evaluation from all chunks
-        final_evaluation = self.synthesize_final(all_chunk_results)
-
-        return final_evaluation
-
-    def evaluate_chunk(self, chunk, previous_context, chunk_number):
-        """
-        Evaluate a single chunk with context from previous chunks.
-
-        LLM prompt includes:
-        - Commits in this chunk (full diffs)
-        - Summary of previous chunks' findings
-        - Running scores from previous chunks
-        - Patterns observed so far
-        """
-        prompt = f"""
-        You are evaluating chunk {chunk_number} of an engineer's work.
-
-        Previous context:
-        {previous_context}
-
-        Current chunk commits:
-        {format_commits(chunk)}
-
-        Evaluate this chunk considering:
-        1. How it builds on previous work
-        2. Skill progression or regression
-        3. New capabilities demonstrated
-        4. Consistency with earlier patterns
-
-        Provide scores for each dimension.
-        """
-
-        response = self.llm_client.chat_completion(prompt)
-        return parse_chunk_evaluation(response)
-```
-
-#### Performance Characteristics
-
-**Token Usage:**
-- First-time evaluation (100 commits, 4 chunks):
-  - Chunk 1: ~50k tokens (no context)
-  - Chunk 2: ~55k tokens (Ch1 summary)
-  - Chunk 3: ~60k tokens (Ch1-2 summary)
-  - Chunk 4: ~65k tokens (Ch1-3 summary)
-  - **Total: ~230k tokens**
-
-- Incremental evaluation (+20 commits, 1 new chunk):
-  - Chunk 5: ~70k tokens (Ch1-4 summary reused)
-  - **Total: ~70k tokens** (70% savings)
-
-**Time Comparison:**
-- Linear evaluation: ~2-3 minutes (sequential API calls)
-- Parallel evaluation: ~30-45 seconds (simultaneous calls)
-- **Trade-off**: 4x slower but significantly more accurate
-
-#### When Chunking is Applied
-
-Chunking activates automatically when:
-- Author has > 30 commits (configurable threshold)
-- Estimated total tokens exceed `max_input_tokens` (default: 190,000)
-- Incremental sync brings new commits that create a new chunk
-
-For small commit counts (< 30), the system evaluates all commits in a single LLM call.
-
-### Batch Repository Comparison (/repos Page)
-
-The system supports comparing multiple repositories to find common contributors, useful for:
-- Identifying developers with experience across multiple projects
-- Finding potential collaborators
-- Analyzing cross-project contributions
-- Team composition analysis
-
-#### Workflow
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  User enters 2-5 GitHub repository URLs                         │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Frontend: POST /api/batch/extract                              │
-│  Extracts data for all repositories                             │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-         ┌───────────┴───────────┐
-         │                       │
-    Data Exists             Data Missing
-         │                       │
-         ▼                       ▼
-    Skip extraction    ┌──────────────────────────┐
-                       │ Extract from GitHub      │
-                       │ (1-2 min per repo)       │
-                       └──────────┬───────────────┘
-                                  │
-                     ┌────────────┴────────────┐
-                     │                         │
-                     ▼                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Frontend: POST /api/batch/common-contributors                  │
-│  Analyzes all repositories for common contributors              │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Backend: Intelligent Contributor Matching (3-pass algorithm)   │
-│                                                                  │
-│  Pass 1: Group by GitHub ID/login (strong identity signals)     │
-│  Pass 2: Fuzzy name matching for orphaned authors               │
-│  Pass 3: Exact name matching for remaining authors              │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Return common contributors with:                               │
-│  - Author name (most complete version)                          │
-│  - GitHub login                                                 │
-│  - Email address                                                │
-│  - Commit counts per repository                                 │
-│  - Total commits across all repos                               │
-│  - Matching method used (github_id, github_login, or name)      │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Intelligent Contributor Matching
-
-The system uses a sophisticated three-pass matching algorithm to identify the same person across repositories, even when they use different names or email addresses:
-
-**Pass 1: GitHub ID/Login Matching**
-- Groups contributors by GitHub user ID (strongest signal)
-- Falls back to GitHub login if ID unavailable
-- Creates identity anchors for fuzzy matching
-
-**Pass 2: Fuzzy Name Matching**
-- Matches orphaned authors (no GitHub ID) to existing groups
-- Compares first names: "Sebastian" matches "Sebastian Markbage"
-- Handles common name variations and shortened names
-- Useful for old SVN-converted repositories
-
-**Pass 3: Exact Name Matching**
-- Groups remaining unmatched authors by exact normalized name
-- Fallback for completely unique contributors
-
-**Example Matching Cases:**
-```json
-{
-  "matched_by": "github_id",
-  "author": "Sebastian Markbage",
-  "github_login": "sebmarkbage",
-  "repos": [
-    {
-      "repo": "animation-timelines",
-      "commits": 15,
-      "email": "sebastian@calyptus.eu"
-    },
-    {
-      "repo": "calyptus.mvc",
-      "commits": 68,
-      "email": "Sebastian@8f9bea60-9d31-4c44-a11a-6657d2e7921d"
-    }
-  ]
-}
-```
-
-In this example, even though the emails are different and one repo has "Sebastian" while the other has "Sebastian Markbage", the system correctly identifies them as the same person through GitHub ID matching and fuzzy name matching.
-
-### Directory Structure After Processing
-
-Data is stored in XDG-compliant paths: `~/.local/share/oscanner/`
-
-```
-~/.local/share/oscanner/
-├── data/                                    # Repository data (extracted once)
-│   └── {platform}/                          # github or gitee
-│       └── {owner}/
-│           └── {repo}/
-│               ├── repo_info.json           # Repository metadata
-│               ├── repo_tree.json           # File tree structure
-│               ├── commits_index.json       # Index of all commits
-│               ├── commits_list.json        # Raw API commit list
-│               ├── sync_state.json          # Incremental sync state
-│               │                            # {
-│               │                            #   "last_commit_sha": "abc123...",
-│               │                            #   "last_commit_date": "2026-01-20T...",
-│               │                            #   "last_synced_at": "2026-01-22T..."
-│               │                            # }
-│               ├── commits/
-│               │   ├── {sha}.json           # Commit metadata + diff
-│               │   └── {sha}.diff           # Commit diff (separate)
-│               ├── files/
-│               │   └── {filepath}           # Current contents for files mentioned in diffs
-│               ├── repo_files/
-│               │   └── {filepath}           # Complete filtered repo snapshot at end/latest SHA
-│               └── repo_files_manifest.json # Included/skipped snapshot files
-│
-```
-
-### Performance Benefits
-
-**First Repository Access (New):**
-- 1-2 minutes to extract data from GitHub
-- AI evaluation for first author (~10-20 seconds)
-- Total: ~2 minutes
-
-**Second+ Repository Access (Cached):**
-- Authors list: **Instant** (from cache)
-- First author evaluation: **Instant** (from cache)
-- Other authors: First click ~10-20 seconds, then instant
-- Total: **< 1 second**
-
-**Batch Repository Comparison (2-5 repos):**
-- First extraction: 1-2 minutes per repo (parallel processing)
-- Already extracted: **Instant** skip
-- Common contributors analysis: **< 2 seconds** (pure computation)
-- Total first-time: ~2-5 minutes for all repos
-- Total cached: **< 2 seconds**
-
-**Token Usage:**
-- Without caching: ~50-100k tokens per evaluation × N authors = expensive
-- With caching: ~50-100k tokens × N unique evaluations = efficient
-- Cache hit rate: Typically 80-90% after initial use
-- Batch comparison: **0 tokens** (no LLM calls, pure data analysis)
-
-## Usage
-
-### 1. Programmatic Usage
-
-```python
-from evaluator import EngineerEvaluator
-
-# Initialize evaluator
-config = {
-    "github_token": "your_github_token",
-    "gitee_token": "your_gitee_token"
-}
-evaluator = EngineerEvaluator(config)
-
-# Evaluate a GitHub user
-result = evaluator.evaluate(
-    github_username="octocat",
-    repos=["https://github.com/octocat/Hello-World"]
-)
-
-# Print text report
-print(result.get_report(format="text"))
-
-# Get JSON output
-print(result.get_report(format="json"))
-
-# Access specific information
-print(f"Overall Score: {result.overall_score}")
-print(f"Top Strengths: {result.get_top_dimensions(3)}")
-print(f"Areas to Develop: {result.get_bottom_dimensions(3)}")
-```
-
-### 2. FastAPI Web Service
-
-Start the server:
+The Python package exposes the `oscanner` command.
 
 ```bash
-python server.py
-# or
-./start_server.sh
+oscanner init          # Create or update .env.local configuration
+oscanner serve         # Start the FastAPI evaluator backend
+oscanner dashboard     # Start the Next.js dashboard dev server
+oscanner dev           # Start backend and dashboard together
+oscanner extract       # Extract GitHub repo data to an explicit output dir
+oscanner --version
+oscanner -U            # Upgrade the installed package
 ```
 
-The server will start on `http://localhost:8000` with the following endpoints:
+Development checkouts also expose `oscanner publish`.
 
-#### API Endpoints
+Common flags:
 
-**Infrastructure:**
-```
-GET /health                              # Health check
-GET /                                    # Root serves dashboard (if bundled)
-GET /favicon.ico                         # Favicon (no-op)
-```
+- `oscanner serve --host 0.0.0.0 --port 8000 --reload`
+- `oscanner dashboard --port 3000 --install`
+- `oscanner dev --backend-port 8000 --frontend-port 3000 --no-open`
+- `oscanner extract https://github.com/owner/repo --out ./data --max-commits 500`
 
-**Plugin & Configuration Management:**
-```
-GET /api/plugins                         # List available evaluation plugins
-GET /api/plugins/default                 # Get default plugin ID
-GET /api/config/llm                      # Read LLM configuration (API keys masked)
-POST /api/config/llm                     # Configure LLM settings (API key, model, base URL)
-GET /api/llm/status                      # Check LLM configuration status
-```
+## Architecture
 
-**Data & Author Management:**
-```
-GET /api/authors/{owner}/{repo}          # List commit authors (auto-extracts if needed)
-```
-Returns all authors from local extracted data, extracting from GitHub/Gitee
-automatically when local data is missing.
-
-```
-GET /api/gitee/commits/{owner}/{repo}?limit=100&is_enterprise=false
-```
-Fetch Gitee commits directly from API.
-
-**Evaluation Endpoints:**
-```
-POST /api/evaluate/{owner}/{repo}/{email}?plugin=zgc_ai_native_2026
-```
-**Primary evaluation endpoint** with advanced features:
-- Supports **multiple commit emails**: pass `{"emails": ["name@example.com", "name@work.com"]}` in request body
-- Evaluates each email identity separately and merges the results
-- Weighted merge based on commit count (~88% token savings)
-- LLM-synthesized unified analysis across identities
-- Auto-syncs repository with incremental fetch (only new commits)
-- Plugin-specific evaluation (`plugin` parameter)
-
-```
-POST /api/merge-evaluations
-```
-Merge multiple author evaluations with weighted averaging:
-```json
-{
-  "evaluations": [
-    {"author": "name@example.com", "evaluation": {...}, "weight": 50},
-    {"author": "name@work.com", "evaluation": {...}, "weight": 30}
-  ]
-}
+```text
+backend/evaluator/
+|-- server.py                 # FastAPI app, middleware, router wiring, dashboard mount
+|-- routes/                   # HTTP endpoints
+|   |-- plugins.py            # Plugin list/default
+|   |-- config.py             # LLM and platform-token settings
+|   |-- data.py               # Author discovery and Gitee commit fetch
+|   |-- evaluation.py         # Author evaluation and merge endpoint
+|   |-- batch.py              # Batch extraction/comparison
+|   |-- trajectory.py         # Trajectory, one-off, group-analysis APIs
+|   |-- runner_proxy.py       # Proxy to repos_runner service
+|   |-- benchmark.py          # Validation dataset APIs
+|   `-- checkers.py           # Checker list/run APIs
+|-- services/                 # Shared business logic
+|   |-- extraction_service.py
+|   |-- evaluation_service.py
+|   |-- merge_service.py
+|   |-- plugin_service.py
+|   |-- trajectory_service.py
+|   `-- trajectory_poll_store.py
+|-- collectors/               # GitHub and Gitee collectors
+|-- analyzers/                # Commit, code, and collaboration analyzers
+|-- schemas/                  # Pydantic API schemas
+|-- config/                   # Env loading, token lookup, secret masking
+|-- utils/                    # Repo parsing, commit helpers, data loading
+|-- validation/               # Benchmark dataset and validation runner
+`-- tools/                    # Extraction and migration helpers
 ```
 
-```
-POST /api/gitee/evaluate/{owner}/{repo}/{contributor}?limit=30
-```
-Gitee-specific evaluation endpoint (legacy compatibility).
+Related project roots:
 
-**Batch Operations:**
-```
-POST /api/batch/extract
-```
-Extract data from multiple GitHub repositories (2-5 repos):
-```json
-{
-  "urls": [
-    "https://github.com/owner1/repo1",
-    "https://github.com/owner2/repo2"
-  ]
-}
-```
-
-```
-POST /api/batch/common-contributors
-```
-Find developers who contributed to multiple repositories:
-```json
-{
-  "repos": [
-    {"owner": "owner1", "repo": "repo1"},
-    {"owner": "owner2", "repo": "repo2"}
-  ]
-}
-```
-Uses **three-pass matching algorithm**:
-1. GitHub ID/login matching (strongest signal)
-2. Fuzzy name matching for orphaned authors
-3. Exact name matching for unique contributors
-
-```
-POST /api/batch/compare-contributor
-```
-Compare a contributor's capability scores across multiple repositories:
-```json
-{
-  "contributor": "john@example.com",
-  "author_emails": ["john@example.com", "john@work.com"],
-  "repos": [
-    {"owner": "facebook", "repo": "react"},
-    {"owner": "vercel", "repo": "next.js"}
-  ],
-  "plugin": "zgc_ai_native_2026"
-}
-```
-Returns evaluation data for visualization (radar, bar, heatmap, line charts).
-
-#### Example API Calls
-
-```bash
-# Health check
-curl "http://localhost:8000/health"
-
-# List available plugins
-curl "http://localhost:8000/api/plugins"
-
-# Get default plugin
-curl "http://localhost:8000/api/plugins/default"
-
-# Check LLM configuration status
-curl "http://localhost:8000/api/llm/status"
-
-# Configure LLM (will be saved to .env.local)
-curl -X POST "http://localhost:8000/api/config/llm" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "api_key": "sk-or-v1-your-key",
-    "base_url": "https://openrouter.ai/api/v1",
-    "model": "deepseek/deepseek-v4-pro"
-  }'
-
-# Get authors list (auto-fetches and caches if needed)
-curl "http://localhost:8000/api/authors/anthropics/anthropic-sdk-python"
-
-# Evaluate a specific commit email with default plugin
-curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat%40example.com"
-
-# Evaluate with specific plugin
-curl -X POST "http://localhost:8000/api/evaluate/anthropics/anthropic-sdk-python/octocat%40example.com?plugin=zgc_ai_native_2026"
-
-# Evaluate author with multiple emails (multi-identity aggregation)
-curl -X POST "http://localhost:8000/api/evaluate/facebook/react/dan%40example.com?plugin=zgc_ai_native_2026" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "emails": ["dan@example.com", "dan@work.com"]
-  }'
-
-# Merge multiple evaluations with weighted averaging
-curl -X POST "http://localhost:8000/api/merge-evaluations" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "evaluations": [
-      {
-        "author": "Dan Abramov",
-        "evaluation": {...},
-        "commit_count": 150
-      },
-      {
-        "author": "gaearon",
-        "evaluation": {...},
-        "commit_count": 80
-      }
-    ]
-  }'
-
-# Batch extract multiple repositories
-curl -X POST "http://localhost:8000/api/batch/extract" \
-  -H "Content-Type: application/json" \
-  -d '{"urls": ["https://github.com/facebook/react", "https://github.com/vercel/next.js"]}'
-
-# Find common contributors across repositories
-curl -X POST "http://localhost:8000/api/batch/common-contributors" \
-  -H "Content-Type: application/json" \
-  -d '{"repos": [{"owner": "facebook", "repo": "react"}, {"owner": "vercel", "repo": "next.js"}]}'
-
-# Compare contributor across multiple repositories
-curl -X POST "http://localhost:8000/api/batch/compare-contributor" \
-  -H "Content-Type: application/json" \
-  -d '{"contributor": "sebastian@example.com", "author_emails": ["sebastian@example.com"], "repos": [{"owner": "facebook", "repo": "react"}, {"owner": "vercel", "repo": "next.js"}], "plugin": "zgc_ai_native_2026"}'
-
-# Gitee-specific: Get commits
-curl "http://localhost:8000/api/gitee/commits/owner/repo?limit=100&is_enterprise=false"
-
-# Gitee-specific: Evaluate contributor
-curl -X POST "http://localhost:8000/api/gitee/evaluate/owner/repo/contributor?limit=30"
-```
-
-### 3. LLM-Based Commit Evaluation
-
-```python
-from evaluator.commit_evaluator import CommitEvaluator
-from evaluator.collectors.github import GitHubCollector
-
-# Initialize
-collector = GitHubCollector(token="your_github_token")
-evaluator = CommitEvaluator(api_key="your_openrouter_key")
-
-# Fetch commits
-commits = collector.fetch_commits_list("owner", "repo", limit=100)
-
-# Filter commits by author
-author_commits = [
-    c for c in commits
-    if c.get("commit", {}).get("author", {}).get("name") == "Author Name"
-]
-
-# Evaluate engineer
-result = evaluator.evaluate_engineer(
-    commits=author_commits,
-    username="Author Name",
-    max_commits=20
-)
-
-print(f"Scores: {result['scores']}")
-print(f"Summary: {result['commits_summary']}")
-```
-
-## Caching Strategy
-
-The system implements intelligent caching to optimize performance and reduce costs:
-
-### 1. API Response Caching
-- GitHub/Gitee API responses are cached locally in `data/` directory
-- Commits are cached per repository
-- Cache is automatically checked before making API calls
-
-### 2. Evaluation Results
-- LLM evaluation results are computed for each request.
-- Oscanner does not read or write local evaluation-result cache files.
-- Callers that want result reuse should cache above the Oscanner API.
-
-### 3. Repository Context Caching
-- Full repository context is cached in-memory during server runtime
-- Evaluating multiple contributors from the same repo reuses cached context
-- Significantly reduces token usage and response time
-
-## Data Storage
-
-### XDG-Compliant Local Storage
-
-All data is stored locally following XDG Base Directory specification:
-
-**Base Directory:** `~/.local/share/oscanner/` (or `$OSCANNER_HOME` if set)
-
-### Data Structure
-
-```
-~/.local/share/oscanner/
-├── data/                                    # Extracted repository data
-│   ├── github/                              # GitHub repositories
-│   │   └── {owner}/
-│   │       └── {repo}/
-│   │           ├── repo_info.json           # Repository metadata
-│   │           ├── commits_index.json       # Index of all commit SHAs
-│   │           ├── sync_state.json          # Incremental sync tracking
-│   │           ├── commits/
-│   │           │   ├── {sha}.json           # Commit metadata + diff
-│   │           │   └── {sha}.diff           # Commit diff (separate file)
-│   │           ├── files/
-│   │           │   └── {filepath}           # Current contents for files mentioned in diffs
-│   │           ├── repo_files/
-│   │           │   └── {filepath}           # Complete filtered repo snapshot at end/latest SHA
-│   │           └── repo_files_manifest.json
-│   └── gitee/                               # Gitee repositories (same structure)
-│
-└── .env.local                               # User-specific configuration
-```
-
-### Sync State Tracking
-
-Each repository maintains incremental sync state in `sync_state.json`:
-
-```json
-{
-  "last_commit_sha": "abc123def456...",
-  "last_commit_date": "2026-01-20T10:30:45Z",
-  "last_synced_at": "2026-01-22T15:20:10Z"
-}
-```
-
-This enables **incremental data fetching**:
-- Only fetch commits newer than `last_commit_date`
-- Dramatically reduces API calls and processing time
-- Atomic writes prevent data corruption
-
-### Evaluation Cache
-
-Oscanner no longer owns evaluation-result cache invalidation. It computes from
-the current local repository data and returns fresh results. Consumer
-applications may store returned results if they need reuse.
-
-### Storage Management
-
-**Typical Storage Usage:**
-- Small repo (100 commits): ~10-50 MB
-- Medium repo (1000 commits): ~100-500 MB
-- Large repo (10000 commits): ~1-5 GB
-
-**Manual Cleanup:**
-```bash
-# Clear all data
-rm -rf ~/.local/share/oscanner/data
-
-# Clear specific repository
-rm -rf ~/.local/share/oscanner/data/github/owner/repo
+```text
+plugins/                      # Evaluation plugins
+checkers/                     # External code-quality checkers
+backend/repos_runner/         # Optional runner API, proxied by /api/runner/*
+frontend/webapp/              # Next.js dashboard
 ```
 
 ## Configuration
 
-### Environment Variables
+Run `oscanner init` or configure the user dotfile directly.
 
-The system uses a **priority-based configuration system** with multiple sources:
+Default user config path:
 
-**Configuration File Priority:**
-1. `.env.local` (project-local, in current working directory)
-2. `~/.local/share/oscanner/.env.local` (user dotfile)
-3. `.env` (default template)
-4. Process environment variables
-
-**Core Variables:**
-
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| **LLM Configuration** |
-| `OSCANNER_LLM_API_KEY` | Primary LLM API key | Yes* | - |
-| `OPENAI_API_KEY` | Secondary LLM API key | Yes* | - |
-| `OPEN_ROUTER_KEY` | Fallback LLM API key (OpenRouter) | Yes* | - |
-| `OSCANNER_LLM_MODEL` | Default LLM model name | No | `deepseek/deepseek-v4-pro` |
-| `OSCANNER_LLM_BASE_URL` | Custom LLM endpoint base URL | No | `https://openrouter.ai/api/v1` |
-| `OPENAI_BASE_URL` | OpenAI-compatible base URL | No | - |
-| `OSCANNER_LLM_CHAT_COMPLETIONS_URL` | Full chat completions endpoint URL | No | `{base_url}/chat/completions` |
-| `OSCANNER_LLM_FALLBACK_MODELS` | Comma-separated fallback model list | No | - |
-| **Platform API Tokens** |
-| `GITHUB_TOKEN` | GitHub personal access token | No | - |
-| `GITEE_TOKEN` | Gitee public API token | No | - |
-| `GITEE_ENTERPRISE_TOKEN` | Gitee enterprise (z.gitee.cn) token | No | - |
-| **Path Configuration** |
-| `OSCANNER_HOME` | Base directory for all data | No | See below |
-| `XDG_DATA_HOME` | XDG base directory | No | `~/.local/share` |
-| `OSCANNER_DATA_DIR` | Override data directory | No | `{OSCANNER_HOME}/data` |
-| `OSCANNER_PLUGINS_DIR` | Override plugins directory | No | `<repo>/plugins` |
-| **Server Configuration** |
-| `PORT` | Server port | No | `8000` |
-| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING) | No | `INFO` |
-
-\* At least one LLM API key is required (checked in priority order)
-
-**Path Resolution:**
-
-Base directory (`OSCANNER_HOME`):
-1. `$OSCANNER_HOME` (if set)
-2. `$XDG_DATA_HOME/oscanner` (if XDG_DATA_HOME set)
-3. `~/.local/share/oscanner` (default)
-
-Data directory:
-1. `$OSCANNER_DATA_DIR` (if set)
-2. `{OSCANNER_HOME}/data` (default)
-
-**Example Configuration:**
-
-```env
-# .env.local
-
-# LLM Configuration (OpenRouter)
-OPEN_ROUTER_KEY=sk-or-v1-your-key-here
-OSCANNER_LLM_MODEL=deepseek/deepseek-v4-pro
-OSCANNER_LLM_FALLBACK_MODELS=another-model-id
-
-# GitHub API (optional, for higher rate limits)
-GITHUB_TOKEN=ghp_your_token_here
-
-# Gitee API (optional)
-GITEE_TOKEN=your_gitee_token
-GITEE_ENTERPRISE_TOKEN=your_enterprise_token
-
-# Path overrides (optional)
-OSCANNER_HOME=/custom/path/oscanner
-OSCANNER_PLUGINS_DIR=/custom/plugins
-
-# Server configuration
-PORT=8080
-LOG_LEVEL=DEBUG
+```text
+~/.local/share/oscanner/.env.local
 ```
 
-### Evaluation Parameters
+Runtime environment loading order:
 
-- `max_commits`: Maximum commits to analyze (default varies by evaluator)
-- `max_input_tokens`: Maximum tokens for LLM input (default: 190,000)
+1. `backend/evaluator/.env`
+2. `backend/evaluator/.env.local`
+3. Current working directory `.env`
+4. Current working directory `.env.local`
+5. User dotfile from `OSCANNER_HOME`/XDG storage
+6. Default dotenv lookup
 
-### LLM Model Configuration
+Existing non-empty process environment variables are not overwritten by loaded
+files.
 
-The system provides flexible LLM configuration with multiple providers and fallback options.
+Important variables:
 
-**Configuration Priority:**
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `OSCANNER_LLM_API_KEY` | Primary OpenAI-compatible LLM key | none |
+| `OPENAI_API_KEY` | Secondary LLM key | none |
+| `OPEN_ROUTER_KEY` | OpenRouter fallback key | none |
+| `OSCANNER_LLM_MODEL` | Default model | `deepseek/deepseek-v4-pro` |
+| `OSCANNER_LLM_BASE_URL` | OpenAI-compatible base URL | OpenRouter base URL in plugin code |
+| `OPENAI_BASE_URL` | Alternate OpenAI-compatible base URL | none |
+| `OSCANNER_LLM_CHAT_COMPLETIONS_URL` | Full chat completions URL override | none |
+| `OSCANNER_LLM_FALLBACK_MODELS` | Comma-separated fallback model IDs | none |
+| `GITHUB_TOKEN` | GitHub API token | none |
+| `GITEE_TOKEN` | Gitee API token | none |
+| `GITEE_ENTERPRISE_TOKEN` | Gitee enterprise token | none |
+| `OSCANNER_HOME` | Base state directory | `~/.local/share/oscanner` |
+| `OSCANNER_DATA_DIR` | Repository data override | `{OSCANNER_HOME}/data` |
+| `OSCANNER_PLUGINS_DIR` | Plugin directory override | repo `plugins/` |
+| `PORT` | Evaluator server port | `8000` |
+| `RUNNER_SERVICE_URL` | Repos runner backend URL | `http://localhost:8001` |
 
-1. **API Keys** (checked in order):
-   - `OSCANNER_LLM_API_KEY` (primary)
-   - `OPENAI_API_KEY` (secondary)
-   - `OPEN_ROUTER_KEY` (fallback)
+LLM key lookup priority is:
 
-2. **Base URL** (checked in order):
-   - `OSCANNER_LLM_BASE_URL` (custom endpoint)
-   - `OPENAI_BASE_URL` (OpenAI-compatible)
-   - `https://openrouter.ai/api/v1` (default)
-
-3. **Chat Completions Endpoint**:
-   - `OSCANNER_LLM_CHAT_COMPLETIONS_URL` (full custom URL)
-   - Or `{base_url}/chat/completions` (constructed)
-
-4. **Model Selection**:
-   - `OSCANNER_LLM_MODEL` (default: `deepseek/deepseek-v4-pro`)
-   - Model names are provider-specific
-
-5. **Fallback Models**:
-   - `OSCANNER_LLM_FALLBACK_MODELS` (comma-separated list)
-   - Example: `deepseek/deepseek-v4-pro,another-model-id`
-
-**Supported Providers:**
-- OpenRouter (default) - Multi-model gateway
-- OpenAI-compatible APIs (Azure, LocalAI, etc.)
-- Custom endpoints via environment variables
-
-**How Fallback Works:**
-1. System tries primary model first
-2. If API error/timeout/rate limit → tries first fallback model
-3. If all LLMs fail → uses keyword-based heuristic evaluation
-4. All transitions are logged with model used and token usage
-
-**Example Configuration:**
-
-```env
-# OpenRouter (default)
-OPEN_ROUTER_KEY=sk-or-v1-your-key-here
-OSCANNER_LLM_MODEL=deepseek/deepseek-v4-pro
-OSCANNER_LLM_FALLBACK_MODELS=another-model-id
-
-# OpenAI
-OPENAI_API_KEY=sk-your-key
-OSCANNER_LLM_MODEL=gpt-4-turbo
-
-# Custom endpoint (e.g., LocalAI)
-OSCANNER_LLM_API_KEY=your-key
-OSCANNER_LLM_BASE_URL=http://localhost:8080/v1
-OSCANNER_LLM_MODEL=mistral-7b-instruct
+```text
+OSCANNER_LLM_API_KEY -> OPENAI_API_KEY -> OPEN_ROUTER_KEY
 ```
 
-**Runtime Configuration:**
-You can also configure LLM settings via the web UI Settings page or API:
+Secrets returned by config APIs are masked.
+
+## Local Data Storage
+
+Repository data is stored under:
+
+```text
+~/.local/share/oscanner/data/{platform}/{owner}/{repo}/
+```
+
+If a branch/ref namespace is supplied by supported flows, data is stored under:
+
+```text
+~/.local/share/oscanner/data/{platform}/{owner}/{repo}/refs/{safe_ref}/
+```
+
+Typical repository data:
+
+```text
+repo_info.json
+repo_tree.json
+commits_index.json
+commits_list.json
+sync_state.json
+commits/
+  {sha}.json
+  {sha}.diff
+files/
+  {paths mentioned by diffs}
+repo_files/
+  {filtered current snapshot}
+repo_files_manifest.json
+```
+
+`sync_state.json` records extraction state such as last synced time, last commit
+SHA, and fetched commit counts. Extraction APIs update repository data, but the
+HTTP evaluation endpoint computes fresh results from local data and does not
+persist evaluation-result cache files.
+
+## Main HTTP Flows
+
+### Author Discovery
+
+```text
+GET /api/authors/{owner}/{repo}?platform=github
+```
+
+Current flow:
+
+1. Disable HTTP caching for the response.
+2. For GitHub, try GraphQL commit author history if `GITHUB_TOKEN` is set.
+3. For Gitee, try the contributors API if `GITEE_TOKEN` is set.
+4. If lightweight provider discovery fails or is unavailable, extract local
+   repository data.
+5. Scan local commit JSON files and merge author groups by email/name.
+
+Response includes `author`, `email`, `commits`, and, when available,
+`provider_login`, `avatar_url`, `html_url`, or `aliases`.
+
+### Author Evaluation
+
+```text
+POST /api/evaluate/{owner}/{repo}/{author}?platform=github&plugin=zgc_ai_native_2026&model=deepseek/deepseek-v4-pro&language=en-US
+```
+
+Current flow:
+
+1. Resolve the LLM key and plugin.
+2. Parse email identities from the route identity or request body keys
+   `email`, `emails`, or `author_emails`.
+3. Load local repository data from the platform/ref data directory.
+4. Filter commits by email or author/alias.
+5. Create the plugin evaluator with `data_dir`, `api_key`, `model`, and
+   `language`.
+6. Evaluate up to 150 matching commits with file context enabled.
+7. Return scores, reasoning, commit summary, plugin metadata, token usage when
+   supplied by the plugin, and structured evidence links.
+
+The endpoint requires local data to exist. Use `/api/authors/*`,
+`/api/batch/extract`, or an extraction tool first.
+
+Multi-email example:
 
 ```bash
-# Update LLM configuration via API
-curl -X POST "http://localhost:8000/api/config/llm" \
+curl -X POST "http://localhost:8000/api/evaluate/owner/repo/alice%40example.com?plugin=zgc_ai_native_2026" \
   -H "Content-Type: application/json" \
-  -d '{
-    "api_key": "sk-or-v1-your-key",
-    "base_url": "https://openrouter.ai/api/v1",
-    "model": "deepseek/deepseek-v4-pro"
-  }'
+  -d '{"emails": ["alice@example.com", "alice@work.example"]}'
+```
 
-# Check LLM status
+When more than one identity has commits, each identity is evaluated separately
+and merged with commit-count weights.
+
+### Batch Repository Work
+
+```text
+POST /api/batch/extract
+POST /api/batch/common-contributors
+POST /api/batch/compare-contributor
+```
+
+`/api/batch/extract` accepts 2-5 GitHub or Gitee URLs. URLs may include refs
+supported by the repo parser. Existing extracted data is skipped.
+
+`/api/batch/common-contributors` loads local commit data and groups contributors
+using:
+
+1. GitHub ID or login
+2. User-provided emails or legacy aliases
+3. Fuzzy first-name matching for orphaned authors
+4. Exact normalized name fallback
+
+`/api/batch/compare-contributor` evaluates one contributor across up to 10
+repositories and returns per-repo numeric plugin scores plus aggregate values
+for dashboard charts.
+
+### Trajectory And Group Analysis
+
+```text
+POST /api/trajectory/analyze
+POST /api/trajectory/analyze_stream
+POST /api/trajectory/analyze_one-off
+POST /api/trajectory/analyze_one_off_stream
+POST /api/trajectory/analyze_one_off_poll
+GET  /api/trajectory/analyze_one_off_poll/{job_id}
+POST /api/courses/group_analyse_code
+```
+
+Trajectory requests accept `username` or `email` plus `repo_urls`; identity
+aliases can be supplied with `emails`, `author_emails`, or legacy alias fields.
+
+Supported query parameters include:
+
+- `plugin`
+- `model`
+- `language`
+- `forced_checker`
+- `worktree_base=build|temp`
+- `checkpoint_strategy=period|none`
+- `start_sha` and `end_sha` for one-off commit range analysis
+
+One-off trajectory mode can evaluate a specific inclusive SHA range. If
+`username` is explicitly `null` for Gitee inputs, the backend attempts to infer
+all Gitee authors from commits and evaluate with those identities.
+
+Streaming endpoints emit server-sent events. Poll endpoints start durable jobs
+stored in SQLite and return new events with a `cursor`.
+
+`/api/courses/group_analyse_code` evaluates whole repositories rather than a
+single author and supports optional `expected_feature` and evidence sources.
+
+### Runner Proxy
+
+The evaluator proxies `/api/runner/*` to the optional repos runner service.
+
+Important endpoints:
+
+```text
+POST /api/runner/run-all
+POST /api/runner/run-all_poll
+GET  /api/runner/run-all_poll/{job_id}
+```
+
+`run-all` streams clone, exploration, and test execution progress from the
+runner. The poll variant persists progress events so clients can resume after
+connection drops.
+
+### Checkers And Benchmark Validation
+
+```text
+GET  /api/checkers/list
+POST /api/checkers/run
+GET  /api/benchmark/dataset
+GET  /api/benchmark/repos
+POST /api/benchmark/validate
+```
+
+Checkers are discovered from `checkers/`. `POST /api/checkers/run` can ensure a
+shallow repository clone exists for a target commit and run a checker against
+changed files or an explicit file list.
+
+Benchmark APIs expose the validation dataset and can run validation through the
+same plugin evaluation path.
+
+## Endpoint Inventory
+
+Infrastructure:
+
+```text
+GET /health
+GET /version
+GET /
+GET /favicon.ico
+```
+
+Plugins and config:
+
+```text
+GET  /api/plugins
+GET  /api/plugins/default
+GET  /api/config/llm
+POST /api/config/llm
+GET  /api/llm/status
+POST /api/config/check-platform-tokens
+```
+
+Data and evaluation:
+
+```text
+GET  /api/authors/{owner}/{repo}
+GET  /api/gitee/commits/{owner}/{repo}
+POST /api/evaluate/{owner}/{repo}/{author}
+POST /api/merge-evaluations
+POST /api/gitee/evaluate/{owner}/{repo}/{contributor}
+```
+
+Batch:
+
+```text
+POST /api/batch/extract
+POST /api/batch/common-contributors
+POST /api/batch/compare-contributor
+```
+
+Trajectory and courses:
+
+```text
+POST /api/trajectory/analyze
+POST /api/trajectory/analyze_stream
+POST /api/courses/group_analyse_code
+POST /api/trajectory/analyze_one-off
+POST /api/trajectory/analyze_one_off_stream
+POST /api/trajectory/analyze_one_off_poll
+GET  /api/trajectory/analyze_one_off_poll/{job_id}
+```
+
+Runner, checkers, benchmark:
+
+```text
+POST /api/runner/run-all
+POST /api/runner/run-all_poll
+GET  /api/runner/run-all_poll/{job_id}
+ANY  /api/runner/{path}
+GET  /api/checkers/list
+POST /api/checkers/run
+GET  /api/benchmark/dataset
+GET  /api/benchmark/repos
+POST /api/benchmark/validate
+```
+
+## Example API Calls
+
+```bash
+curl "http://localhost:8000/health"
+curl "http://localhost:8000/api/plugins"
 curl "http://localhost:8000/api/llm/status"
 ```
 
-**Token Usage:**
-- Max input tokens: 190,000 (configurable per evaluator)
-- The system automatically truncates context to fit token limits
-- Caching reduces redundant LLM calls by ~80-90%
+Configure OpenRouter:
 
-## Advanced Features
+```bash
+curl -X POST "http://localhost:8000/api/config/llm" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "openrouter",
+    "openrouter_key": "sk-or-v1-your-key",
+    "model": "deepseek/deepseek-v4-pro"
+  }'
+```
 
-### Plugin Architecture
+Configure an OpenAI-compatible provider:
 
-The system uses a **plugin-based architecture** for extensible evaluation strategies. Plugins are self-contained modules that provide:
-- **Evaluation logic** (`scan/__init__.py`) - Backend evaluator
-- **UI components** (`view/`) - React components for visualization
+```bash
+curl -X POST "http://localhost:8000/api/config/llm" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "openai",
+    "api_key": "your-key",
+    "base_url": "https://api.example.com/v1",
+    "model": "provider/model-id",
+    "fallback_models": "provider/fallback-id"
+  }'
+```
 
-**Plugin Discovery:**
-- Plugins directory: `<repo_root>/plugins/` or `$OSCANNER_PLUGINS_DIR`
-- Each plugin has an `index.yaml` metadata file
+Extract and evaluate:
 
-**Plugin Metadata (index.yaml):**
+```bash
+curl -X POST "http://localhost:8000/api/batch/extract" \
+  -H "Content-Type: application/json" \
+  -d '{"urls": ["https://github.com/owner/repo", "https://gitee.com/owner/repo2"]}'
+
+curl "http://localhost:8000/api/authors/owner/repo?platform=github"
+
+curl -X POST "http://localhost:8000/api/evaluate/owner/repo/alice%40example.com?platform=github&plugin=zgc_ai_native_2026"
+```
+
+Find and compare common contributors:
+
+```bash
+curl -X POST "http://localhost:8000/api/batch/common-contributors" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repos": [
+      {"platform": "github", "owner": "owner1", "repo": "repo1"},
+      {"platform": "github", "owner": "owner2", "repo": "repo2"}
+    ],
+    "author_emails": ["alice@example.com", "alice@work.example"]
+  }'
+
+curl -X POST "http://localhost:8000/api/batch/compare-contributor" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contributor": "alice@example.com",
+    "author_emails": ["alice@example.com", "alice@work.example"],
+    "repos": [
+      {"platform": "github", "owner": "owner1", "repo": "repo1"},
+      {"platform": "github", "owner": "owner2", "repo": "repo2"}
+    ],
+    "plugin": "zgc_ai_native_2026"
+  }'
+```
+
+One-off trajectory range:
+
+```bash
+curl -X POST "http://localhost:8000/api/trajectory/analyze_one-off?start_sha=abc123&end_sha=def456&checkpoint_strategy=none" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "alice@example.com",
+    "repo_urls": ["https://github.com/owner/repo"],
+    "emails": ["alice@example.com"]
+  }'
+```
+
+## Default Plugin: ZGC AI-Native 2026
+
+The bundled default plugin is `zgc_ai_native_2026`. It emits four primary score
+keys from 0 to 100:
+
+- `spec_quality`: specification implementation, testing, validation, type/schema
+  discipline, maintainability, and reproducibility
+- `cloud_architecture`: architecture evolution, cloud-native readiness,
+  deployment automation, API design, and migration patterns
+- `ai_engineering`: AI workflows, agent/tool design, prompt structure,
+  evaluation loops, and automation
+- `mastery_professionalism`: engineering maturity, collaboration,
+  documentation, handoff quality, trade-offs, security, and performance work
+
+The plugin may also add fields such as `mastery_professionalism_collaboration`,
+`token_usage`, checker evidence, warnings, and structured markdown reasoning.
+
+For large prompts, the plugin evaluates commits in token-budgeted sequential
+chunks and carries previous chunk findings into later chunks. The response marks
+this with:
+
+```json
+{
+  "chunked": true,
+  "chunks_processed": 3,
+  "chunking_strategy": "sequential"
+}
+```
+
+The service also rejects extremely large repository inputs before LLM evaluation
+when the repository snapshot plus commit messages exceed the 10M-character
+guardrail.
+
+## Plugin Contract
+
+Plugins live in `plugins/{plugin_id}/` unless `OSCANNER_PLUGINS_DIR` is set.
+Each plugin has an `index.yaml`.
+
 ```yaml
 id: zgc_ai_native_2026
 name: "ZGC AI-Native 2026"
-description: "Rubric-guided evaluation based on engineer_level.md (2026 AI-Native standard)."
 version: "0.1.0"
-scan_entry: "scan/__init__.py"          # Backend evaluator module
+description: "Rubric-guided evaluation based on engineer_level.md (2026 AI-Native standard)."
+default: true
+scan_entry: "scan/__init__.py"
 view_single_entry: "view/single_repo.tsx"
 view_compare_entry: "view/multi_repo_compare.tsx"
-default: true                           # Mark as default plugin
+view_trajectory_checkpoint_entry: "view/trajectory_checkpoint.tsx"
+view_entry: "view/index.tsx"
 ```
 
-**Available Plugins:**
-1. **zgc_ai_native_2026** (default)
-   - Rubric-guided evaluation
-   - 2026 AI-Native engineering standard
-   - Specialized for AI-first architectures
+The scan module must expose a factory compatible with:
 
-**Plugin Contract:**
-
-Backend evaluator (`scan/__init__.py`) must export:
 ```python
 def create_commit_evaluator(
     *,
     data_dir: str,
     api_key: str,
     model: str | None = None,
-) -> CommitEvaluator:
-    """Factory function to create evaluator instance."""
-    return MyEvaluator(data_dir=data_dir, api_key=api_key, model=model)
+    language: str = "en-US",
+):
+    ...
 ```
 
-Frontend components (`view/`) must export:
-```typescript
-// view/single/index.tsx
-export default function SingleRepoView({ data, config }) {
-  // Render single-repo analysis
-}
-
-// view/compare/index.tsx
-export default function CompareView({ data, config }) {
-  // Render multi-repo comparison
-}
-```
-
-**Using Plugins:**
-
-```bash
-# List available plugins
-curl "http://localhost:8000/api/plugins"
-
-# Get default plugin
-curl "http://localhost:8000/api/plugins/default"
-
-# Evaluate with specific plugin
-curl -X POST "http://localhost:8000/api/evaluate/owner/repo/author?plugin_id=zgc_ai_native_2026"
-```
-
-**Creating Custom Plugins:**
-
-1. Create plugin directory: `plugins/my_plugin/`
-2. Add `index.yaml` with metadata
-3. Implement `scan/__init__.py` with evaluator logic
-4. Add React components in `view/single/` and `view/compare/`
-5. Plugin is auto-discovered on server restart
-
-**Plugin Isolation:**
-- Plugins are **self-contained** - must not import from main `evaluator/` package
-- Plugin evaluators compute from local repository data for each request; Oscanner
-  does not persist plugin evaluation-result cache files.
-- UI components loaded dynamically at runtime
-
-### Full Context Evaluation
-
-Plugin evaluators compute fresh results from local repository data:
+Evaluator methods used by the backend include:
 
 ```python
-from evaluator.plugin_registry import load_scan_module
-
-meta, scan_mod, scan_path = load_scan_module("zgc_ai_native_2026")
-evaluator = scan_mod.create_commit_evaluator(data_dir="data/github/owner/repo", api_key="your_key")
-
-result = evaluator.evaluate_contributor(
-    contributor_name="Author Name"
-)
+evaluate_engineer(commits=commits, username=identity, max_commits=150, load_files=True)
+evaluate_repository(commits=commits, repo_label=label, max_commits=None, load_files=True)
 ```
 
-### Repository-Wide Evaluation
+Plugin UI entries are consumed by the frontend plugin view-map generator. When
+changing plugin UI entries, update both `index.yaml` and the corresponding view
+files, then run the frontend scripts that regenerate the view map.
 
-```python
-from evaluator.full_repo_evaluator import FullRepoEvaluator
+## Evaluation Response Shape
 
-evaluator = FullRepoEvaluator(api_key="your_openrouter_key")
-result = evaluator.evaluate_repository("owner/repo")
+Typical author evaluation response:
+
+```json
+{
+  "success": true,
+  "evaluation": {
+    "username": "alice@example.com",
+    "mode": "moderate",
+    "total_commits_analyzed": 42,
+    "files_loaded": 18,
+    "scores": {
+      "spec_quality": 72,
+      "cloud_architecture": 64,
+      "ai_engineering": 80,
+      "mastery_professionalism": 68,
+      "reasoning": "Markdown analysis..."
+    },
+    "commits_summary": {
+      "total_additions": 1200,
+      "total_deletions": 300,
+      "files_changed": 27,
+      "languages": ["py", "ts"]
+    },
+    "incremental": false,
+    "last_commit_sha": "abc123...",
+    "total_commits_evaluated": 42,
+    "new_commits_count": 42,
+    "evaluated_at": "2026-06-05T12:00:00",
+    "plugin": "zgc_ai_native_2026",
+    "plugin_version": "0.1.0",
+    "evidence_links": []
+  },
+  "metadata": {
+    "timestamp": "2026-06-05T12:00:00"
+  }
+}
 ```
 
-## Development
+`incremental` fields remain in the schema for compatibility. The current HTTP
+route does not load a previous saved evaluation, so normal API evaluations are
+fresh computations from local repository data.
 
-### Running Tests
+## Frontend Dashboard
+
+The Next.js dashboard lives in `frontend/webapp/` and has App Router pages for:
+
+- `/` single repository author evaluation
+- `/repos` multi-repository contributor comparison
+- `/runner` repository runner UI
+- `/trajectory` trajectory analysis
+- `/validation` benchmark validation
+- `/settings` LLM and platform-token configuration
+
+Use the existing Ant Design and plugin view patterns. Plugin view map generation
+is handled by frontend npm scripts.
+
+For local dashboard development:
 
 ```bash
-# Example evaluation with local data
-python example_moderate_evaluation.py
+cd frontend/webapp
+npm run dev
+npm run lint
+npm run build
 ```
 
-### Starting Development Server
+For PyPI-style usage, the backend can serve the bundled dashboard at `/` when
+static files exist in `cli/dashboard_dist/`.
+
+## Testing
+
+Backend:
 
 ```bash
-# With auto-reload
-uvicorn server:app --reload --port 8000
-
-# Or use the startup script
-./start_server.sh
+uv run pytest
+uv run pytest tests/routes -v
+uv run pytest tests/evaluator -v
 ```
 
-## API Documentation
+Frontend, when TypeScript or dashboard behavior changes:
 
-When the server is running, access interactive API documentation at:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+```bash
+cd frontend/webapp
+npm run lint
+npm run build
+```
 
-## Performance Considerations
-
-### Token Usage Optimization
-
-1. **Commit Sampling**: Analyzes top N commits (default 20-30) instead of all commits
-2. **Context Truncation**: Automatically truncates context to fit token limits
-3. **Smart Caching**: Caches both API responses and LLM evaluations
-4. **Repository Context Reuse**: Shares repository context across multiple contributor evaluations
-
-### Rate Limiting
-
-- GitHub API: 5,000 requests/hour (authenticated), 60/hour (unauthenticated)
-- Gitee API: Varies by plan
-- OpenRouter: Depends on your plan and selected model
-
-Use tokens and caching to stay within rate limits.
+Prefer targeted tests first, then broaden when shared route/service behavior is
+touched.
 
 ## Troubleshooting
 
-### Common Issues
+`LLM not configured`
 
-**Issue: "No API key configured"**
-- Solution: Set `OPEN_ROUTER_KEY` in `.env.local`
+Set one of `OSCANNER_LLM_API_KEY`, `OPENAI_API_KEY`, or `OPEN_ROUTER_KEY`, or run
+`oscanner init`.
 
-**Issue: "Failed to fetch GitHub commits"**
-- Solution: Check your `GITHUB_TOKEN` and repository access permissions
+`No local data found`
 
-**Issue: "Context truncated to fit token limit"**
-- Solution: This is normal behavior. Adjust `max_input_tokens` if needed
+The evaluation route does not extract data itself. Call `/api/authors/*`,
+`/api/batch/extract`, or an extraction CLI/tool before evaluating.
 
-**Issue: "No local data found"**
-- Solution: First fetch data using API endpoints or manually populate `data/` directory
+Missing GitHub/Gitee token during trajectory analysis
 
-**Issue: "No Common Contributors Found" despite same author**
-- Cause: Different author names across repositories (e.g., "John" vs "John Doe")
-- Solution: The system automatically handles this with fuzzy matching
-- Check the `matched_by` field in the response to see how matching was performed
-- If still not matching, the names may be too different (e.g., completely different names)
+Trajectory endpoints require provider tokens for the platforms being analyzed.
+Configure `GITHUB_TOKEN` and/or `GITEE_TOKEN` in Settings or `.env.local`.
 
-**Issue: Batch extraction fails for some repositories**
-- Solution: Check repository access permissions and GitHub token
-- Private repositories require a token with appropriate permissions
-- Some repositories may have unusual structures or no commit history
+Runner unavailable
 
-**Issue: Common contributors showing duplicate entries**
-- Cause: Edge case in fuzzy matching algorithm
-- Solution: Check if authors have significantly different emails or no GitHub ID
-- The system prioritizes GitHub ID > Login > Name for matching
+Start the optional repos runner service on port `8001`, or set
+`RUNNER_SERVICE_URL` to the active runner URL.
 
-### Debug Mode
+Repository input too large
 
-Enable verbose logging:
-
-```bash
-export LOG_LEVEL=DEBUG
-python server.py
-```
-
-## Use Cases
-
-### 1. Identifying Cross-Project Contributors
-Find developers who contributed to multiple related projects:
-```bash
-# Example: Find contributors across React ecosystem projects
-curl -X POST "http://localhost:8000/api/batch/common-contributors" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repos": [
-      {"owner": "facebook", "repo": "react"},
-      {"owner": "vercel", "repo": "next.js"},
-      {"owner": "remix-run", "repo": "remix"}
-    ]
-  }'
-```
-
-### 2. Hiring and Recruitment
-Identify candidates with diverse experience:
-- Look for contributors across your tech stack
-- Find developers familiar with similar domains
-- Assess breadth of open source contributions
-
-### 3. Team Composition Analysis
-Understand contributor overlap in your organization:
-- Find developers working across multiple internal projects
-- Identify potential knowledge silos
-- Plan cross-team collaboration
-
-### 4. Open Source Community Analysis
-Study contribution patterns:
-- Track contributor mobility across projects
-- Identify core community members
-- Understand ecosystem dynamics
-
-### Best Practices
-
-**Repository Selection:**
-- Choose 2-5 repositories for optimal performance
-- Select related projects for meaningful results
-- Mix of sizes (small + large) works well
-
-**Matching Confidence:**
-- `matched_by: "github_id"` - Highest confidence (same GitHub account)
-- `matched_by: "github_login"` - High confidence (same username)
-- `matched_by: "name"` - Medium confidence (fuzzy name match)
-
-**Handling Old Repositories:**
-- SVN-converted repos may lack GitHub IDs
-- System automatically uses fuzzy matching for these
-- Check email addresses for additional verification
-
-## Contributing
-
-This is part of a larger evaluation system. For contributions:
-1. Follow the existing code structure
-2. Add tests for new features
-3. Update documentation
-4. Ensure caching works correctly with your changes
-
-## License
-
-See the main project LICENSE file.
+The evaluation service rejects oversized repository inputs with HTTP 413 and the
+message `the repo is too big exceeding 10M tokens!`. Reduce repository scope,
+branch/ref, or snapshot size.
 
 ## Related Documentation
 
-- [Main Project README](../README.md)
-- [Webapp Documentation](../webapp/README.md)
-- [Audit Tools](../audit/README.md)
+- Project root README: `../../README.md`
+- Evaluator schemas: `schemas/README.md`
+- Validation docs: `validation/README.md`
+- Trajectory SHA range notes: `../../TRAJECTORY_SHA_RANGE_IMPLEMENTATION.md`

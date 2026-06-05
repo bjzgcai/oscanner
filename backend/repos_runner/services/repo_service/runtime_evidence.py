@@ -34,6 +34,8 @@ DOC_CANDIDATES = (
 DEFAULT_SERVICE_TIMEOUT_SECONDS = 75.0
 DEFAULT_RUNTIME_COMPAT_MODEL = "deepseek/deepseek-v4-pro"
 SHELL_CONTROL_TOKENS = (" && ", " || ", ";")
+MAX_RELATIVE_PATH_LENGTH = 1024
+MAX_PATH_PART_LENGTH = 255
 
 
 def _slug(value: Any, fallback: str = "unknown") -> str:
@@ -302,8 +304,14 @@ def _safe_relative_path(repo_dir: Path, raw_path: Any) -> Path | None:
     text = str(raw_path or "").strip().strip("'\"`")
     if not text:
         return None
+    if any(char in text for char in ("\x00", "\r", "\n")):
+        return None
+    if len(text) > MAX_RELATIVE_PATH_LENGTH:
+        return None
     path = Path(text)
     if path.is_absolute() or ".." in path.parts:
+        return None
+    if any(not part or len(part) > MAX_PATH_PART_LENGTH for part in path.parts):
         return None
     resolved = (repo_dir / path).resolve()
     try:
@@ -1082,7 +1090,13 @@ def _build_runtime_evidence_plan(
 def _run_dynamic_static_check(repo_dir: Path, item: dict[str, Any]) -> dict[str, Any]:
     paths = [str(path) for path in item.get("paths") or []]
     mode = item.get("mode") or "all"
-    existing = [path for path in paths if (repo_dir / path).exists()]
+    existing = []
+    for path in paths:
+        try:
+            if (repo_dir / path).exists():
+                existing.append(path)
+        except OSError:
+            continue
     passed = bool(paths) and (bool(existing) if mode == "any" else len(existing) == len(paths))
     missing = [path for path in paths if path not in existing]
     evidence = ", ".join(existing) if passed else f"missing: {', '.join(missing)}"

@@ -629,6 +629,34 @@ def test_generate_test_report_marks_missing_static_runtime_paths(tmp_path):
     assert "- 证据：missing: datasets" in report
 
 
+def test_runtime_plan_rejects_multiline_metadata_as_static_path(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    bad_path = """bibtex
+@article{sceneparser2026,
+  title = {SceneParser: Hierarchical Scene Parsing for Visual Semantics Understanding},
+  author = {Pengxin Xu and Xincheng Lin and Luping Xiao},
+  year = {2026}
+}"""
+
+    plan = runtime_evidence._normalize_runtime_plan(
+        {
+            "static_checks": [
+                {
+                    "feature": "Validation JSONL evaluation",
+                    "paths": [bad_path],
+                    "mode": "all",
+                }
+            ]
+        },
+        repo,
+        ["Validation JSONL evaluation"],
+        [],
+    )
+
+    assert plan["static_checks"] == []
+
+
 def test_run_tests_scores_code_and_functionality_independently(monkeypatch, tmp_path):
     from repos_runner.services.repo_service import runner as runner_service
 
