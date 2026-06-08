@@ -190,6 +190,13 @@ echo ""
 echo -e "${BLUE}Starting webapp frontend (development mode with hot-reload)...${NC}"
 cd "${PROJECT_ROOT}/frontend/webapp"
 
+if [ -s "${HOME}/.nvm/nvm.sh" ]; then
+    # Prefer an active NVM Node over an older system Node that may appear first in PATH.
+    # shellcheck disable=SC1090
+    . "${HOME}/.nvm/nvm.sh"
+    nvm use --silent default >/dev/null 2>&1 || true
+fi
+
 if [ ! -d "node_modules" ]; then
     echo -e "${RED}✗${NC} Error: node_modules not found in frontend/webapp/"
     echo "  Please run: cd frontend/webapp && npm install"
@@ -204,7 +211,7 @@ WEBAPP_PID=$!
 echo -e "${GREEN}✓${NC} Webapp started (PID: ${WEBAPP_PID})"
 echo -e "  URL: http://localhost:${WEBAPP_PORT}"
 
-wait_for_health "http://127.0.0.1:${WEBAPP_PORT}" "$WEBAPP_PID" "Webapp" || cleanup 1
+wait_for_health "http://127.0.0.1:${WEBAPP_PORT}" "$WEBAPP_PID" "Webapp" 180 || cleanup 1
 
 echo ""
 echo -e "${BLUE}======================================${NC}"
