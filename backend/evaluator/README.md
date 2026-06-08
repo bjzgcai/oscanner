@@ -105,6 +105,7 @@ backend/evaluator/
 |   |-- benchmark.py          # Validation dataset APIs
 |   `-- checkers.py           # Checker list/run APIs
 |-- services/                 # Shared business logic
+|   |-- collaboration_evidence.py
 |   |-- extraction_service.py
 |   |-- evaluation_service.py
 |   |-- merge_service.py
@@ -128,6 +129,48 @@ checkers/                     # External code-quality checkers
 backend/repos_runner/         # Optional runner API, proxied by /api/runner/*
 frontend/webapp/              # Next.js dashboard
 ```
+
+## Service Layer Reference
+
+Routes should stay thin. The evaluator's reusable behavior is concentrated in
+`services/`, with a small subset re-exported from `services/__init__.py` for
+router compatibility.
+
+| Service | Main responsibility | Called by |
+| --- | --- | --- |
+| `plugin_service.py` | Discover installed plugins, choose the default plugin, and validate requested plugin IDs with clear API errors. | `plugins.py`, `evaluation.py`, `batch.py`, `trajectory.py`, `benchmark.py` |
+| `extraction_service.py` | Extract, incrementally sync, and refresh GitHub/Gitee repository data. GitHub uses the moderate extractor then a git fallback; Gitee uses direct API calls. It also fetches specific boundary SHAs and writes filtered `repo_files/` snapshots. | `data.py`, `batch.py`, `evaluation.py`, `trajectory_service.py`, `benchmark.py` |
+| `evaluation_service.py` | Build plugin evaluators, filter author commits, enforce the 10M-character input guardrail, run author evaluations with heartbeat progress logs, merge incremental fields, and build structured commit/file evidence links. | `evaluation.py`, `trajectory_service.py`, `benchmark.py` |
+| `merge_service.py` | Merge multiple identity evaluations by commit-count weights. Numeric plugin scores are averaged; reasoning is merged with the configured LLM when available, otherwise concatenated. | `evaluation.py`, `batch.py` |
+| `collaboration_evidence.py` | Normalize evidence source requests and cache provider collaboration evidence such as PR discussions, review comments, approvals, issue triage, and maintainer decisions. `commit_diffs` is always included as the local default source. | `trajectory_service.py` |
+| `trajectory_service.py` | Orchestrate repository sync, growth trajectory checkpoints, inclusive SHA range filtering, full-repository group analysis, checker/plugin evaluator options, evidence enrichment, and token usage summaries. | `trajectory.py` |
+| `trajectory_poll_store.py` | Persist one-off trajectory poll jobs and events in SQLite so clients can resume long-running jobs with a cursor. | `trajectory.py` |
+
+Important service details:
+
+- `extract_github_data()` writes through
+  `backend.evaluator.tools.extract_repo_data_moderate` and falls back to a
+  local git clone path when API extraction fails, times out, or returns no
+  commit JSON files.
+- `sync_github_data_incremental()` and `sync_gitee_data_incremental()` update
+  existing local data by fetching only missing latest commits, then refresh the
+  filtered repository snapshot used by plugin file loading.
+- `sync_github_commits_by_sha()` and `sync_gitee_commits_by_sha()` fill gaps for
+  requested boundary commits, which matters for SHA-range trajectory and group
+  analysis.
+- `ensure_repo_evaluation_input_within_limit()` rejects oversized evaluations
+  before plugin/LLM work begins. It counts commit messages plus text from the
+  current `repo_files/` snapshot.
+- `build_evidence_links()` emits reviewable GitHub/Gitee commit, file, and
+  directory links for the commits actually sent to an evaluator.
+- `analyze_growth_trajectory()` supports `checkpoint_strategy=period` for
+  two-week, 10-commit-minimum checkpoint grouping and
+  `checkpoint_strategy=none` for one inclusive SHA range or one full accumulated
+  checkpoint.
+- `analyze_group_repositories()` evaluates whole repositories, not just one
+  author. It syncs repositories concurrently, refreshes snapshots at `end_sha`
+  when supplied, and passes optional checker, worktree, expected-feature, and
+  collaboration-evidence settings into compatible plugin factories.
 
 ## Configuration
 
@@ -169,6 +212,7 @@ Important variables:
 | `OSCANNER_HOME` | Base state directory | `~/.local/share/oscanner` |
 | `OSCANNER_DATA_DIR` | Repository data override | `{OSCANNER_HOME}/data` |
 | `OSCANNER_PLUGINS_DIR` | Plugin directory override | repo `plugins/` |
+| `OSCANNER_TRAJECTORY_POLL_DB` | SQLite path for durable trajectory poll jobs | `{OSCANNER_DATA_DIR}/trajectory_poll_jobs.sqlite3` |
 | `PORT` | Evaluator server port | `8000` |
 | `RUNNER_SERVICE_URL` | Repos runner backend URL | `http://localhost:8001` |
 
@@ -210,12 +254,26 @@ files/
 repo_files/
   {filtered current snapshot}
 repo_files_manifest.json
+collaboration_evidence.json
 ```
 
 `sync_state.json` records extraction state such as last synced time, last commit
 SHA, and fetched commit counts. Extraction APIs update repository data, but the
 HTTP evaluation endpoint computes fresh results from local data and does not
 persist evaluation-result cache files.
+
+`collaboration_evidence.json` is written only when trajectory or group analysis
+requests provider collaboration sources beyond local `commit_diffs`. The default
+cache TTL is 24 hours.
+
+Durable trajectory polling jobs are stored separately in SQLite:
+
+```text
+~/.local/share/oscanner/data/trajectory_poll_jobs.sqlite3
+```
+
+Override that path with `OSCANNER_TRAJECTORY_POLL_DB` when running multiple
+isolated evaluator instances on the same machine.
 
 ## Main HTTP Flows
 
