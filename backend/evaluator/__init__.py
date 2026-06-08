@@ -14,7 +14,5 @@ _backend_dir = Path(__file__).resolve().parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
-from .core import EngineerEvaluator, EvaluationResult
-
 __version__ = "0.1.0"
-__all__ = ["EngineerEvaluator", "EvaluationResult"]
+__all__ = ["__version__"]
