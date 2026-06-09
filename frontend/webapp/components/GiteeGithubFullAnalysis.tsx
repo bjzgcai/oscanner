@@ -37,6 +37,13 @@ interface AnalysisCommit {
   title: string;
   author: string;
   matched_email: string;
+  matched_roles?: Array<{
+    role: string;
+    email: string;
+    name?: string;
+    date?: string;
+    github_login?: string;
+  }>;
   date: string;
   url: string;
   stats: {
@@ -56,6 +63,8 @@ interface CollaborationEvidence {
   platform: string;
   repo_full_name: string;
   repo_url: string;
+  attribution?: string;
+  github_login?: string;
 }
 
 interface AnalysisResult {
@@ -196,6 +205,21 @@ export default function GiteeGithubFullAnalysis() {
       render: (email: string) => <Tag icon={<MailOutlined />}>{email}</Tag>,
     },
     {
+      title: '角色',
+      dataIndex: 'matched_roles',
+      width: 180,
+      render: (roles: AnalysisCommit['matched_roles']) => (
+        <Space size={4} wrap>
+          {(roles || []).map((role) => (
+            <Tag key={`${role.role}:${role.email}`} color={role.role === 'author' ? 'blue' : 'purple'}>
+              {role.role}
+              {role.github_login ? ` @${role.github_login}` : ''}
+            </Tag>
+          ))}
+        </Space>
+      ),
+    },
+    {
       title: 'Commit',
       dataIndex: 'title',
       render: (title: string, record) => (
@@ -263,6 +287,9 @@ export default function GiteeGithubFullAnalysis() {
             <Text>{label}</Text>
           )}
           <Text type="secondary">{record.detail}</Text>
+          {record.github_login && (
+            <Text type="secondary">GitHub: @{record.github_login}</Text>
+          )}
         </Space>
       ),
     },
@@ -282,7 +309,7 @@ export default function GiteeGithubFullAnalysis() {
             全 github/gitee评估
           </Title>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            输入一个或多个邮箱，系统会在本地已收集的 GitHub/Gitee 仓库中汇总该邮箱的 commits，并拉取相关 PR、Review、Issue、审批和维护者决策证据。
+            输入一个或多个邮箱，系统会全局搜索 GitHub commit author/committer 邮箱，并汇总相关 PR、Review、Issue、审批和维护者决策证据；Gitee 当前使用本地已收集仓库。
           </Paragraph>
         </div>
 
