@@ -1,99 +1,161 @@
 ## Repository Runner
 
-This service provides automated repository cloning, exploration, and testing using opencode.
+`backend/repos_runner` is the optional FastAPI service that clones submitted
+GitHub/Gitee repositories, builds a test-focused repository overview, detects
+and runs tests, gathers runtime evidence for feature requirements, and writes a
+Markdown test report.
 
-## Features
+The evaluator backend proxies these APIs through `RUNNER_SERVICE_URL`
+(`http://localhost:8001` by default), but the runner can also be called
+directly on port `8001`.
 
-- **Clone Repository**: Shallow clone of GitHub/Gitee repositories
-- **Explore & Document**: Generate REPO_OVERVIEW.md using opencode, with messages API fallback
-- **Run Tests**: Automatically identify and run test suites
-- **Multi-language Support**: Python, JavaScript/TypeScript, Go, Rust, Java, and C/C++
-- **Real-time Streaming**: Progress updates via Server-Sent Events (SSE)
+## Current Capabilities
 
-## Installation
+- Clone public GitHub and Gitee repositories, including branch, tag, and SHA
+  checkouts.
+- Preserve existing `REPO_OVERVIEW*.md`, `TEST_REPORT*.md`, and
+  `TEST_ARTIFACTS_*` files across fresh clone attempts.
+- Generate `REPO_OVERVIEW.md` or `REPO_OVERVIEW_{tag}.md` with `opencode`;
+  fall back to the configured messages API when `opencode` is unavailable or
+  fails.
+- Detect test commands with static project-file rules first, cached
+  `test_config.json` second, and LLM parsing as fallback.
+- Run setup and test commands in a host sandbox or disposable Docker container.
+- Support Python, Node/Jest/Vitest/Mocha, Go, Rust, C/C++, Java/Gradle/Maven,
+  Ruby, PHP, .NET, Elixir, Kotlin, Swift, and generic fallback parsing.
+- Score plain repositories by code test pass rate, and tagged/requirement-based
+  repositories by code tests plus functional acceptance evidence.
+- Stream long-running work with Server-Sent Events (SSE).
+- Queue expensive jobs in process to avoid overloading the host.
+- List/delete cloned repositories and serve generated reports and runtime
+  artifact images.
 
-1. Install dependencies:
+## Run Locally
+
+From the repository root:
+
 ```bash
-pip install -r requirements.txt
+uv sync
+cd backend
+RUNNER_PORT=8001 uv run python -m repos_runner.server
 ```
 
-2. Install opencode for agentic repository exploration:
-```bash
-npm install -g opencode-ai
-```
+The service starts at `http://localhost:8001`, with OpenAPI docs at
+`http://localhost:8001/docs`.
 
-3. Set up environment variables:
-```bash
-# Required: direct Anthropic API key
-export ANTHROPIC_API_KEY="your-api-key"
-# Or use an Anthropic-compatible gateway
-export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
-export ANTHROPIC_AUTH_TOKEN="sk-or-v1-..."
-
-# Optional legacy/provider shortcut: OpenRouter
-export OPEN_ROUTER_KEY="sk-or-v1-..."
-# Optional override (default is https://openrouter.ai/api)
-export OPEN_ROUTER_BASE_URL="https://openrouter.ai/api"
-# Optional model routing (recommended for Anthropic-compatible endpoint)
-export OPEN_ROUTER_PRIMARY_MODEL="anthropic/claude-sonnet-4.6"
-export OPEN_ROUTER_FALLBACK_MODEL="anthropic/claude-sonnet-4.6"
-export OPEN_ROUTER_FALLBACK_MODELS="anthropic/claude-sonnet-4.6"
-# Optional override for repos_runner task prompts (if unset, uses provider defaults above)
-export REPOS_RUNNER_LLM_MODEL="claude-sonnet-4-6"
-# Optional opencode model override in provider/model format
-# Defaults to OpenRouter DeepSeek V4 Pro when unset
-export REPOS_RUNNER_OPENCODE_MODEL="openrouter/deepseek/deepseek-v4-pro"
-# Optional timeout for opencode exploration (seconds, default: 600)
-export REPOS_RUNNER_OPENCODE_TIMEOUT=600
-# Optional: also try direct Anthropic credential if OpenRouter attempts fail
-export OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
-
-# Optional: Custom port (default: 8001)
-export RUNNER_PORT=8001
-
-# Optional: isolate repo setup/tests/runtime checks in Docker
-# auto = use Docker when the daemon is available, host = current host sandbox,
-# docker = require Docker and fail if it cannot start.
-export REPOS_RUNNER_EXECUTOR=auto
-export REPOS_RUNNER_DOCKER_IMAGE=oscanner-repos-runner:py3.12-node
-
-# Optional: ask an LLM to suggest Linux/Docker-compatible startup commands
-# when README instructions are inconsistent or incomplete. Suggestions are
-# validated against the same safe command allowlist before execution.
-export REPOS_RUNNER_RUNTIME_COMPAT_LLM=false
-export REPOS_RUNNER_RUNTIME_COMPAT_MODEL="deepseek/deepseek-v4-pro"
-```
-
-## Usage
-
-### Start the server
+The legacy scripts in this directory also exist:
 
 ```bash
+cd backend/repos_runner
 ./start_server.sh
-```
-
-The server will start on `http://localhost:8001`
-
-API documentation available at: `http://localhost:8001/docs`
-
-### Stop the server
-
-```bash
 ./stop_server.sh
 ```
 
-## API Endpoints
+For normal Oscanner development, run the evaluator on port `8000` and point it
+at the runner:
 
-### Quick Start: Run All Steps (Recommended)
+```bash
+export RUNNER_SERVICE_URL=http://localhost:8001
+uv run oscanner serve --reload
+```
 
-**POST** `/api/runner/run-all`
+The dashboard runner page is available at `http://localhost:3000/runner` when
+the Next.js app is running.
 
-This is the **simplest way** to analyze a repository. It runs all four steps (clone, explore, test) in a single API call.
+## Environment
 
-**Request:**
+The runner loads the first existing env file from:
+
+1. `REPOS_RUNNER_ENV_FILE`
+2. `backend/repos_runner/.env`
+3. `backend/repos_runner/.env.local`
+4. `.env`
+5. `.env.local`
+
+Then it calls `load_dotenv(override=False)` for remaining process defaults.
+
+Common variables:
+
+```bash
+# Runner server
+export RUNNER_PORT=8001
+export RUNNER_PUBLIC_BASE_URL=http://localhost:8001
+
+# Provider credentials. Secrets are optional until an LLM path is used.
+export OPEN_ROUTER_KEY=sk-or-v1-...
+export OPEN_ROUTER_BASE_URL=https://openrouter.ai/api
+export OPEN_ROUTER_PRIMARY_MODEL=anthropic/claude-sonnet-4.6
+export OPEN_ROUTER_FALLBACK_MODEL=anthropic/claude-sonnet-4.6
+export OPEN_ROUTER_FALLBACK_MODELS=anthropic/claude-sonnet-4.6
+export OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
+export ANTHROPIC_API_KEY=...
+export ANTHROPIC_AUTH_TOKEN=...
+export ANTHROPIC_BASE_URL=https://openrouter.ai/api
+
+# Repository host tokens, used for authenticated clone/API access.
+export GITHUB_TOKEN=...
+export GITEE_TOKEN=...
+export GITEE_ENTERPRISE_TOKEN=...
+
+# LLM model selection.
+export REPOS_RUNNER_LLM_MODEL=claude-sonnet-4-6
+export REPOS_RUNNER_OPENCODE_MODEL=openrouter/deepseek/deepseek-v4-pro
+export REPOS_RUNNER_OPENCODE_TIMEOUT=600
+
+# Expensive-job queue.
+export REPOS_RUNNER_MAX_CONCURRENT_JOBS=1
+export REPOS_RUNNER_MAX_PENDING_JOBS=100
+
+# Execution backend: auto, host, or docker.
+export REPOS_RUNNER_EXECUTOR=auto
+export REPOS_RUNNER_DOCKER_IMAGE=oscanner-repos-runner:py3.12-node
+export REPOS_RUNNER_DOCKER_NETWORK=bridge
+export REPOS_RUNNER_DOCKER_MEMORY=2g
+export REPOS_RUNNER_DOCKER_CPUS=2
+export REPOS_RUNNER_DOCKER_PIDS=512
+
+# Optional README compatibility assistant for runtime startup commands.
+export REPOS_RUNNER_RUNTIME_COMPAT_LLM=false
+export REPOS_RUNNER_RUNTIME_COMPAT_MODEL=deepseek/deepseek-v4-pro
+```
+
+When `REPOS_RUNNER_OPENCODE_MODEL` starts with `openrouter/`, an OpenRouter key
+must be available as `OPEN_ROUTER_KEY` or `OPENROUTER_API_KEY`. The opencode
+environment also reads runner/evaluator `.env` files as a fallback for
+`OPEN_ROUTER_KEY`.
+
+## API Overview
+
+All runner routes are mounted under `/api/runner`. Streaming endpoints return
+SSE lines in this shape:
+
+```text
+data: {"event":"progress","data":{"message":"..."}}
+data: {"event":"status","data":{"status":"completed","results":{...}}}
+```
+
+Failure events use:
+
+```text
+data: {"event":"status","data":{"status":"failed","error":"..."}}
+```
+
+### `POST /api/runner/run-all`
+
+Runs the normal clone -> explore -> test pipeline and streams progress.
+
+Request:
+
 ```json
 {
   "repo_url": "https://github.com/owner/repo",
+  "sha": null,
+  "tag": null,
+  "branch": null,
+  "tag_message": null,
+  "grading_rubric": null,
+  "skip_clone": false,
+  "skip_explore": false,
   "clone_timeout": 300,
   "setup_timeout": 300,
   "test_timeout": 600,
@@ -101,58 +163,63 @@ This is the **simplest way** to analyze a repository. It runs all four steps (cl
 }
 ```
 
-**Response:**
-```json
-{
-  "passed": 8,
-  "failed": 2,
-  "total": 10,
-  "score": 80,
-  "repo_name": "github/owner/repo/default",
-  "report_path": "/home/user/.local/share/oscanner/repos/github/owner/repo/default/source/TEST_REPORT.md"
-}
-```
+Behavior:
 
-**Error Handling:**
-- Returns HTTP 503 if repos_runner service is unavailable
-- Returns HTTP 500 with detailed error message if any step fails
-- Includes which step failed (clone/explore/test) in error details
+- Clones to the normalized storage path unless `skip_clone=true`.
+- Uses `tag_message` as feature requirements when supplied.
+- If no `tag_message` is supplied and `tag` is set, attempts to fetch a Gitee
+  tag annotation.
+- If neither path yields requirements, reads README requirements from
+  `README.md`, `README.en.md`, `README.txt`, or `README`, filtering TODO,
+  roadmap, future, planned, incomplete, and explicitly unimplemented sections.
+- Generates a tag-specific overview/report when `tag` is set.
+- Returns `clone_metadata`, `overview_path`, `results`, `report_content`, and
+  token usage when tracked.
 
-**Example Usage:**
-```python
-import requests
+`skip_clone=true` reuses the expected storage path for the requested
+repo/ref. `skip_explore=true` reuses an existing `REPO_OVERVIEW*.md` only when
+the expected file exists.
 
-response = requests.post(
-    "http://localhost:8000/api/runner/run-all",
-    json={"repo_url": "https://gitee.com/zgcai/eval_test_1"},
-    timeout=600
-)
+### `POST /api/runner/batch-run`
 
-if response.status_code == 200:
-    result = response.json()
-    print(f"Tests: {result['passed']}/{result['total']} passed")
-    print(f"Score: {result['score']}/100")
-```
+Runs multiple `RunAllRequest` objects concurrently and streams per-repository
+events. `max_concurrency` is capped at `3`, and each individual pipeline still
+passes through the global runner queue.
 
-See [example_run_all_tests.py](../evaluator/example_run_all_tests.py) for a complete working example.
-
----
-
-### Individual Steps (Advanced)
-
-For more control or real-time progress updates, use the individual endpoints:
-
-### 1. Clone Repository
-
-**POST** `/api/runner/clone`
+Request:
 
 ```json
 {
-  "repo_url": "https://github.com/owner/repo"
+  "repos": [
+    {"repo_url": "https://github.com/owner/repo-a"},
+    {"repo_url": "https://gitee.com/owner/repo-b", "tag": "v1"}
+  ],
+  "max_concurrency": 3
 }
 ```
 
-**Response:**
+Events:
+
+- `progress`: `{"repo": "<url>", "message": "..."}`
+- `repo_done`: per-repo completion or failure
+- `batch_done`: final `{total, succeeded, failed}` summary
+
+### `POST /api/runner/clone`
+
+Clones a single repository and returns metadata.
+
+```json
+{
+  "repo_url": "https://github.com/owner/repo",
+  "sha": null,
+  "tag": null,
+  "branch": null,
+  "clone_timeout": 300
+}
+```
+
+Response includes:
+
 ```json
 {
   "repo_name": "github/owner/repo/default",
@@ -161,337 +228,397 @@ For more control or real-time progress updates, use the individual endpoints:
   "latest_commit_id": "abc123...",
   "clone_path": "/home/user/.local/share/oscanner/repos/github/owner/repo/default/source",
   "platform": "github",
-  "owner": "owner"
+  "owner": "owner",
+  "branch": null
 }
 ```
 
-### 2. Explore Repository (SSE Streaming)
+Supported URL forms include:
 
-**POST** `/api/runner/explore?clone_path=/path/to/repo`
+- `https://github.com/owner/repo`
+- `https://gitee.com/owner/repo.git`
+- `github.com/owner/repo`
+- `git@github.com:owner/repo.git`
+- `https://github.com/owner/repo/tree/branch-name`
 
-**Returns:** Server-Sent Events (SSE) stream with real-time progress updates.
+Only `github.com` and `gitee.com` hosts are accepted. Owner and repository
+segments must be simple safe path segments.
 
-**How SSE Streaming Works:**
-- Connection stays open during exploration process
-- Events are sent as they occur (not buffered until completion)
-- Frontend receives and displays progress messages in real-time
-- Each event is prefixed with `data: ` followed by JSON
+### `POST /api/runner/explore`
 
-**Event Format:**
-```
-data: {"event":"progress","data":{"message":"Starting repository exploration..."}}
-data: {"event":"progress","data":{"message":"Starting repository exploration with opencode..."}}
-data: {"event":"progress","data":{"message":"opencode is exploring the repository structure..."}}
-data: {"event":"progress","data":{"message":"Writing REPO_OVERVIEW.md..."}}
-data: {"event":"status","data":{"status":"completed","overview_path":"/path/to/REPO_OVERVIEW.md"}}
-```
+Streams repository exploration and writes `REPO_OVERVIEW.md` or
+`REPO_OVERVIEW_{tag}.md`.
 
-**Event Types:**
-- `progress`: Incremental update messages during processing
-- `status`: Final completion or failure event
-  - `{"status": "completed", "overview_path": "..."}` - Success
-  - `{"status": "failed", "error": "..."}` - Failure
+Query parameters:
 
-### 3. Run Tests (Streaming)
+- `clone_path`: cloned repository source directory.
+- `feature_requirements`: optional requirements text to include in exploration.
+- `tag`: optional tag name used for the output filename.
 
-**POST** `/api/runner/run-tests?clone_path=/path/to/repo&overview_path=/path/to/REPO_OVERVIEW.md`
+The primary path runs:
 
-Returns Server-Sent Events stream with test results:
-```
-data: {"event":"progress","data":{"message":"Running test 1/3: npm test"}}
-data: {"event":"status","data":{"status":"completed","results":{...},"report_path":"/path/to/TEST_REPORT.md"}}
+```text
+opencode run --agent plan --dir <clone_path> --model <model> <prompt>
 ```
 
-Automatically generates `TEST_REPORT.md` in the repository directory with:
-- Summary (total, passed, failed, score)
-- Code test results from executed unit/integration/test commands
-- Functionality test results from tag-derived feature coverage and runtime evidence
-- Score breakdown and recommendations
+The fallback builds a local context from repository files and calls the
+configured messages API.
 
-When a tag is provided, the report file is named `TEST_REPORT_{tag}.md`.
+### `GET /api/runner/detect-tests`
 
-## Web Interface
+Detects setup/test commands without running them.
 
-Access the web interface at: `http://localhost:3000/runner`
+Query parameters:
 
-The web interface provides:
-- Input form for repository URL
-- Real-time progress updates
-- Repository metadata display
-- Test results with detailed output
-- Score calculation (0-100)
+- `overview_path`: path to `REPO_OVERVIEW*.md`.
+- `feature_requirements`: optional display-only requirements; extracted into
+  `validation_features` in the returned payload.
 
-## Data Storage
+Detection order:
 
-Cloned repositories and test environments are stored in:
-```
-~/.local/share/oscanner/repos/
+1. Existing `test_config.json`.
+2. Static framework detection from files such as `pyproject.toml`,
+   `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`,
+   `CMakeLists.txt`, `Gemfile`, `*.csproj`, and `mix.exs`.
+3. LLM extraction from `REPO_OVERVIEW*.md`.
+
+### `POST /api/runner/run-tests`
+
+Streams setup, code test execution, feature coverage checks, runtime evidence,
+and report generation for an already cloned/explored repository.
+
+Required query parameters:
+
+- `clone_path`
+- `overview_path`
+
+Optional query parameters:
+
+- `setup_timeout`: per setup command, default `300`.
+- `test_timeout`: per test command, default `600`.
+- `feature_requirements` or `tag_message`: functional acceptance requirements.
+- `tag`: output suffix for `TEST_REPORT_{tag}.md`.
+- `grading_rubric`: rubric text; defaults to the shared AI-Native 2026 rubric.
+
+Completion includes `results` and inline `report_content`. The internal result
+contains `total`, `passed`, `failed`, `score`, `score_breakdown`, `details`,
+`test_cases`, `report_path`, and, when applicable, `feature_coverage`,
+`tag_message`, and `runtime_evidence`. The API strips `grading_rubric` from
+streamed responses to avoid returning large rubric text.
+
+### Lifecycle And Artifacts
+
+- `GET /api/runner/queue`: returns `{max_concurrent, running, pending,
+  max_pending}` for the in-process queue.
+- `GET /api/runner/repos`: lists cloned repositories with size, overview/report
+  flags, `test_config.json` flag, and tag/default report filenames.
+- `DELETE /api/runner/repo?repo_name=<key>`: deletes the checkout workspace and
+  returns freed disk space.
+- `GET /api/runner/report?repo_url=<url>&tag=<tag>`: returns report content.
+  While an active `run-all` is still producing the report, this may return
+  HTTP `202` with `{"status":"testing"}`.
+- `GET /api/runner/artifact?repo_url=<url>&path=<relative-image>` or
+  `GET /api/runner/artifact?repo_name=<key>&path=<relative-image>`: serves
+  image files under `TEST_ARTIFACTS_*`. Only `.png`, `.jpg`, `.jpeg`, `.webp`,
+  and `.gif` files are allowed, and paths must stay inside the clone.
+
+The service also exposes `GET /health` and `GET /version` outside the runner
+router.
+
+## Storage Layout
+
+Runner state is stored below:
+
+1. `OSCANNER_HOME`
+2. `XDG_DATA_HOME/oscanner`
+3. `~/.local/share/oscanner`
+
+Repository checkouts use this structure:
+
+```text
+<oscanner-home>/repos/
 └── {platform}/
     └── {owner}/
         └── {repo}/
             └── {ref}/
-                └── source/                 # Cloned repository checkout
-                    ├── REPO_OVERVIEW.md    # Generated documentation
-                    ├── TEST_REPORT.md      # Test results and metrics
-                    ├── .venv_{hash}/       # Dedicated virtual environment
-                    └── ...                 # Repository files
+                └── source/
+                    ├── REPO_OVERVIEW.md
+                    ├── REPO_OVERVIEW_{tag}.md
+                    ├── TEST_REPORT.md
+                    ├── TEST_REPORT_{tag}.md
+                    ├── TEST_ARTIFACTS_{tag}/
+                    ├── test_config.json
+                    ├── .test_report.json
+                    ├── .test_report.txt
+                    ├── .venv_{dependency_hash}/
+                    └── ...
 ```
 
-The default `{ref}` is `default`; SHA and tag checkouts use `sha-{sha}` or
-`tag-{tag}`. The root directory follows `OSCANNER_HOME` first, then
-`XDG_DATA_HOME/oscanner`, then `~/.local/share/oscanner`.
+The `{ref}` segment is:
 
-This isolated structure ensures:
-- Your main codebase stays clean
-- Test dependencies don't pollute project dependencies
-- **Each repository has its own isolated virtual environment**
-- **Dependency conflicts are prevented** (repo A's packages won't affect repo B)
-- **Python version flexibility** (different repos can use different Python versions)
-- **Security isolation** (potentially malicious packages are contained)
-- Each repository has its own test report
-- Easy cleanup (use `DELETE /api/runner/repo?repo_name=<key>` or delete `~/.local/share/oscanner/repos/`)
+- `default` for default-branch checkouts.
+- `branch-{branch}` for branch or `/tree/<branch>` checkouts.
+- `tag-{tag}` for tag checkouts.
+- `sha-{sha}` for SHA checkouts.
 
-## Implementation Details
+The API `repo_name` is the storage key
+`{platform}/{owner}/{repo}/{ref}`.
 
-### Repository Cloning
-- Uses `git clone --depth 1` for efficient shallow cloning
-- Supports GitHub and Gitee repositories
-- Extracts metadata: name, branch, latest commit
+## Pipeline Logic
 
-### Repository Exploration
-- Analyzes repository structure and files
-- Reads README, package files, and directory tree
-- Uses opencode to generate a concise test-focused overview
-- Includes: purpose, components, features, setup instructions
+### Cloning
 
-### Test Running
-- Uses static detection first, then configured messages API fallback to identify test commands from REPO_OVERVIEW.md
-- Creates isolated virtual environment per repository at `{repo_path}/.venv`
-- Executes setup commands if needed (installs dependencies in repo's venv)
-- Runs all identified test commands in isolated environment
-- Calculates score from relevance-gated code tests and functional acceptance when tag requirements are available
-- Captures full test output for debugging
-- Each repository has its own dependency isolation
-- Generates TEST_REPORT.md in each repository directory
+- Parses and validates GitHub/Gitee URLs through `paths.py`.
+- Injects `GITHUB_TOKEN`, `GITEE_TOKEN`, or `GITEE_ENTERPRISE_TOKEN` into HTTPS
+  clone URLs when available, and masks credentials in errors.
+- Retries transient clone errors up to three times.
+- Uses shallow clone/fetch paths where possible:
+  - SHA: shallow fetch the SHA, then checkout. If that fails, fall back to full
+    clone before checkout.
+  - Tag: shallow fetch `refs/tags/<tag>`, then checkout.
+  - Branch: `git clone --depth 1 --single-branch --branch <branch>`.
+  - Default: `git clone --depth 1 --single-branch`.
 
-### Runtime Evidence From README
+### Exploration
 
-When tag requirements are available, repos_runner also reads `README.md`, `README.en.md`,
-`AGENT.md`, `AGENTS.md`, and up to 20 Markdown files under `docs/` to collect runtime
-evidence. It tracks simple `cd <relative-dir>` lines inside shell blocks and starts
-safe local services that match one of these patterns:
+Exploration prompts for a compact overview with:
+
+- project type
+- test framework
+- setup commands
+- test commands
+- optional tag/requirements section
+
+When `opencode` fails or is missing, the fallback context builder samples local
+repository files and calls the messages API. The generated overview is written
+inside the clone.
+
+### Test Detection And Command Normalization
+
+Static detection maps known project files to setup/test commands. After that,
+the runner recursively discovers test files and may replace fragile commands
+with path-aware commands for Python, Node, Ruby, and PHP. Examples:
+
+- Python: `pytest <path> --json-report --json-report-file=.test_report.json -v`
+- Vitest: `npx vitest run <path> --reporter=json > .test_report.json`
+- Jest: `npx jest <path> --json --outputFile=.test_report.json`
+
+For Python projects, setup commands are augmented with discovered
+`requirements*.txt` files and `pytest pytest-json-report`. Per-repository host
+virtual environments are named `.venv_{dependency_hash}` and stale hash
+directories are removed automatically.
+
+Long-lived service commands such as `npm run dev`, `vite`, `uvicorn`,
+`fastapi run`, `flask run`, `next dev`, and `python scripts/dev-*` are removed
+from code-test execution and treated as runtime evidence instead.
+
+### Execution Isolation
+
+The runner uses `REPOS_RUNNER_EXECUTOR`:
+
+- `auto`: use Docker when the CLI and daemon are available, otherwise host.
+- `docker`: require Docker.
+- `host`: run on the current host sandbox.
+
+Host execution:
+
+- macOS uses `sandbox-exec` with repo/temp write access, local-only outbound
+  network, no inbound network, and remote outbound network denied.
+- Linux applies resource limits without Seatbelt.
+- Other platforms use best-effort subprocess timeouts.
+
+Docker execution:
+
+- Starts a disposable container for one repository run.
+- Mounts the clone at `/workspace`.
+- Runs setup, tests, and runtime evidence in the same container.
+- Keeps generated reports and artifacts on the host through the bind mount.
+- Uses memory, CPU, PID, network, and image settings from env variables.
+
+### Runtime Evidence
+
+When functional requirements are available, runtime evidence reads:
+
+- `README.md`
+- `README.en.md`
+- `AGENT.md`
+- `AGENTS.md`
+- up to 20 Markdown files under `docs/`
+
+It records simple documented setup context such as `cd <relative-dir>`,
+`python -m venv`, virtualenv activation, `pip install -r ...`, and package
+manager install commands. It only starts/checks allowlisted command families:
 
 - `python scripts/dev-*.py`
 - `python scripts/start.py start`
 - `python scripts/check.py`
 - `python scripts/tasks.py check`
-- `uvicorn <module>:<app> --port <probed-port>`
-- `python -m uvicorn <module>:<app> --port <probed-port>`
+- `uvicorn <module>:<app> --port <port>`
+- `python -m uvicorn <module>:<app> --port <port>`
 - `npm run dev`
 
-For `uvicorn` and `npm run dev`, the runner normalizes host binding to
-`127.0.0.1` so checks can probe local ports inside the execution session.
-When README instructions contain Windows virtualenv activation such as
-`.venv\Scripts\activate`, the runner converts the service startup to the Linux/Docker
-equivalent (`. .venv/bin/activate`) and prefixes the command with documented
-`python -m venv` / `pip install -r ...` setup where safe.
-Arbitrary README shell commands are not executed.
+For `uvicorn` and `npm run dev`, host binding is normalized to `127.0.0.1`.
+Windows virtualenv activation examples are converted to Linux/Docker-compatible
+activation when safe. Arbitrary README shell commands are not executed.
 
-When the Docker executor is used, the runner image includes Chromium and CJK
-fonts. Runtime evidence uses that browser to capture screenshots and rendered DOM
-for UI checks such as homepage loading and scene placeholder text. These UI
-checks are evidence for functional acceptance; they are not a third scoring
-bucket.
+If `REPOS_RUNNER_RUNTIME_COMPAT_LLM=true`, an LLM may suggest missing startup
+commands from docs and repository paths. Its output is untrusted: only JSON
+suggestions that normalize back into the same allowlisted command families are
+used.
 
-If `REPOS_RUNNER_RUNTIME_COMPAT_LLM=true`, repos_runner asks the configured
-compatibility model, default `deepseek/deepseek-v4-pro`, to suggest missing
-Linux/Docker-compatible startup commands from README-like files and repository
-paths. The model output is treated as untrusted: only JSON suggestions that
-normalize back into the allowlisted command families above are executed.
+Runtime evidence can include static inventory, environment checks, HTTP/API
+checks, DOM dumps, screenshots, and command logs under
+`TEST_ARTIFACTS_{tag}/runtime-evidence/`.
 
-### Feature Directory Checks
+## Scoring And Reports
 
-Directory checks are performed against the cloned Git tree. Git does not preserve
-empty directories, so required directories such as `.harness/datasets/`,
-`.harness/eval/`, and `.harness/logs/` need a committed placeholder file such as
-`.gitkeep` to exist after clone.
+Without requirements:
+
+```text
+score = code_test_pass_rate * 100
+```
+
+With `tag_message`, README-derived requirements, or explicit
+`feature_requirements`:
+
+```text
+code_score = code_test_pass_rate * 30
+functionality_score = functionality_coverage_ratio * 70
+score = code_score + functionality_score
+```
+
+The runner still calculates and reports `code_relevance_ratio`, but the current
+weighted score does not multiply code-test points by relevance. Functional
+coverage is merged from test-file feature coverage and runtime evidence.
+
+Reports are Markdown files written as:
+
+- `TEST_REPORT.md`
+- `TEST_REPORT_{tag}.md`
+
+They include:
+
+- summary and grade
+- code test counts and failed output snippets
+- supplied or inferred functional requirements
+- execution process
+- feature coverage
+- runtime evidence sections and artifact image links
+- score breakdown
+- grading rubric section
 
 ## Architecture
 
-```
+```text
 repos_runner/
-├── server.py              # FastAPI application
+├── server.py                         # FastAPI app, env loading, CORS, health/version
 ├── routes/
-│   └── runner.py          # API endpoints with SSE streaming
-├── services/
-│   └── repo_service.py    # Business logic for clone/explore/test
+│   └── runner.py                     # API routes, SSE streams, queue use, artifacts
 ├── schemas/
-│   └── __init__.py        # Pydantic models
-├── requirements.txt       # Python dependencies
-├── start_server.sh        # Startup script
-└── stop_server.sh         # Shutdown script
+│   └── __init__.py                   # Pydantic request/response models
+├── services/
+│   ├── sandbox.py                    # Host/Docker execution sessions
+│   ├── task_queue.py                 # In-process FIFO runner queue
+│   └── repo_service/
+│       ├── paths.py                  # URL parsing, storage keys, Gitee tag API
+│       ├── clone.py                  # Clone/fetch/checkout logic
+│       ├── explore.py                # opencode and messages-API overview generation
+│       ├── detection.py              # Static/LLM test command detection
+│       ├── runner.py                 # Setup, tests, scoring, report orchestration
+│       ├── runtime_evidence.py       # README-driven runtime evidence
+│       ├── coverage.py               # Feature extraction and coverage checks
+│       ├── parsing.py                # Test output/report parsing
+│       ├── report.py                 # TEST_REPORT*.md generation
+│       ├── venv.py                   # Hash-based per-repo Python venvs
+│       └── lifecycle.py              # List/delete cloned repositories
+├── docker/
+│   └── Dockerfile                    # Optional Docker executor image
+├── grading.py                        # Shared default grading rubric loader
+├── requirements.txt
+├── start_server.sh
+└── stop_server.sh
 ```
 
-## Testing
+## Testing The Runner Code
 
-### Testing Metrics
-
-The repos_runner service can be tested using the following approach.
-
-**Important**: See [TESTING_SUMMARY.md](TESTING_SUMMARY.md) for complete testing documentation structure.
-
-**Current Test Status (repos_runner service):**
-- Total Tests: 0 (no tests implemented yet)
-- Passed: 0
-- Failed: 0
-- Coverage: 0%
-- Test Score: 0/100
-
-See [REPOS_RUNNER_TEST_REPORT.md](REPOS_RUNNER_TEST_REPORT.md) for detailed test plan.
-
-**For Analyzed Repositories:**
-- Test reports auto-generated at `~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/TEST_REPORT.md`
-- See [TEST_REPORT_EXAMPLE.md](TEST_REPORT_EXAMPLE.md) for sample output
-
-**Testing Focus Areas:**
-
-1. **Service Layer Tests** ([repo_service.py](repos_runner/services/repo_service.py))
-   - URL parsing: GitHub/Gitee formats
-   - Repository cloning: shallow clone verification
-   - Context building: README extraction, directory tree
-   - Test identification: Claude-based command extraction
-   - Score calculation: pass/fail ratio accuracy
-
-2. **API Endpoint Tests** ([runner.py](repos_runner/routes/runner.py))
-   - `/api/runner/clone`: Valid/invalid URLs
-   - `/api/runner/explore`: SSE streaming
-   - `/api/runner/run-tests`: Test execution flow
-
-3. **Integration Tests**
-   - End-to-end: Clone → Explore → Test
-   - Real repository testing
-   - Error handling scenarios
-
-### Running Tests
-
-Once tests are implemented, run them with:
+Project tests for this area live in the repository-level `tests/` tree. Use the
+smallest relevant target first:
 
 ```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Run all tests
-pytest repos_runner/tests/ -v
-
-# Run with coverage
-pytest repos_runner/tests/ --cov=repos_runner --cov-report=term-missing
-
-# Run specific test file
-pytest repos_runner/tests/test_repo_service.py -v
+uv run pytest tests/repos_runner -v
+uv run pytest tests/routes -k runner -v
 ```
 
-### Manual SSE Streaming Test
-
-To verify SSE streaming is working correctly:
+Broaden to all tests when changing shared URL parsing, sandboxing, scoring,
+collector integration, or proxy behavior:
 
 ```bash
-# Ensure the server is running
-./start_server.sh
-
-# In another terminal, run the test script
-python test_sse_streaming.py
+uv run pytest
 ```
 
-This script will:
-1. Clone a test repository via `/api/runner/clone`
-2. Test SSE streaming for `/api/runner/explore`
-3. Display all progress events as they arrive in real-time
-4. Report timing and event statistics
-
-**Expected output:**
-```
-📡 Receiving SSE stream (events shown as they arrive):
-
-[0.45s] 📝 Progress: Starting repository exploration...
-[0.67s] 📝 Progress: Starting repository exploration with opencode...
-[0.89s] 📝 Progress: opencode is exploring the repository structure...
-[2.34s] 📝 Progress: Writing REPO_OVERVIEW.md...
-[2.45s] ✅ Completed!
-
-✅ SSE streaming is working correctly!
-   Multiple progress events were received in real-time.
-```
-
-### Test Scoring Methodology
-
-Tests are scored based on the following metrics:
-
-- **Without tag requirements**: score is the code test pass rate, `(Passed / Total) × 100`.
-- **With tag requirements**: score is split into two dynamic parts:
-  - **Code tests: 30-40%** — unit/integration/test commands, gated by how much the tests relate to required features.
-  - **Functional acceptance: 60-70%** — required feature coverage from static checks, service/API runtime evidence, and UI evidence.
-- **Formula with tag requirements**:
-  `final_score = code_pass_rate × code_relevance_ratio × code_weight + functionality_coverage_ratio × functionality_weight`.
-
-The dynamic distribution starts at `code_weight=30` and `functionality_weight=70`
-when no relevant code tests are found. As code tests cover more required features,
-`code_weight` rises toward 40 and `functionality_weight` falls toward 60. This
-avoids both old all-or-nothing scoring and the opposite problem where unrelated
-passing tests make a missing feature set look healthy.
-
-**Grade Scale:**
-- 90-100: Excellent (all critical paths covered)
-- 70-89: Good (most functionality tested)
-- 50-69: Fair (basic tests only)
-- 0-49: Poor (insufficient testing)
-
-### Automated Test Exploration
-
-Use the `/test-explore` Claude Code skill to automatically:
-1. Explore the codebase structure
-2. Plan a comprehensive test suite
-3. Run tests and calculate scores
-4. Generate test coverage reports
+For manual streaming checks, use `curl -N` so events are not buffered:
 
 ```bash
-# Usage in Claude Code CLI
-/test-explore
+curl -N -X POST "http://localhost:8001/api/runner/run-all" \
+  -H "Content-Type: application/json" \
+  -d '{"repo_url":"https://github.com/owner/repo","pipeline_timeout":1800}'
 ```
 
 ## Troubleshooting
 
-### API Key Not Found
-Ensure `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, or `OPEN_ROUTER_KEY` is set in your environment.
+### Runner Import Fails
 
-### Port Already in Use
-Change the port:
+Run the server from `backend` or set `PYTHONPATH` so `repos_runner` is importable:
+
 ```bash
-export RUNNER_PORT=8002
-./start_server.sh
+cd backend
+uv run python -m repos_runner.server
 ```
 
-To avoid conflicts between your local apps and repositories under test, run repo
-setup, tests, and runtime checks in Docker:
+### API Key Missing
+
+Static clone and static test detection do not need an LLM key. Exploration
+fallback, LLM test detection, feature extraction, feature coverage, and optional
+runtime compatibility suggestions do. Configure `OPEN_ROUTER_KEY`,
+`ANTHROPIC_AUTH_TOKEN`, or `ANTHROPIC_API_KEY` as appropriate.
+
+### Port Already In Use
+
+Change the runner port:
+
+```bash
+RUNNER_PORT=8002 uv run python -m repos_runner.server
+```
+
+If repository services conflict with host ports, prefer Docker execution:
+
 ```bash
 export REPOS_RUNNER_EXECUTOR=docker
-./start_server.sh
+cd backend
+uv run python -m repos_runner.server
 ```
 
-The cloned repo is mounted at `/workspace` inside a disposable container, so
-`TEST_REPORT_{tag}.md`, `.test_report.json`, `test_config.json`, and
-`TEST_ARTIFACTS_{tag}/` remain saved in the repo directory on the host. Student
-services can bind ports such as `8000` inside the container without occupying
-host ports.
+### Queue Is Full
+
+`run-all`, `batch-run`, and `run-tests` acquire the global in-process queue.
+Increase `REPOS_RUNNER_MAX_PENDING_JOBS` or run another runner process if the
+queue rejects requests. Increase `REPOS_RUNNER_MAX_CONCURRENT_JOBS` only when
+the machine can safely handle multiple untrusted repository executions.
 
 ### Clone Failures
-- Verify repository URL format
-- Check network connectivity
-- Ensure sufficient disk space
 
-### Runner Timeouts
-`run-all` accepts timeout fields to keep stuck repositories from occupying the runner indefinitely:
+- Confirm the URL is a GitHub or Gitee repository URL.
+- Use a token for private or rate-limited repositories.
+- Check network and disk space.
+- For tag runs, confirm the tag exists. Gitee tag annotation lookup is
+  best-effort and only applies to Gitee repositories.
 
-- `clone_timeout`: seconds allowed per git clone/checkout operation, default `300`.
-- `setup_timeout`: seconds allowed per dependency/setup command, default `300`.
+### Timeouts
+
+`run-all` accepts timeout fields:
+
+- `clone_timeout`: seconds allowed per git operation, default `300`.
+- `setup_timeout`: seconds allowed per setup command, default `300`.
 - `test_timeout`: seconds allowed per test command, default `600`.
-- `pipeline_timeout`: seconds allowed for the whole active clone/explore/test pipeline, default `1800`.
+- `pipeline_timeout`: seconds allowed for the active clone/explore/test
+  pipeline, default `1800`.
