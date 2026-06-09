@@ -439,7 +439,7 @@ async def run_all_stream(request: RunAllRequest):
     1. Clone   — shallow clone (depth=1) into
                  ~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/
                  Optionally checks out a specific SHA or tag.
-    2. Explore — generates REPO_OVERVIEW.md via Claude Sonnet LLM to understand
+    2. Explore — generates REPO_OVERVIEW.md via the configured LLM to understand
                  project structure, languages, and suggested test commands.
     3. Tests   — auto-detects test framework, sets up an isolated .venv, runs tests
                  inside a sandboxed subprocess. Produces TEST_REPORT.md with a

@@ -94,7 +94,7 @@ oscanner/
   - 仓库探索（AI 生成文档）
   - 自动测试运行
 - **依赖**: 
-  - Claude API（必需）
+  - OpenRouter API（LLM 功能需要）
   - 共享 `backend/evaluator/venv` 虚拟环境
 - **必需性**: ⚠️ **可选**（只有前端 `/runner` 页面需要）
 - **启动方式**: 
@@ -245,7 +245,7 @@ include = ["cli*", "evaluator*", "repos_runner*"]
 ### repos_runner 服务
 - 配置文件：`backend/repos_runner/.env.local`
 - 必需变量：
-  - `ANTHROPIC_API_KEY` 或 `OSCANNER_LLM_API_KEY`（Claude API）
+  - `OPEN_ROUTER_KEY`（LLM API）
 
 ### webapp 前端
 - 配置文件：`frontend/webapp/.env.local`

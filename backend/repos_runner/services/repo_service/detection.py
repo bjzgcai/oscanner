@@ -254,7 +254,7 @@ async def detect_test_commands(overview_path: str) -> Dict[str, Any]:
 
 
 async def _detect_commands_via_llm(overview_content: str) -> Dict[str, Any]:
-    """Parse REPO_OVERVIEW.md with Claude to extract commands."""
+    """Parse REPO_OVERVIEW.md with the configured LLM to extract commands."""
     prompt = f"""Based on this REPO_OVERVIEW.md, identify the commands to run tests.
 
 {overview_content}

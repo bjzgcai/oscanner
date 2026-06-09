@@ -84,13 +84,9 @@ export RUNNER_PUBLIC_BASE_URL=http://localhost:8001
 # Provider credentials. Secrets are optional until an LLM path is used.
 export OPEN_ROUTER_KEY=sk-or-v1-...
 export OPEN_ROUTER_BASE_URL=https://openrouter.ai/api
-export OPEN_ROUTER_PRIMARY_MODEL=anthropic/claude-sonnet-4.6
-export OPEN_ROUTER_FALLBACK_MODEL=anthropic/claude-sonnet-4.6
-export OPEN_ROUTER_FALLBACK_MODELS=anthropic/claude-sonnet-4.6
-export OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
-export ANTHROPIC_API_KEY=...
-export ANTHROPIC_AUTH_TOKEN=...
-export ANTHROPIC_BASE_URL=https://openrouter.ai/api
+export OPEN_ROUTER_PRIMARY_MODEL=deepseek/deepseek-v4-pro
+export OPEN_ROUTER_FALLBACK_MODEL=z-ai/glm-5.1
+export OPEN_ROUTER_FALLBACK_MODELS=z-ai/glm-5.1
 
 # Repository host tokens, used for authenticated clone/API access.
 export GITHUB_TOKEN=...
@@ -98,7 +94,7 @@ export GITEE_TOKEN=...
 export GITEE_ENTERPRISE_TOKEN=...
 
 # LLM model selection.
-export REPOS_RUNNER_LLM_MODEL=claude-sonnet-4-6
+export REPOS_RUNNER_LLM_MODEL=deepseek/deepseek-v4-pro
 export REPOS_RUNNER_OPENCODE_MODEL=openrouter/deepseek/deepseek-v4-pro
 export REPOS_RUNNER_OPENCODE_TIMEOUT=600
 
@@ -579,8 +575,7 @@ uv run python -m repos_runner.server
 
 Static clone and static test detection do not need an LLM key. Exploration
 fallback, LLM test detection, feature extraction, feature coverage, and optional
-runtime compatibility suggestions do. Configure `OPEN_ROUTER_KEY`,
-`ANTHROPIC_AUTH_TOKEN`, or `ANTHROPIC_API_KEY` as appropriate.
+runtime compatibility suggestions do. Configure `OPEN_ROUTER_KEY`.
 
 ### Port Already In Use
 

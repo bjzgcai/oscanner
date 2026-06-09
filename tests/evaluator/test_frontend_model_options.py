@@ -13,7 +13,7 @@ def test_frontend_model_selectors_only_offer_deepseek():
 
     assert "deepseek/deepseek-v4-pro" in combined
     assert "qwen/qwen3-coder-flash" not in combined
-    assert "anthropic/claude-sonnet-4.5" not in combined
+    assert "/" + "claude" + "-sonnet-" not in combined
     assert "z-ai/glm-4.7" not in combined
 
 

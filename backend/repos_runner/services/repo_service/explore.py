@@ -320,10 +320,7 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
 
     clients = _get_api_clients()
     if not clients:
-        raise ValueError(
-            "No API credential available. Set OPEN_ROUTER_KEY (primary), "
-            "ANTHROPIC_AUTH_TOKEN, or ANTHROPIC_API_KEY."
-        )
+        raise ValueError("No API credential available. Set OPEN_ROUTER_KEY.")
 
     attempts = []
     requested_model = _default_requested_model()

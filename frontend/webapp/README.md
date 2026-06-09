@@ -47,7 +47,7 @@ npm start
 ## Features
 
 - **Repository Analysis**: Analyze git repository authors from local commit data
-- **AI-Powered Evaluation**: Six-dimensional skill assessment using Claude 4.5
+- **AI-Powered Evaluation**: Six-dimensional skill assessment using the configured LLM
 - **Caching**: Smart caching system to save API calls and improve performance
 - **Interactive Dashboard**:
   - Radar chart visualization

@@ -18,7 +18,7 @@ from .llm import (
     _get_api_client,
     _message_text_content,
     _messages_create_with_fallback,
-    OPENROUTER_ANTHROPIC_BASE_URL,
+    DEFAULT_OPENROUTER_BASE_URL,
 )
 from .clone import clone_repository
 from .venv import ensure_repo_venv, get_repo_venv_dir
@@ -57,7 +57,7 @@ __all__ = [
     "fetch_gitee_tag_message",
     "workspace_dir_from_repo_key",
     # llm
-    "OPENROUTER_ANTHROPIC_BASE_URL",
+    "DEFAULT_OPENROUTER_BASE_URL",
     "_get_api_client",
     "_message_text_content",
     "_messages_create_with_fallback",

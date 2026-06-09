@@ -161,7 +161,7 @@ oscanner/
 
 **端口**：8001  
 **必需性**：⚠️ 可选（只有前端 `/runner` 页面需要）  
-**依赖**：Claude API（必需）、共享 `backend/evaluator/venv` 虚拟环境
+**依赖**：OpenRouter API（LLM 功能需要）、共享 `backend/evaluator/venv` 虚拟环境
 
 ### 3. frontend/ - 前端应用目录
 

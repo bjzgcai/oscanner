@@ -1,24 +1,23 @@
 """
-Anthropic/OpenRouter API client helpers.
+OpenRouter API client helpers.
 """
 
 import os
 import contextvars
+import json
+import urllib.error
+import urllib.request
+from types import SimpleNamespace
 from typing import Dict, Any, List, Tuple, Optional
 
 
-OPENROUTER_ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
-DEFAULT_OPENROUTER_PRIMARY_MODEL = "anthropic/claude-sonnet-4.6"
-DEFAULT_OPENROUTER_FALLBACK_MODEL = "anthropic/claude-sonnet-4.6"
-DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
+DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api"
+DEFAULT_OPENROUTER_PRIMARY_MODEL = "deepseek/deepseek-v4-pro"
+DEFAULT_OPENROUTER_FALLBACK_MODEL = "z-ai/glm-5.1"
 _TOKEN_USAGE_RECORDS: contextvars.ContextVar[Optional[List[Dict[str, Any]]]] = contextvars.ContextVar(
     "repos_runner_token_usage_records",
     default=None,
 )
-
-
-def _is_truthy(value: str) -> bool:
-    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _env_first_nonempty(*keys: str) -> str:
@@ -31,6 +30,13 @@ def _env_first_nonempty(*keys: str) -> str:
 
 def _split_model_list(raw: str) -> List[str]:
     return [part.strip() for part in (raw or "").split(",") if part.strip()]
+
+
+def _openrouter_api_model_name(model: str) -> str:
+    value = (model or "").strip()
+    if value.startswith("openrouter/"):
+        return value.split("/", 1)[1]
+    return value
 
 
 def _token_count(value: Any) -> Optional[int]:
@@ -243,89 +249,112 @@ def _message_has_text_content(message: Any) -> bool:
     return bool(_message_text_content(message))
 
 
-def _build_anthropic_client(api_key: str = "", auth_token: str = ""):
-    from anthropic import Anthropic
+def _to_namespace(value: Any) -> Any:
+    if isinstance(value, dict):
+        return SimpleNamespace(
+            **{key: _to_namespace(item) for key, item in value.items()}
+        )
+    if isinstance(value, list):
+        return [_to_namespace(item) for item in value]
+    return value
 
-    api_key = api_key.strip()
-    auth_token = auth_token.strip()
 
-    kwargs: Dict[str, Any] = {}
-    if auth_token:
-        # Anthropic-compatible gateways such as OpenRouter expect auth_token.
-        os.environ.pop("ANTHROPIC_API_KEY", None)
-        os.environ["ANTHROPIC_AUTH_TOKEN"] = auth_token
-        kwargs["auth_token"] = auth_token
-    elif api_key:
-        os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
-        os.environ["ANTHROPIC_API_KEY"] = api_key
-        kwargs["api_key"] = api_key
+def _openrouter_chat_url(base_url: str) -> str:
+    base = (base_url or DEFAULT_OPENROUTER_BASE_URL).strip().rstrip("/")
+    if base.endswith("/v1"):
+        return f"{base}/chat/completions"
+    return f"{base}/v1/chat/completions"
+
+
+def _openrouter_error_message(error: urllib.error.HTTPError) -> str:
+    try:
+        body = error.read().decode("utf-8", errors="replace")
+    except Exception:
+        body = ""
+    if not body:
+        return f"HTTP {error.code}"
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        return f"HTTP {error.code}: {body[:500]}"
+    detail = data.get("error") if isinstance(data, dict) else None
+    if isinstance(detail, dict):
+        message = detail.get("message") or detail.get("code") or detail
     else:
-        raise ValueError(
-            "No Anthropic credential available. Set ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY."
+        message = detail or data
+    return f"HTTP {error.code}: {message}"
+
+
+class _OpenRouterStream:
+    def __init__(self, response: Any):
+        self._response = response
+        self.text_stream = [_message_text_content(response)]
+
+    def __enter__(self) -> "_OpenRouterStream":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+    def get_final_message(self) -> Any:
+        return self._response
+
+
+class _OpenRouterMessages:
+    def __init__(self, api_key: str, base_url: str):
+        self._api_key = api_key
+        self._url = _openrouter_chat_url(base_url)
+
+    def create(self, **kwargs: Any) -> Any:
+        body = json.dumps(kwargs).encode("utf-8")
+        request = urllib.request.Request(
+            self._url,
+            data=body,
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                payload = response.read().decode("utf-8")
+        except urllib.error.HTTPError as error:
+            raise RuntimeError(_openrouter_error_message(error)) from error
+        except urllib.error.URLError as error:
+            raise RuntimeError(str(error.reason)) from error
+
+        try:
+            data = json.loads(payload)
+        except json.JSONDecodeError as error:
+            raise RuntimeError("OpenRouter returned invalid JSON") from error
+        choice = (data.get("choices") or [{}])[0] if isinstance(data, dict) else {}
+        message = choice.get("message") if isinstance(choice, dict) else {}
+        content = message.get("content") if isinstance(message, dict) else ""
+        usage = _to_namespace(data.get("usage", {})) if isinstance(data, dict) else None
+        return SimpleNamespace(
+            content=[SimpleNamespace(text=content or "")],
+            usage=usage,
+            raw=_to_namespace(data),
         )
 
-    base_url = os.getenv("ANTHROPIC_BASE_URL")
-    if base_url and base_url.strip():
-        kwargs["base_url"] = base_url.strip()
-    try:
-        return Anthropic(**kwargs)
-    except TypeError:
-        if "auth_token" not in kwargs:
-            raise
-        legacy_kwargs = dict(kwargs)
-        legacy_kwargs["api_key"] = legacy_kwargs.pop("auth_token")
-        return Anthropic(**legacy_kwargs)
+    def stream(self, **kwargs: Any) -> _OpenRouterStream:
+        response = self.create(**kwargs)
+        return _OpenRouterStream(response)
+
+
+class _OpenRouterClient:
+    def __init__(self, api_key: str, base_url: str):
+        self.messages = _OpenRouterMessages(api_key=api_key, base_url=base_url)
 
 
 def _build_openrouter_client(api_key: str):
-    from anthropic import Anthropic
-
     openrouter_base_url = (
         _env_first_nonempty("OPEN_ROUTER_BASE_URL", "OPENROUTER_BASE_URL")
-        or OPENROUTER_ANTHROPIC_BASE_URL
+        or DEFAULT_OPENROUTER_BASE_URL
     )
-    # The Anthropic SDK still consults process env while preparing auth headers.
-    # When this service is pointed at OpenRouter, a stale ANTHROPIC_API_KEY from
-    # the parent shell can silently constrain requests to Anthropic providers.
-    os.environ.pop("ANTHROPIC_API_KEY", None)
-    os.environ["ANTHROPIC_AUTH_TOKEN"] = api_key
-    # Important: use auth_token for OpenRouter's Anthropic-compatible endpoint.
-    # Using api_key here can implicitly constrain routing to Anthropic providers only.
-    try:
-        return Anthropic(auth_token=api_key, base_url=openrouter_base_url)
-    except TypeError:
-        # Backward compatibility for older SDKs.
-        return Anthropic(api_key=api_key, base_url=openrouter_base_url)
-
-
-def _append_anthropic_clients(
-    clients: List[Tuple[str, Any]],
-    auth_token: str,
-    api_key: str,
-) -> None:
-    if auth_token:
-        clients.append(
-            ("ANTHROPIC_AUTH_TOKEN", _build_anthropic_client(auth_token=auth_token))
-        )
-    if api_key and api_key != auth_token:
-        clients.append(("ANTHROPIC_API_KEY", _build_anthropic_client(api_key=api_key)))
-
-
-def _normalize_anthropic_model_name(model: str) -> str:
-    value = (model or "").strip()
-    if not value:
-        return DEFAULT_ANTHROPIC_MODEL
-    if value == "anthropic/claude-sonnet-4.6":
-        return DEFAULT_ANTHROPIC_MODEL
-    if value == "claude-sonnet-4.6":
-        return DEFAULT_ANTHROPIC_MODEL
-    if value.startswith("anthropic/"):
-        return value.split("/", 1)[1]
-    # Direct Anthropic provider fallback cannot serve non-Anthropic names
-    # like "openai/..." or "qwen/...". Fall back to a Claude default.
-    if "/" in value:
-        return DEFAULT_ANTHROPIC_MODEL
-    return value
+    return _OpenRouterClient(api_key=api_key.strip(), base_url=openrouter_base_url)
 
 
 def _openrouter_model_chain(requested_model: str) -> List[str]:
@@ -333,7 +362,9 @@ def _openrouter_model_chain(requested_model: str) -> List[str]:
         "OPEN_ROUTER_PRIMARY_MODEL",
         "OPENROUTER_PRIMARY_MODEL",
     )
-    primary = explicit_primary or DEFAULT_OPENROUTER_PRIMARY_MODEL
+    primary = _openrouter_api_model_name(
+        explicit_primary or DEFAULT_OPENROUTER_PRIMARY_MODEL
+    )
     fallback_raw = _env_first_nonempty(
         "OPEN_ROUTER_FALLBACK_MODEL",
         "OPENROUTER_FALLBACK_MODEL",
@@ -344,27 +375,27 @@ def _openrouter_model_chain(requested_model: str) -> List[str]:
         "OSCANNER_LLM_FALLBACK_MODELS",
     )
 
-    fallback_models = _split_model_list(fallback_raw)
+    fallback_models = [
+        _openrouter_api_model_name(model)
+        for model in _split_model_list(fallback_raw)
+    ]
     if not fallback_models:
         fallback_models = [DEFAULT_OPENROUTER_FALLBACK_MODEL]
-    extra_fallbacks = _split_model_list(extra_fallbacks_raw)
+    extra_fallbacks = [
+        _openrouter_api_model_name(model)
+        for model in _split_model_list(extra_fallbacks_raw)
+    ]
 
-    requested = (requested_model or "").strip()
-    defaults = {
-        "",
-        "claude-sonnet-4-6",
-        "claude-sonnet-4.6",
-        "anthropic/claude-sonnet-4.6",
-    }
+    requested = _openrouter_api_model_name(requested_model)
 
     models: List[str] = []
     if explicit_primary:
         if primary:
             models.append(primary)
-        if requested and requested not in defaults and requested not in models:
+        if requested and requested not in models:
             models.append(requested)
     else:
-        if requested and requested not in defaults:
+        if requested:
             models.append(requested)
         if primary and primary not in models:
             models.append(primary)
@@ -380,13 +411,13 @@ def _get_model_candidates(provider_name: str, requested_model: str = "") -> List
     Return model attempts for a provider.
 
     OPEN_ROUTER_KEY:
-      1) OPEN_ROUTER_PRIMARY_MODEL (default anthropic/claude-sonnet-4.6)
+      1) requested model / OPEN_ROUTER_PRIMARY_MODEL (default deepseek/deepseek-v4-pro)
       2) OPEN_ROUTER_FALLBACK_MODEL / OPEN_ROUTER_FALLBACK_MODELS
       (env-overridable via OPEN_ROUTER_PRIMARY_MODEL / OPEN_ROUTER_FALLBACK_MODEL)
     """
     if provider_name == "OPEN_ROUTER_KEY":
         return _openrouter_model_chain(requested_model)
-    return [_normalize_anthropic_model_name(requested_model)]
+    return []
 
 
 def _get_api_clients() -> List[Tuple[str, Any]]:
@@ -395,60 +426,27 @@ def _get_api_clients() -> List[Tuple[str, Any]]:
 
     Priority:
     1) OPEN_ROUTER_KEY
-    2) ANTHROPIC_AUTH_TOKEN
-    3) ANTHROPIC_API_KEY
-
-    To allow direct Anthropic-compatible fallback when OpenRouter is configured, set:
-    OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true
     """
     openrouter_key = _env_first_nonempty(
         "OPEN_ROUTER_KEY",
         "OPENROUTER_API_KEY",
         "OPENROUTER_KEY",
     )
-    anthropic_auth_token = _env_first_nonempty("ANTHROPIC_AUTH_TOKEN")
-    anthropic_key = _env_first_nonempty("ANTHROPIC_API_KEY")
 
     clients: List[Tuple[str, Any]] = []
 
     if openrouter_key:
         clients.append(("OPEN_ROUTER_KEY", _build_openrouter_client(openrouter_key)))
-        allow_anthropic_fallback = _is_truthy(
-            _env_first_nonempty("OPEN_ROUTER_FALLBACK_TO_ANTHROPIC")
-        )
-        if allow_anthropic_fallback:
-            _append_anthropic_clients(clients, anthropic_auth_token, anthropic_key)
-        return clients
-
-    _append_anthropic_clients(clients, anthropic_auth_token, anthropic_key)
 
     return clients
 
 
 def _get_api_client(use_fallback: bool = False):
-    """Return a configured Anthropic client.
-
-    Default priority is OPEN_ROUTER_KEY first.
-    If OPEN_ROUTER_KEY is set, direct Anthropic-compatible credentials are only used when
-    OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true.
-    """
-    if use_fallback:
-        anthropic_auth_token = _env_first_nonempty("ANTHROPIC_AUTH_TOKEN")
-        anthropic_key = _env_first_nonempty("ANTHROPIC_API_KEY")
-        if anthropic_auth_token:
-            return _build_anthropic_client(auth_token=anthropic_auth_token)
-        if anthropic_key:
-            return _build_anthropic_client(api_key=anthropic_key)
-        raise ValueError(
-            "No fallback API credential available. Set ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY."
-        )
+    """Return a configured OpenRouter client."""
 
     clients = _get_api_clients()
     if not clients:
-        raise ValueError(
-            "No API credential available. Set OPEN_ROUTER_KEY (primary), "
-            "ANTHROPIC_AUTH_TOKEN, or ANTHROPIC_API_KEY."
-        )
+        raise ValueError("No API credential available. Set OPEN_ROUTER_KEY.")
     return clients[0][1]
 
 
@@ -457,15 +455,10 @@ def _messages_create_with_fallback(**kwargs):
     Create a messages response using provider priority.
 
     OPEN_ROUTER_KEY is tried first when available.
-    ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY are only attempted as fallback if enabled via
-    OPEN_ROUTER_FALLBACK_TO_ANTHROPIC=true.
     """
     clients = _get_api_clients()
     if not clients:
-        raise ValueError(
-            "No API credential available. Set OPEN_ROUTER_KEY (primary), "
-            "ANTHROPIC_AUTH_TOKEN, or ANTHROPIC_API_KEY."
-        )
+        raise ValueError("No API credential available. Set OPEN_ROUTER_KEY.")
 
     request_kwargs = dict(kwargs)
     requested_model = str(request_kwargs.pop("model", "") or "")
