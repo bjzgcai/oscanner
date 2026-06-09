@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Space, Button, Dropdown } from 'antd';
-import { ApiOutlined, SettingOutlined, RiseOutlined, CodeOutlined } from '@ant-design/icons';
+import { ApiOutlined, SettingOutlined, RiseOutlined, CodeOutlined, BranchesOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import { LOCALES } from '../i18n';
@@ -20,7 +20,8 @@ export default function Navigation() {
     // { path: '/', label: t('nav.analysis'), icon: <HomeOutlined /> },
     // { path: '/validation', label: t('nav.validation'), icon: <CheckCircleOutlined /> },
     { path: '/trajectory', label: t('nav.trajectory'), icon: <RiseOutlined /> },
-    { path: '/runner', label: t('runner.title'), icon: <CodeOutlined /> },
+    { path: '/admin/repo-test-runner', label: t('runner.title'), icon: <CodeOutlined /> },
+    { path: '/admin/gitee-github', label: '全 github/gitee评估', icon: <BranchesOutlined /> },
   ];
 
   // Show config controls only on analysis and validation pages
