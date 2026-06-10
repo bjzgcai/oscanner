@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import quote
 
 import asyncio
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 from evaluator.config import DEFAULT_LLM_MODEL, get_github_token, get_llm_api_key
 from evaluator.paths import get_data_dir
@@ -35,10 +37,21 @@ DEFAULT_EVIDENCE_SOURCES = [
     "approvals",
     "maintainer_decisions",
 ]
-MAX_COMMITS_PER_REPO_EMAIL = 200
+MAX_COMMITS_PER_REPO_EMAIL = 100
 GITHUB_API_BASE = "https://api.github.com"
 GITHUB_SEARCH_COMMITS_PER_ROLE = 10
+GITHUB_MAX_SEARCH_COMMITS_PER_ROLE = 100
 GITHUB_SEARCH_EVIDENCE_PER_QUERY = 100
+
+
+def _wants_sse(request: Optional[Request]) -> bool:
+    accept = request.headers.get("accept", "").lower() if request is not None else ""
+    return "text/event-stream" in accept
+
+
+def _format_sse_event(event: str, data: Dict[str, Any]) -> str:
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {event}\ndata: {payload}\n\n"
 
 
 def _parse_email_list(value: Any) -> List[str]:
@@ -696,10 +709,7 @@ def _fetch_global_github_evidence(
     return commits_by_email, matched_repos, _dedupe_by_key(evidence, ("source", "url", "github_login", "commit_sha")), warnings
 
 
-@router.post("/api/github/evaluate")
-@router.post("/api/gitee-github/evaluate", deprecated=True)
-async def evaluate_global_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
-    """Evaluate a contributor across globally visible GitHub repositories by commit email."""
+def _prepare_global_github_evaluation(request_body: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(request_body, dict):
         raise HTTPException(status_code=400, detail="Request body must be a JSON object")
 
@@ -718,7 +728,7 @@ async def evaluate_global_github(request_body: Dict[str, Any]) -> Dict[str, Any]
     github_commit_limit = request_body.get("max_github_commits_per_role", GITHUB_SEARCH_COMMITS_PER_ROLE)
     github_evidence_limit = request_body.get("max_github_evidence_per_query", GITHUB_SEARCH_EVIDENCE_PER_QUERY)
     try:
-        github_commit_limit = min(1000, max(1, int(github_commit_limit)))
+        github_commit_limit = min(GITHUB_MAX_SEARCH_COMMITS_PER_ROLE, max(1, int(github_commit_limit)))
         github_evidence_limit = min(100, max(1, int(github_evidence_limit)))
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="GitHub limits must be integers")
@@ -728,10 +738,82 @@ async def evaluate_global_github(request_body: Dict[str, Any]) -> Dict[str, Any]
     except PluginLoadError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    commits_by_email, matched_repos, collaboration_items, warnings = _fetch_global_github_evidence(
+    return {
+        "api_key": api_key,
+        "emails": emails,
+        "model": model,
+        "plugin_id": plugin_id,
+        "language": language,
+        "github_commit_limit": github_commit_limit,
+        "github_evidence_limit": github_evidence_limit,
+        "meta": meta,
+        "scan_mod": scan_mod,
+        "scan_path": scan_path,
+    }
+
+
+def _evaluate_global_github_commits(
+    *,
+    api_key: str,
+    emails: List[str],
+    model: str,
+    plugin_id: str,
+    language: str,
+    meta: Any,
+    scan_mod: Any,
+    all_commits: List[Dict[str, Any]],
+    collaboration_items: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    collaboration_payload = {
+        "requested_sources": DEFAULT_EVIDENCE_SOURCES,
+        "items": collaboration_items,
+    }
+    evaluator = scan_mod.create_commit_evaluator(
+        data_dir=str(get_data_dir() / "github_global"),
+        api_key=api_key,
+        model=model,
+        language=language,
+        collaboration_evidence=collaboration_payload,
+    )
+    evaluation = evaluator.evaluate_engineer(
+        commits=all_commits,
+        username=",".join(emails),
+        max_commits=150,
+        load_files=False,
+    )
+    evaluation["email"] = emails[0]
+    evaluation["emails"] = emails
+    evaluation["plugin"] = plugin_id
+    evaluation["scope"] = "github_global"
+    if meta:
+        evaluation["plugin_version"] = meta.version
+    evidence_links = _global_github_evidence_links(all_commits)
+    if evidence_links:
+        evaluation["evidence_links"] = evidence_links
+    return evaluation
+
+
+async def _build_global_github_evaluation_payload(
+    request_body: Dict[str, Any],
+    *,
+    progress: Optional[Callable[[str, Dict[str, Any]], None]] = None,
+) -> Dict[str, Any]:
+    prepared = _prepare_global_github_evaluation(request_body)
+    emails = prepared["emails"]
+
+    if progress:
+        progress("section", {
+            "title": "采集 GitHub 证据",
+            "status": "running",
+            "emails": emails,
+            "max_github_commits_per_role": prepared["github_commit_limit"],
+        })
+
+    commits_by_email, matched_repos, collaboration_items, warnings = await asyncio.to_thread(
+        _fetch_global_github_evidence,
         emails,
-        max_commits_per_role=github_commit_limit,
-        max_evidence_per_query=github_evidence_limit,
+        max_commits_per_role=prepared["github_commit_limit"],
+        max_evidence_per_query=prepared["github_evidence_limit"],
     )
     payload = _github_global_analysis_payload(
         emails=emails,
@@ -742,48 +824,161 @@ async def evaluate_global_github(request_body: Dict[str, Any]) -> Dict[str, Any]
     )
 
     all_commits = payload["commits"]
+    if progress:
+        progress("section", {
+            "title": "GitHub 证据采集完成",
+            "status": "done",
+            "matched_repo_count": payload["summary"]["matched_repo_count"],
+            "commit_count": payload["summary"]["commit_count"],
+            "collaboration_evidence_count": payload["summary"]["collaboration_evidence_count"],
+        })
+
     if not all_commits:
         raise HTTPException(status_code=404, detail="No GitHub commits found for the supplied email identities")
 
-    collaboration_payload = {
-        "requested_sources": DEFAULT_EVIDENCE_SOURCES,
-        "items": collaboration_items,
-    }
+    if progress:
+        progress("section", {
+            "title": "运行能力评估",
+            "status": "running",
+            "commit_count": len(all_commits),
+            "plugin": prepared["plugin_id"],
+        })
 
-    def _run_evaluation() -> Dict[str, Any]:
-        evaluator = scan_mod.create_commit_evaluator(
-            data_dir=str(get_data_dir() / "github_global"),
-            api_key=api_key,
-            model=model,
-            language=language,
-            collaboration_evidence=collaboration_payload,
-        )
-        evaluation = evaluator.evaluate_engineer(
-            commits=all_commits,
-            username=",".join(emails),
-            max_commits=150,
-            load_files=False,
-        )
-        evaluation["email"] = emails[0]
-        evaluation["emails"] = emails
-        evaluation["plugin"] = plugin_id
-        evaluation["scope"] = "github_global"
-        if meta:
-            evaluation["plugin_version"] = meta.version
-        evidence_links = _global_github_evidence_links(all_commits)
-        if evidence_links:
-            evaluation["evidence_links"] = evidence_links
-        return evaluation
-
-    evaluation = await asyncio.to_thread(_run_evaluation)
+    evaluation = await asyncio.to_thread(
+        _evaluate_global_github_commits,
+        api_key=prepared["api_key"],
+        emails=emails,
+        model=prepared["model"],
+        plugin_id=prepared["plugin_id"],
+        language=prepared["language"],
+        meta=prepared["meta"],
+        scan_mod=prepared["scan_mod"],
+        all_commits=all_commits,
+        collaboration_items=collaboration_items,
+    )
     payload["evaluation"] = evaluation
     payload["metadata"] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "source": "github_global_email_evaluation",
-        "plugin": plugin_id,
-        "scan": str(scan_path),
+        "plugin": prepared["plugin_id"],
+        "scan": str(prepared["scan_path"]),
     }
+
+    if progress:
+        progress("section", {
+            "title": "能力评估完成",
+            "status": "done",
+            "total_commits_analyzed": evaluation.get("total_commits_analyzed"),
+        })
+
     return payload
+
+
+async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
+    try:
+        prepared = _prepare_global_github_evaluation(request_body)
+        emails = prepared["emails"]
+
+        yield _format_sse_event("section", {
+            "title": "准备 GitHub 全局评估",
+            "status": "running",
+            "emails": emails,
+        })
+
+        yield _format_sse_event("section", {
+            "title": "采集 GitHub 证据",
+            "status": "running",
+            "emails": emails,
+            "max_github_commits_per_role": prepared["github_commit_limit"],
+        })
+
+        commits_by_email, matched_repos, collaboration_items, warnings = await asyncio.to_thread(
+            _fetch_global_github_evidence,
+            emails,
+            max_commits_per_role=prepared["github_commit_limit"],
+            max_evidence_per_query=prepared["github_evidence_limit"],
+        )
+        payload = _github_global_analysis_payload(
+            emails=emails,
+            commits_by_email=commits_by_email,
+            matched_repos=matched_repos,
+            collaboration_items=collaboration_items,
+            warnings=warnings,
+        )
+
+        yield _format_sse_event("section", {
+            "title": "GitHub 证据采集完成",
+            "status": "done",
+            "matched_repo_count": payload["summary"]["matched_repo_count"],
+            "commit_count": payload["summary"]["commit_count"],
+            "collaboration_evidence_count": payload["summary"]["collaboration_evidence_count"],
+        })
+
+        all_commits = payload["commits"]
+        if not all_commits:
+            raise HTTPException(status_code=404, detail="No GitHub commits found for the supplied email identities")
+
+        yield _format_sse_event("section", {
+            "title": "运行能力评估",
+            "status": "running",
+            "commit_count": len(all_commits),
+            "plugin": prepared["plugin_id"],
+        })
+
+        evaluation = await asyncio.to_thread(
+            _evaluate_global_github_commits,
+            api_key=prepared["api_key"],
+            emails=emails,
+            model=prepared["model"],
+            plugin_id=prepared["plugin_id"],
+            language=prepared["language"],
+            meta=prepared["meta"],
+            scan_mod=prepared["scan_mod"],
+            all_commits=all_commits,
+            collaboration_items=collaboration_items,
+        )
+        payload["evaluation"] = evaluation
+        payload["metadata"] = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source": "github_global_email_evaluation",
+            "plugin": prepared["plugin_id"],
+            "scan": str(prepared["scan_path"]),
+        }
+
+        yield _format_sse_event("section", {
+            "title": "能力评估完成",
+            "status": "done",
+            "total_commits_analyzed": evaluation.get("total_commits_analyzed"),
+        })
+        yield _format_sse_event("result", payload)
+    except HTTPException as exc:
+        yield _format_sse_event("error", {
+            "message": exc.detail,
+            "status_code": exc.status_code,
+        })
+    except Exception as exc:
+        yield _format_sse_event("error", {
+            "message": str(exc),
+            "status_code": 500,
+        })
+
+
+@router.post("/api/github/evaluate")
+@router.post("/api/gitee-github/evaluate", deprecated=True)
+async def evaluate_global_github(request_body: Dict[str, Any], request: Request = None) -> Any:
+    """Evaluate a contributor across globally visible GitHub repositories by commit email."""
+    if _wants_sse(request):
+        return StreamingResponse(
+            _stream_global_github_evaluation(request_body),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    return await _build_global_github_evaluation_payload(request_body)
 
 
 @router.post("/api/github/analyze")
@@ -800,7 +995,7 @@ async def analyze_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
     github_commit_limit = request_body.get("max_github_commits_per_role", GITHUB_SEARCH_COMMITS_PER_ROLE)
     github_evidence_limit = request_body.get("max_github_evidence_per_query", GITHUB_SEARCH_EVIDENCE_PER_QUERY)
     try:
-        github_commit_limit = min(1000, max(1, int(github_commit_limit)))
+        github_commit_limit = min(GITHUB_MAX_SEARCH_COMMITS_PER_ROLE, max(1, int(github_commit_limit)))
         github_evidence_limit = min(100, max(1, int(github_evidence_limit)))
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="GitHub limits must be integers")

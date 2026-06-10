@@ -35,6 +35,7 @@ const { Title, Paragraph, Text } = Typography;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const DEFAULT_EMAILS_TEXT = "nkwuyanbiao@163.com";
 const DEFAULT_COMMIT_LIMIT = 10;
+const MAX_COMMIT_LIMIT = 100;
 
 interface AnalysisCommit {
   platform: string;
@@ -115,6 +116,87 @@ interface AnalysisResult {
   };
   warnings: string[];
   limitations: string[];
+}
+
+interface StreamEvent {
+  event: string;
+  data: unknown;
+}
+
+function parseSseFrame(frame: string): StreamEvent {
+  let event = "message";
+  const dataLines: string[] = [];
+
+  frame.split(/\r?\n/).forEach((line) => {
+    if (!line || line.startsWith(":")) return;
+    if (line.startsWith("event:")) {
+      event = line.slice(6).trim() || "message";
+      return;
+    }
+    if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trimStart());
+    }
+  });
+
+  const rawData = dataLines.join("\n");
+  let data: unknown = rawData;
+  if (rawData) {
+    try {
+      data = JSON.parse(rawData);
+    } catch {
+      data = rawData;
+    }
+  }
+  return { event, data };
+}
+
+function parseSseBuffer(buffer: string): {
+  events: StreamEvent[];
+  remaining: string;
+} {
+  const normalized = buffer.replace(/\r\n/g, "\n");
+  const frames = normalized.split("\n\n");
+  const remaining = frames.pop() || "";
+  const events = frames
+    .filter((frame) => frame.trim())
+    .map(parseSseFrame);
+  return { events, remaining };
+}
+
+async function readResponseError(response: Response): Promise<never> {
+  let messageText = `HTTP ${response.status}: ${response.statusText}`;
+  try {
+    const text = await response.text();
+    if (text) {
+      try {
+        const data = JSON.parse(text);
+        messageText = data?.detail || data?.message || messageText;
+      } catch {
+        messageText = text.substring(0, 400);
+      }
+    }
+  } catch {
+    // Keep the HTTP status fallback when the body cannot be read.
+  }
+  throw new Error(messageText);
+}
+
+async function readJsonResponse(response: Response): Promise<AnalysisResult> {
+  const text = await response.text();
+  if (!text.trim()) {
+    throw new Error("响应内容为空");
+  }
+  try {
+    return JSON.parse(text) as AnalysisResult;
+  } catch {
+    throw new Error(text.substring(0, 400));
+  }
+}
+
+function streamDataObject(data: unknown): Record<string, unknown> {
+  return data && typeof data === "object"
+    ? (data as Record<string, unknown>)
+    : {};
 }
 
 function splitEmails(value: string): { emails: string[]; error: string } {
@@ -474,6 +556,7 @@ export default function GithubGlobalAnalysis() {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [progressText, setProgressText] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const apiBase = getApiBaseUrl();
 
@@ -490,13 +573,20 @@ export default function GithubGlobalAnalysis() {
 
     setLoading(true);
     setError("");
+    setProgressText("准备 GitHub 全局评估...");
     setResult(null);
 
     try {
-      const maxGithubCommitsPerRole = commitLimit ?? DEFAULT_COMMIT_LIMIT;
+      const maxGithubCommitsPerRole = Math.min(
+        MAX_COMMIT_LIMIT,
+        Math.max(1, commitLimit ?? DEFAULT_COMMIT_LIMIT),
+      );
       const response = await fetch(`${apiBase}/api/github/evaluate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
         body: JSON.stringify({
           emails: parsed.emails.join(","),
           max_github_commits_per_role: maxGithubCommitsPerRole,
@@ -505,16 +595,73 @@ export default function GithubGlobalAnalysis() {
           language: locale,
         }),
       });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.detail || data.message || "评估失败");
+      if (!response.ok) {
+        await readResponseError(response);
       }
-      setResult(data as AnalysisResult);
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.toLowerCase().includes("text/event-stream")) {
+        const data = await readJsonResponse(response);
+        if (!data.success) {
+          throw new Error("评估失败");
+        }
+        setResult(data);
+        message.success("评估完成");
+        return;
+      }
+      if (!response.body) {
+        throw new Error("当前浏览器不支持流式响应读取");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: AnalysisResult | null = null;
+
+      const handleEvent = ({ event, data }: StreamEvent) => {
+        const eventData = streamDataObject(data);
+        if (event === "section" && eventData.title) {
+          const suffix =
+            eventData.status === "done"
+              ? "完成"
+              : eventData.status === "running"
+                ? "..."
+                : "";
+          setProgressText(`${String(eventData.title)}${suffix}`);
+          return;
+        }
+        if (event === "result") {
+          finalResult = data as AnalysisResult;
+          setResult(finalResult);
+          return;
+        }
+        if (event === "error") {
+          throw new Error(String(eventData.message || "评估失败"));
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parsedBuffer = parseSseBuffer(buffer);
+        buffer = parsedBuffer.remaining;
+        parsedBuffer.events.forEach(handleEvent);
+      }
+
+      buffer += decoder.decode();
+      if (buffer.trim()) {
+        parseSseBuffer(`${buffer}\n\n`).events.forEach(handleEvent);
+      }
+
+      if (!finalResult?.success) {
+        throw new Error("评估失败");
+      }
       message.success("评估完成");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
+      setProgressText("");
     }
   };
 
@@ -687,9 +834,9 @@ export default function GithubGlobalAnalysis() {
                 <Tooltip
                   title={
                     <span>
-                      默认 10。该值按每个邮箱、每种提交角色分别限制 GitHub
-                      commit 搜索数量： author-email 最多 10 条，committer-email
-                      最多 10 条，之后按 SHA 去重。 PR/Issue
+                      默认 10，最多 100。该值按每个邮箱、每种提交角色分别限制 GitHub
+                      commit 搜索数量： author-email 与 committer-email
+                      分别按该数量采集，之后按 SHA 去重。 PR/Issue
                       协作证据使用单独的默认上限：每个 GitHub
                       login、每类搜索最多 100 条， 包括创建/讨论的 PR、reviewed
                       PR、merged PR、创建/评论的 issue。 与命中 commit 关联的 PR
@@ -708,11 +855,15 @@ export default function GithubGlobalAnalysis() {
               <InputNumber
                 size="large"
                 min={1}
-                max={1000}
+                max={MAX_COMMIT_LIMIT}
                 precision={0}
                 value={commitLimit}
                 onChange={(value) =>
-                  setCommitLimit(typeof value === "number" ? value : null)
+                  setCommitLimit(
+                    typeof value === "number"
+                      ? Math.min(MAX_COMMIT_LIMIT, Math.max(1, value))
+                      : null,
+                  )
                 }
               />
               <Text type="secondary">每个邮箱、每种角色最多采集数量</Text>
@@ -725,6 +876,7 @@ export default function GithubGlobalAnalysis() {
           )}
         </Card>
 
+        {progressText && <Alert type="info" showIcon message={progressText} />}
         {error && <Alert type="error" showIcon message={error} />}
 
         {result && (
