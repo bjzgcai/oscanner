@@ -1,4 +1,4 @@
-"""Cross-platform GitHub/Gitee evidence aggregation routes."""
+"""GitHub global evidence aggregation routes."""
 
 from __future__ import annotations
 
@@ -7,11 +7,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
+import asyncio
 import httpx
 from fastapi import APIRouter, HTTPException
 
-from evaluator.config import get_github_token
+from evaluator.config import DEFAULT_LLM_MODEL, get_github_token, get_llm_api_key
 from evaluator.paths import get_data_dir
+from evaluator.plugin_registry import PluginLoadError, load_scan_module
+from evaluator.services import resolve_plugin_id
 from evaluator.services.collaboration_evidence import fetch_collaboration_evidence
 from evaluator.utils import (
     get_author_from_commit,
@@ -34,7 +37,7 @@ DEFAULT_EVIDENCE_SOURCES = [
 ]
 MAX_COMMITS_PER_REPO_EMAIL = 200
 GITHUB_API_BASE = "https://api.github.com"
-GITHUB_SEARCH_COMMITS_PER_ROLE = 1000
+GITHUB_SEARCH_COMMITS_PER_ROLE = 10
 GITHUB_SEARCH_EVIDENCE_PER_QUERY = 100
 
 
@@ -190,6 +193,18 @@ def _serialize_commit(
     sha = _commit_sha(commit)
     message = _commit_message(commit).strip()
     matched_roles = _matched_roles_for_email(commit, matched_email)
+    git_author = {
+        "name": _identity_name(commit, "author"),
+        "email": _identity_email(commit, "author"),
+        "date": _identity_date(commit, "author"),
+        "github_login": _identity_login(commit, "author") if platform == "github" else "",
+    }
+    git_committer = {
+        "name": _identity_name(commit, "committer"),
+        "email": _identity_email(commit, "committer"),
+        "date": _identity_date(commit, "committer"),
+        "github_login": _identity_login(commit, "committer") if platform == "github" else "",
+    }
     return {
         "platform": platform,
         "owner": owner,
@@ -201,21 +216,16 @@ def _serialize_commit(
         "message": message,
         "title": message.splitlines()[0] if message else "",
         "author": get_author_from_commit(commit) or "",
+        "commit": {
+            "author": git_author,
+            "committer": git_committer,
+            "message": message,
+        },
         "emails": get_emails_from_commit(commit),
         "matched_email": matched_email,
         "matched_roles": matched_roles,
-        "git_author": {
-            "name": _identity_name(commit, "author"),
-            "email": _identity_email(commit, "author"),
-            "date": _identity_date(commit, "author"),
-            "github_login": _identity_login(commit, "author") if platform == "github" else "",
-        },
-        "git_committer": {
-            "name": _identity_name(commit, "committer"),
-            "email": _identity_email(commit, "committer"),
-            "date": _identity_date(commit, "committer"),
-            "github_login": _identity_login(commit, "committer") if platform == "github" else "",
-        },
+        "git_author": git_author,
+        "git_committer": git_committer,
         "date": _commit_date(commit),
         "url": _commit_url(platform, owner, repo, sha, commit),
         "stats": _commit_stats(commit),
@@ -537,6 +547,81 @@ def _github_commit_linked_evidence(
     return _dedupe_by_key(evidence, ("source", "url", "commit_sha"))
 
 
+def _global_github_evidence_links(commits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    links: List[Dict[str, Any]] = []
+    for commit in commits:
+        sha = str(commit.get("sha") or "").strip()
+        url = str(commit.get("url") or "").strip()
+        repo_url = str(commit.get("repo_url") or "").strip()
+        if sha and url:
+            links.append({
+                "type": "commit",
+                "label": f"{commit.get('repo_full_name') or 'github'}@{sha[:8]}",
+                "sha": sha,
+                "url": url,
+            })
+
+        for file_item in commit.get("files") or []:
+            if isinstance(file_item, dict):
+                path = str(file_item.get("filename") or file_item.get("path") or "").strip().strip("/")
+            else:
+                path = str(file_item or "").strip().strip("/")
+            if not sha or not repo_url or not path:
+                continue
+            links.append({
+                "type": "file",
+                "label": path,
+                "path": path,
+                "commit_sha": sha,
+                "url": f"{repo_url}/blob/{quote(sha, safe='')}/{quote(path, safe='/')}",
+            })
+
+    return _dedupe_by_key(links, ("type", "url", "sha", "commit_sha", "path"))[:500]
+
+
+def _github_global_analysis_payload(
+    *,
+    emails: List[str],
+    commits_by_email: Dict[str, List[Dict[str, Any]]],
+    matched_repos: Dict[str, Dict[str, Any]],
+    collaboration_items: List[Dict[str, Any]],
+    warnings: List[str],
+) -> Dict[str, Any]:
+    for email in emails:
+        commits_by_email[email].sort(key=_sort_key, reverse=True)
+
+    collaboration_items.sort(key=_sort_key, reverse=True)
+    all_commits = [
+        commit
+        for email in emails
+        for commit in commits_by_email[email]
+    ]
+    all_commits = _dedupe_by_key(all_commits, ("platform", "repo_full_name", "sha"))
+    all_commits.sort(key=_sort_key, reverse=True)
+
+    return {
+        "success": True,
+        "emails": emails,
+        "scope": "github_global",
+        "repos_scanned": len(matched_repos),
+        "matched_repos": sorted(matched_repos.values(), key=lambda item: item["repo_full_name"]),
+        "summary": {
+            "matched_repo_count": len(matched_repos),
+            "commit_count": len(all_commits),
+            "collaboration_evidence_count": len(collaboration_items),
+        },
+        "commits_by_email": commits_by_email,
+        "commits": all_commits,
+        "collaboration_evidence": collaboration_items,
+        "warnings": warnings,
+        "limitations": [
+            "GitHub commits are searched globally with author-email and committer-email qualifiers.",
+            "GitHub issue/PR/review evidence uses GitHub logins resolved from matching commits; email-only accounts with no resolved login may only have commit and commit-associated PR evidence.",
+            "GitHub search is limited to repositories visible to the configured token and to repository default branches.",
+        ],
+    }
+
+
 def _fetch_global_github_evidence(
     emails: List[str],
     *,
@@ -611,8 +696,99 @@ def _fetch_global_github_evidence(
     return commits_by_email, matched_repos, _dedupe_by_key(evidence, ("source", "url", "github_login", "commit_sha")), warnings
 
 
-@router.post("/api/gitee-github/analyze")
-async def analyze_gitee_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
+@router.post("/api/github/evaluate")
+@router.post("/api/gitee-github/evaluate", deprecated=True)
+async def evaluate_global_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
+    """Evaluate a contributor across globally visible GitHub repositories by commit email."""
+    if not isinstance(request_body, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object")
+
+    api_key = get_llm_api_key()
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init).",
+        )
+
+    emails = _parse_email_list(request_body.get("emails"))
+    model = str(request_body.get("model") or DEFAULT_LLM_MODEL)
+    plugin_id = resolve_plugin_id(str(request_body.get("plugin") or ""))
+    language = str(request_body.get("language") or "en-US")
+
+    github_commit_limit = request_body.get("max_github_commits_per_role", GITHUB_SEARCH_COMMITS_PER_ROLE)
+    github_evidence_limit = request_body.get("max_github_evidence_per_query", GITHUB_SEARCH_EVIDENCE_PER_QUERY)
+    try:
+        github_commit_limit = min(1000, max(1, int(github_commit_limit)))
+        github_evidence_limit = min(100, max(1, int(github_evidence_limit)))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="GitHub limits must be integers")
+
+    try:
+        meta, scan_mod, scan_path = load_scan_module(plugin_id)
+    except PluginLoadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    commits_by_email, matched_repos, collaboration_items, warnings = _fetch_global_github_evidence(
+        emails,
+        max_commits_per_role=github_commit_limit,
+        max_evidence_per_query=github_evidence_limit,
+    )
+    payload = _github_global_analysis_payload(
+        emails=emails,
+        commits_by_email=commits_by_email,
+        matched_repos=matched_repos,
+        collaboration_items=collaboration_items,
+        warnings=warnings,
+    )
+
+    all_commits = payload["commits"]
+    if not all_commits:
+        raise HTTPException(status_code=404, detail="No GitHub commits found for the supplied email identities")
+
+    collaboration_payload = {
+        "requested_sources": DEFAULT_EVIDENCE_SOURCES,
+        "items": collaboration_items,
+    }
+
+    def _run_evaluation() -> Dict[str, Any]:
+        evaluator = scan_mod.create_commit_evaluator(
+            data_dir=str(get_data_dir() / "github_global"),
+            api_key=api_key,
+            model=model,
+            language=language,
+            collaboration_evidence=collaboration_payload,
+        )
+        evaluation = evaluator.evaluate_engineer(
+            commits=all_commits,
+            username=",".join(emails),
+            max_commits=150,
+            load_files=False,
+        )
+        evaluation["email"] = emails[0]
+        evaluation["emails"] = emails
+        evaluation["plugin"] = plugin_id
+        evaluation["scope"] = "github_global"
+        if meta:
+            evaluation["plugin_version"] = meta.version
+        evidence_links = _global_github_evidence_links(all_commits)
+        if evidence_links:
+            evaluation["evidence_links"] = evidence_links
+        return evaluation
+
+    evaluation = await asyncio.to_thread(_run_evaluation)
+    payload["evaluation"] = evaluation
+    payload["metadata"] = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "source": "github_global_email_evaluation",
+        "plugin": plugin_id,
+        "scan": str(scan_path),
+    }
+    return payload
+
+
+@router.post("/api/github/analyze")
+@router.post("/api/gitee-github/analyze", deprecated=True)
+async def analyze_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
     """Collect global GitHub and cached Gitee evidence for emails."""
     if not isinstance(request_body, dict):
         raise HTTPException(status_code=400, detail="Request body must be a JSON object")

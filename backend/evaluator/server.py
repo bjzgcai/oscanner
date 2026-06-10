@@ -41,7 +41,7 @@ from evaluator.services import (
     get_or_create_evaluator, evaluate_author_incremental, get_empty_evaluation,
     merge_evaluations_logic
 )
-from evaluator.routes import plugins, config, data, evaluation, batch, benchmark, trajectory, runner_proxy, checkers, gitee_github
+from evaluator.routes import plugins, config, data, evaluation, batch, benchmark, trajectory, runner_proxy, checkers, github
 
 # Load environment variables
 #
@@ -88,7 +88,7 @@ app.include_router(benchmark.router, tags=["benchmark"])
 app.include_router(trajectory.router, tags=["trajectory"])
 app.include_router(runner_proxy.router, tags=["runner"])
 app.include_router(checkers.router, tags=["checkers"])
-app.include_router(gitee_github.router, tags=["gitee-github"])
+app.include_router(github.router, tags=["github"])
 
 
 # Optional: serve bundled dashboard static files (exported Next.js build) if present.

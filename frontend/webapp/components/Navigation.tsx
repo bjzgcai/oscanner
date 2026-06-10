@@ -21,11 +21,11 @@ export default function Navigation() {
     // { path: '/validation', label: t('nav.validation'), icon: <CheckCircleOutlined /> },
     { path: '/trajectory', label: t('nav.trajectory'), icon: <RiseOutlined /> },
     { path: '/admin/repo-test-runner', label: t('runner.title'), icon: <CodeOutlined /> },
-    { path: '/admin/gitee-github', label: '全 github/gitee评估', icon: <BranchesOutlined /> },
+    { path: '/admin/github', label: 'GitHub 全局评估', icon: <BranchesOutlined /> },
   ];
 
-  // Show config controls only on analysis and validation pages
-  const showConfigControls = pathname === '/' || pathname === '/validation';
+  // Show config controls on pages that run plugin/model-backed evaluations.
+  const showConfigControls = pathname === '/' || pathname === '/validation' || pathname === '/admin/github';
 
   // API docs URL points to backend /docs endpoint
   const apiBase = getApiBaseUrl();
