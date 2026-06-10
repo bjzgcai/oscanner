@@ -22,16 +22,22 @@ export type TrajectoryCheckpointViewProps = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const SINGLE_REPO_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
+  "tsia057_ai_agent_engineer_2026": () => import("../../../../plugins/tsia057_ai_agent_engineer_2026/view/single_repo"),
+  "tsia058_youth_ai_innovation_2026": () => import("../../../../plugins/tsia058_youth_ai_innovation_2026/view/single_repo"),
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/single_repo"),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const MULTI_REPO_COMPARE_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
+  "tsia057_ai_agent_engineer_2026": () => import("../../../../plugins/tsia057_ai_agent_engineer_2026/view/multi_repo_compare"),
+  "tsia058_youth_ai_innovation_2026": () => import("../../../../plugins/tsia058_youth_ai_innovation_2026/view/multi_repo_compare"),
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/multi_repo_compare"),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const TRAJECTORY_CHECKPOINT_VIEW_IMPORTERS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
+  "tsia057_ai_agent_engineer_2026": () => import("../../../../plugins/tsia057_ai_agent_engineer_2026/view/trajectory_checkpoint"),
+  "tsia058_youth_ai_innovation_2026": () => import("../../../../plugins/tsia058_youth_ai_innovation_2026/view/trajectory_checkpoint"),
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/trajectory_checkpoint"),
 };
 
@@ -41,5 +47,7 @@ export type PluginI18nPack = {
 };
 
 export const PLUGIN_I18N_IMPORTERS: Record<string, () => Promise<{ default: PluginI18nPack }>> = {
+  "tsia057_ai_agent_engineer_2026": () => import("../../../../plugins/tsia057_ai_agent_engineer_2026/view/i18n"),
+  "tsia058_youth_ai_innovation_2026": () => import("../../../../plugins/tsia058_youth_ai_innovation_2026/view/i18n"),
   "zgc_ai_native_2026": () => import("../../../../plugins/zgc_ai_native_2026/view/i18n"),
 };

@@ -1,0 +1,11 @@
+id: tsia058_youth_ai_innovation_2026
+name: "T/SIA 058-2026 Youth AI Innovation"
+version: "0.1.0"
+description: "Rubric-guided repository evidence mapping for T/SIA 058-2026 youth AI application and innovation competencies."
+default: false
+scan_entry: "scan/__init__.py"
+view_single_entry: "view/single_repo.tsx"
+view_compare_entry: "view/multi_repo_compare.tsx"
+view_trajectory_checkpoint_entry: "view/trajectory_checkpoint.tsx"
+view_i18n_entry: "view/i18n.ts"
+view_entry: "view/index.tsx"

@@ -1,0 +1,11 @@
+id: tsia057_ai_agent_engineer_2026
+name: "T/SIA 057-2026 AI Agent Engineer"
+version: "0.1.0"
+description: "Rubric-guided repository evidence mapping for T/SIA 057-2026 AI Agent Application Development Engineer competencies."
+default: false
+scan_entry: "scan/__init__.py"
+view_single_entry: "view/single_repo.tsx"
+view_compare_entry: "view/multi_repo_compare.tsx"
+view_trajectory_checkpoint_entry: "view/trajectory_checkpoint.tsx"
+view_i18n_entry: "view/i18n.ts"
+view_entry: "view/index.tsx"

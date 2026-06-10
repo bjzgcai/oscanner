@@ -746,6 +746,13 @@ class CommitEvaluatorModerate:
         )
         return labels
 
+    def _dimension_reasoning_titles_text(self, *, is_chinese: bool) -> str:
+        titles: List[str] = []
+        for key, english_title in self.dimensions.items():
+            title = self.dimension_titles_zh.get(key, english_title) if is_chinese else english_title
+            titles.append(f"**{title}**")
+        return "、".join(titles) if is_chinese else ", ".join(titles)
+
     def _extract_reasoning_sections(self, reasoning: str, *, is_chinese: bool) -> Dict[str, str]:
         text = self._format_reasoning(reasoning)
         if not text:
@@ -2327,19 +2334,18 @@ class CommitEvaluatorModerate:
         
         if is_chinese:
             reasoning_example = (
-                f"基于{part_label}数据，按四个维度组织 reasoning："
-                "**规范与内建质量**、**云原生与架构演进**、**AI工程与自动演进**、**工程修养与职业素养**。"
-                "每个维度写出评分对应的 L1-L5 等级，并引用来自 commit sha、commit message 和 commit diff 的可见证据（文件名/路径必须来自提交差异或提交信息）。"
+                f"基于{part_label}数据，按以下维度组织 reasoning："
+                f"{self._dimension_reasoning_titles_text(is_chinese=True)}。"
+                "每个维度写出评分标准对应等级，并引用来自 commit sha、commit message 和 commit diff 的可见证据（文件名/路径必须来自提交差异或提交信息）。"
                 "如果列出 1.、2.、3. 项，请每一项单独换行。"
                 "最后写 **结论与建议**，该部分只给总结和建议，不重复证明细节。"
             )
             format_note = "每个维度评分范围：0-100"
         else:
             reasoning_example = (
-                f"Based on {part_label} data, structure reasoning by the four dimensions: "
-                "**Specification & Built-in Quality**, **Cloud-Native & Architecture Evolution**, "
-                "**AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. "
-                "For each dimension include the L1-L5 level and visible evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). "
+                f"Based on {part_label} data, structure reasoning by these dimensions: "
+                f"{self._dimension_reasoning_titles_text(is_chinese=False)}. "
+                "For each dimension include the rubric-aligned level and visible evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). "
                 "When listing numbered items such as 1., 2., and 3., put each item on its own line. "
                 "End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details."
             )
@@ -2554,9 +2560,9 @@ class CommitEvaluatorModerate:
 
         if is_chinese:
             reasoning_example = (
-                "使用评分标准。reasoning 必须包含四个维度章节："
-                "**规范与内建质量**、**云原生与架构演进**、**AI工程与自动演进**、**工程修养与职业素养**。"
-                "每个章节写明该维度分数、L1-L5 等级，并列出来自 commit sha、commit message 和 commit diff 的证据（文件名/路径必须来自提交差异或提交信息）。"
+                "使用评分标准。reasoning 必须包含以下维度章节："
+                f"{self._dimension_reasoning_titles_text(is_chinese=True)}。"
+                "每个章节写明该维度分数、评分标准对应等级，并列出来自 commit sha、commit message 和 commit diff 的证据（文件名/路径必须来自提交差异或提交信息）。"
                 "如果列出 1.、2.、3. 项，请每一项单独换行。"
                 "最后提供 **结论与建议**，只总结和给建议，不重复证明细节。"
             )
@@ -2564,10 +2570,9 @@ class CommitEvaluatorModerate:
             json_instruction = "重要：必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON，格式如下："
         else:
             reasoning_example = (
-                "Use the rubric. The reasoning must contain four dimension sections: "
-                "**Specification & Built-in Quality**, **Cloud-Native & Architecture Evolution**, "
-                "**AI Engineering & Automated Evolution**, and **Engineering Mastery & Professionalism**. "
-                "Each section must include the dimension score, L1-L5 level, and evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). "
+                "Use the rubric. The reasoning must contain these dimension sections: "
+                f"{self._dimension_reasoning_titles_text(is_chinese=False)}. "
+                "Each section must include the dimension score, rubric-aligned level, and evidence from commit sha, commit message, and commit diff (file names/paths must come from commit diffs or messages). "
                 "When listing numbered items such as 1., 2., and 3., put each item on its own line. "
                 "End with **Conclusion And Suggestions** containing only summary and recommendations, without repeating proof details."
             )
