@@ -4,8 +4,57 @@ All notable changes to Oscanner Skill Evaluator are summarized from the git
 history.
 
 The package version in `pyproject.toml` is currently `0.1.6`; later work has not
-been tagged as a release in this repository. Latest commit covered: `1953ff4` on
-2026-05-21.
+been tagged as a release in this repository. Latest commit covered: `c935a77` on
+2026-06-10.
+
+## 2026-06
+
+### Added
+
+- Added a GitHub global analysis API and admin dashboard for email-based commit,
+  PR, review, issue, maintainer-decision, and evidence reporting, with SSE
+  streaming support.
+- Added TSIA standard rubric plugins for AI Agent Engineer 2026 and Youth AI
+  Innovation 2026, including shared rubric views, i18n, scan backends, generated
+  frontend mappings, and regression coverage.
+- Added GitHub/Gitee commit and collaboration evidence links in evaluation
+  reports and plugin-rendered reasoning views.
+- Added benchmark justice profile scaffolding, benchmark documentation, and
+  refreshed benchmark repositories.
+- Added C/C++, Go, Rust, and Java runner/runtime support through Docker image
+  updates, language detection, test discovery, output parsing, and snapshot
+  context improvements.
+- Added internal deployment scripts and Docker/nginx packaging for serving the
+  static dashboard with evaluator and repo-runner services.
+- Added richer reasoning-format rendering, implemented-feature/spec
+  documentation, and example evaluation artifacts.
+
+### Changed
+
+- Reworked the former Gitee/GitHub mixed analysis surface into a GitHub-focused
+  route, UI, documentation set, and test suite.
+- Aligned GitHub and Gitee provider behavior for recursive snapshots,
+  incremental sync, boundary-SHA retries, branch-aware data directories, and
+  review-comment evidence.
+- Changed GitHub author discovery to use GraphQL commit history and raw git
+  identity grouping, and improved commit author/email matching.
+- Changed repository-runner LLM defaults to OpenRouter DeepSeek V4 Pro with
+  GLM fallback, removing direct Anthropic SDK credential fallback paths.
+- Removed the legacy evaluator wrapper surface and the obsolete `zgc_simple`
+  plugin, consolidating evaluation around the current plugin contracts.
+- Updated README, backend docs, repo-runner documentation, and local agent
+  instructions for current workflows, deployment, and provider parity.
+
+### Fixed
+
+- Fixed runtime evidence path validation so malformed LLM-proposed paths, such
+  as multiline citation metadata, cannot crash static path checks.
+- Fixed spaced Chinese AI-heading parsing so AI assessment content no longer
+  leaks into the cloud-native section.
+- Expanded one-off trajectory sync caps and refined trajectory identity display.
+- Fixed production static dashboard export and Mac shell compatibility.
+- Kept repo-runner generated reports from returning grading-rubric text in SSE
+  and API completion payloads.
 
 ## 2026-04 to 2026-05
 
