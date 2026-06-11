@@ -3,6 +3,7 @@
  *
  * - If NEXT_PUBLIC_API_SERVER_URL is set: use it.
  * - Otherwise use same-origin (empty base) so the dashboard works when served by the backend.
+ * - If the dashboard is mounted below `/oscanner`, preserve that prefix for same-origin API calls.
  * - When opened via file:// (static dashboard opened directly), default to http://localhost:8000.
  */
 export function getApiBaseUrl(): string {
@@ -14,6 +15,13 @@ export function getApiBaseUrl(): string {
     try {
       if (window.location?.protocol === 'file:') {
         return 'http://localhost:8000';
+      }
+
+      const firstPathSegment = window.location?.pathname
+        ?.split('/')
+        .filter(Boolean)[0];
+      if (firstPathSegment === 'oscanner') {
+        return '/oscanner';
       }
     } catch {
       // ignore
@@ -30,4 +38,3 @@ export function getRunnerApiBaseUrl(): string {
 
   return getApiBaseUrl();
 }
-
