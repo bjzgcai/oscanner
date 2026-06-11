@@ -368,6 +368,138 @@ Other useful GitHub evidence:
 - Releases and tags authored/published by the user when available: useful for
   delivery and maintenance evidence.
 
+## CI And Quality Signal Evidence
+
+CI evidence is useful context for delivery quality. It shows whether a commit or
+pull request passed automated checks, what failed, how long checks took, and
+whether failures were tied to tests, lint, security scans, builds, deployment,
+or external services. Treat CI as supporting evidence: passing checks strengthen
+an implementation story, but failing or missing checks need context from PR
+discussion, follow-up commits, repository maturity, and project norms.
+
+For each matched commit SHA, PR head SHA, PR merge commit SHA, or default-branch
+commit that matters to the evaluation, collect these endpoint families:
+
+```bash
+# Checks API: modern check runs for a commit, branch, or tag ref
+GET /repos/{owner}/{repo}/commits/{ref}/check-runs
+
+# Check-run annotations, useful for concrete file/path/line quality findings
+GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations
+
+# Legacy commit status contexts, still used by many external CI systems
+GET /repos/{owner}/{repo}/commits/{ref}/statuses
+
+# Combined legacy commit status
+GET /repos/{owner}/{repo}/commits/{ref}/status
+
+# GitHub Actions workflow runs for a repository, filterable by head SHA, actor,
+# branch, event, status, and created date
+GET /repos/{owner}/{repo}/actions/runs?head_sha={sha}
+
+# Jobs inside a workflow run
+GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs
+
+# Workflow metadata when a run references a workflow ID or path
+GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}
+```
+
+Useful `curl` examples:
+
+```bash
+# Check runs for a matched commit SHA
+curl -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/OWNER/REPO/commits/COMMIT_SHA/check-runs?per_page=100"
+
+# Legacy statuses for the same SHA
+curl -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/OWNER/REPO/commits/COMMIT_SHA/statuses?per_page=100"
+
+# Combined legacy status
+curl -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/OWNER/REPO/commits/COMMIT_SHA/status"
+
+# GitHub Actions runs attached to the same SHA
+curl -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/OWNER/REPO/actions/runs?head_sha=COMMIT_SHA&per_page=100"
+```
+
+For pull request evidence, collect CI for multiple refs when available:
+
+- Each matched commit SHA in the PR.
+- The PR `head.sha`, which is usually the most direct pre-merge CI signal.
+- The PR `merge_commit_sha`, which is useful after merge.
+- The default-branch commit that contains the change, when the associated PR or
+  merge commit can be identified.
+
+Preserve at least these fields:
+
+- Check runs: `id`, `name`, `status`, `conclusion`, `started_at`,
+  `completed_at`, `details_url`, `html_url`, `app`, `pull_requests`,
+  `head_sha`, `check_suite`, and `output.title`, `output.summary`,
+  `output.text` when present.
+- Check annotations: `path`, `start_line`, `end_line`, `annotation_level`,
+  `message`, `title`, `raw_details`, and blob coordinates when present.
+- Legacy statuses: `context`, `state`, `description`, `target_url`,
+  `created_at`, `updated_at`, and `creator.login`.
+- Combined status: top-level `state`, `sha`, `total_count`, and nested
+  `statuses`.
+- Workflow runs: `id`, `name`, `display_title`, `event`, `status`,
+  `conclusion`, `workflow_id`, `run_number`, `run_attempt`, `head_branch`,
+  `head_sha`, `path`, `html_url`, `created_at`, `updated_at`,
+  `run_started_at`, `actor.login`, `triggering_actor.login`, and PR links.
+- Workflow jobs: `id`, `name`, `status`, `conclusion`, `started_at`,
+  `completed_at`, `runner_name`, `runner_group_name`, `html_url`, and step
+  names/statuses/conclusions when present.
+
+Implementation guidance for `backend/evaluator/collectors/github.py`:
+
+```python
+collector = GitHubCollector(token=github_token)
+
+signals = collector.fetch_ci_quality_signals(
+    owner="OWNER",
+    repo="REPO",
+    ref="COMMIT_SHA",
+    include_annotations=True,
+    include_workflow_jobs=True,
+)
+
+# Store signals next to the matched commit or PR evidence.
+```
+
+The collector methods map directly to the endpoint families:
+
+- `fetch_check_runs_for_ref(owner, repo, ref)` ->
+  `GET /repos/{owner}/{repo}/commits/{ref}/check-runs`
+- `fetch_check_run_annotations(owner, repo, check_run_id)` ->
+  `GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations`
+- `fetch_commit_statuses(owner, repo, ref)` ->
+  `GET /repos/{owner}/{repo}/commits/{ref}/statuses`
+- `fetch_combined_status(owner, repo, ref)` ->
+  `GET /repos/{owner}/{repo}/commits/{ref}/status`
+- `fetch_workflow_runs(owner, repo, head_sha=ref)` ->
+  `GET /repos/{owner}/{repo}/actions/runs?head_sha={ref}`
+- `fetch_workflow_run_jobs(owner, repo, run_id)` ->
+  `GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs`
+- `fetch_workflow(owner, repo, workflow_id)` ->
+  `GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}`
+- `fetch_ci_quality_signals(...)` combines the above into one repository-local
+  evidence object and records endpoint errors as warnings.
+
+Attribution guidance:
+
+- CI status belongs to the commit, PR, or branch being evaluated. It does not
+  by itself prove who wrote the passing or failing code.
+- Prefer CI attached to commits matched by `author-email:<email>` or PRs
+  strongly linked to the target login.
+- Failed checks can be useful evidence when the user fixes them in follow-up
+  commits or explains failures in PR comments.
+- Missing CI is not automatically negative; older, small, toy, or documentation
+  repositories may have no automated checks.
+- Annotations are high-value because they tie automated quality findings to
+  concrete files and lines.
+
 Evidence quality ranking:
 
 1. Strongest: matched `author-email` commits, associated PRs, authored PRs from

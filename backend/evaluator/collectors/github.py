@@ -294,6 +294,297 @@ class GitHubCollector:
             print(f"[API] Error fetching commits list: {e}")
             raise Exception(f"Failed to fetch commits list: {e}")
 
+    def fetch_check_runs_for_ref(
+        self,
+        owner: str,
+        repo: str,
+        ref: str,
+        limit: int = 100,
+        **kwargs,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch GitHub Checks API runs for a commit SHA, branch, or tag.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            ref: Commit SHA, branch name, or tag name
+            limit: Maximum number of check runs to fetch
+            **kwargs: Additional API parameters, such as status, filter,
+                check_name, or app_id
+
+        Returns:
+            List of check run objects
+        """
+        payload = self._get_json(
+            f"/repos/{owner}/{repo}/commits/{ref}/check-runs",
+            params={"per_page": min(limit, 100), **kwargs},
+        )
+        if isinstance(payload, dict):
+            return payload.get("check_runs", [])[:limit]
+        return []
+
+    def fetch_check_run_annotations(
+        self,
+        owner: str,
+        repo: str,
+        check_run_id: int,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch annotations for a check run.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            check_run_id: GitHub check run ID
+            limit: Maximum number of annotations to fetch
+
+        Returns:
+            List of check run annotations
+        """
+        payload = self._get_json(
+            f"/repos/{owner}/{repo}/check-runs/{check_run_id}/annotations",
+            params={"per_page": min(limit, 100)},
+        )
+        return payload[:limit] if isinstance(payload, list) else []
+
+    def fetch_commit_statuses(
+        self,
+        owner: str,
+        repo: str,
+        ref: str,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch legacy commit status contexts for a commit SHA, branch, or tag.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            ref: Commit SHA, branch name, or tag name
+            limit: Maximum number of statuses to fetch
+
+        Returns:
+            List of status context objects in reverse chronological order
+        """
+        payload = self._get_json(
+            f"/repos/{owner}/{repo}/commits/{ref}/statuses",
+            params={"per_page": min(limit, 100)},
+        )
+        return payload[:limit] if isinstance(payload, list) else []
+
+    def fetch_combined_status(self, owner: str, repo: str, ref: str) -> Dict[str, Any]:
+        """
+        Fetch the combined legacy status for a commit SHA, branch, or tag.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            ref: Commit SHA, branch name, or tag name
+
+        Returns:
+            Combined status object with state and status contexts
+        """
+        payload = self._get_json(f"/repos/{owner}/{repo}/commits/{ref}/status")
+        return payload if isinstance(payload, dict) else {}
+
+    def fetch_workflow_runs(
+        self,
+        owner: str,
+        repo: str,
+        limit: int = 100,
+        **kwargs,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch GitHub Actions workflow runs for a repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            limit: Maximum number of workflow runs to fetch
+            **kwargs: Additional API parameters, such as actor, branch, event,
+                status, head_sha, created, or exclude_pull_requests
+
+        Returns:
+            List of workflow run objects
+        """
+        payload = self._get_json(
+            f"/repos/{owner}/{repo}/actions/runs",
+            params={"per_page": min(limit, 100), **kwargs},
+        )
+        if isinstance(payload, dict):
+            return payload.get("workflow_runs", [])[:limit]
+        return []
+
+    def fetch_workflow_run_jobs(
+        self,
+        owner: str,
+        repo: str,
+        run_id: int,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch jobs for a GitHub Actions workflow run.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            run_id: GitHub Actions workflow run ID
+            limit: Maximum number of jobs to fetch
+
+        Returns:
+            List of workflow job objects
+        """
+        payload = self._get_json(
+            f"/repos/{owner}/{repo}/actions/runs/{run_id}/jobs",
+            params={"per_page": min(limit, 100)},
+        )
+        if isinstance(payload, dict):
+            return payload.get("jobs", [])[:limit]
+        return []
+
+    def fetch_workflow(
+        self,
+        owner: str,
+        repo: str,
+        workflow_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Fetch GitHub Actions workflow metadata by workflow ID, file name, or path.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            workflow_id: Workflow ID, workflow file name, or workflow file path
+
+        Returns:
+            Workflow metadata object
+        """
+        payload = self._get_json(
+            f"/repos/{owner}/{repo}/actions/workflows/{workflow_id}"
+        )
+        return payload if isinstance(payload, dict) else {}
+
+    def fetch_ci_quality_signals(
+        self,
+        owner: str,
+        repo: str,
+        ref: str,
+        *,
+        include_annotations: bool = False,
+        include_workflow_jobs: bool = False,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """
+        Fetch CI and quality evidence for a commit SHA, branch, or tag.
+
+        This combines Checks API results, legacy commit statuses, combined
+        status, and GitHub Actions workflow runs matching the ref as head_sha.
+        Use it as repository-local context for matched commits or PR head SHAs.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            ref: Commit SHA, branch name, or tag name
+            include_annotations: Whether to fetch check run annotations
+            include_workflow_jobs: Whether to fetch jobs for matching workflow
+                runs
+            limit: Maximum item count per endpoint
+
+        Returns:
+            Dictionary containing check runs, statuses, combined status, and
+            workflow runs. Endpoint errors are captured under warnings.
+        """
+        warnings: List[str] = []
+
+        def collect(label: str, callback):
+            try:
+                return callback()
+            except Exception as exc:
+                warnings.append(f"{label}: {exc}")
+                return [] if label != "combined_status" else {}
+
+        check_runs = collect(
+            "check_runs",
+            lambda: self.fetch_check_runs_for_ref(owner, repo, ref, limit=limit),
+        )
+        statuses = collect(
+            "commit_statuses",
+            lambda: self.fetch_commit_statuses(owner, repo, ref, limit=limit),
+        )
+        combined_status = collect(
+            "combined_status",
+            lambda: self.fetch_combined_status(owner, repo, ref),
+        )
+
+        if include_annotations:
+            for check_run in check_runs:
+                check_run_id = (
+                    check_run.get("id") if isinstance(check_run, dict) else None
+                )
+                if not check_run_id:
+                    continue
+                check_run["annotations"] = collect(
+                    f"check_run_annotations:{check_run_id}",
+                    lambda check_run_id=check_run_id: self.fetch_check_run_annotations(
+                        owner,
+                        repo,
+                        check_run_id,
+                        limit=limit,
+                    ),
+                )
+
+        workflow_runs = collect(
+            "workflow_runs",
+            lambda: self.fetch_workflow_runs(owner, repo, limit=limit, head_sha=ref),
+        )
+
+        if include_workflow_jobs:
+            for workflow_run in workflow_runs:
+                run_id = workflow_run.get("id") if isinstance(workflow_run, dict) else None
+                if not run_id:
+                    continue
+                workflow_run["jobs"] = collect(
+                    f"workflow_run_jobs:{run_id}",
+                    lambda run_id=run_id: self.fetch_workflow_run_jobs(
+                        owner,
+                        repo,
+                        run_id,
+                        limit=limit,
+                    ),
+                )
+
+        return {
+            "repo": f"{owner}/{repo}",
+            "ref": ref,
+            "check_runs": check_runs,
+            "commit_statuses": statuses,
+            "combined_status": combined_status,
+            "workflow_runs": workflow_runs,
+            "warnings": warnings,
+        }
+
+    def _get_json(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        """Fetch JSON from the GitHub REST API."""
+        import requests
+
+        api_url = f"{self.base_url}{path}"
+        print(f"[API] Fetching GitHub data from {api_url} with params: {params or {}}")
+
+        try:
+            response = requests.get(
+                api_url,
+                headers=self._get_headers(),
+                params=params or {},
+                timeout=30,
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"[API] Error fetching GitHub data: {e}")
+            raise Exception(f"Failed to fetch GitHub data: {e}")
+
 
 # Example implementation with actual API calls (commented out)
 """
