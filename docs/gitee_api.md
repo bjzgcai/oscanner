@@ -1,5 +1,8 @@
 # Gitee API Notes
 
+> Legal/privacy note: use these collection workflows only within the constraints
+> in [Legal And Privacy Use Constraints](legal_privacy.md).
+
 ## Repository-Scoped Commit Search By Email Or Username
 
 Gitee does not expose a GitHub-style global commit search endpoint such as

@@ -1,5 +1,8 @@
 # GitHub API Notes
 
+> Legal/privacy note: use these collection workflows only within the constraints
+> in [Legal And Privacy Use Constraints](legal_privacy.md).
+
 ## Global Commit Search By Email
 
 GitHub commit search can find commits across visible repositories by matching

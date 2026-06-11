@@ -214,6 +214,14 @@ uv run pytest --cov=evaluator --cov-report=html
 
 更多测试相关信息请参阅 [tests/README.md](tests/README.md)。
 
+## 法律与隐私约束
+
+Oscanner 会从 GitHub / Gitee API 和本地 Git 元数据中收集 commit、邮箱、用户名、PR / MR、评论、review 与时间戳等证据；这些信息可能构成个人数据。请只在有授权、合规依据和明确用途的场景下使用，遵守平台 API 条款、访问权限和限流要求。
+
+进行个人能力评估时，优先使用被评估人主动提交的 profile / repo / email / alias，或仓库所有者/组织明确授权的范围。不要将本工具用于批量抓取开发者、绕过平台限制、出售个人画像、招聘线索兜售、垃圾营销或无告知的人才筛选。
+
+详细约束和实施清单请查看 [docs/legal_privacy.md](docs/legal_privacy.md)。
+
 ## 数据落盘位置（默认策略）
 
 为了保证 **pip 安装后在任意目录运行都不会把数据写到当前工作目录**，本仓库已改为默认写入用户目录，并支持环境变量覆盖：
