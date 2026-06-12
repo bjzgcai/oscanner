@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from types import SimpleNamespace
 
@@ -215,6 +217,90 @@ async def test_evaluate_global_github_scores_email_matched_commits(tmp_path, mon
     assert result["evaluation"]["total_commits_analyzed"] == 1
     assert result["evaluation"]["evidence_links"][0]["url"].endswith("/commit/" + "c" * 40)
     assert fetch_kwargs["max_commits_per_role"] == 10
+
+
+@pytest.mark.asyncio
+async def test_evaluate_global_github_caches_matched_repo_evidence_to_xdg(tmp_path, monkeypatch):
+    commit = github._serialize_commit(
+        commit={
+            "sha": "9" * 40,
+            "html_url": "https://github.com/owner/repo/commit/" + "9" * 40,
+            "commit": {
+                "author": {
+                    "name": "Alice",
+                    "email": "alice@example.com",
+                    "date": "2026-03-01T00:00:00Z",
+                },
+                "committer": {
+                    "name": "Alice",
+                    "email": "alice@example.com",
+                    "date": "2026-03-01T00:01:00Z",
+                },
+                "message": "feat: cache github evidence",
+            },
+            "stats": {"additions": 4, "deletions": 1, "total": 5},
+            "files": [{"filename": "app.py"}],
+        },
+        platform="github",
+        owner="owner",
+        repo="repo",
+        matched_email="alice@example.com",
+    )
+    matched_repos = {"github:owner/repo": github._github_repo_item("github", "owner", "repo")}
+    collaboration_items = [
+        {
+            "source": "pr_discussions",
+            "label": "PR #3: cache evidence",
+            "detail": "pull request discussed by GitHub login",
+            "url": "https://github.com/owner/repo/pull/3",
+            "updated_at": "2026-03-01T00:02:00Z",
+            "platform": "github",
+            "owner": "owner",
+            "repo": "repo",
+            "repo_full_name": "owner/repo",
+            "repo_url": "https://github.com/owner/repo",
+            "github_login": "alice",
+        }
+    ]
+
+    class FakeEvaluator:
+        def evaluate_engineer(self, *, commits, username, max_commits, load_files):
+            return {
+                "username": username,
+                "total_commits_analyzed": len(commits),
+                "files_loaded": 0,
+                "scores": {},
+            }
+
+    class FakeScanModule:
+        @staticmethod
+        def create_commit_evaluator(**kwargs):
+            return FakeEvaluator()
+
+    monkeypatch.setattr(github, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(github, "resolve_plugin_id", lambda plugin: plugin or "zgc_ai_native_2026")
+    monkeypatch.setattr(
+        github,
+        "load_scan_module",
+        lambda plugin_id: (SimpleNamespace(version="1.0.0"), FakeScanModule, tmp_path / "scan.py"),
+    )
+    monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        github,
+        "_fetch_global_github_evidence",
+        lambda emails, **kwargs: ({"alice@example.com": [commit]}, matched_repos, collaboration_items, []),
+    )
+
+    result = await github.evaluate_global_github({"emails": "alice@example.com"})
+
+    repo_dir = tmp_path / "github" / "owner" / "repo"
+    assert result["cache"]["github_xdg_cache"]["repo_count"] == 1
+    assert (repo_dir / "commits" / f"{'9' * 40}.json").exists()
+    commits_index = json.loads((repo_dir / "commits_index.json").read_text(encoding="utf-8"))
+    assert commits_index[0]["sha"] == "9" * 40
+    collaboration_cache = json.loads((repo_dir / "collaboration_evidence.json").read_text(encoding="utf-8"))
+    assert collaboration_cache["items"][0]["url"] == "https://github.com/owner/repo/pull/3"
+    assert json.loads((repo_dir / "repo_info.json").read_text(encoding="utf-8"))["platform"] == "github"
 
 
 @pytest.mark.asyncio

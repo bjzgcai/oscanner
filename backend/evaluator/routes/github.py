@@ -115,6 +115,33 @@ def _commit_sha(commit: Dict[str, Any]) -> str:
     return str(commit.get("sha") or commit.get("hash") or "").strip()
 
 
+def _read_json_list(path: Path) -> List[Dict[str, Any]]:
+    try:
+        if not path.exists():
+            return []
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, list) else []
+    except Exception:
+        return []
+
+
+def _read_json_dict(path: Path) -> Dict[str, Any]:
+    try:
+        if not path.exists():
+            return {}
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def _write_json_atomic(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(path)
+
+
 def _commit_message(commit: Dict[str, Any]) -> str:
     if isinstance(commit.get("commit"), dict):
         return str(commit.get("commit", {}).get("message") or commit.get("message") or "")
@@ -592,6 +619,181 @@ def _global_github_evidence_links(commits: List[Dict[str, Any]]) -> List[Dict[st
     return _dedupe_by_key(links, ("type", "url", "sha", "commit_sha", "path"))[:500]
 
 
+def _github_commit_index_entry(commit: Dict[str, Any]) -> Dict[str, Any]:
+    files = commit.get("files") or []
+    filenames = [
+        str(file_item.get("filename") or file_item.get("path") or "")
+        for file_item in files
+        if isinstance(file_item, dict) and (file_item.get("filename") or file_item.get("path"))
+    ]
+    return {
+        "sha": _commit_sha(commit),
+        "hash": _commit_sha(commit),
+        "message": _commit_message(commit).splitlines()[0][:100],
+        "author": get_author_from_commit(commit) or "",
+        "date": _commit_date(commit),
+        "files_changed": len(filenames),
+        "files": filenames,
+    }
+
+
+def _merge_by_sha(new_items: List[Dict[str, Any]], existing_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    merged: List[Dict[str, Any]] = []
+    seen = set()
+    for item in [*new_items, *existing_items]:
+        sha = _commit_sha(item)
+        if not sha or sha in seen:
+            continue
+        seen.add(sha)
+        merged.append(item)
+    merged.sort(key=_sort_key, reverse=True)
+    return merged
+
+
+def _repo_key_from_item(item: Dict[str, Any]) -> Optional[tuple[str, str]]:
+    if str(item.get("platform") or "").lower() != "github":
+        return None
+    owner = str(item.get("owner") or "").strip()
+    repo = str(item.get("repo") or "").strip()
+    if owner and repo:
+        return owner, repo
+    repo_full_name = str(item.get("repo_full_name") or "").strip()
+    if "/" not in repo_full_name:
+        return None
+    owner, repo = repo_full_name.split("/", 1)
+    return (owner, repo) if owner and repo else None
+
+
+def _group_github_items_by_repo(items: List[Dict[str, Any]]) -> Dict[tuple[str, str], List[Dict[str, Any]]]:
+    grouped: Dict[tuple[str, str], List[Dict[str, Any]]] = {}
+    for item in items:
+        key = _repo_key_from_item(item)
+        if key is None:
+            continue
+        grouped.setdefault(key, []).append(item)
+    return grouped
+
+
+def _cache_global_github_evidence(
+    *,
+    commits: List[Dict[str, Any]],
+    matched_repos: Dict[str, Dict[str, Any]],
+    collaboration_items: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    grouped_commits = _group_github_items_by_repo(commits)
+    grouped_evidence = _group_github_items_by_repo(collaboration_items)
+    repo_keys = set(grouped_commits) | set(grouped_evidence)
+    for repo_item in matched_repos.values():
+        if repo_item.get("platform") == "github":
+            repo_keys.add((str(repo_item.get("owner") or ""), str(repo_item.get("repo") or "")))
+    repo_keys = {(owner, repo) for owner, repo in repo_keys if owner and repo}
+
+    cached_commit_count = 0
+    cached_evidence_count = 0
+    cached_repositories: List[Dict[str, Any]] = []
+    now = datetime.now(timezone.utc).isoformat()
+
+    for owner, repo in sorted(repo_keys):
+        data_dir = get_data_dir() / "github" / owner / repo
+        commits_dir = data_dir / "commits"
+        commits_dir.mkdir(parents=True, exist_ok=True)
+
+        repo_commits = _dedupe_by_key(grouped_commits.get((owner, repo), []), ("sha",))
+        for commit in repo_commits:
+            sha = _commit_sha(commit)
+            if not sha:
+                continue
+            _write_json_atomic(commits_dir / f"{sha}.json", commit)
+
+        existing_commits = _read_json_list(data_dir / "commits_list.json")
+        merged_commits = _merge_by_sha(repo_commits, existing_commits)
+        if merged_commits:
+            _write_json_atomic(data_dir / "commits_list.json", merged_commits)
+
+        existing_index = _read_json_list(data_dir / "commits_index.json")
+        merged_index = _merge_by_sha(
+            [_github_commit_index_entry(commit) for commit in repo_commits],
+            existing_index,
+        )
+        if merged_index:
+            _write_json_atomic(data_dir / "commits_index.json", merged_index)
+
+        repo_info = {
+            "name": repo,
+            "full_name": f"{owner}/{repo}",
+            "owner": {"login": owner},
+            "platform": "github",
+        }
+        _write_json_atomic(data_dir / "repo_info.json", repo_info)
+
+        sync_state = {
+            "last_synced_at": now,
+            "last_commit_sha": _commit_sha(merged_index[0]) if merged_index else None,
+            "total_commits_fetched": len(merged_index),
+            "sync_history": [
+                {
+                    "synced_at": now,
+                    "commits_added_or_updated": len(repo_commits),
+                    "mode": "github_global_email_cache",
+                }
+            ],
+        }
+        _write_json_atomic(data_dir / "sync_state.json", sync_state)
+
+        repo_evidence = _dedupe_by_key(
+            grouped_evidence.get((owner, repo), []),
+            ("source", "url", "github_login", "commit_sha", "label"),
+        )
+        existing_evidence_payload = _read_json_dict(data_dir / "collaboration_evidence.json")
+        existing_evidence = [
+            item for item in existing_evidence_payload.get("items", [])
+            if isinstance(item, dict)
+        ]
+        merged_evidence = _dedupe_by_key(
+            [*repo_evidence, *existing_evidence],
+            ("source", "url", "github_login", "commit_sha", "label"),
+        )
+        if merged_evidence:
+            _write_json_atomic(
+                data_dir / "collaboration_evidence.json",
+                {
+                    "platform": "github",
+                    "owner": owner,
+                    "repo": repo,
+                    "requested_sources": DEFAULT_EVIDENCE_SOURCES,
+                    "fetched_at": now,
+                    "items": merged_evidence,
+                    "cache": {
+                        "hit": False,
+                        "source": "github_global_email_search",
+                        "path": str(data_dir / "collaboration_evidence.json"),
+                    },
+                },
+            )
+
+        cached_commit_count += len(repo_commits)
+        cached_evidence_count += len(repo_evidence)
+        cached_repositories.append({
+            "platform": "github",
+            "owner": owner,
+            "repo": repo,
+            "repo_full_name": f"{owner}/{repo}",
+            "repo_url": f"https://github.com/{owner}/{repo}",
+            "data_dir": str(data_dir),
+            "commit_count": len(repo_commits),
+            "collaboration_evidence_count": len(repo_evidence),
+        })
+
+    return {
+        "github_xdg_cache": {
+            "repo_count": len(cached_repositories),
+            "commit_count": cached_commit_count,
+            "collaboration_evidence_count": cached_evidence_count,
+            "repositories": cached_repositories,
+        }
+    }
+
+
 def _github_global_analysis_payload(
     *,
     emails: List[str],
@@ -838,6 +1040,26 @@ async def _build_global_github_evaluation_payload(
 
     if progress:
         progress("section", {
+            "title": "缓存 GitHub 证据到 XDG",
+            "status": "running",
+            "commit_count": len(all_commits),
+        })
+    cache_summary = await asyncio.to_thread(
+        _cache_global_github_evidence,
+        commits=all_commits,
+        matched_repos=matched_repos,
+        collaboration_items=collaboration_items,
+    )
+    payload["cache"] = cache_summary
+    if progress:
+        progress("section", {
+            "title": "缓存 GitHub 证据到 XDG",
+            "status": "done",
+            **cache_summary["github_xdg_cache"],
+        })
+
+    if progress:
+        progress("section", {
             "title": "运行能力评估",
             "status": "running",
             "commit_count": len(all_commits),
@@ -917,6 +1139,24 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
         all_commits = payload["commits"]
         if not all_commits:
             raise HTTPException(status_code=404, detail="No GitHub commits found for the supplied email identities")
+
+        yield _format_sse_event("section", {
+            "title": "缓存 GitHub 证据到 XDG",
+            "status": "running",
+            "commit_count": len(all_commits),
+        })
+        cache_summary = await asyncio.to_thread(
+            _cache_global_github_evidence,
+            commits=all_commits,
+            matched_repos=matched_repos,
+            collaboration_items=collaboration_items,
+        )
+        payload["cache"] = cache_summary
+        yield _format_sse_event("section", {
+            "title": "缓存 GitHub 证据到 XDG",
+            "status": "done",
+            **cache_summary["github_xdg_cache"],
+        })
 
         yield _format_sse_event("section", {
             "title": "运行能力评估",
@@ -1072,6 +1312,11 @@ async def analyze_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
         for commit in commits_by_email[email]
     ]
     all_commits.sort(key=_sort_key, reverse=True)
+    cache_summary = _cache_global_github_evidence(
+        commits=all_commits,
+        matched_repos=matched_repos,
+        collaboration_items=collaboration_items,
+    )
 
     return {
         "success": True,
@@ -1087,6 +1332,7 @@ async def analyze_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
         "commits_by_email": commits_by_email,
         "commits": all_commits,
         "collaboration_evidence": collaboration_items,
+        "cache": cache_summary,
         "warnings": warnings,
         "limitations": [
             "GitHub commits are searched globally with author-email and committer-email qualifiers.",

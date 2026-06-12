@@ -1,5 +1,5 @@
 """Route modules for FastAPI endpoints."""
 
-from evaluator.routes import plugins, config, data, evaluation, batch, benchmark, trajectory, runner_proxy, github
+from evaluator.routes import plugins, config, data, evaluation, batch, benchmark, trajectory, runner_proxy, github, gitee
 
-__all__ = ["plugins", "config", "data", "evaluation", "batch", "benchmark", "trajectory", "runner_proxy", "github"]
+__all__ = ["plugins", "config", "data", "evaluation", "batch", "benchmark", "trajectory", "runner_proxy", "github", "gitee"]
