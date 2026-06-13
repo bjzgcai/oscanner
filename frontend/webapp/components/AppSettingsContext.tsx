@@ -27,6 +27,7 @@ type AppSettings = {
 
 const STORAGE_KEY_MODEL = 'oscanner_llm_model';
 const STORAGE_KEY_PLUGIN = 'oscanner_plugin_id';
+const STORAGE_KEY_PLUGIN_USER_SELECTED = 'oscanner_plugin_user_selected';
 const STORAGE_KEY_LOCALE = 'oscanner_locale';
 const STORAGE_KEY_FORCED_CHECKER = 'oscanner_forced_checker_id';
 const STORAGE_KEY_WORKTREE_BASE = 'oscanner_worktree_base';
@@ -76,11 +77,14 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     }
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY_PLUGIN);
-      if (raw) {
+      const userSelected = window.localStorage.getItem(STORAGE_KEY_PLUGIN_USER_SELECTED) === '1';
+      if (raw && userSelected) {
         const trimmed = raw.trim();
         if (trimmed) {
           setPluginIdState(trimmed);
         }
+      } else if (raw && raw.trim() && raw.trim() !== DEFAULT_PLUGIN) {
+        window.localStorage.setItem(STORAGE_KEY_PLUGIN, DEFAULT_PLUGIN);
       }
     } catch {
       // ignore
@@ -164,6 +168,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     setPluginIdState(next);
     try {
       localStorage.setItem(STORAGE_KEY_PLUGIN, next);
+      localStorage.setItem(STORAGE_KEY_PLUGIN_USER_SELECTED, '1');
     } catch {
       // ignore
     }
