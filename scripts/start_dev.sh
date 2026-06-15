@@ -136,8 +136,13 @@ fi
 echo -e "${BLUE}Starting evaluator backend (development mode with auto-reload)...${NC}"
 cd "${PROJECT_ROOT}"
 
-# Detect Python executable (prefer virtual environment)
-if [ -f "${PROJECT_ROOT}/.venv/bin/python" ]; then
+# Detect Python executable (prefer explicit PYTHON, then virtual environment).
+if [ -n "${PYTHON:-}" ]; then
+    if ! command -v "$PYTHON" >/dev/null 2>&1; then
+        echo -e "${RED}✗${NC} Error: PYTHON is set but not executable: ${PYTHON}"
+        exit 1
+    fi
+elif [ -f "${PROJECT_ROOT}/.venv/bin/python" ]; then
     PYTHON="${PROJECT_ROOT}/.venv/bin/python"
 elif [ -f "${PROJECT_ROOT}/venv/bin/python" ]; then
     PYTHON="${PROJECT_ROOT}/venv/bin/python"
