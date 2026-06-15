@@ -91,12 +91,27 @@
 
 ---
 
+### 10_api_openapi.md
+**API OpenAPI 使用指南**
+
+面向外部系统集成的 evaluator 与 repos_runner OpenAPI 入口、端点摘要、请求示例和规范更新方式。
+
+**主要内容**：
+- OpenAPI JSON 文件位置
+- evaluator API 端点摘要
+- repos_runner API 端点摘要
+- SSE 流式响应格式
+- 规范重新生成命令
+
+---
+
 ## 文档阅读顺序建议
 
 ### 新用户入门
 1. [01_architecture.md](01_architecture.md) - 了解项目整体架构
 2. [02_directory_structure.md](02_directory_structure.md) - 了解目录结构
 3. [03_evaluation_architecture.md](03_evaluation_architecture.md) - 了解评估功能
+4. [10_api_openapi.md](10_api_openapi.md) - 了解 API/OpenAPI 集成方式
 
 ### 开发者深入
 1. [06_trajectory_evaluation.md](06_trajectory_evaluation.md) - 了解轨迹评估

@@ -1,0 +1,2664 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Engineer Skill Evaluator API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/plugins": {
+      "get": {
+        "tags": [
+          "plugins"
+        ],
+        "summary": "List Plugins",
+        "description": "List available scan plugins discovered from the local `plugins/` directory.",
+        "operationId": "list_plugins_api_plugins_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plugins/default": {
+      "get": {
+        "tags": [
+          "plugins"
+        ],
+        "summary": "Get Default Plugin",
+        "description": "Get default plugin ID.",
+        "operationId": "get_default_plugin_api_plugins_default_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config/llm": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get Llm Config",
+        "description": "Read current LLM config from user dotfile + process env (masked).",
+        "operationId": "get_llm_config_api_config_llm_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Set Llm Config",
+        "description": "Configure LLM settings and persist to user dotfile, then load into current process env.\n\npayload:\n  mode: \"openrouter\" | \"openai\"\n  openrouter_key: str (for openrouter)\n  base_url: str, api_key: str, model: str (for openai-compatible)\n  chat_completions_url?: str\n  fallback_models?: str (comma-separated)",
+        "operationId": "set_llm_config_api_config_llm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/llm/status": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Llm Status",
+        "description": "Return whether LLM credentials appear configured.\nThis endpoint never returns secret values.",
+        "operationId": "llm_status_api_llm_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config/check-platform-tokens": {
+      "post": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Check Platform Tokens",
+        "description": "Check if required platform tokens are configured for given repository URLs.\n\nRequest body:\n{\n    \"repo_urls\": [\"https://github.com/owner/repo\", \"https://gitee.com/owner/repo\"]\n}\n\nReturns:\n{\n    \"all_configured\": bool,\n    \"missing_tokens\": {\n        \"github\": bool,\n        \"gitee\": bool\n    },\n    \"repo_requirements\": [\n        {\n            \"repo_url\": str,\n            \"platform\": str,\n            \"token_configured\": bool,\n            \"token_required\": bool\n        }\n    ]\n}",
+        "operationId": "check_platform_tokens_api_config_check_platform_tokens_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gitee/commits/{owner}/{repo}": {
+      "get": {
+        "tags": [
+          "data"
+        ],
+        "summary": "Get Gitee Commits",
+        "description": "Fetch commits for a Gitee repository",
+        "operationId": "get_gitee_commits_api_gitee_commits__owner___repo__get",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Owner"
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Repo"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "is_enterprise",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Is Enterprise"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/authors/{owner}/{repo}": {
+      "get": {
+        "tags": [
+          "data"
+        ],
+        "summary": "Get Authors",
+        "description": "Get list of authors from commit data\n\nFlow:\n1. Check if local data exists in platform-specific directory\n2. If no local data, extract it from GitHub/Gitee\n3. Load ALL authors from commits (always scans all commits)\n4. Return complete authors list",
+        "operationId": "get_authors_api_authors__owner___repo__get",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Owner"
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Repo"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "github",
+              "title": "Platform"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/evaluate/{owner}/{repo}/{author}": {
+      "post": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Evaluate Author",
+        "description": "Evaluate an author with auto-sync and incremental evaluation.",
+        "operationId": "evaluate_author_api_evaluate__owner___repo___author__post",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Owner"
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Repo"
+            }
+          },
+          {
+            "name": "author",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Author"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "deepseek/deepseek-v4-pro",
+              "title": "Model"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "github",
+              "title": "Platform"
+            }
+          },
+          {
+            "name": "branch",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Branch"
+            }
+          },
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Plugin"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "en-US",
+              "title": "Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/merge-evaluations": {
+      "post": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Merge Evaluations",
+        "description": "Merge multiple evaluations using LLM-based weighted combination.",
+        "operationId": "merge_evaluations_api_merge_evaluations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gitee/evaluate/{owner}/{repo}/{contributor}": {
+      "post": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Evaluate Gitee Contributor",
+        "description": "Evaluate a Gitee contributor.",
+        "operationId": "evaluate_gitee_contributor_api_gitee_evaluate__owner___repo___contributor__post",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Owner"
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Repo"
+            }
+          },
+          {
+            "name": "contributor",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contributor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 150,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "is_enterprise",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Is Enterprise"
+            }
+          },
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Plugin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batch/extract": {
+      "post": {
+        "tags": [
+          "batch"
+        ],
+        "summary": "Batch Extract Repos",
+        "description": "Batch extract multiple repositories (GitHub + Gitee).",
+        "operationId": "batch_extract_repos_api_batch_extract_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batch/common-contributors": {
+      "post": {
+        "tags": [
+          "batch"
+        ],
+        "summary": "Find Common Contributors",
+        "description": "Find common contributors across multiple repositories\n\nRequest body:\n{\n    \"repos\": [\n        {\"owner\": \"facebook\", \"repo\": \"react\"},\n        {\"owner\": \"vercel\", \"repo\": \"next.js\"}\n    ]\n}\n\nResponse:\n{\n    \"success\": true,\n    \"common_contributors\": [\n        {\n            \"author\": \"John Doe\",\n            \"email\": \"john@example.com\",\n            \"repos\": [\n                {\n                    \"owner\": \"facebook\",\n                    \"repo\": \"react\",\n                    \"commits\": 150\n                },\n                {\n                    \"owner\": \"vercel\",\n                    \"repo\": \"next.js\",\n                    \"commits\": 75\n                }\n            ],\n            \"total_commits\": 225,\n            \"repo_count\": 2\n        }\n    ],\n    \"summary\": {\n        \"total_repos\": 2,\n        \"total_common_contributors\": 5\n    }\n}",
+        "operationId": "find_common_contributors_api_batch_common_contributors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batch/compare-contributor": {
+      "post": {
+        "tags": [
+          "batch"
+        ],
+        "summary": "Compare Contributor Across Repos",
+        "description": "Compare a contributor's plugin rubric scores across multiple repositories\n\nRequest body:\n{\n    \"contributor\": \"John Doe\",\n    \"repos\": [\n        {\"owner\": \"facebook\", \"repo\": \"react\"},\n        {\"owner\": \"vercel\", \"repo\": \"next.js\"}\n    ]\n}\n\nResponse:\n{\n    \"success\": true,\n    \"contributor\": \"John Doe\",\n    \"comparisons\": [\n        {\n            \"repo\": \"facebook/react\",\n            \"owner\": \"facebook\",\n            \"repo_name\": \"react\",\n            \"scores\": {\n                \"ai_model_fullstack\": 85,\n                \"ai_native_architecture\": 70,\n                ...\n            },\n            \"total_commits\": 150\n        }\n    ],\n    \"dimension_names\": [...],\n    \"dimension_display_names\": [...]\n}",
+        "operationId": "compare_contributor_across_repos_api_batch_compare_contributor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/benchmark/dataset": {
+      "get": {
+        "tags": [
+          "benchmark"
+        ],
+        "summary": "Get Benchmark Dataset",
+        "description": "Get benchmark dataset metadata.",
+        "operationId": "get_benchmark_dataset_api_benchmark_dataset_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/benchmark/repos": {
+      "get": {
+        "tags": [
+          "benchmark"
+        ],
+        "summary": "Get Benchmark Repos",
+        "description": "Get paginated list of benchmark repos.",
+        "operationId": "get_benchmark_repos_api_benchmark_repos_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Per Page"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/benchmark/validate": {
+      "post": {
+        "tags": [
+          "benchmark"
+        ],
+        "summary": "Run Validation",
+        "description": "Run validation on benchmark repos.",
+        "operationId": "run_validation_api_benchmark_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trajectory/analyze": {
+      "post": {
+        "tags": [
+          "trajectory"
+        ],
+        "summary": "Analyze Trajectory",
+        "description": "Analyze user growth trajectory.\n\nRequest body format:\n{\n    \"username\": \"alice@example.com\",\n    \"repo_urls\": [\"https://gitee.com/zgcai/oscanner\"],\n    \"emails\": [\"alice@example.com\", \"alice@work.com\"]\n}\n\nReturns TrajectoryResponse with:\n- success: bool\n- trajectory: TrajectoryData (if successful)\n- new_checkpoint_created: bool\n- message: str\n- commits_pending: int (commits not yet forming a checkpoint)",
+        "operationId": "analyze_trajectory_api_trajectory_analyze_post",
+        "parameters": [
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Plugin"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "deepseek/deepseek-v4-pro",
+              "title": "Model"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zh-CN",
+              "title": "Language"
+            }
+          },
+          {
+            "name": "forced_checker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Forced Checker"
+            }
+          },
+          {
+            "name": "worktree_base",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "build",
+              "title": "Worktree Base"
+            }
+          },
+          {
+            "name": "checkpoint_strategy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "period",
+              "title": "Checkpoint Strategy"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Request Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Analyze Trajectory Api Trajectory Analyze Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trajectory/analyze_stream": {
+      "post": {
+        "tags": [
+          "trajectory"
+        ],
+        "summary": "Analyze Trajectory Stream",
+        "description": "Stream trajectory analysis as SSE.\n\nFinal `result` event matches /api/trajectory/analyze response shape.",
+        "operationId": "analyze_trajectory_stream_api_trajectory_analyze_stream_post",
+        "parameters": [
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Plugin"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "deepseek/deepseek-v4-pro",
+              "title": "Model"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zh-CN",
+              "title": "Language"
+            }
+          },
+          {
+            "name": "forced_checker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Forced Checker"
+            }
+          },
+          {
+            "name": "worktree_base",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "build",
+              "title": "Worktree Base"
+            }
+          },
+          {
+            "name": "checkpoint_strategy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "period",
+              "title": "Checkpoint Strategy"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Request Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/group_analyse_code": {
+      "post": {
+        "tags": [
+          "trajectory"
+        ],
+        "summary": "Group Analyse Code",
+        "description": "Courses-compatible full repository group evaluation.\n\nThis endpoint is intentionally repository-scoped, not author-scoped:\n- it evaluates every commit stored for each repo\n- it uses DeepSeek V4 Pro's long context window\n- it disables commit chunking for the LLM evaluation path\n- it accepts multiple repos in a single request so scores are produced with\n  the same model, rubric, and runtime settings",
+        "operationId": "group_analyse_code_api_courses_group_analyse_code_post",
+        "parameters": [
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zgc_ai_native_2026",
+              "title": "Plugin"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zh-CN",
+              "title": "Language"
+            }
+          },
+          {
+            "name": "max_fetch_workers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 4,
+              "title": "Max Fetch Workers"
+            }
+          },
+          {
+            "name": "forced_checker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Forced Checker"
+            }
+          },
+          {
+            "name": "worktree_base",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "build",
+              "title": "Worktree Base"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Request Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Group Analyse Code Api Courses Group Analyse Code Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trajectory/analyze_one-off": {
+      "post": {
+        "tags": [
+          "trajectory"
+        ],
+        "summary": "Analyze Trajectory One Off",
+        "description": "Analyze user growth trajectory as a one-off request.\n\nThis endpoint is for external parties to call. It performs analysis for a specific\ncommit range and returns a SINGLE checkpoint.\n\nRequest body format:\n{\n    \"username\": \"CarterWu\",\n    \"repo_urls\": [\"https://gitee.com/zgcai/oscanner\"],\n    \"emails\": [\"alice@example.com\", \"alice@work.com\"],\n    \"expected_feature\": \"Optional feature description used as an evaluation baseline\"\n}\nNote: `username` is optional.\n- If `username` is null and repo is from Gitee, all detected authors are used (no single-author filtering).\n- Otherwise, missing/empty username defaults to the first commit author.\n- `expected_feature` is optional. When omitted or blank, evaluation uses the normal rubric only.\n\nQuery parameters:\n- checkpoint_strategy: 'none' (default) or 'period'. Use 'none' for analyzing any commit range.\n- start_sha: Optional commit hash to start from (INCLUDED in range)\n- end_sha: Optional commit hash to end at (INCLUDED in range)\n\nWhen checkpoint_strategy=none:\n- If start_sha not provided: start from first commit (included)\n- If end_sha not provided: use latest commit (included)\n- No minimum commit requirement\n\nCorner cases:\n- Both None: evaluate all commits\n- Only start_sha: evaluate from start_sha to latest\n- Only end_sha: evaluate from first to end_sha\n- start_sha == end_sha: single commit evaluation\n- start_sha newer than end_sha: error (invalid range)\n- SHA not found: error with clear message\n\nReturns:\n- success: bool\n- checkpoint: TrajectoryCheckpoint (single checkpoint object, if successful)\n- message: str\n- commits_analyzed: int (number of commits included in the checkpoint)",
+        "operationId": "analyze_trajectory_one_off_api_trajectory_analyze_one_off_post",
+        "parameters": [
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zgc_ai_native_2026",
+              "title": "Plugin"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "deepseek/deepseek-v4-pro",
+              "title": "Model"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zh-CN",
+              "title": "Language"
+            }
+          },
+          {
+            "name": "forced_checker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Forced Checker"
+            }
+          },
+          {
+            "name": "worktree_base",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "build",
+              "title": "Worktree Base"
+            }
+          },
+          {
+            "name": "checkpoint_strategy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "none",
+              "title": "Checkpoint Strategy"
+            }
+          },
+          {
+            "name": "start_sha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Start Sha"
+            }
+          },
+          {
+            "name": "end_sha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "End Sha"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Request Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Analyze Trajectory One Off Api Trajectory Analyze One Off Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trajectory/analyze_one_off_stream": {
+      "post": {
+        "tags": [
+          "trajectory"
+        ],
+        "summary": "Analyze Trajectory One Off Stream",
+        "description": "Stream one-off trajectory analysis as SSE.\n\nEvents:\n- section: high-level analysis phase status\n- token: raw LLM token text from OpenAI-compatible streaming chunks\n- result: final JSON payload matching /api/trajectory/analyze_one-off\n- error: user-readable failure\n- done: stream completed",
+        "operationId": "analyze_trajectory_one_off_stream_api_trajectory_analyze_one_off_stream_post",
+        "parameters": [
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zgc_ai_native_2026",
+              "title": "Plugin"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "deepseek/deepseek-v4-pro",
+              "title": "Model"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zh-CN",
+              "title": "Language"
+            }
+          },
+          {
+            "name": "forced_checker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Forced Checker"
+            }
+          },
+          {
+            "name": "worktree_base",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "build",
+              "title": "Worktree Base"
+            }
+          },
+          {
+            "name": "checkpoint_strategy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "none",
+              "title": "Checkpoint Strategy"
+            }
+          },
+          {
+            "name": "start_sha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Start Sha"
+            }
+          },
+          {
+            "name": "end_sha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "End Sha"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Request Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trajectory/analyze_one_off_poll": {
+      "post": {
+        "tags": [
+          "trajectory"
+        ],
+        "summary": "Start Trajectory Analyze One Off Poll",
+        "description": "Start a durable one-off trajectory analysis job and return its poll URL.",
+        "operationId": "start_trajectory_analyze_one_off_poll_api_trajectory_analyze_one_off_poll_post",
+        "parameters": [
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zgc_ai_native_2026",
+              "title": "Plugin"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "deepseek/deepseek-v4-pro",
+              "title": "Model"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zh-CN",
+              "title": "Language"
+            }
+          },
+          {
+            "name": "forced_checker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Forced Checker"
+            }
+          },
+          {
+            "name": "worktree_base",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "build",
+              "title": "Worktree Base"
+            }
+          },
+          {
+            "name": "checkpoint_strategy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "none",
+              "title": "Checkpoint Strategy"
+            }
+          },
+          {
+            "name": "start_sha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Start Sha"
+            }
+          },
+          {
+            "name": "end_sha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "End Sha"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Request Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trajectory/analyze_one_off_poll/{job_id}": {
+      "get": {
+        "tags": [
+          "trajectory"
+        ],
+        "summary": "Get Trajectory Analyze One Off Poll",
+        "description": "Return stored events for a durable one-off trajectory analysis job.",
+        "operationId": "get_trajectory_analyze_one_off_poll_api_trajectory_analyze_one_off_poll__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/run-all": {
+      "post": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Run All Steps",
+        "description": "Proxy the full clone → explore → run-tests pipeline to the runner service.\n\nForwards the SSE stream from the runner's /api/runner/run-all directly to\nthe caller so progress events and the final status event are all visible.",
+        "operationId": "run_all_steps_api_runner_run_all_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunAllRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/run-all_poll": {
+      "post": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Start Run All Poll",
+        "description": "Start a durable clone → explore → test runner job and return its poll URL.",
+        "operationId": "start_run_all_poll_api_runner_run_all_poll_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunAllRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/run-all_poll/{job_id}": {
+      "get": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Get Run All Poll",
+        "description": "Return stored events for a durable runner job.",
+        "operationId": "get_run_all_poll_api_runner_run_all_poll__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/{path}": {
+      "get": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Proxy Runner Request",
+        "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
+        "operationId": "proxy_runner_request_api_runner__path__get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Proxy Runner Request",
+        "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
+        "operationId": "proxy_runner_request_api_runner__path__get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Proxy Runner Request",
+        "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
+        "operationId": "proxy_runner_request_api_runner__path__get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Proxy Runner Request",
+        "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
+        "operationId": "proxy_runner_request_api_runner__path__get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Proxy Runner Request",
+        "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
+        "operationId": "proxy_runner_request_api_runner__path__get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/checkers/list": {
+      "get": {
+        "tags": [
+          "checkers"
+        ],
+        "summary": "List Checkers",
+        "description": "List available checkers discovered from the local `checkers/` directory.",
+        "operationId": "list_checkers_api_checkers_list_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/checkers/run": {
+      "post": {
+        "tags": [
+          "checkers"
+        ],
+        "summary": "Run Checker",
+        "description": "Run a checker on a specific commit.\n\nArgs:\n    request: CheckerRunRequest with checker_id, platform, owner, repo, commit_sha, and optional files\n    \nReturns:\n    Checker execution result (dict with success, score, passed, total, details, message, etc.)",
+        "operationId": "run_checker_api_checkers_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckerRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Run Checker Api Checkers Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Health check endpoint",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "Version",
+        "description": "Return deployed git commit",
+        "operationId": "version_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "description": "Root endpoint - serves bundled dashboard if available.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CheckerRunRequest": {
+        "properties": {
+          "checker_id": {
+            "type": "string",
+            "title": "Checker Id"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "repo": {
+            "type": "string",
+            "title": "Repo"
+          },
+          "commit_sha": {
+            "type": "string",
+            "title": "Commit Sha"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files"
+          },
+          "worktree_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worktree Base"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checker_id",
+          "platform",
+          "owner",
+          "repo",
+          "commit_sha"
+        ],
+        "title": "CheckerRunRequest",
+        "description": "Request model for running a checker."
+      },
+      "CommitsSummarySchema": {
+        "properties": {
+          "total_additions": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Additions",
+            "description": "Total lines added across all commits",
+            "default": 0
+          },
+          "total_deletions": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Deletions",
+            "description": "Total lines deleted across all commits",
+            "default": 0
+          },
+          "files_changed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Files Changed",
+            "description": "Total number of files modified",
+            "default": 0
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Languages",
+            "description": "Programming languages detected in commits"
+          }
+        },
+        "type": "object",
+        "title": "CommitsSummarySchema",
+        "description": "Summary statistics of analyzed commits."
+      },
+      "EvaluationMetadata": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Source of evaluation (e.g., merged_emails, single_email)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp"
+        ],
+        "title": "EvaluationMetadata",
+        "description": "Metadata about the evaluation response."
+      },
+      "EvaluationResponseSchema": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether the evaluation succeeded"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/EvaluationSchema",
+            "description": "Evaluation result data"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/EvaluationMetadata",
+            "description": "Response metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "evaluation",
+          "metadata"
+        ],
+        "title": "EvaluationResponseSchema",
+        "description": "Standard API response for evaluation endpoints.",
+        "example": {
+          "evaluation": {
+            "chunked": true,
+            "chunking_strategy": "parallel",
+            "chunks_processed": 4,
+            "commits_summary": {
+              "files_changed": 5,
+              "languages": [
+                "gitignore",
+                "js",
+                "css",
+                "html"
+              ],
+              "total_additions": 385,
+              "total_deletions": 1
+            },
+            "evaluated_at": "2026-01-25T11:43:47.360638",
+            "files_loaded": 0,
+            "incremental": false,
+            "last_commit_sha": "b5dd70db702701c59e16d57ba725c54cd359cdf8",
+            "mode": "moderate",
+            "new_commits_count": 50,
+            "plugin": "zgc_ai_native_2026",
+            "plugin_version": "0.1.0",
+            "scores": {
+              "ai_engineering": 10,
+              "cloud_architecture": 10,
+              "mastery_professionalism": 26,
+              "reasoning": "**主要优势**:\n- 用户在AI应用开发方面表现出色...",
+              "spec_quality": 28
+            },
+            "total_commits_analyzed": 50,
+            "total_commits_evaluated": 50,
+            "username": "CarterWu"
+          },
+          "metadata": {
+            "timestamp": "2026-01-25T11:43:47.360638"
+          },
+          "success": true
+        }
+      },
+      "EvaluationSchema": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "description": "Author username or alias"
+          },
+          "total_commits_analyzed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Commits Analyzed",
+            "description": "Number of commits analyzed in this run"
+          },
+          "files_loaded": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Files Loaded",
+            "description": "Number of file diffs loaded for analysis",
+            "default": 0
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "description": "Evaluation context profile; currently always moderate",
+            "default": "moderate"
+          },
+          "scores": {
+            "$ref": "#/components/schemas/ScoresSchema",
+            "description": "Dimensional scores and reasoning"
+          },
+          "commits_summary": {
+            "$ref": "#/components/schemas/CommitsSummarySchema",
+            "description": "Commit statistics summary"
+          },
+          "chunked": {
+            "type": "boolean",
+            "title": "Chunked",
+            "description": "Whether evaluation used chunked processing",
+            "default": false
+          },
+          "chunks_processed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Chunks Processed",
+            "description": "Number of chunks processed if chunked=true",
+            "default": 0
+          },
+          "chunking_strategy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunking Strategy",
+            "description": "Chunking strategy used (e.g., parallel, sequential)"
+          },
+          "last_commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Commit Sha",
+            "description": "SHA of the most recent commit evaluated"
+          },
+          "total_commits_evaluated": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Commits Evaluated",
+            "description": "Cumulative total commits evaluated (including previous runs)",
+            "default": 0
+          },
+          "new_commits_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "New Commits Count",
+            "description": "Number of new commits in this evaluation",
+            "default": 0
+          },
+          "evaluated_at": {
+            "type": "string",
+            "title": "Evaluated At",
+            "description": "ISO 8601 timestamp of evaluation"
+          },
+          "incremental": {
+            "type": "boolean",
+            "title": "Incremental",
+            "description": "Whether this was an incremental evaluation",
+            "default": false
+          },
+          "plugin": {
+            "type": "string",
+            "title": "Plugin",
+            "description": "Plugin ID used for evaluation"
+          },
+          "plugin_version": {
+            "type": "string",
+            "title": "Plugin Version",
+            "description": "Plugin version string"
+          },
+          "commit_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Ids",
+            "description": "List of commit IDs analyzed"
+          },
+          "evidence_links": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Links",
+            "description": "Structured commit/file review links for evidence used by downstream UIs"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "username",
+          "total_commits_analyzed",
+          "scores",
+          "commits_summary",
+          "evaluated_at",
+          "plugin",
+          "plugin_version"
+        ],
+        "title": "EvaluationSchema",
+        "description": "Engineer evaluation result."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "RunAllRequest": {
+        "properties": {
+          "repo_url": {
+            "type": "string",
+            "title": "Repo Url"
+          },
+          "sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "tag_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Message"
+          },
+          "grading_rubric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grading Rubric",
+            "default": "评分规则\n\n你正在评估 Vibe Coding 时代的工程师。请区分“AI搬运工”和“系统构建者”。使用 L1-L5 行为画像作为评分指引：\n\nL1：盲目复制/粘贴，无法解释代码，常见低级错误，没有质量门禁。\nL2：能交付 happy-path，具备基础工程规范、基础测试/lint，但系统性思考较浅。\nL3：能作为单人全栈 MVP 构建者，能重构 AI 生成代码，具备更强类型纪律，关注边界情况。\nL4：团队骨干，能引入质量门禁、防御性校验、CI、文档，并考虑成本和运维。\nL5：领导者/维护者，能定义模式和标准，影响生态，做出深层架构决策。\n\n证据查找方向（优先使用仓库产物，而不是口头声明）：\n\n规格/质量：重构、模块化、输入校验、测试（单元/集成/性质测试）、lint/format、CI。\n可复现性：依赖锁文件、一键运行、Docker/Compose/devcontainer。\n云原生：容器化、IaC、部署配置、资源限制、自动化。\nAI 工程：agent/tooling、结构化 prompt、工具抽象、trace/log、评测数据集。\n专业性：文档/ADR、有意义的 commit/PR、审慎权衡、安全/性能考虑。\n\n评分映射：对每个维度，将观察到的证据映射到粗略 L1-L5，并转换为 0-100 分（L1≈10-30，L2≈30-50，L3≈50-70，L4≈70-85，L5≈85-100）。缺少证据时要保守评分。\n\n轨迹评估上下文：\n\n本评估属于成长轨迹追踪系统。\ncommit 会被分组为评估节点（每个节点至少 10 个 commit，来自 2 周周期）。\n随着工程师学习和进步，分数总体应呈上升趋势。\n只有在存在明确负面证据时才降低分数（质量回退、引入 bug、反模式等）。\n如果提供了上一检查点分数，请将其作为对比基线。\n如果当前工作保持了与上一阶段相近的质量，分数应持平或略有提升。\n显著提分需要明确证据证明出现了新能力或实践改进。"
+          },
+          "skip_clone": {
+            "type": "boolean",
+            "title": "Skip Clone",
+            "default": false
+          },
+          "skip_explore": {
+            "type": "boolean",
+            "title": "Skip Explore",
+            "default": false
+          },
+          "clone_timeout": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Clone Timeout",
+            "default": 300
+          },
+          "setup_timeout": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Setup Timeout",
+            "default": 300
+          },
+          "test_timeout": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Test Timeout",
+            "default": 600
+          },
+          "pipeline_timeout": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Pipeline Timeout",
+            "default": 1800
+          }
+        },
+        "type": "object",
+        "required": [
+          "repo_url"
+        ],
+        "title": "RunAllRequest",
+        "description": "Request model for the combined clone → explore → test pipeline"
+      },
+      "ScoresSchema": {
+        "properties": {
+          "spec_quality": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Quality",
+            "description": "AI Model Full-Stack & Trade-off score"
+          },
+          "cloud_architecture": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cloud Architecture",
+            "description": "AI Native Architecture & Communication score"
+          },
+          "ai_engineering": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Engineering",
+            "description": "Cloud Native Engineering score"
+          },
+          "mastery_professionalism": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mastery Professionalism",
+            "description": "Open Source Collaboration score"
+          },
+          "ai_fullstack": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Fullstack",
+            "description": "AI Model Full-Stack & Trade-off"
+          },
+          "ai_architecture": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Architecture",
+            "description": "AI Native Architecture & Communication"
+          },
+          "cloud_native": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cloud Native",
+            "description": "Cloud Native Engineering"
+          },
+          "open_source": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Source",
+            "description": "Open Source Collaboration"
+          },
+          "intelligent_dev": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intelligent Dev",
+            "description": "Intelligent Development"
+          },
+          "leadership": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leadership",
+            "description": "Engineering Leadership"
+          },
+          "reasoning": {
+            "type": "string",
+            "title": "Reasoning",
+            "description": "Detailed reasoning and analysis in markdown format"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "reasoning"
+        ],
+        "title": "ScoresSchema",
+        "description": "Evaluation scores model."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

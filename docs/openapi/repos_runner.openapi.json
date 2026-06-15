@@ -1,0 +1,878 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Repository Runner API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/runner/clone": {
+      "post": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Clone Repo",
+        "description": "Clone a repository and return metadata.",
+        "operationId": "clone_repo_api_runner_clone_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepoCloneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/explore": {
+      "post": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Explore Repo Stream",
+        "description": "Explore repository and generate REPO_OVERVIEW.md with streaming progress.\nUses opencode for agentic exploration (falls back to messages API).",
+        "operationId": "explore_repo_stream_api_runner_explore_post",
+        "parameters": [
+          {
+            "name": "clone_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clone Path"
+            }
+          },
+          {
+            "name": "feature_requirements",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Feature Requirements"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/detect-tests": {
+      "get": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Detect Tests",
+        "description": "Detect test commands from REPO_OVERVIEW.md without running them.\nUses static analysis first, falls back to LLM, caches result.",
+        "operationId": "detect_tests_api_runner_detect_tests_get",
+        "parameters": [
+          {
+            "name": "overview_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Overview Path"
+            }
+          },
+          {
+            "name": "feature_requirements",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Feature Requirements"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/run-tests": {
+      "post": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Run Tests Stream",
+        "description": "Run tests based on REPO_OVERVIEW.md with streaming progress.\n\n- setup_timeout: per-command timeout for dependency installation (default 300s)\n- test_timeout:  per-command timeout for test execution (default 600s)\n- feature_requirements/tag_message: optional feature requirements to validate\n  alongside code tests",
+        "operationId": "run_tests_stream_api_runner_run_tests_post",
+        "parameters": [
+          {
+            "name": "clone_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clone Path"
+            }
+          },
+          {
+            "name": "overview_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Overview Path"
+            }
+          },
+          {
+            "name": "setup_timeout",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Seconds allowed per setup command",
+              "default": 300,
+              "title": "Setup Timeout"
+            },
+            "description": "Seconds allowed per setup command"
+          },
+          {
+            "name": "test_timeout",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Seconds allowed per test command",
+              "default": 600,
+              "title": "Test Timeout"
+            },
+            "description": "Seconds allowed per test command"
+          },
+          {
+            "name": "feature_requirements",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Feature Requirements"
+            }
+          },
+          {
+            "name": "tag_message",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag Message"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "name": "grading_rubric",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Grading Rubric"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/run-all": {
+      "post": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Run All Stream",
+        "description": "Combined clone → explore → run-tests pipeline with SSE streaming progress.\n\nPipeline stages:\n1. Clone   — shallow clone (depth=1) into\n             ~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/\n             Optionally checks out a specific SHA or tag.\n2. Explore — generates REPO_OVERVIEW.md via Claude Sonnet LLM to understand\n             project structure, languages, and suggested test commands.\n3. Tests   — auto-detects test framework, sets up an isolated .venv, runs tests\n             inside a sandboxed subprocess. Produces TEST_REPORT.md with a\n             0–100 score based on pass/fail metrics.\n\nIdempotency flags:\n- skip_clone:   reuse existing clone (skip re-cloning)\n- skip_explore: reuse existing REPO_OVERVIEW.md (skip LLM exploration)\n\nTag annotation scoring (Gitee only):\n- When `tag` is provided, fetches the annotated tag message from Gitee.\n- Extracts feature descriptions from the message and checks which features\n  are exercised by the test suite (via LLM). Uncovered features reduce the\n  maximum achievable score proportionally.\n\nSSE events emitted:\n- {\"event\": \"progress\", \"data\": {\"message\": \"<msg>\"}}   — pipeline log lines\n- {\"event\": \"status\",   \"data\": {\"status\": \"completed\", \"results\": {...}}}\n- {\"event\": \"status\",   \"data\": {\"status\": \"failed\",    \"error\": \"<msg>\"}}\n\nWhat is NOT covered:\n- Private repositories (no authentication support)\n- Tag annotation fetch for GitHub (Gitee-only)\n- Parallel test execution within a single repo\n- Docker / containerised test environments\n- Custom environment variable injection for test commands\n- Non-Git version control systems",
+        "operationId": "run_all_stream_api_runner_run_all_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunAllRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/batch-run": {
+      "post": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Batch Run Stream",
+        "description": "Run up to N repos through the clone → explore → test pipeline concurrently.\nConcurrency is capped at 3 (max_concurrency field, ignored if > 3).\n\nSSE events:\n- {\"event\": \"progress\", \"data\": {\"repo\": \"<url>\", \"message\": \"<msg>\"}}\n- {\"event\": \"repo_done\",  \"data\": {\"repo\": \"<url>\", \"status\": \"completed\"|\"failed\", ...}}\n- {\"event\": \"batch_done\", \"data\": {\"total\": N, \"succeeded\": N, \"failed\": N}}",
+        "operationId": "batch_run_stream_api_runner_batch_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/queue": {
+      "get": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Get Queue Status",
+        "description": "Return current in-process runner queue state.",
+        "operationId": "get_queue_status_api_runner_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/repos": {
+      "get": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "List Cloned Repos",
+        "description": "List all cloned repositories with disk usage and status.\n\nReturns repo_name, clone_path, size_mb, last_accessed,\nhas_overview, has_report, has_test_config.",
+        "operationId": "list_cloned_repos_api_runner_repos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/repo": {
+      "delete": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Remove Repo",
+        "description": "Delete a cloned repository and all associated files (venv, reports, etc.).\n\nReturns freed_mb.",
+        "operationId": "remove_repo_api_runner_repo_delete",
+        "parameters": [
+          {
+            "name": "repo_name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Repo Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/artifact": {
+      "get": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Get Artifact",
+        "description": "Serve runtime evidence images from TEST_ARTIFACTS_* for a cloned repository.",
+        "operationId": "get_artifact_api_runner_artifact_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          },
+          {
+            "name": "repo_url",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repo Url"
+            }
+          },
+          {
+            "name": "repo_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repo Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runner/report": {
+      "get": {
+        "tags": [
+          "runner"
+        ],
+        "summary": "Get Report",
+        "description": "Return the content of TEST_REPORT_{tag}.md (or TEST_REPORT.md) for a cloned repo.",
+        "operationId": "get_report_api_runner_report_get",
+        "parameters": [
+          {
+            "name": "repo_url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Repo Url"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Health check endpoint",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "Version",
+        "description": "Return deployed git commit",
+        "operationId": "version_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BatchRunRequest": {
+        "properties": {
+          "repos": {
+            "items": {
+              "$ref": "#/components/schemas/RunAllRequest"
+            },
+            "type": "array",
+            "title": "Repos"
+          },
+          "max_concurrency": {
+            "type": "integer",
+            "title": "Max Concurrency",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "required": [
+          "repos"
+        ],
+        "title": "BatchRunRequest",
+        "description": "Request model for running multiple repos concurrently (max 3 at a time)"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "RepoCloneRequest": {
+        "properties": {
+          "repo_url": {
+            "type": "string",
+            "title": "Repo Url"
+          },
+          "sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "clone_timeout": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Clone Timeout",
+            "default": 300
+          }
+        },
+        "type": "object",
+        "required": [
+          "repo_url"
+        ],
+        "title": "RepoCloneRequest",
+        "description": "Request model for cloning a repository"
+      },
+      "RunAllRequest": {
+        "properties": {
+          "repo_url": {
+            "type": "string",
+            "title": "Repo Url"
+          },
+          "sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "tag_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Message"
+          },
+          "grading_rubric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grading Rubric",
+            "default": "评分规则\n\n你正在评估 Vibe Coding 时代的工程师。请区分“AI搬运工”和“系统构建者”。使用 L1-L5 行为画像作为评分指引：\n\nL1：盲目复制/粘贴，无法解释代码，常见低级错误，没有质量门禁。\nL2：能交付 happy-path，具备基础工程规范、基础测试/lint，但系统性思考较浅。\nL3：能作为单人全栈 MVP 构建者，能重构 AI 生成代码，具备更强类型纪律，关注边界情况。\nL4：团队骨干，能引入质量门禁、防御性校验、CI、文档，并考虑成本和运维。\nL5：领导者/维护者，能定义模式和标准，影响生态，做出深层架构决策。\n\n证据查找方向（优先使用仓库产物，而不是口头声明）：\n\n规格/质量：重构、模块化、输入校验、测试（单元/集成/性质测试）、lint/format、CI。\n可复现性：依赖锁文件、一键运行、Docker/Compose/devcontainer。\n云原生：容器化、IaC、部署配置、资源限制、自动化。\nAI 工程：agent/tooling、结构化 prompt、工具抽象、trace/log、评测数据集。\n专业性：文档/ADR、有意义的 commit/PR、审慎权衡、安全/性能考虑。\n\n评分映射：对每个维度，将观察到的证据映射到粗略 L1-L5，并转换为 0-100 分（L1≈10-30，L2≈30-50，L3≈50-70，L4≈70-85，L5≈85-100）。缺少证据时要保守评分。\n\n轨迹评估上下文：\n\n本评估属于成长轨迹追踪系统。\ncommit 会被分组为评估节点（每个节点至少 10 个 commit，来自 2 周周期）。\n随着工程师学习和进步，分数总体应呈上升趋势。\n只有在存在明确负面证据时才降低分数（质量回退、引入 bug、反模式等）。\n如果提供了上一检查点分数，请将其作为对比基线。\n如果当前工作保持了与上一阶段相近的质量，分数应持平或略有提升。\n显著提分需要明确证据证明出现了新能力或实践改进。"
+          },
+          "skip_clone": {
+            "type": "boolean",
+            "title": "Skip Clone",
+            "default": false
+          },
+          "skip_explore": {
+            "type": "boolean",
+            "title": "Skip Explore",
+            "default": false
+          },
+          "clone_timeout": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Clone Timeout",
+            "default": 300
+          },
+          "setup_timeout": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Setup Timeout",
+            "default": 300
+          },
+          "test_timeout": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Test Timeout",
+            "default": 600
+          },
+          "pipeline_timeout": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Pipeline Timeout",
+            "default": 1800
+          }
+        },
+        "type": "object",
+        "required": [
+          "repo_url"
+        ],
+        "title": "RunAllRequest",
+        "description": "Request model for the combined clone → explore → test pipeline"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
