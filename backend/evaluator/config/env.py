@@ -1,5 +1,7 @@
 """Environment variable and configuration file management."""
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Dict, Iterable, List

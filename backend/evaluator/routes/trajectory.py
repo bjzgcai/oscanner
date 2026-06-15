@@ -1,5 +1,7 @@
 """Growth trajectory API endpoints."""
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 import urllib.parse

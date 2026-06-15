@@ -3,12 +3,14 @@ Proxy routes for Repository Runner API
 Forwards requests from evaluator server to repos_runner service
 """
 
+from __future__ import annotations
+
 import os
 import asyncio
 import json
 import time
 import uuid
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse, JSONResponse, Response
@@ -102,11 +104,11 @@ def _parse_sse_buffer(buffer: str) -> tuple[list[tuple[str, Any]], str]:
 class RunAllRequest(BaseModel):
     """Request model for the combined clone → explore → test pipeline"""
     repo_url: str
-    sha: str | None = None
-    tag: str | None = None
-    branch: str | None = None
-    tag_message: str | None = None
-    grading_rubric: str | None = DEFAULT_GRADING_RUBRIC
+    sha: Optional[str] = None
+    tag: Optional[str] = None
+    branch: Optional[str] = None
+    tag_message: Optional[str] = None
+    grading_rubric: Optional[str] = DEFAULT_GRADING_RUBRIC
     skip_clone: bool = False
     skip_explore: bool = False
     clone_timeout: int = Field(default=300, gt=0)

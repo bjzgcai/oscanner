@@ -1,5 +1,7 @@
 """Runner grading rubric defaults."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 
