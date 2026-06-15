@@ -235,7 +235,6 @@ async def get_run_all_poll(job_id: str, cursor: int = Query(0, ge=0)) -> JSONRes
     return JSONResponse(status, headers={"Cache-Control": "no-store"})
 
 
-@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_runner_request(path: str, request: Request):
     """
     Proxy all /api/runner/* requests to the repos_runner service
@@ -323,3 +322,14 @@ async def proxy_runner_request(path: str, request: Request):
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+
+for _method in ("GET", "POST", "PUT", "PATCH", "DELETE"):
+    router.add_api_route(
+        "/{path:path}",
+        proxy_runner_request,
+        methods=[_method],
+        name=f"proxy_runner_{_method.lower()}",
+        summary=f"Proxy runner {_method} request",
+        operation_id=f"proxy_runner_{_method.lower()}_api_runner_path",
+    )

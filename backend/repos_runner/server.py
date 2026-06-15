@@ -39,9 +39,34 @@ for _env_path in _env_candidates:
         break
 load_dotenv(override=False)
 
+from oscanner_logging import configure_service_logging
 from repos_runner.routes import runner
 
-app = FastAPI(title="Repository Runner API")
+LOG_PATH = configure_service_logging("repos-runner")
+
+OPENAPI_TAGS = [
+    {
+        "name": "runner",
+        "description": (
+            "Clone repositories, explore project structure, detect test commands, "
+            "run tests, and serve runner artifacts."
+        ),
+    },
+]
+
+app = FastAPI(
+    title="Oscanner Repository Runner API",
+    summary="Repository clone, exploration, and test execution service",
+    description=(
+        "Clone public GitHub and Gitee repositories, generate repository overviews, "
+        "detect test commands, execute controlled test workflows, and expose "
+        "reports and runtime evidence artifacts."
+    ),
+    version="0.1.6",
+    license_info={"name": "Apache-2.0"},
+    servers=[{"url": "http://localhost:8001", "description": "Local repository runner service"}],
+    openapi_tags=OPENAPI_TAGS,
+)
 
 # Middleware to strip trailing slashes from API requests
 class TrailingSlashMiddleware(BaseHTTPMiddleware):

@@ -1,9 +1,20 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Repository Runner API",
-    "version": "0.1.0"
+    "title": "Oscanner Repository Runner API",
+    "summary": "Repository clone, exploration, and test execution service",
+    "description": "Clone public GitHub and Gitee repositories, generate repository overviews, detect test commands, execute controlled test workflows, and expose reports and runtime evidence artifacts.",
+    "license": {
+      "name": "Apache-2.0"
+    },
+    "version": "0.1.6"
   },
+  "servers": [
+    {
+      "url": "http://localhost:8001",
+      "description": "Local repository runner service"
+    }
+  ],
   "paths": {
     "/api/runner/clone": {
       "post": {
@@ -319,7 +330,7 @@
           "runner"
         ],
         "summary": "Run All Stream",
-        "description": "Combined clone → explore → run-tests pipeline with SSE streaming progress.\n\nPipeline stages:\n1. Clone   — shallow clone (depth=1) into\n             ~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/\n             Optionally checks out a specific SHA or tag.\n2. Explore — generates REPO_OVERVIEW.md via Claude Sonnet LLM to understand\n             project structure, languages, and suggested test commands.\n3. Tests   — auto-detects test framework, sets up an isolated .venv, runs tests\n             inside a sandboxed subprocess. Produces TEST_REPORT.md with a\n             0–100 score based on pass/fail metrics.\n\nIdempotency flags:\n- skip_clone:   reuse existing clone (skip re-cloning)\n- skip_explore: reuse existing REPO_OVERVIEW.md (skip LLM exploration)\n\nTag annotation scoring (Gitee only):\n- When `tag` is provided, fetches the annotated tag message from Gitee.\n- Extracts feature descriptions from the message and checks which features\n  are exercised by the test suite (via LLM). Uncovered features reduce the\n  maximum achievable score proportionally.\n\nSSE events emitted:\n- {\"event\": \"progress\", \"data\": {\"message\": \"<msg>\"}}   — pipeline log lines\n- {\"event\": \"status\",   \"data\": {\"status\": \"completed\", \"results\": {...}}}\n- {\"event\": \"status\",   \"data\": {\"status\": \"failed\",    \"error\": \"<msg>\"}}\n\nWhat is NOT covered:\n- Private repositories (no authentication support)\n- Tag annotation fetch for GitHub (Gitee-only)\n- Parallel test execution within a single repo\n- Docker / containerised test environments\n- Custom environment variable injection for test commands\n- Non-Git version control systems",
+        "description": "Combined clone → explore → run-tests pipeline with SSE streaming progress.\n\nPipeline stages:\n1. Clone   — shallow clone (depth=1) into\n             ~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/\n             Optionally checks out a specific SHA or tag.\n2. Explore — generates REPO_OVERVIEW.md via the configured LLM to understand\n             project structure, languages, and suggested test commands.\n3. Tests   — auto-detects test framework, sets up an isolated .venv, runs tests\n             inside a sandboxed subprocess. Produces TEST_REPORT.md with a\n             0–100 score based on pass/fail metrics.\n\nIdempotency flags:\n- skip_clone:   reuse existing clone (skip re-cloning)\n- skip_explore: reuse existing REPO_OVERVIEW.md (skip LLM exploration)\n\nTag annotation scoring (Gitee only):\n- When `tag` is provided, fetches the annotated tag message from Gitee.\n- Extracts feature descriptions from the message and checks which features\n  are exercised by the test suite (via LLM). Uncovered features reduce the\n  maximum achievable score proportionally.\n\nSSE events emitted:\n- {\"event\": \"progress\", \"data\": {\"message\": \"<msg>\"}}   — pipeline log lines\n- {\"event\": \"status\",   \"data\": {\"status\": \"completed\", \"results\": {...}}}\n- {\"event\": \"status\",   \"data\": {\"status\": \"failed\",    \"error\": \"<msg>\"}}\n\nWhat is NOT covered:\n- Private repositories (no authentication support)\n- Tag annotation fetch for GitHub (Gitee-only)\n- Parallel test execution within a single repo\n- Docker / containerised test environments\n- Custom environment variable injection for test commands\n- Non-Git version control systems",
         "operationId": "run_all_stream_api_runner_run_all_post",
         "requestBody": {
           "content": {
@@ -874,5 +885,11 @@
         "title": "ValidationError"
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "runner",
+      "description": "Clone repositories, explore project structure, detect test commands, run tests, and serve runner artifacts."
+    }
+  ]
 }

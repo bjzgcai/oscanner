@@ -1,9 +1,20 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Engineer Skill Evaluator API",
-    "version": "0.1.0"
+    "title": "Oscanner Evaluator API",
+    "summary": "Contributor capability evaluation service",
+    "description": "Extract GitHub and Gitee activity, discover contributor identities, evaluate contributors with plugin-defined rubrics, analyze trajectories, and proxy repository runner workflows.",
+    "license": {
+      "name": "Apache-2.0"
+    },
+    "version": "0.1.6"
   },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Local evaluator service"
+    }
+  ],
   "paths": {
     "/api/plugins": {
       "get": {
@@ -1697,9 +1708,9 @@
         "tags": [
           "runner"
         ],
-        "summary": "Proxy Runner Request",
+        "summary": "Proxy runner GET request",
         "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
-        "operationId": "proxy_runner_request_api_runner__path__get",
+        "operationId": "proxy_runner_get_api_runner_path",
         "parameters": [
           {
             "name": "path",
@@ -1736,9 +1747,9 @@
         "tags": [
           "runner"
         ],
-        "summary": "Proxy Runner Request",
+        "summary": "Proxy runner POST request",
         "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
-        "operationId": "proxy_runner_request_api_runner__path__get",
+        "operationId": "proxy_runner_post_api_runner_path",
         "parameters": [
           {
             "name": "path",
@@ -1775,9 +1786,9 @@
         "tags": [
           "runner"
         ],
-        "summary": "Proxy Runner Request",
+        "summary": "Proxy runner PUT request",
         "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
-        "operationId": "proxy_runner_request_api_runner__path__get",
+        "operationId": "proxy_runner_put_api_runner_path",
         "parameters": [
           {
             "name": "path",
@@ -1814,9 +1825,9 @@
         "tags": [
           "runner"
         ],
-        "summary": "Proxy Runner Request",
+        "summary": "Proxy runner PATCH request",
         "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
-        "operationId": "proxy_runner_request_api_runner__path__get",
+        "operationId": "proxy_runner_patch_api_runner_path",
         "parameters": [
           {
             "name": "path",
@@ -1853,9 +1864,9 @@
         "tags": [
           "runner"
         ],
-        "summary": "Proxy Runner Request",
+        "summary": "Proxy runner DELETE request",
         "description": "Proxy all /api/runner/* requests to the repos_runner service\n\nArgs:\n    path: The path after /api/runner/\n    request: The incoming request\n\nReturns:\n    Proxied response from repos_runner service",
-        "operationId": "proxy_runner_request_api_runner__path__get",
+        "operationId": "proxy_runner_delete_api_runner_path",
         "parameters": [
           {
             "name": "path",
@@ -1936,6 +1947,232 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Run Checker Api Checkers Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gitee-github/evaluate": {
+      "post": {
+        "tags": [
+          "github"
+        ],
+        "summary": "Evaluate Global Github",
+        "description": "Evaluate a contributor across globally visible GitHub repositories by commit email.",
+        "operationId": "evaluate_global_github_api_gitee_github_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Evaluate Global Github Api Gitee Github Evaluate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/github/evaluate": {
+      "post": {
+        "tags": [
+          "github"
+        ],
+        "summary": "Evaluate Global Github",
+        "description": "Evaluate a contributor across globally visible GitHub repositories by commit email.",
+        "operationId": "evaluate_global_github_api_github_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Evaluate Global Github Api Github Evaluate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gitee-github/analyze": {
+      "post": {
+        "tags": [
+          "github"
+        ],
+        "summary": "Analyze Github",
+        "description": "Collect global GitHub and cached Gitee evidence for emails.",
+        "operationId": "analyze_github_api_gitee_github_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Analyze Github Api Gitee Github Analyze Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/github/analyze": {
+      "post": {
+        "tags": [
+          "github"
+        ],
+        "summary": "Analyze Github",
+        "description": "Collect global GitHub and cached Gitee evidence for emails.",
+        "operationId": "analyze_github_api_github_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Analyze Github Api Github Analyze Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gitee/profile/evaluate": {
+      "post": {
+        "tags": [
+          "gitee"
+        ],
+        "summary": "Evaluate Gitee Profile",
+        "description": "Sync and evaluate the latest commits across a Gitee profile's repositories.",
+        "operationId": "evaluate_gitee_profile_api_gitee_profile_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Request Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Evaluate Gitee Profile Api Gitee Profile Evaluate Post"
                 }
               }
             }
@@ -2660,5 +2897,51 @@
         "title": "ValidationError"
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "plugins",
+      "description": "Discover and select evaluator plugins."
+    },
+    {
+      "name": "config",
+      "description": "Read or update local evaluator configuration."
+    },
+    {
+      "name": "data",
+      "description": "Extract repository data and discover contributors."
+    },
+    {
+      "name": "evaluation",
+      "description": "Evaluate contributors and merge evaluation results."
+    },
+    {
+      "name": "batch",
+      "description": "Extract and compare multiple repositories."
+    },
+    {
+      "name": "benchmark",
+      "description": "Run benchmark validation workflows."
+    },
+    {
+      "name": "trajectory",
+      "description": "Analyze contributor growth over time."
+    },
+    {
+      "name": "runner",
+      "description": "Proxy repository runner jobs from the evaluator service."
+    },
+    {
+      "name": "checkers",
+      "description": "List and run code quality checkers."
+    },
+    {
+      "name": "github",
+      "description": "GitHub-specific data APIs."
+    },
+    {
+      "name": "gitee",
+      "description": "Gitee-specific data APIs."
+    }
+  ]
 }

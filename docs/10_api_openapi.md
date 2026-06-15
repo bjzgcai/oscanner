@@ -4,7 +4,7 @@ This document is the integration entry point for external systems that need to c
 
 ## OpenAPI Specs
 
-Canonical OpenAPI 3.1 specs are checked in here:
+Canonical OpenAPI 3.1 specs are checked in here. They include stable `operationId` values, service metadata, and default local `servers` entries for client generation:
 
 - Evaluator service: [`openapi/evaluator.openapi.json`](openapi/evaluator.openapi.json)
 - Repository runner service: [`openapi/repos_runner.openapi.json`](openapi/repos_runner.openapi.json)
@@ -251,30 +251,10 @@ curl -N -X POST http://localhost:8001/api/runner/run-all \
 
 ## Keeping Specs Updated
 
-Regenerate the checked-in specs after changing FastAPI routes, schemas, or response models:
+Regenerate the checked-in specs after changing FastAPI routes, schemas, response models, service metadata, or OpenAPI tag definitions:
 
 ```bash
-mkdir -p docs/openapi
-.venv312/bin/python - <<'PY'
-import json
-import sys
-from pathlib import Path
-
-sys.path.insert(0, 'backend')
-from evaluator.server import app as evaluator_app
-from repos_runner.server import app as runner_app
-
-out = Path('docs/openapi')
-for filename, app in [
-    ('evaluator.openapi.json', evaluator_app),
-    ('repos_runner.openapi.json', runner_app),
-]:
-    spec = app.openapi()
-    (out / filename).write_text(
-        json.dumps(spec, ensure_ascii=False, indent=2) + '\n',
-        encoding='utf-8',
-    )
-PY
+.venv312/bin/python scripts/export_openapi.py
 ```
 
-If `.venv312` is not present, use any Python 3.12 environment with the project dependencies installed.
+The exporter writes both `docs/openapi/evaluator.openapi.json` and `docs/openapi/repos_runner.openapi.json`, and fails if any generated `operationId` values are duplicated. If `.venv312` is not present, use any Python 3.12 environment with the project dependencies installed.

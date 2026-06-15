@@ -24,6 +24,7 @@ _backend_dir = Path(__file__).resolve().parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
+from oscanner_logging import configure_service_logging
 from evaluator.paths import ensure_dirs, get_data_dir, get_home_dir, get_platform_data_dir
 from evaluator.plugin_registry import discover_plugins, get_default_plugin_id, load_scan_module, PluginLoadError
 from evaluator.config import (
@@ -52,8 +53,35 @@ from evaluator.routes import plugins, config, data, evaluation, batch, benchmark
 # 4) User config dotfile (~/.local/share/oscanner/.env.local by default)
 # 5) Default dotenv behavior (`.env` if present)
 load_runtime_env(server_file=Path(__file__), cwd=Path.cwd())
+LOG_PATH = configure_service_logging("evaluator")
 
-app = FastAPI(title="Engineer Skill Evaluator API")
+OPENAPI_TAGS = [
+    {"name": "plugins", "description": "Discover and select evaluator plugins."},
+    {"name": "config", "description": "Read or update local evaluator configuration."},
+    {"name": "data", "description": "Extract repository data and discover contributors."},
+    {"name": "evaluation", "description": "Evaluate contributors and merge evaluation results."},
+    {"name": "batch", "description": "Extract and compare multiple repositories."},
+    {"name": "benchmark", "description": "Run benchmark validation workflows."},
+    {"name": "trajectory", "description": "Analyze contributor growth over time."},
+    {"name": "runner", "description": "Proxy repository runner jobs from the evaluator service."},
+    {"name": "checkers", "description": "List and run code quality checkers."},
+    {"name": "github", "description": "GitHub-specific data APIs."},
+    {"name": "gitee", "description": "Gitee-specific data APIs."},
+]
+
+app = FastAPI(
+    title="Oscanner Evaluator API",
+    summary="Contributor capability evaluation service",
+    description=(
+        "Extract GitHub and Gitee activity, discover contributor identities, "
+        "evaluate contributors with plugin-defined rubrics, analyze trajectories, "
+        "and proxy repository runner workflows."
+    ),
+    version="0.1.6",
+    license_info={"name": "Apache-2.0"},
+    servers=[{"url": "http://localhost:8000", "description": "Local evaluator service"}],
+    openapi_tags=OPENAPI_TAGS,
+)
 
 # Middleware to strip trailing slashes from API requests
 # (Next.js uses trailingSlash: true for static export, but FastAPI routes don't have trailing slashes)
