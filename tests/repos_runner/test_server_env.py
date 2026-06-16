@@ -38,7 +38,7 @@ def test_server_loads_explicit_runner_env_before_queue_initializes(tmp_path):
         timeout=10,
     )
 
-    assert json.loads(result.stdout) == {
+    assert json.loads(result.stdout.strip().splitlines()[-1]) == {
         "max_concurrent": 3,
         "running": 0,
         "pending": 0,

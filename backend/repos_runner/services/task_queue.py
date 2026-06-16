@@ -7,9 +7,9 @@ import inspect
 import os
 from collections import deque
 from contextlib import asynccontextmanager
-from typing import Awaitable, Callable, Deque, Optional
+from typing import Awaitable, Callable, Deque, Optional, Union
 
-ProgressCallback = Callable[[str], object | Awaitable[object]]
+ProgressCallback = Callable[[str], Union[object, Awaitable[object]]]
 
 
 class RunnerQueueFull(RuntimeError):
