@@ -37,6 +37,59 @@ def test_parse_github_identity_request_accepts_mixed_emails_profiles_and_repos()
     assert parsed["github_repos"] == ["https://github.com/openai/codex"]
 
 
+def test_github_repository_commits_falls_back_to_all_commits_for_owner_identity(monkeypatch):
+    sha = "e" * 40
+    list_commit = {"sha": sha}
+    detail_commit = {
+        "sha": sha,
+        "html_url": f"https://github.com/wyj4real/auto-researcher/commit/{sha}",
+        "commit": {
+            "author": {
+                "name": "Qinzhong Tian",
+                "email": "56856603+LoadStar822@users.noreply.github.com",
+                "date": "2026-06-01T00:00:00Z",
+            },
+            "committer": {
+                "name": "Qinzhong Tian",
+                "email": "56856603+LoadStar822@users.noreply.github.com",
+                "date": "2026-06-01T00:00:00Z",
+            },
+            "message": "feat: initial research agent",
+        },
+        "author": {"login": "LoadStar822"},
+        "committer": {"login": "LoadStar822"},
+        "stats": {"additions": 5, "deletions": 1, "total": 6},
+        "files": [{"filename": "README.md"}],
+    }
+    calls = []
+
+    def fake_get_json(client, url, *, warnings, params=None):
+        calls.append(params)
+        if params.get("author") == "wyj4real":
+            return []
+        return [list_commit]
+
+    monkeypatch.setattr(github, "_github_get_json", fake_get_json)
+    monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: detail_commit)
+
+    commits_by_identity, matched_repos = github._github_repository_commits(
+        object(),
+        repo_urls=["https://github.com/wyj4real/auto-researcher"],
+        warnings=[],
+        max_commits_per_repo=100,
+    )
+
+    assert calls == [
+        {"author": "wyj4real", "per_page": 100, "page": 1},
+        {"per_page": 100, "page": 1},
+    ]
+    assert list(commits_by_identity) == ["github:wyj4real"]
+    assert commits_by_identity["github:wyj4real"][0]["matched_login"] == "wyj4real"
+    assert commits_by_identity["github:wyj4real"][0]["source"] == "github_repo_commits_owner_fallback"
+    assert commits_by_identity["github:wyj4real"][0]["repo_full_name"] == "wyj4real/auto-researcher"
+    assert matched_repos["github:wyj4real/auto-researcher"]["repo_url"] == "https://github.com/wyj4real/auto-researcher"
+
+
 @pytest.mark.asyncio
 async def test_analyze_github_collects_cached_gitee_commits_by_author_and_committer_email(tmp_path, monkeypatch):
     data_dir = tmp_path / "data"

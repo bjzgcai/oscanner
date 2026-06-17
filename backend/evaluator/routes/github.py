@@ -648,31 +648,6 @@ def _github_public_email(profile: Dict[str, Any]) -> str:
     return normalize_email_identity(str(profile.get("email") or ""))
 
 
-def _github_repo_owner_login(
-    client: httpx.Client,
-    *,
-    owner: str,
-    repo: str,
-    warnings: List[str],
-) -> str:
-    payload = _github_get_json(
-        client,
-        f"{GITHUB_API_BASE}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}",
-        warnings=warnings,
-    )
-    if not isinstance(payload, dict):
-        return owner
-
-    owner_payload = payload.get("owner") if isinstance(payload.get("owner"), dict) else {}
-    login = str(owner_payload.get("login") or owner).strip()
-    owner_type = str(owner_payload.get("type") or "").strip()
-    if owner_type and owner_type.lower() != "user":
-        warnings.append(
-            f"github repo {owner}/{repo} is owned by {owner_type} '{login}', using that owner as the profile identity"
-        )
-    return login or owner
-
-
 def _github_profile_repositories(
     client: httpx.Client,
     *,
@@ -760,11 +735,82 @@ def _github_profile_repo_commits(
     return commits, matched_repos
 
 
+def _github_repository_commits(
+    client: httpx.Client,
+    *,
+    repo_urls: List[str],
+    warnings: List[str],
+    max_commits_per_repo: int,
+) -> tuple[Dict[str, List[Dict[str, Any]]], Dict[str, Dict[str, Any]]]:
+    commits_by_identity: Dict[str, List[Dict[str, Any]]] = {}
+    matched_repos: Dict[str, Dict[str, Any]] = {}
+
+    for repo_url in repo_urls:
+        try:
+            owner, repo = _repo_parts_from_github_repo_url(repo_url)
+        except ValueError as exc:
+            warnings.append(str(exc))
+            continue
+
+        matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
+        identity_key = f"github:{owner}"
+        payload = _github_get_json(
+            client,
+            f"{GITHUB_API_BASE}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/commits",
+            warnings=warnings,
+            params={
+                "author": owner,
+                "per_page": min(100, max(1, max_commits_per_repo)),
+                "page": 1,
+            },
+        )
+        source = "github_repo_owner_commits"
+        if isinstance(payload, list) and not payload:
+            payload = _github_get_json(
+                client,
+                f"{GITHUB_API_BASE}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/commits",
+                warnings=warnings,
+                params={
+                    "per_page": min(100, max(1, max_commits_per_repo)),
+                    "page": 1,
+                },
+            )
+            source = "github_repo_commits_owner_fallback"
+
+        if not isinstance(payload, list) or not payload:
+            continue
+
+        for item in payload[:max_commits_per_repo]:
+            if not isinstance(item, dict):
+                continue
+            sha = _commit_sha(item)
+            if not sha:
+                continue
+            detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
+            commit = detail or item
+            serialized = _serialize_commit(
+                commit=commit,
+                platform="github",
+                owner=owner,
+                repo=repo,
+                matched_login=owner,
+            )
+            serialized["source"] = source
+            commits_by_identity.setdefault(identity_key, []).append(serialized)
+
+    for identity_key, commits in commits_by_identity.items():
+        commits_by_identity[identity_key] = _dedupe_by_key(
+            commits,
+            ("platform", "repo_full_name", "sha", "matched_identity"),
+        )
+        commits_by_identity[identity_key].sort(key=_sort_key, reverse=True)
+    return commits_by_identity, matched_repos
+
+
 def _resolve_github_profile_identities(
     client: httpx.Client,
     *,
     github_profiles: List[str],
-    github_repos: List[str],
     warnings: List[str],
 ) -> tuple[Dict[str, Dict[str, str]], List[str]]:
     logins: List[str] = []
@@ -773,14 +819,6 @@ def _resolve_github_profile_identities(
             logins.append(_login_from_github_profile_url(profile_url))
         except ValueError as exc:
             warnings.append(str(exc))
-
-    for repo_url in github_repos:
-        try:
-            owner, repo = _repo_parts_from_github_repo_url(repo_url)
-        except ValueError as exc:
-            warnings.append(str(exc))
-            continue
-        logins.append(_github_repo_owner_login(client, owner=owner, repo=repo, warnings=warnings))
 
     profiles: Dict[str, Dict[str, str]] = {}
     for login in _dedupe_strings(logins):
@@ -1220,7 +1258,8 @@ def _github_global_analysis_payload(
         "warnings": warnings,
         "limitations": [
             "GitHub email identities are searched globally with author-email and committer-email qualifiers.",
-            "GitHub profile/repository URL identities use public profile email when available, and also collect commits from public repositories owned by the resolved profile login.",
+            "GitHub profile URL identities use public profile email when available, and collect commits from public repositories owned by the resolved profile login.",
+            "GitHub repository URL identities first collect owner-authored commits from the supplied repositories, and fall back to all recent repository commits attributed to the owner when none are found.",
             "GitHub issue/PR/review evidence uses GitHub logins resolved from matching commits; email-only accounts with no resolved login may only have commit and commit-associated PR evidence.",
             "GitHub search is limited to repositories visible to the configured token and to repository default branches.",
         ],
@@ -1244,7 +1283,6 @@ def _fetch_global_github_evidence(
         resolved_profiles, public_profile_emails = _resolve_github_profile_identities(
             client,
             github_profiles=github_profiles or [],
-            github_repos=github_repos or [],
             warnings=warnings,
         )
         search_emails = _dedupe_strings([*emails, *public_profile_emails])
@@ -1294,6 +1332,21 @@ def _fetch_global_github_evidence(
                     matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
 
             commits_by_email[email].extend(found_by_sha.values())
+
+        repo_commits_by_identity, repo_matched_repos = _github_repository_commits(
+            client,
+            repo_urls=github_repos or [],
+            warnings=warnings,
+            max_commits_per_repo=max_commits_per_role,
+        )
+        for identity_key, commits in repo_commits_by_identity.items():
+            commits_by_email.setdefault(identity_key, [])
+            commits_by_email[identity_key].extend(commits)
+            for commit in commits:
+                matched_login = str(commit.get("matched_login") or "").strip()
+                if matched_login:
+                    github_logins.add(matched_login)
+        matched_repos.update(repo_matched_repos)
 
         for profile in resolved_profiles.values():
             login = profile["login"]
