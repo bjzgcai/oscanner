@@ -27,6 +27,16 @@ def test_parse_email_list_requires_comma_separated_valid_emails():
     assert "Invalid email format" in str(exc_info.value)
 
 
+def test_parse_github_identity_request_accepts_mixed_emails_profiles_and_repos():
+    parsed = github._parse_github_identity_request({
+        "github_inputs": "Alice@Example.com, https://github.com/octocat, github.com/openai/codex.git",
+    })
+
+    assert parsed["emails"] == ["alice@example.com"]
+    assert parsed["github_profiles"] == ["https://github.com/octocat"]
+    assert parsed["github_repos"] == ["https://github.com/openai/codex"]
+
+
 @pytest.mark.asyncio
 async def test_analyze_github_collects_cached_gitee_commits_by_author_and_committer_email(tmp_path, monkeypatch):
     data_dir = tmp_path / "data"
@@ -421,6 +431,71 @@ async def test_evaluate_global_github_caps_requested_commit_limit_at_100(tmp_pat
 
     assert result["success"] is True
     assert fetch_kwargs["max_commits_per_role"] == 100
+
+
+@pytest.mark.asyncio
+async def test_evaluate_global_github_scores_profile_identity_without_email(tmp_path, monkeypatch):
+    commit = github._serialize_commit(
+        commit={
+            "sha": "7" * 40,
+            "html_url": "https://github.com/alice/project/commit/" + "7" * 40,
+            "commit": {
+                "author": {"name": "Alice", "email": "alice@users.noreply.github.com"},
+                "committer": {"name": "Alice", "email": "alice@users.noreply.github.com"},
+                "message": "feat: profile evidence",
+            },
+            "author": {"login": "alice"},
+            "committer": {"login": "alice"},
+            "stats": {"additions": 3, "deletions": 0, "total": 3},
+            "files": [],
+        },
+        platform="github",
+        owner="alice",
+        repo="project",
+        matched_login="alice",
+    )
+    matched_repos = {"github:alice/project": github._github_repo_item("github", "alice", "project")}
+
+    class FakeEvaluator:
+        def evaluate_engineer(self, *, commits, username, max_commits, load_files):
+            assert username == "github:alice"
+            assert commits[0]["matched_identity"] == "@alice"
+            return {
+                "username": username,
+                "total_commits_analyzed": len(commits),
+                "files_loaded": 0,
+                "scores": {},
+            }
+
+    class FakeScanModule:
+        @staticmethod
+        def create_commit_evaluator(**kwargs):
+            return FakeEvaluator()
+
+    fetch_kwargs = {}
+
+    def fake_fetch_global_github_evidence(emails, **kwargs):
+        fetch_kwargs.update(kwargs)
+        return {"github:alice": [commit]}, matched_repos, [], []
+
+    monkeypatch.setattr(github, "get_llm_api_key", lambda: "test-key")
+    monkeypatch.setattr(github, "resolve_plugin_id", lambda plugin: plugin or "zgc_ai_native_2026")
+    monkeypatch.setattr(
+        github,
+        "load_scan_module",
+        lambda plugin_id: (SimpleNamespace(version="1.0.0"), FakeScanModule, tmp_path / "scan.py"),
+    )
+    monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_fetch_global_github_evidence", fake_fetch_global_github_evidence)
+
+    result = await github.evaluate_global_github({"github_profiles": ["https://github.com/alice"]})
+
+    assert result["success"] is True
+    assert result["emails"] == []
+    assert result["identity_keys"] == ["github:alice"]
+    assert result["evaluation"]["email"] == ""
+    assert result["evaluation"]["identity_keys"] == ["github:alice"]
+    assert fetch_kwargs["github_profiles"] == ["https://github.com/alice"]
 
 
 @pytest.mark.asyncio

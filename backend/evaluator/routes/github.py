@@ -6,10 +6,11 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import asyncio
 import httpx
+import re
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
@@ -42,6 +43,25 @@ GITHUB_API_BASE = "https://api.github.com"
 GITHUB_SEARCH_COMMITS_PER_ROLE = 10
 GITHUB_MAX_SEARCH_COMMITS_PER_ROLE = 100
 GITHUB_SEARCH_EVIDENCE_PER_QUERY = 100
+GITHUB_LOGIN_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
+GITHUB_RESERVED_PATHS = {
+    "apps",
+    "collections",
+    "events",
+    "explore",
+    "features",
+    "login",
+    "marketplace",
+    "new",
+    "notifications",
+    "orgs",
+    "pricing",
+    "pulls",
+    "search",
+    "settings",
+    "sponsors",
+    "topics",
+}
 
 
 def _wants_sse(request: Optional[Request]) -> bool:
@@ -83,6 +103,141 @@ def _parse_email_list(value: Any) -> List[str]:
     if not emails:
         raise HTTPException(status_code=400, detail="At least one email is required")
     return emails
+
+
+def _request_values(value: Any) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item or "").strip() for item in value]
+    if isinstance(value, str):
+        return [part.strip() for part in value.split(",")]
+    return [str(value).strip()]
+
+
+def _dedupe_strings(values: List[str]) -> List[str]:
+    deduped: List[str] = []
+    seen = set()
+    for value in values:
+        cleaned = str(value or "").strip()
+        key = cleaned.lower()
+        if not cleaned or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cleaned)
+    return deduped
+
+
+def _parse_optional_email_list(value: Any) -> List[str]:
+    raw_values = _request_values(value)
+    if not any(raw_values):
+        return []
+    return _parse_email_list(value)
+
+
+def _normalize_github_url(value: str) -> str:
+    candidate = value.strip()
+    if not re.match(r"^[a-z][a-z0-9+.-]*://", candidate, flags=re.IGNORECASE):
+        candidate = f"https://{candidate}"
+    return candidate
+
+
+def _parse_github_url_identity(value: str) -> Dict[str, str]:
+    raw = str(value or "").strip()
+    if not raw:
+        raise ValueError("empty GitHub URL")
+
+    try:
+        parsed = urlsplit(_normalize_github_url(raw))
+    except Exception as exc:
+        raise ValueError(f"Invalid GitHub URL: {raw}") from exc
+
+    host = parsed.hostname.lower() if parsed.hostname else ""
+    if host not in {"github.com", "www.github.com"}:
+        raise ValueError(f"Only github.com URLs are supported: {raw}")
+
+    parts = [part for part in parsed.path.split("/") if part]
+    if not parts:
+        raise ValueError(f"GitHub URL must include a profile or repository path: {raw}")
+
+    owner = parts[0]
+    if owner.lower() in GITHUB_RESERVED_PATHS or not GITHUB_LOGIN_RE.fullmatch(owner):
+        raise ValueError(f"Invalid GitHub profile path: {raw}")
+
+    if len(parts) == 1:
+        return {
+            "kind": "profile",
+            "login": owner,
+            "profile_url": f"https://github.com/{owner}",
+        }
+
+    repo = parts[1]
+    if repo.endswith(".git"):
+        repo = repo[:-4]
+    if not repo or repo in {".", ".."}:
+        raise ValueError(f"Invalid GitHub repository path: {raw}")
+
+    return {
+        "kind": "repo",
+        "owner": owner,
+        "repo": repo,
+        "repo_url": f"https://github.com/{owner}/{repo}",
+    }
+
+
+def _parse_github_identity_request(request_body: Dict[str, Any]) -> Dict[str, List[str]]:
+    raw_emails: List[str] = []
+    raw_urls: List[str] = []
+
+    for key in ("email", "emails", "author_emails"):
+        raw_emails.extend(_request_values(request_body.get(key)))
+
+    for key in ("github_inputs", "inputs", "identities", "identity_inputs"):
+        for item in _request_values(request_body.get(key)):
+            if not item:
+                continue
+            normalized = normalize_email_identity(item)
+            if is_valid_email_identity(normalized):
+                raw_emails.append(normalized)
+            else:
+                raw_urls.append(item)
+
+    for key in ("github_profiles", "github_profile", "profile_url", "profile"):
+        raw_urls.extend(_request_values(request_body.get(key)))
+    for key in ("github_repos", "github_repo", "repo_urls", "repo_url"):
+        raw_urls.extend(_request_values(request_body.get(key)))
+
+    emails = _parse_optional_email_list(raw_emails)
+    github_profiles: List[str] = []
+    github_repos: List[str] = []
+    invalid_urls: List[str] = []
+
+    for raw_url in raw_urls:
+        if not raw_url:
+            continue
+        try:
+            parsed = _parse_github_url_identity(raw_url)
+        except ValueError as exc:
+            invalid_urls.append(str(exc))
+            continue
+        if parsed["kind"] == "profile":
+            github_profiles.append(parsed["profile_url"])
+        else:
+            github_repos.append(parsed["repo_url"])
+
+    if invalid_urls:
+        raise HTTPException(status_code=400, detail="; ".join(invalid_urls))
+
+    github_profiles = _dedupe_strings(github_profiles)
+    github_repos = _dedupe_strings(github_repos)
+    if not emails and not github_profiles and not github_repos:
+        raise HTTPException(status_code=400, detail="At least one email or GitHub profile/repository URL is required")
+
+    return {
+        "emails": emails,
+        "github_profiles": github_profiles,
+        "github_repos": github_repos,
+    }
 
 
 def _iter_cached_repositories() -> List[Dict[str, Any]]:
@@ -191,6 +346,8 @@ def _identity_login(commit: Dict[str, Any], role: str) -> str:
 def _matched_roles_for_email(commit: Dict[str, Any], email: str) -> List[Dict[str, str]]:
     normalized = normalize_email_identity(email)
     roles: List[Dict[str, str]] = []
+    if not normalized:
+        return roles
     for role in ("author", "committer"):
         role_email = normalize_email_identity(_identity_email(commit, role))
         if role_email == normalized:
@@ -200,6 +357,24 @@ def _matched_roles_for_email(commit: Dict[str, Any], email: str) -> List[Dict[st
                 "name": _identity_name(commit, role),
                 "date": _identity_date(commit, role),
                 "github_login": _identity_login(commit, role),
+            })
+    return roles
+
+
+def _matched_roles_for_login(commit: Dict[str, Any], login: str) -> List[Dict[str, str]]:
+    normalized = str(login or "").strip().lower()
+    roles: List[Dict[str, str]] = []
+    if not normalized:
+        return roles
+    for role in ("author", "committer"):
+        role_login = _identity_login(commit, role)
+        if role_login.lower() == normalized:
+            roles.append({
+                "role": role,
+                "email": normalize_email_identity(_identity_email(commit, role)),
+                "name": _identity_name(commit, role),
+                "date": _identity_date(commit, role),
+                "github_login": role_login,
             })
     return roles
 
@@ -228,11 +403,15 @@ def _serialize_commit(
     platform: str,
     owner: str,
     repo: str,
-    matched_email: str,
+    matched_email: str = "",
+    matched_login: str = "",
 ) -> Dict[str, Any]:
     sha = _commit_sha(commit)
     message = _commit_message(commit).strip()
     matched_roles = _matched_roles_for_email(commit, matched_email)
+    matched_roles.extend(_matched_roles_for_login(commit, matched_login))
+    matched_roles = _dedupe_by_key(matched_roles, ("role", "email", "github_login"))
+    matched_identity = matched_email or (f"@{matched_login}" if matched_login else "")
     git_author = {
         "name": _identity_name(commit, "author"),
         "email": _identity_email(commit, "author"),
@@ -263,6 +442,9 @@ def _serialize_commit(
         },
         "emails": get_emails_from_commit(commit),
         "matched_email": matched_email,
+        "matched_login": matched_login,
+        "matched_identity": matched_identity,
+        "matched_identity_type": "email" if matched_email else ("github_login" if matched_login else ""),
         "matched_roles": matched_roles,
         "git_author": git_author,
         "git_committer": git_committer,
@@ -421,6 +603,191 @@ def _github_commit_detail(
         warnings=warnings,
     )
     return payload if isinstance(payload, dict) else None
+
+
+def _login_from_github_profile_url(profile_url: str) -> str:
+    parsed = _parse_github_url_identity(profile_url)
+    if parsed.get("kind") != "profile":
+        raise ValueError(f"Expected GitHub profile URL: {profile_url}")
+    return parsed["login"]
+
+
+def _repo_parts_from_github_repo_url(repo_url: str) -> tuple[str, str]:
+    parsed = _parse_github_url_identity(repo_url)
+    if parsed.get("kind") != "repo":
+        raise ValueError(f"Expected GitHub repository URL: {repo_url}")
+    return parsed["owner"], parsed["repo"]
+
+
+def _github_user_profile(
+    client: httpx.Client,
+    *,
+    login: str,
+    warnings: List[str],
+) -> Dict[str, Any]:
+    payload = _github_get_json(
+        client,
+        f"{GITHUB_API_BASE}/users/{quote(login, safe='')}",
+        warnings=warnings,
+    )
+    return payload if isinstance(payload, dict) else {}
+
+
+def _github_public_email(profile: Dict[str, Any]) -> str:
+    return normalize_email_identity(str(profile.get("email") or ""))
+
+
+def _github_repo_owner_login(
+    client: httpx.Client,
+    *,
+    owner: str,
+    repo: str,
+    warnings: List[str],
+) -> str:
+    payload = _github_get_json(
+        client,
+        f"{GITHUB_API_BASE}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}",
+        warnings=warnings,
+    )
+    if not isinstance(payload, dict):
+        return owner
+
+    owner_payload = payload.get("owner") if isinstance(payload.get("owner"), dict) else {}
+    login = str(owner_payload.get("login") or owner).strip()
+    owner_type = str(owner_payload.get("type") or "").strip()
+    if owner_type and owner_type.lower() != "user":
+        warnings.append(
+            f"github repo {owner}/{repo} is owned by {owner_type} '{login}', using that owner as the profile identity"
+        )
+    return login or owner
+
+
+def _github_profile_repositories(
+    client: httpx.Client,
+    *,
+    login: str,
+    warnings: List[str],
+    max_repositories: int = 100,
+) -> List[Dict[str, Any]]:
+    repos: List[Dict[str, Any]] = []
+    page = 1
+    while len(repos) < max_repositories:
+        payload = _github_get_json(
+            client,
+            f"{GITHUB_API_BASE}/users/{quote(login, safe='')}/repos",
+            warnings=warnings,
+            params={
+                "type": "owner",
+                "sort": "pushed",
+                "direction": "desc",
+                "per_page": min(100, max_repositories - len(repos)),
+                "page": page,
+            },
+        )
+        if not isinstance(payload, list) or not payload:
+            break
+        repos.extend(item for item in payload if isinstance(item, dict))
+        if len(payload) < 100:
+            break
+        page += 1
+    return repos[:max_repositories]
+
+
+def _github_profile_repo_commits(
+    client: httpx.Client,
+    *,
+    login: str,
+    public_email: str,
+    warnings: List[str],
+    max_commits_per_repo: int,
+) -> tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    commits: List[Dict[str, Any]] = []
+    matched_repos: Dict[str, Dict[str, Any]] = {}
+    repositories = _github_profile_repositories(client, login=login, warnings=warnings)
+
+    for repository in repositories:
+        full_name = str(repository.get("full_name") or "").strip()
+        if "/" not in full_name:
+            continue
+        owner, repo = full_name.split("/", 1)
+        matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
+
+        payload = _github_get_json(
+            client,
+            f"{GITHUB_API_BASE}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/commits",
+            warnings=warnings,
+            params={
+                "author": login,
+                "per_page": min(100, max(1, max_commits_per_repo)),
+                "page": 1,
+            },
+        )
+        if not isinstance(payload, list) or not payload:
+            continue
+
+        for item in payload[:max_commits_per_repo]:
+            if not isinstance(item, dict):
+                continue
+            sha = _commit_sha(item)
+            if not sha:
+                continue
+            detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
+            commit = detail or item
+            serialized = _serialize_commit(
+                commit=commit,
+                platform="github",
+                owner=owner,
+                repo=repo,
+                matched_email=public_email,
+                matched_login=login,
+            )
+            serialized["source"] = "github_profile_repo_commits"
+            commits.append(serialized)
+
+    commits = _dedupe_by_key(commits, ("platform", "repo_full_name", "sha", "matched_identity"))
+    commits.sort(key=_sort_key, reverse=True)
+    return commits, matched_repos
+
+
+def _resolve_github_profile_identities(
+    client: httpx.Client,
+    *,
+    github_profiles: List[str],
+    github_repos: List[str],
+    warnings: List[str],
+) -> tuple[Dict[str, Dict[str, str]], List[str]]:
+    logins: List[str] = []
+    for profile_url in github_profiles:
+        try:
+            logins.append(_login_from_github_profile_url(profile_url))
+        except ValueError as exc:
+            warnings.append(str(exc))
+
+    for repo_url in github_repos:
+        try:
+            owner, repo = _repo_parts_from_github_repo_url(repo_url)
+        except ValueError as exc:
+            warnings.append(str(exc))
+            continue
+        logins.append(_github_repo_owner_login(client, owner=owner, repo=repo, warnings=warnings))
+
+    profiles: Dict[str, Dict[str, str]] = {}
+    for login in _dedupe_strings(logins):
+        profile = _github_user_profile(client, login=login, warnings=warnings)
+        resolved_login = str(profile.get("login") or login).strip() or login
+        public_email = _github_public_email(profile)
+        profiles[resolved_login.lower()] = {
+            "login": resolved_login,
+            "profile_url": str(profile.get("html_url") or f"https://github.com/{resolved_login}"),
+            "public_email": public_email if is_valid_email_identity(public_email) else "",
+        }
+
+    public_emails = _dedupe_strings([
+        profile["public_email"]
+        for profile in profiles.values()
+        if profile.get("public_email")
+    ])
+    return profiles, public_emails
 
 
 def _dedupe_by_key(items: List[Dict[str, Any]], key_fields: tuple[str, ...]) -> List[Dict[str, Any]]:
@@ -801,22 +1168,32 @@ def _github_global_analysis_payload(
     matched_repos: Dict[str, Dict[str, Any]],
     collaboration_items: List[Dict[str, Any]],
     warnings: List[str],
+    github_profiles: Optional[List[str]] = None,
+    github_repos: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    for email in emails:
-        commits_by_email[email].sort(key=_sort_key, reverse=True)
+    for identity in commits_by_email:
+        commits_by_email[identity].sort(key=_sort_key, reverse=True)
 
     collaboration_items.sort(key=_sort_key, reverse=True)
     all_commits = [
         commit
-        for email in emails
-        for commit in commits_by_email[email]
+        for identity_commits in commits_by_email.values()
+        for commit in identity_commits
     ]
     all_commits = _dedupe_by_key(all_commits, ("platform", "repo_full_name", "sha"))
     all_commits.sort(key=_sort_key, reverse=True)
+    identity_keys = list(commits_by_email.keys())
+    resolved_emails = _dedupe_strings([
+        *emails,
+        *[identity for identity in identity_keys if is_valid_email_identity(identity)],
+    ])
 
     return {
         "success": True,
-        "emails": emails,
+        "emails": resolved_emails,
+        "github_profiles": github_profiles or [],
+        "github_repos": github_repos or [],
+        "identity_keys": identity_keys,
         "scope": "github_global",
         "repos_scanned": len(matched_repos),
         "matched_repos": sorted(matched_repos.values(), key=lambda item: item["repo_full_name"]),
@@ -826,11 +1203,13 @@ def _github_global_analysis_payload(
             "collaboration_evidence_count": len(collaboration_items),
         },
         "commits_by_email": commits_by_email,
+        "commits_by_identity": commits_by_email,
         "commits": all_commits,
         "collaboration_evidence": collaboration_items,
         "warnings": warnings,
         "limitations": [
-            "GitHub commits are searched globally with author-email and committer-email qualifiers.",
+            "GitHub email identities are searched globally with author-email and committer-email qualifiers.",
+            "GitHub profile/repository URL identities use public profile email when available, and also collect commits from public repositories owned by the resolved profile login.",
             "GitHub issue/PR/review evidence uses GitHub logins resolved from matching commits; email-only accounts with no resolved login may only have commit and commit-associated PR evidence.",
             "GitHub search is limited to repositories visible to the configured token and to repository default branches.",
         ],
@@ -840,6 +1219,8 @@ def _github_global_analysis_payload(
 def _fetch_global_github_evidence(
     emails: List[str],
     *,
+    github_profiles: Optional[List[str]] = None,
+    github_repos: Optional[List[str]] = None,
     max_commits_per_role: int = GITHUB_SEARCH_COMMITS_PER_ROLE,
     max_evidence_per_query: int = GITHUB_SEARCH_EVIDENCE_PER_QUERY,
 ) -> tuple[Dict[str, List[Dict[str, Any]]], Dict[str, Dict[str, Any]], List[Dict[str, Any]], List[str]]:
@@ -849,7 +1230,15 @@ def _fetch_global_github_evidence(
     github_logins = set()
 
     with httpx.Client(headers=_github_headers(), timeout=httpx.Timeout(25.0, connect=5.0)) as client:
-        for email in emails:
+        resolved_profiles, public_profile_emails = _resolve_github_profile_identities(
+            client,
+            github_profiles=github_profiles or [],
+            github_repos=github_repos or [],
+            warnings=warnings,
+        )
+        search_emails = _dedupe_strings([*emails, *public_profile_emails])
+        for email in search_emails:
+            commits_by_email.setdefault(email, [])
             found_by_sha: Dict[str, Dict[str, Any]] = {}
             for role, qualifier, sort in (
                 ("author", "author-email", "author-date"),
@@ -895,6 +1284,22 @@ def _fetch_global_github_evidence(
 
             commits_by_email[email].extend(found_by_sha.values())
 
+        for profile in resolved_profiles.values():
+            login = profile["login"]
+            identity_key = f"github:{login}"
+            public_email = profile.get("public_email") or ""
+            github_logins.add(login)
+            profile_commits, profile_repos = _github_profile_repo_commits(
+                client,
+                login=login,
+                public_email=public_email,
+                warnings=warnings,
+                max_commits_per_repo=max_commits_per_role,
+            )
+            commits_by_email.setdefault(identity_key, [])
+            commits_by_email[identity_key].extend(profile_commits)
+            matched_repos.update(profile_repos)
+
         github_commits = [
             commit
             for email_commits in commits_by_email.values()
@@ -922,7 +1327,8 @@ def _prepare_global_github_evaluation(request_body: Dict[str, Any]) -> Dict[str,
             detail="LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init).",
         )
 
-    emails = _parse_email_list(request_body.get("emails"))
+    identities = _parse_github_identity_request(request_body)
+    emails = identities["emails"]
     model = str(request_body.get("model") or DEFAULT_LLM_MODEL)
     plugin_id = resolve_plugin_id(str(request_body.get("plugin") or ""))
     language = str(request_body.get("language") or "en-US")
@@ -943,6 +1349,8 @@ def _prepare_global_github_evaluation(request_body: Dict[str, Any]) -> Dict[str,
     return {
         "api_key": api_key,
         "emails": emails,
+        "github_profiles": identities["github_profiles"],
+        "github_repos": identities["github_repos"],
         "model": model,
         "plugin_id": plugin_id,
         "language": language,
@@ -958,6 +1366,7 @@ def _evaluate_global_github_commits(
     *,
     api_key: str,
     emails: List[str],
+    identity_keys: List[str],
     model: str,
     plugin_id: str,
     language: str,
@@ -977,14 +1386,16 @@ def _evaluate_global_github_commits(
         language=language,
         collaboration_evidence=collaboration_payload,
     )
+    identity_label = ",".join(emails or identity_keys)
     evaluation = evaluator.evaluate_engineer(
         commits=all_commits,
-        username=",".join(emails),
+        username=identity_label,
         max_commits=150,
         load_files=False,
     )
-    evaluation["email"] = emails[0]
+    evaluation["email"] = emails[0] if emails else ""
     evaluation["emails"] = emails
+    evaluation["identity_keys"] = identity_keys
     evaluation["plugin"] = plugin_id
     evaluation["scope"] = "github_global"
     if meta:
@@ -1002,18 +1413,24 @@ async def _build_global_github_evaluation_payload(
 ) -> Dict[str, Any]:
     prepared = _prepare_global_github_evaluation(request_body)
     emails = prepared["emails"]
+    github_profiles = prepared["github_profiles"]
+    github_repos = prepared["github_repos"]
 
     if progress:
         progress("section", {
             "title": "采集 GitHub 证据",
             "status": "running",
             "emails": emails,
+            "github_profiles": github_profiles,
+            "github_repos": github_repos,
             "max_github_commits_per_role": prepared["github_commit_limit"],
         })
 
     commits_by_email, matched_repos, collaboration_items, warnings = await asyncio.to_thread(
         _fetch_global_github_evidence,
         emails,
+        github_profiles=github_profiles,
+        github_repos=github_repos,
         max_commits_per_role=prepared["github_commit_limit"],
         max_evidence_per_query=prepared["github_evidence_limit"],
     )
@@ -1023,6 +1440,8 @@ async def _build_global_github_evaluation_payload(
         matched_repos=matched_repos,
         collaboration_items=collaboration_items,
         warnings=warnings,
+        github_profiles=github_profiles,
+        github_repos=github_repos,
     )
 
     all_commits = payload["commits"]
@@ -1036,7 +1455,7 @@ async def _build_global_github_evaluation_payload(
         })
 
     if not all_commits:
-        raise HTTPException(status_code=404, detail="No GitHub commits found for the supplied email identities")
+        raise HTTPException(status_code=404, detail="No GitHub commits found for the supplied identities")
 
     if progress:
         progress("section", {
@@ -1069,7 +1488,8 @@ async def _build_global_github_evaluation_payload(
     evaluation = await asyncio.to_thread(
         _evaluate_global_github_commits,
         api_key=prepared["api_key"],
-        emails=emails,
+        emails=payload["emails"],
+        identity_keys=payload["identity_keys"],
         model=prepared["model"],
         plugin_id=prepared["plugin_id"],
         language=prepared["language"],
@@ -1100,23 +1520,31 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
     try:
         prepared = _prepare_global_github_evaluation(request_body)
         emails = prepared["emails"]
+        github_profiles = prepared["github_profiles"]
+        github_repos = prepared["github_repos"]
 
         yield _format_sse_event("section", {
             "title": "准备 GitHub 全局评估",
             "status": "running",
             "emails": emails,
+            "github_profiles": github_profiles,
+            "github_repos": github_repos,
         })
 
         yield _format_sse_event("section", {
             "title": "采集 GitHub 证据",
             "status": "running",
             "emails": emails,
+            "github_profiles": github_profiles,
+            "github_repos": github_repos,
             "max_github_commits_per_role": prepared["github_commit_limit"],
         })
 
         commits_by_email, matched_repos, collaboration_items, warnings = await asyncio.to_thread(
             _fetch_global_github_evidence,
             emails,
+            github_profiles=github_profiles,
+            github_repos=github_repos,
             max_commits_per_role=prepared["github_commit_limit"],
             max_evidence_per_query=prepared["github_evidence_limit"],
         )
@@ -1126,6 +1554,8 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
             matched_repos=matched_repos,
             collaboration_items=collaboration_items,
             warnings=warnings,
+            github_profiles=github_profiles,
+            github_repos=github_repos,
         )
 
         yield _format_sse_event("section", {
@@ -1138,7 +1568,7 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
 
         all_commits = payload["commits"]
         if not all_commits:
-            raise HTTPException(status_code=404, detail="No GitHub commits found for the supplied email identities")
+            raise HTTPException(status_code=404, detail="No GitHub commits found for the supplied identities")
 
         yield _format_sse_event("section", {
             "title": "缓存 GitHub 证据到 XDG",
@@ -1168,7 +1598,8 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
         evaluation = await asyncio.to_thread(
             _evaluate_global_github_commits,
             api_key=prepared["api_key"],
-            emails=emails,
+            emails=payload["emails"],
+            identity_keys=payload["identity_keys"],
             model=prepared["model"],
             plugin_id=prepared["plugin_id"],
             language=prepared["language"],
