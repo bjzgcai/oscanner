@@ -147,6 +147,15 @@ def _parse_github_url_identity(value: str) -> Dict[str, str]:
     if not raw:
         raise ValueError("empty GitHub URL")
 
+    if "/" not in raw and not re.match(r"^[a-z][a-z0-9+.-]*://", raw, flags=re.IGNORECASE):
+        if raw.lower() in GITHUB_RESERVED_PATHS or not GITHUB_LOGIN_RE.fullmatch(raw):
+            raise ValueError(f"Invalid GitHub username: {raw}")
+        return {
+            "kind": "profile",
+            "login": raw,
+            "profile_url": f"https://github.com/{raw}",
+        }
+
     try:
         parsed = urlsplit(_normalize_github_url(raw))
     except Exception as exc:
@@ -205,6 +214,8 @@ def _parse_github_identity_request(request_body: Dict[str, Any]) -> Dict[str, Li
     for key in ("github_profiles", "github_profile", "profile_url", "profile"):
         raw_urls.extend(_request_values(request_body.get(key)))
     for key in ("github_repos", "github_repo", "repo_urls", "repo_url"):
+        raw_urls.extend(_request_values(request_body.get(key)))
+    for key in ("github_usernames", "github_username", "logins", "login"):
         raw_urls.extend(_request_values(request_body.get(key)))
 
     emails = _parse_optional_email_list(raw_emails)

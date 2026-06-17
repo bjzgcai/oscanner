@@ -29,7 +29,7 @@ def test_parse_email_list_requires_comma_separated_valid_emails():
 
 def test_parse_github_identity_request_accepts_mixed_emails_profiles_and_repos():
     parsed = github._parse_github_identity_request({
-        "github_inputs": "Alice@Example.com, https://github.com/octocat, github.com/openai/codex.git",
+        "github_inputs": "Alice@Example.com, octocat, github.com/openai/codex.git",
     })
 
     assert parsed["emails"] == ["alice@example.com"]
