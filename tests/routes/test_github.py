@@ -37,7 +37,7 @@ def test_parse_github_identity_request_accepts_mixed_emails_profiles_and_repos()
     assert parsed["github_repos"] == ["https://github.com/openai/codex"]
 
 
-def test_github_repository_commits_falls_back_to_all_commits_for_owner_identity(monkeypatch):
+def test_github_repository_commits_matches_supplied_email_without_owner_fallback(monkeypatch):
     sha = "e" * 40
     list_commit = {"sha": sha}
     detail_commit = {
@@ -65,8 +65,6 @@ def test_github_repository_commits_falls_back_to_all_commits_for_owner_identity(
 
     def fake_get_json(client, url, *, warnings, params=None):
         calls.append(params)
-        if params.get("author") == "wyj4real":
-            return []
         return [list_commit]
 
     monkeypatch.setattr(github, "_github_get_json", fake_get_json)
@@ -75,19 +73,129 @@ def test_github_repository_commits_falls_back_to_all_commits_for_owner_identity(
     commits_by_identity, matched_repos = github._github_repository_commits(
         object(),
         repo_urls=["https://github.com/wyj4real/auto-researcher"],
+        emails=["56856603+loadstar822@users.noreply.github.com"],
         warnings=[],
         max_commits_per_repo=100,
     )
 
     assert calls == [
-        {"author": "wyj4real", "per_page": 100, "page": 1},
         {"per_page": 100, "page": 1},
     ]
-    assert list(commits_by_identity) == ["github:wyj4real"]
-    assert commits_by_identity["github:wyj4real"][0]["matched_login"] == "wyj4real"
-    assert commits_by_identity["github:wyj4real"][0]["source"] == "github_repo_commits_owner_fallback"
-    assert commits_by_identity["github:wyj4real"][0]["repo_full_name"] == "wyj4real/auto-researcher"
+    email_key = "56856603+loadstar822@users.noreply.github.com"
+    assert list(commits_by_identity) == [email_key]
+    assert commits_by_identity[email_key][0]["matched_email"] == email_key
+    assert commits_by_identity[email_key][0]["matched_login"] == ""
+    assert commits_by_identity[email_key][0]["source"] == "github_repo_email_commits"
+    assert commits_by_identity[email_key][0]["repo_full_name"] == "wyj4real/auto-researcher"
     assert matched_repos["github:wyj4real/auto-researcher"]["repo_url"] == "https://github.com/wyj4real/auto-researcher"
+
+
+def test_github_repository_all_commits_fetches_repo_without_email_filter(monkeypatch):
+    sha = "1" * 40
+    detail_commit = {
+        "sha": sha,
+        "html_url": f"https://github.com/owner/repo/commit/{sha}",
+        "commit": {
+            "author": {
+                "name": "Any Author",
+                "email": "any@example.com",
+                "date": "2026-06-01T00:00:00Z",
+            },
+            "committer": {
+                "name": "Any Committer",
+                "email": "committer@example.com",
+                "date": "2026-06-01T00:01:00Z",
+            },
+            "message": "feat: visible commit",
+        },
+        "stats": {"additions": 2, "deletions": 0, "total": 2},
+        "files": [{"filename": "README.md"}],
+    }
+    calls = []
+
+    def fake_get_json(client, url, *, warnings, params=None):
+        calls.append((url, params))
+        return [{"sha": sha}]
+
+    monkeypatch.setattr(github, "_github_get_json", fake_get_json)
+    monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: detail_commit)
+
+    commits_by_identity, matched_repos = github._github_repository_all_commits(
+        object(),
+        repo_urls=["https://github.com/owner/repo"],
+        warnings=[],
+        max_commits_per_repo=1,
+    )
+
+    assert calls == [
+        (
+            "https://api.github.com/repos/owner/repo/commits",
+            {"per_page": 1, "page": 1},
+        )
+    ]
+    identity_key = "github:owner/repo"
+    assert list(commits_by_identity) == [identity_key]
+    assert commits_by_identity[identity_key][0]["matched_email"] == ""
+    assert commits_by_identity[identity_key][0]["matched_identity"] == identity_key
+    assert commits_by_identity[identity_key][0]["source"] == "github_repo_all_commits"
+    assert matched_repos[identity_key]["repo_url"] == "https://github.com/owner/repo"
+
+
+def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path, monkeypatch):
+    sha = "2" * 40
+    detail_commit = {
+        "sha": sha,
+        "html_url": f"https://github.com/owner/repo/commit/{sha}",
+        "commit": {
+            "author": {"name": "Any Author", "email": "any@example.com"},
+            "committer": {"name": "Any Committer", "email": "committer@example.com"},
+            "message": "feat: owner scoped commit",
+        },
+    }
+    fetched_urls = []
+
+    def fake_get_json(client, url, *, warnings, params=None):
+        fetched_urls.append(url)
+        if url.endswith("/users/owner"):
+            return {"login": "owner", "html_url": "https://github.com/owner"}
+        if url.endswith("/users/owner/repos"):
+            return [{"full_name": "owner/repo"}]
+        if url.endswith("/repos/owner/repo/commits") and params and params.get("page") == 1:
+            return [{"sha": sha}]
+        if url.endswith("/repos/owner/repo/commits"):
+            return []
+        return []
+
+    monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_github_get_json", fake_get_json)
+    monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: detail_commit)
+    monkeypatch.setattr(github, "_collaboration_items_for_repo", lambda **kwargs: ([{
+        "source": "pr_discussions",
+        "label": "PR #1",
+        "detail": "1 discussion comments",
+        "url": "https://github.com/owner/repo/pull/1",
+        "platform": "github",
+        "owner": "owner",
+        "repo": "repo",
+        "repo_full_name": "owner/repo",
+        "repo_url": "https://github.com/owner/repo",
+    }], []))
+    monkeypatch.setattr(github, "_github_commit_linked_evidence", lambda *args, **kwargs: [])
+    monkeypatch.setattr(github, "_github_evidence_for_logins", lambda *args, **kwargs: [])
+
+    commits_by_identity, matched_repos, collaboration_items, warnings = github._fetch_global_github_evidence(
+        [],
+        github_profiles=["https://github.com/owner"],
+        github_repos=[],
+        max_commits_per_role=1,
+    )
+
+    assert warnings == []
+    assert "https://api.github.com/users/owner/repos" in fetched_urls
+    assert list(commits_by_identity) == ["github:owner/repo"]
+    assert commits_by_identity["github:owner/repo"][0]["sha"] == sha
+    assert matched_repos["github:owner/repo"]["repo_full_name"] == "owner/repo"
+    assert collaboration_items[0]["url"] == "https://github.com/owner/repo/pull/1"
 
 
 @pytest.mark.asyncio

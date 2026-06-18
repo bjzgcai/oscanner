@@ -33,7 +33,8 @@ import PluginViewRenderer from "./PluginViewRenderer";
 const { Title, Paragraph, Text } = Typography;
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const DEFAULT_EMAILS_TEXT = "nkwuyanbiao@163.com";
+const GITHUB_URL_RE = /^(?:https:\/\/)?(?:www\.)?github\.com\/[^/\s]+(?:\/[^/\s]+)?\/?$/i;
+const DEFAULT_EMAILS_TEXT = "";
 const DEFAULT_COMMIT_LIMIT = 10;
 const MAX_COMMIT_LIMIT = 100;
 
@@ -46,6 +47,7 @@ interface AnalysisCommit {
   title: string;
   author: string;
   matched_email: string;
+  matched_identity?: string;
   matched_roles?: Array<{
     role: string;
     email: string;
@@ -199,10 +201,10 @@ function streamDataObject(data: unknown): Record<string, unknown> {
     : {};
 }
 
-function splitEmails(value: string): { emails: string[]; error: string } {
+function splitOptionalEmails(value: string): { emails: string[]; error: string } {
   const trimmed = value.trim();
   if (!trimmed) {
-    return { emails: [], error: "请输入邮箱，多个邮箱必须用英文逗号分隔。" };
+    return { emails: [], error: "" };
   }
   if (/，|;|；|\n|\t/.test(trimmed)) {
     return { emails: [], error: "多个邮箱请只使用英文逗号 “,” 分隔。" };
@@ -222,6 +224,22 @@ function splitEmails(value: string): { emails: string[]; error: string } {
     emails: Array.from(new Set(parts.map((item) => item.toLowerCase()))),
     error: "",
   };
+}
+
+function splitGithubUrls(value: string): { urls: string[]; error: string } {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { urls: [], error: "" };
+  }
+  const parts = trimmed
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const invalid = parts.filter((item) => !GITHUB_URL_RE.test(item));
+  if (invalid.length > 0) {
+    return { urls: [], error: `GitHub URL 格式不正确：${invalid.join(", ")}` };
+  }
+  return { urls: Array.from(new Set(parts)), error: "" };
 }
 
 function formatDate(value: string): string {
@@ -551,6 +569,7 @@ function IdentityRelationshipSvg() {
 export default function GithubGlobalAnalysis() {
   const { model, pluginId, locale } = useAppSettings();
   const [emailsText, setEmailsText] = useState(DEFAULT_EMAILS_TEXT);
+  const [repoUrlsText, setRepoUrlsText] = useState("");
   const [commitLimit, setCommitLimit] = useState<number | null>(
     DEFAULT_COMMIT_LIMIT,
   );
@@ -560,14 +579,27 @@ export default function GithubGlobalAnalysis() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const apiBase = getApiBaseUrl();
 
-  const validation = useMemo(() => splitEmails(emailsText), [emailsText]);
+  const validation = useMemo(() => splitOptionalEmails(emailsText), [emailsText]);
+  const repoValidation = useMemo(() => splitGithubUrls(repoUrlsText), [repoUrlsText]);
   const canSubmit =
-    !loading && emailsText.trim().length > 0 && !validation.error;
+    !loading &&
+    (emailsText.trim().length > 0 || repoUrlsText.trim().length > 0) &&
+    !validation.error &&
+    !repoValidation.error;
 
   const evaluate = async () => {
-    const parsed = splitEmails(emailsText);
+    const parsed = splitOptionalEmails(emailsText);
     if (parsed.error) {
       setError(parsed.error);
+      return;
+    }
+    const parsedUrls = splitGithubUrls(repoUrlsText);
+    if (parsedUrls.error) {
+      setError(parsedUrls.error);
+      return;
+    }
+    if (parsed.emails.length === 0 && parsedUrls.urls.length === 0) {
+      setError("请输入邮箱，或输入 GitHub owner/repo URL。");
       return;
     }
 
@@ -589,6 +621,7 @@ export default function GithubGlobalAnalysis() {
         },
         body: JSON.stringify({
           emails: parsed.emails.join(","),
+          github_inputs: parsedUrls.urls,
           max_github_commits_per_role: maxGithubCommitsPerRole,
           model,
           plugin: pluginId,
@@ -686,7 +719,12 @@ export default function GithubGlobalAnalysis() {
       title: "邮箱",
       dataIndex: "matched_email",
       width: 220,
-      render: (email: string) => <Tag icon={<MailOutlined />}>{email}</Tag>,
+      render: (email: string, record) =>
+        email ? (
+          <Tag icon={<MailOutlined />}>{email}</Tag>
+        ) : (
+          <Tag icon={<GithubOutlined />}>{record.matched_identity || "repo scope"}</Tag>
+        ),
     },
     {
       title: "角色",
@@ -796,9 +834,9 @@ export default function GithubGlobalAnalysis() {
             GitHub 全局邮箱评估
           </Title>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            输入一个或多个邮箱，系统会全局搜索 GitHub commit author/committer
-            邮箱，汇总相关
-            PR、Review、Issue、审批和维护者决策证据，并用当前插件完成跨仓库评估。
+            输入邮箱时会全局搜索 GitHub commit author/committer 邮箱；只输入
+            GitHub owner 或 repo URL 时，会按 URL 范围采集仓库 commit、
+            PR、Review、Issue、评论、审批和维护者决策证据。
           </Paragraph>
         </div>
 
@@ -809,7 +847,7 @@ export default function GithubGlobalAnalysis() {
                 size="large"
                 value={emailsText}
                 prefix={<MailOutlined />}
-                placeholder="alice@example.com,bob@example.com"
+                placeholder="可选：alice@example.com,bob@example.com"
                 status={emailsText && validation.error ? "error" : undefined}
                 onChange={(event) => {
                   setEmailsText(event.target.value);
@@ -828,15 +866,26 @@ export default function GithubGlobalAnalysis() {
                 GitHub 全局评估
               </Button>
             </Space.Compact>
+            <Input.TextArea
+              rows={2}
+              value={repoUrlsText}
+              placeholder="可选：GitHub owner 或 repo URL，每行一个，例如 https://github.com/owner 或 https://github.com/owner/repo"
+              status={repoUrlsText && repoValidation.error ? "error" : undefined}
+              onChange={(event) => {
+                setRepoUrlsText(event.target.value);
+                setError("");
+              }}
+            />
             <Space align="center" wrap>
               <Space size={6} align="center">
                 <Text strong>Commit 数量</Text>
                 <Tooltip
                   title={
                     <span>
-                      默认 10，最多 100。该值按每个邮箱、每种提交角色分别限制 GitHub
+                      默认 10，最多 100。该值只限制邮箱搜索：按每个邮箱、每种提交角色分别限制 GitHub
                       commit 搜索数量： author-email 与 committer-email
-                      分别按该数量采集，之后按 SHA 去重。 PR/Issue
+                      分别按该数量采集，之后按 SHA 去重。只输入 GitHub owner/repo URL
+                      时会采集该范围内所有可见 commit。 PR/Issue
                       协作证据使用单独的默认上限：每个 GitHub
                       login、每类搜索最多 100 条， 包括创建/讨论的 PR、reviewed
                       PR、merged PR、创建/评论的 issue。 与命中 commit 关联的 PR
@@ -866,12 +915,17 @@ export default function GithubGlobalAnalysis() {
                   )
                 }
               />
-              <Text type="secondary">每个邮箱、每种角色最多采集数量</Text>
+              <Text type="secondary">仅限制邮箱搜索；URL-only 输入采集所有可见 commit</Text>
             </Space>
           </Space>
           {emailsText && validation.error && (
             <Text type="danger" style={{ display: "block", marginTop: 8 }}>
               {validation.error}
+            </Text>
+          )}
+          {repoUrlsText && repoValidation.error && (
+            <Text type="danger" style={{ display: "block", marginTop: 8 }}>
+              {repoValidation.error}
             </Text>
           )}
         </Card>
@@ -945,7 +999,7 @@ export default function GithubGlobalAnalysis() {
             <Card title="Commits">
               <Table
                 rowKey={(record) =>
-                  `${record.platform}:${record.repo_full_name}:${record.sha}:${record.matched_email}`
+                  `${record.platform}:${record.repo_full_name}:${record.sha}:${record.matched_email || record.matched_identity || ""}`
                 }
                 columns={commitColumns}
                 dataSource={result.commits}

@@ -35,6 +35,7 @@ const DEFAULT_PROFILE = "https://gitee.com/wu-yanbiao";
 const DEFAULT_COMMIT_LIMIT = 10;
 const MAX_COMMIT_LIMIT = 100;
 const USERNAME_RE = /^[A-Za-z0-9_.-]+$/;
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 interface AnalysisCommit {
   platform: string;
@@ -45,6 +46,13 @@ interface AnalysisCommit {
   title: string;
   author: string;
   matched_identity: string;
+  matched_email?: string;
+  matched_roles?: Array<{
+    role: string;
+    email: string;
+    name?: string;
+    date?: string;
+  }>;
   date: string;
   url: string;
   stats: {
@@ -118,17 +126,41 @@ interface StreamEvent {
   data: unknown;
 }
 
-function parseGiteeProfile(value: string): { username: string; error: string } {
+function splitOptionalEmails(value: string): { emails: string[]; error: string } {
   const trimmed = value.trim();
   if (!trimmed) {
-    return { username: "", error: "请输入 Gitee 个人主页 URL 或用户名。" };
+    return { emails: [], error: "" };
+  }
+  if (/，|;|；|\n|\t/.test(trimmed)) {
+    return { emails: [], error: "多个邮箱请只使用英文逗号 “,” 分隔。" };
+  }
+  const parts = trimmed.split(",").map((item) => item.trim());
+  if (parts.some((item) => !item)) {
+    return { emails: [], error: "邮箱之间不能出现空项，请检查逗号位置。" };
+  }
+  const invalid = parts.filter((item) => !EMAIL_RE.test(item));
+  if (invalid.length > 0) {
+    return { emails: [], error: `邮箱格式不正确：${invalid.join(", ")}` };
+  }
+  return { emails: Array.from(new Set(parts.map((item) => item.toLowerCase()))), error: "" };
+}
+
+function parseGiteeProfile(value: string): {
+  username: string;
+  repoUrl: string;
+  mode: "profile" | "repo";
+  error: string;
+} {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { username: "", repoUrl: "", mode: "profile", error: "请输入 Gitee 个人主页 URL、用户名或仓库 URL。" };
   }
 
   if (!/^https?:\/\//i.test(trimmed) && !trimmed.includes("/")) {
     if (!USERNAME_RE.test(trimmed)) {
-      return { username: "", error: "Gitee 用户名只能包含字母、数字、下划线、点和短横线。" };
+      return { username: "", repoUrl: "", mode: "profile", error: "Gitee 用户名只能包含字母、数字、下划线、点和短横线。" };
     }
-    return { username: trimmed, error: "" };
+    return { username: trimmed, repoUrl: "", mode: "profile", error: "" };
   }
 
   const rawUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
@@ -136,23 +168,36 @@ function parseGiteeProfile(value: string): { username: string; error: string } {
   try {
     parsed = new URL(rawUrl);
   } catch {
-    return { username: "", error: "请输入有效的 Gitee 个人主页 URL。" };
+    return { username: "", repoUrl: "", mode: "profile", error: "请输入有效的 Gitee URL。" };
   }
 
   const hostname = parsed.hostname.toLowerCase();
   if (hostname !== "gitee.com" && hostname !== "www.gitee.com") {
-    return { username: "", error: "当前页面只支持 gitee.com 个人主页。" };
+    return { username: "", repoUrl: "", mode: "profile", error: "当前页面只支持 gitee.com URL。" };
   }
 
   const parts = parsed.pathname.split("/").filter(Boolean);
+  if (parts.length === 1 && USERNAME_RE.test(parts[0])) {
+    return { username: parts[0], repoUrl: "", mode: "profile", error: "" };
+  }
+  if (parts.length >= 2 && USERNAME_RE.test(parts[0]) && USERNAME_RE.test(parts[1])) {
+    return {
+      username: parts[0],
+      repoUrl: `https://gitee.com/${parts[0]}/${parts[1].replace(/\.git$/i, "")}`,
+      mode: "repo",
+      error: "",
+    };
+  }
   if (parts.length !== 1 || !USERNAME_RE.test(parts[0])) {
     return {
       username: "",
-      error: "请输入个人主页，例如 https://gitee.com/wu-yanbiao，而不是仓库或组织路径。",
+      repoUrl: "",
+      mode: "profile",
+      error: "请输入个人主页或仓库 URL，例如 https://gitee.com/owner/repo。",
     };
   }
 
-  return { username: parts[0], error: "" };
+  return { username: parts[0], repoUrl: "", mode: "profile", error: "" };
 }
 
 function parseSseFrame(frame: string): StreamEvent {
@@ -383,6 +428,7 @@ function CodeBlock({ children }: { children: string }) {
 export default function GiteeProfileAnalysis() {
   const { model, pluginId, locale } = useAppSettings();
   const [profileText, setProfileText] = useState(DEFAULT_PROFILE);
+  const [emailsText, setEmailsText] = useState("");
   const [commitLimit, setCommitLimit] = useState<number | null>(DEFAULT_COMMIT_LIMIT);
   const [submittedUsername, setSubmittedUsername] = useState("");
   const [error, setError] = useState("");
@@ -392,9 +438,10 @@ export default function GiteeProfileAnalysis() {
   const apiBase = getApiBaseUrl();
 
   const validation = useMemo(() => parseGiteeProfile(profileText), [profileText]);
-  const canSubmit = !loading && profileText.trim().length > 0 && !validation.error;
+  const emailValidation = useMemo(() => splitOptionalEmails(emailsText), [emailsText]);
+  const canSubmit = !loading && profileText.trim().length > 0 && !validation.error && !emailValidation.error;
   const username = submittedUsername || validation.username;
-  const profileUrl = username ? `https://gitee.com/${username}` : "";
+  const profileUrl = validation.mode === "repo" ? validation.repoUrl : username ? `https://gitee.com/${username}` : "";
   const reposEndpoint = username
     ? `https://gitee.com/api/v5/users/${username}/repos`
     : "https://gitee.com/api/v5/users/USERNAME/repos";
@@ -403,6 +450,11 @@ export default function GiteeProfileAnalysis() {
     const parsed = parseGiteeProfile(profileText);
     if (parsed.error) {
       setError(parsed.error);
+      return;
+    }
+    const parsedEmails = splitOptionalEmails(emailsText);
+    if (parsedEmails.error) {
+      setError(parsedEmails.error);
       return;
     }
 
@@ -414,7 +466,7 @@ export default function GiteeProfileAnalysis() {
     setLoading(true);
     setError("");
     setSubmittedUsername(parsed.username);
-    setProgressText("准备 Gitee 个人仓库评估...");
+    setProgressText(parsed.mode === "repo" ? "准备 Gitee 仓库评估..." : "准备 Gitee 个人仓库评估...");
     setResult(null);
 
     try {
@@ -426,6 +478,8 @@ export default function GiteeProfileAnalysis() {
         },
         body: JSON.stringify({
           username: parsed.username,
+          repo_url: parsed.repoUrl || undefined,
+          emails: parsed.mode === "repo" ? parsedEmails.emails.join(",") : undefined,
           commit_limit: normalizedLimit,
           model,
           plugin: pluginId,
@@ -502,6 +556,12 @@ export default function GiteeProfileAnalysis() {
           {repo}
         </a>
       ),
+    },
+    {
+      title: "匹配邮箱",
+      dataIndex: "matched_email",
+      width: 220,
+      render: (email: string | undefined) => email ? <Tag>{email}</Tag> : <Text type="secondary">-</Text>,
     },
     {
       title: "Commit",
@@ -584,8 +644,8 @@ export default function GiteeProfileAnalysis() {
             Gitee 个人所有仓库分析
           </Title>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            输入 Gitee 个人主页，按 Gitee API 的仓库级能力先建立个人仓库清单，再逐仓采集
-            commit、PR、Issue、评论和操作日志证据。
+            输入 Gitee 个人主页会分析个人所有仓库；输入 Gitee 仓库 URL 时只采集该仓库，
+            并按邮箱匹配 commit author/committer。
           </Paragraph>
         </div>
 
@@ -596,7 +656,7 @@ export default function GiteeProfileAnalysis() {
                 size="large"
                 value={profileText}
                 prefix={<UserOutlined />}
-                placeholder="https://gitee.com/username 或 username"
+                placeholder="https://gitee.com/username、username 或 https://gitee.com/owner/repo"
                 status={profileText && validation.error ? "error" : undefined}
                 onChange={(event) => {
                   setProfileText(event.target.value);
@@ -621,17 +681,33 @@ export default function GiteeProfileAnalysis() {
                 loading={loading}
                 onClick={evaluate}
               >
-                Gitee 个人所有仓库分析
+                {validation.mode === "repo" ? "Gitee 单仓库分析" : "Gitee 个人所有仓库分析"}
               </Button>
             </Space.Compact>
+            {validation.mode === "repo" && (
+              <Input
+                size="large"
+                value={emailsText}
+                placeholder="仓库模式按邮箱匹配，多个邮箱用英文逗号分隔；留空则不会匹配 commit"
+                status={emailsText && emailValidation.error ? "error" : undefined}
+                onChange={(event) => {
+                  setEmailsText(event.target.value);
+                  setError("");
+                }}
+                onPressEnter={evaluate}
+              />
+            )}
             {progressText && <Alert type="info" showIcon message={progressText} />}
             {profileText && validation.error && (
               <Text type="danger">{validation.error}</Text>
             )}
+            {emailsText && emailValidation.error && (
+              <Text type="danger">{emailValidation.error}</Text>
+            )}
             {username && (
               <Space size={8} wrap>
                 <Tag color="green" icon={<GitlabOutlined />}>
-                  {username}
+                  {validation.mode === "repo" ? "仓库模式" : username}
                 </Tag>
                 <a href={profileUrl} target="_blank" rel="noreferrer">
                   {profileUrl}

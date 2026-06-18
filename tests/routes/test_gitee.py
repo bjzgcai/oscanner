@@ -115,3 +115,90 @@ async def test_gitee_profile_evaluate_uses_latest_matching_commits(tmp_path, mon
     assert result["summary"]["available_commit_count"] == 2
     assert result["commits"][0]["sha"] == "b" * 40
     assert result["evaluation"]["total_commits_analyzed"] == 1
+
+
+@pytest.mark.asyncio
+async def test_gitee_repo_evaluate_matches_supplied_commit_email(tmp_path, monkeypatch):
+    matched = gitee._serialize_commit(
+        {
+            "sha": "c" * 40,
+            "html_url": "https://gitee.com/owner/repo/commit/" + "c" * 40,
+            "commit": {
+                "author": {
+                    "name": "Alice",
+                    "email": "Alice@Example.com",
+                    "date": "2026-03-01T00:00:00Z",
+                },
+                "committer": {
+                    "name": "Integrator",
+                    "email": "integrator@example.com",
+                    "date": "2026-03-01T00:01:00Z",
+                },
+                "message": "feat: repo scoped",
+            },
+            "stats": {"additions": 2, "deletions": 1, "total": 3},
+            "files": [{"filename": "repo.py"}],
+        },
+        owner="owner",
+        repo="repo",
+        username="alice@example.com",
+        matched_email="alice@example.com",
+    )
+
+    class FakeEvaluator:
+        def evaluate_engineer(self, *, commits, username, max_commits, load_files):
+            assert username == "alice@example.com"
+            assert [commit["sha"] for commit in commits] == ["c" * 40]
+            return {
+                "username": username,
+                "total_commits_analyzed": len(commits),
+                "scores": {"spec_quality": 90},
+            }
+
+    class FakeScanModule:
+        @staticmethod
+        def create_commit_evaluator(**kwargs):
+            return FakeEvaluator()
+
+    seen = {}
+
+    def fake_sync(repo, *, sync_commits_per_repo, emails=None):
+        seen["repo"] = repo
+        seen["emails"] = emails
+        return {
+            "repo": repo,
+            "data_dir": str(tmp_path / "gitee" / "owner" / "repo"),
+            "changed": True,
+            "mode": "incremental",
+            "commits": [matched],
+            "collaboration_evidence": [],
+            "warnings": [],
+        }
+
+    monkeypatch.setattr(gitee, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(gitee, "get_llm_api_key", lambda: "llm-key")
+    monkeypatch.setattr(gitee, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(gitee, "resolve_plugin_id", lambda plugin: plugin or "zgc_ai_native_2026")
+    monkeypatch.setattr(
+        gitee,
+        "load_scan_module",
+        lambda plugin_id: (SimpleNamespace(version="1.0.0"), FakeScanModule, tmp_path / "scan.py"),
+    )
+    monkeypatch.setattr(gitee, "_sync_one_repo", fake_sync)
+
+    result = await gitee.evaluate_gitee_profile(
+        {
+            "repo_url": "https://gitee.com/owner/repo",
+            "emails": "Alice@Example.com",
+            "commit_limit": 10,
+            "model": "test-model",
+            "plugin": "zgc_ai_native_2026",
+            "language": "zh-CN",
+        }
+    )
+
+    assert seen["repo"]["repo_full_name"] == "owner/repo"
+    assert seen["emails"] == ["alice@example.com"]
+    assert result["scope"] == "gitee_repository"
+    assert result["commits"][0]["matched_email"] == "alice@example.com"
+    assert result["evaluation"]["scope"] == "gitee_repository"
