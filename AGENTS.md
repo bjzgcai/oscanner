@@ -86,6 +86,7 @@ External checker implementations and `checker_list.yaml`; currently includes `cc
 - Use Pydantic schemas from `backend/evaluator/schemas/` for API contracts.
 - Preserve GitHub/Gitee collector behavior around rate limits, tokens, incremental sync, and cached data.
 - Treat GitHub and Gitee as first-class providers in shared workflows. When adding extraction, sync, trajectory, batch, author, collaboration, checker, or URL behavior for one provider, either implement and test the equivalent path for the other provider or document an intentional limitation.
+- Engineering-data collection must accept `github仓库链接`, `gitee仓库链接`, and `email` as identity inputs. If a GitHub/Gitee value is a repository link, collect commits, PRs, reviews, issues, approvals, and maintainer decisions from that repository, then match them against the supplied emails; if no emails match, treat all collected data as belonging to that user. If a GitHub/Gitee value is a profile link, iterate the repositories under that profile and apply the same repository-level matching rule. For GitHub, also use email identities for global commit, PR, review, issue, approval, and maintainer-decision collection.
 - Prefer XDG/user-local storage helpers from `paths.py`; avoid hardcoded absolute data paths.
 - Keep plugin discovery and scan contracts stable unless updating all affected plugins and views.
 - For repository URL handling, use the existing parser and security checks rather than ad hoc string handling.
