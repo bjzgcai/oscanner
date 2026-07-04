@@ -23,6 +23,7 @@ from evaluator.services.collaboration_evidence import normalize_evidence_sources
 from evaluator.paths import get_platform_data_dir
 from evaluator.services.trajectory_service import ensure_repo_data_synced
 from evaluator.services.trajectory_poll_store import SQLiteTrajectoryPollStore
+from evaluator.services.task_queue import EvaluatorQueueFull, evaluator_queue
 from evaluator.utils import (
     parse_repo_url,
     parse_repo_url_with_ref,
@@ -1111,23 +1112,27 @@ async def analyze_trajectory_one_off(
         end_sha_value = end_sha.strip() if end_sha else None
 
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            analyze_growth_trajectory,
-            username,
-            repo_urls,
-            aliases,
-            plugin_id,
-            ONE_OFF_PRIMARY_MODEL,
-            language,
-            forced_checker_id,
-            worktree_base_value,
-            checkpoint_strategy_value,
-            start_sha_value,
-            end_sha_value,
-            evidence_sources,
-            expected_feature,
-        )
+        try:
+            async with evaluator_queue.acquire():
+                response = await loop.run_in_executor(
+                    None,
+                    analyze_growth_trajectory,
+                    username,
+                    repo_urls,
+                    aliases,
+                    plugin_id,
+                    ONE_OFF_PRIMARY_MODEL,
+                    language,
+                    forced_checker_id,
+                    worktree_base_value,
+                    checkpoint_strategy_value,
+                    start_sha_value,
+                    end_sha_value,
+                    evidence_sources,
+                    expected_feature,
+                )
+        except EvaluatorQueueFull as exc:
+            raise HTTPException(status_code=429, detail=str(exc)) from exc
 
         if not response.success or not response.trajectory or not response.trajectory.checkpoints:
             return {
@@ -1373,26 +1378,34 @@ async def analyze_trajectory_one_off_stream(
             }
 
         yield format_sse_event("section", {"title": "连接已建立", "status": "done"})
-        task = loop.run_in_executor(None, run_analysis)
 
-        while True:
-            if task.done():
-                while not queue.empty():
-                    event, data = queue.get_nowait()
-                    yield format_sse_event(event, data)
-                try:
-                    result = task.result()
-                    yield format_sse_event("result", result)
-                    yield format_sse_event("done", {"finish_reason": "stop"})
-                except Exception as e:
-                    yield format_sse_event("error", {"message": str(e)})
-                break
+        def queue_progress(message: str) -> None:
+            emit("section", {"title": "等待评估队列", "status": "queued", "message": message})
 
-            try:
-                event, data = await asyncio.wait_for(queue.get(), timeout=15)
-                yield format_sse_event(event, data)
-            except asyncio.TimeoutError:
-                yield format_sse_event("heartbeat", {"status": "running"})
+        try:
+            async with evaluator_queue.acquire(queue_progress):
+                task = loop.run_in_executor(None, run_analysis)
+
+                while True:
+                    if task.done():
+                        while not queue.empty():
+                            event, data = queue.get_nowait()
+                            yield format_sse_event(event, data)
+                        try:
+                            result = task.result()
+                            yield format_sse_event("result", result)
+                            yield format_sse_event("done", {"finish_reason": "stop"})
+                        except Exception as e:
+                            yield format_sse_event("error", {"message": str(e)})
+                        break
+
+                    try:
+                        event, data = await asyncio.wait_for(queue.get(), timeout=15)
+                        yield format_sse_event(event, data)
+                    except asyncio.TimeoutError:
+                        yield format_sse_event("heartbeat", {"status": "running"})
+        except EvaluatorQueueFull as exc:
+            yield format_sse_event("error", {"message": str(exc)})
 
     return StreamingResponse(
         event_stream(),
@@ -1496,6 +1509,12 @@ async def start_trajectory_analyze_one_off_poll(
         },
         headers={"Cache-Control": "no-store"},
     )
+
+
+@router.get("/api/trajectory/queue")
+async def get_trajectory_queue_status() -> Dict[str, int]:
+    """Return current in-process evaluator queue state."""
+    return evaluator_queue.snapshot()
 
 
 @router.get("/api/trajectory/analyze_one_off_poll/{job_id}")

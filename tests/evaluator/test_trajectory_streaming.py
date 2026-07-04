@@ -49,6 +49,22 @@ def test_one_off_poll_endpoints_are_registered():
 
 
 @pytest.mark.anyio
+async def test_trajectory_queue_status_endpoint(monkeypatch):
+    from evaluator.routes import trajectory as trajectory_route
+    from evaluator.services.task_queue import EvaluatorQueue
+
+    queue = EvaluatorQueue(max_concurrent=2, max_pending=7)
+    monkeypatch.setattr(trajectory_route, "evaluator_queue", queue)
+
+    assert await trajectory_route.get_trajectory_queue_status() == {
+        "max_concurrent": 2,
+        "running": 0,
+        "pending": 0,
+        "max_pending": 7,
+    }
+
+
+@pytest.mark.anyio
 async def test_one_off_poll_endpoint_persists_stream_events(monkeypatch, tmp_path):
     from evaluator.routes import trajectory as trajectory_route
 
