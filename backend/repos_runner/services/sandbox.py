@@ -549,7 +549,7 @@ def run_sandboxed(
         limits = ResourceLimits.from_timeout(timeout)
 
     _platform = platform.system()
-    child_env = {**os.environ, **(env or {})}
+    child_env = {**os.environ} if env is None else {str(key): str(value) for key, value in env.items()}
 
     # Propagate PATH so test runners (pytest, go, cargo …) are found
     if "PATH" not in child_env:

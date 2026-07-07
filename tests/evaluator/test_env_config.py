@@ -54,6 +54,27 @@ def test_get_project_env_paths_includes_distinct_cwd_env_after_server_env(tmp_pa
     assert paths == [server_env.resolve(), root_env.resolve()]
 
 
+def test_get_project_env_paths_prefers_prod_env_in_production(tmp_path, monkeypatch):
+    """Production mode should prefer evaluator .env.prod before .env."""
+    repo_root = tmp_path / "repo"
+    server_dir = repo_root / "backend" / "evaluator"
+    server_dir.mkdir(parents=True)
+
+    prod_env = server_dir / ".env.prod"
+    server_env = server_dir / ".env"
+    prod_env.write_text("PORT=8000\n", encoding="utf-8")
+    server_env.write_text("PORT=9000\n", encoding="utf-8")
+
+    monkeypatch.setenv("OSCANNER_ENV", "production")
+
+    paths = get_project_env_paths(
+        server_file=server_dir / "server.py",
+        cwd=repo_root,
+    )
+
+    assert paths == [prod_env.resolve(), server_env.resolve()]
+
+
 def test_load_runtime_env_restores_non_empty_file_value_over_empty_process_var(tmp_path, monkeypatch):
     """Empty inherited vars should not block non-empty values from .env."""
     repo_root = tmp_path / "repo"

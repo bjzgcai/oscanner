@@ -3,6 +3,7 @@ API routes for Repository Runner
 """
 
 import asyncio
+import inspect
 import json
 import logging
 import mimetypes
@@ -43,6 +44,7 @@ from repos_runner.services.repo_service.llm import (
     start_token_usage_collection,
     summarize_token_usage,
 )
+from repos_runner.services.repo_service.runtime_env import build_runtime_env_context
 from repos_runner.services.task_queue import RunnerQueueFull, runner_queue
 
 router = APIRouter(prefix="/api/runner")
@@ -81,6 +83,17 @@ def _clean_optional_text(value: Optional[str]) -> Optional[str]:
         return None
     text = str(value).strip()
     return text or None
+
+
+async def _run_tests_with_optional_runtime_env(*args, runtime_env=None, **kwargs):
+    """Call run_tests while preserving compatibility with older monkeypatched fakes."""
+    try:
+        signature = inspect.signature(run_tests)
+    except (TypeError, ValueError):
+        signature = None
+    if signature is not None and "runtime_env" in signature.parameters:
+        kwargs["runtime_env"] = runtime_env
+    return await run_tests(*args, **kwargs)
 
 
 def _extract_validation_features(feature_requirements: Optional[str]) -> list[str]:
@@ -349,6 +362,9 @@ async def run_tests_stream(
     tag_message: Optional[str] = None,
     tag: Optional[str] = None,
     grading_rubric: Optional[str] = None,
+    runtime_env_profile: Optional[str] = None,
+    runtime_env_required_policy: str = "warn",
+    runtime_env_safe_defaults: bool = True,
 ):
     """
     Run tests based on REPO_OVERVIEW.md with streaming progress.
@@ -376,8 +392,14 @@ async def run_tests_stream(
             try:
                 from pathlib import Path
                 async with runner_queue.acquire(progress_callback):
+                    runtime_env = build_runtime_env_context(
+                        clone_path,
+                        profile=_clean_optional_text(runtime_env_profile),
+                        required_policy=runtime_env_required_policy,
+                        include_safe_defaults=runtime_env_safe_defaults,
+                    )
                     result = await asyncio.to_thread(
-                        lambda: asyncio.run(run_tests(
+                        lambda: asyncio.run(_run_tests_with_optional_runtime_env(
                             clone_path,
                             overview_path,
                             worker_progress_callback,
@@ -386,6 +408,7 @@ async def run_tests_stream(
                             tag_message=requirements,
                             tag=clean_tag,
                             grading_rubric=clean_grading_rubric,
+                            runtime_env=runtime_env,
                         ))
                     )
                 report_path = result.get("report_path", "")
@@ -464,8 +487,6 @@ async def run_all_stream(request: RunAllRequest):
     - Private repositories (no authentication support)
     - Tag annotation fetch for GitHub (Gitee-only)
     - Parallel test execution within a single repo
-    - Docker / containerised test environments
-    - Custom environment variable injection for test commands
     - Non-Git version control systems
     """
     logger.info("run-all request: repo_url=%s tag=%s sha=%s", request.repo_url, request.tag, request.sha)
@@ -540,6 +561,26 @@ async def run_all_stream(request: RunAllRequest):
                     )
 
                 clone_path = clone_metadata["clone_path"]
+                runtime_env = build_runtime_env_context(
+                    clone_path,
+                    profile=_clean_optional_text(request.runtime_env_profile),
+                    required_policy=request.runtime_env_required_policy,
+                    include_safe_defaults=request.runtime_env_safe_defaults,
+                )
+                if request.runtime_env_profile:
+                    await worker_progress_callback(
+                        f"Using runtime env profile '{request.runtime_env_profile}'"
+                    )
+                if runtime_env.missing_required_keys:
+                    await worker_progress_callback(
+                        "Missing detected runtime env keys: "
+                        + ", ".join(runtime_env.missing_required_keys)
+                    )
+                if runtime_env.blocked_secret_keys:
+                    await worker_progress_callback(
+                        "Paid/real secret keys were not injected: "
+                        + ", ".join(runtime_env.blocked_secret_keys)
+                    )
                 _safe_tag = request.tag.replace("/", "_").replace("\\", "_") if request.tag else None
                 overview_filename = f"REPO_OVERVIEW_{_safe_tag}.md" if _safe_tag else "REPO_OVERVIEW.md"
                 overview_path = str(Path(clone_path) / overview_filename)
@@ -587,7 +628,7 @@ async def run_all_stream(request: RunAllRequest):
                 # -- Test step --
                 await worker_progress_callback("Running tests...")
                 result = await _await_pipeline_step(
-                    run_tests(
+                    _run_tests_with_optional_runtime_env(
                         clone_path,
                         overview_path,
                         worker_progress_callback,
@@ -596,6 +637,7 @@ async def run_all_stream(request: RunAllRequest):
                         tag_message=tag_message,
                         tag=request.tag,
                         grading_rubric=grading_rubric,
+                        runtime_env=runtime_env,
                     ),
                     deadline=deadline,
                 )
@@ -748,6 +790,19 @@ async def batch_run_stream(request: BatchRunRequest):
                             )
 
                         clone_path = clone_metadata["clone_path"]
+                        runtime_env = build_runtime_env_context(
+                            clone_path,
+                            profile=_clean_optional_text(repo_req.runtime_env_profile),
+                            required_policy=repo_req.runtime_env_required_policy,
+                            include_safe_defaults=repo_req.runtime_env_safe_defaults,
+                        )
+                        if repo_req.runtime_env_profile:
+                            await cb(f"Using runtime env profile '{repo_req.runtime_env_profile}'")
+                        if runtime_env.missing_required_keys:
+                            await cb(
+                                "Missing detected runtime env keys: "
+                                + ", ".join(runtime_env.missing_required_keys)
+                            )
                         _safe_tag = repo_req.tag.replace("/", "_").replace("\\", "_") if repo_req.tag else None
                         overview_filename = f"REPO_OVERVIEW_{_safe_tag}.md" if _safe_tag else "REPO_OVERVIEW.md"
                         overview_path = str(Path(clone_path) / overview_filename)
@@ -787,7 +842,7 @@ async def batch_run_stream(request: BatchRunRequest):
 
                         await cb("Running tests...")
                         result = await _await_pipeline_step(
-                            run_tests(
+                            _run_tests_with_optional_runtime_env(
                                 clone_path,
                                 overview_path,
                                 cb,
@@ -796,6 +851,7 @@ async def batch_run_stream(request: BatchRunRequest):
                                 tag_message=tag_message,
                                 tag=repo_req.tag,
                                 grading_rubric=grading_rubric,
+                                runtime_env=runtime_env,
                             ),
                             deadline=deadline,
                         )

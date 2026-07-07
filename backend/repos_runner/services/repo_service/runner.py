@@ -3,6 +3,7 @@ Main test execution entry point.
 """
 
 import asyncio
+import inspect
 import os
 import re
 import shlex
@@ -26,6 +27,7 @@ from .coverage import _extract_features_from_tag_message, _check_feature_coverag
 from .report import _generate_test_report
 from .paths import repo_key_from_source_dir
 from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_coverage
+from .runtime_env import RuntimeEnvContext
 
 _SHELL_SUCCESS_MASK_RE = re.compile(r"\s*(?:\|\|\s*true|;\s*true)\s*$")
 _PIP_REQUIREMENTS_RE = re.compile(r"(?:^|\s)pip(?:3)?\s+install\s+-r\s+([^;&|]+)")
@@ -47,13 +49,44 @@ _LONG_LIVED_SERVICE_COMMAND_RE = re.compile(
 )
 TAGGED_CODE_TEST_WEIGHT = 30
 TAGGED_FUNCTIONALITY_WEIGHT = 70
+_README_REQUIREMENT_FILES = ("README.md", "README.en.md", "README.txt", "README")
+_README_NON_REQUIREMENT_HEADING_RE = re.compile(
+    r"^\s{0,3}#+\s*(?:todo|to do|roadmap|future|planned|plan|backlog|"
+    r"not implemented|incomplete|known issues|limitations|"
+    r"待办|计划|规划|路线图|未完成|未实现|暂未实现|后续)\b",
+    re.IGNORECASE,
+)
+_README_NON_REQUIREMENT_LINE_RE = re.compile(
+    r"\b(?:todo|planned|planning|future work|roadmap|not implemented|not yet implemented|"
+    r"incomplete|coming soon|will support|will be supported)\b|"
+    r"(?:待办|计划|规划|未完成|未实现|暂未实现|尚未实现|待实现|后续|未来)",
+    re.IGNORECASE,
+)
 
 
-def _run_repo_command(execution_session, cmd: str, *, cwd: Path, timeout: int):
+async def _collect_runtime_evidence_with_optional_env(*args, runtime_env=None, **kwargs):
+    """Call collect_runtime_evidence while keeping older monkeypatched tests compatible."""
+    try:
+        signature = inspect.signature(collect_runtime_evidence)
+    except (TypeError, ValueError):
+        signature = None
+    if runtime_env is not None and signature is not None and "runtime_env" in signature.parameters:
+        kwargs["runtime_env"] = runtime_env
+    return await collect_runtime_evidence(*args, **kwargs)
+
+
+def _run_repo_command(
+    execution_session,
+    cmd: str,
+    *,
+    cwd: Path,
+    timeout: int,
+    env: Optional[dict[str, str]] = None,
+):
     """Run a repo command through Docker when configured, otherwise use host sandbox."""
     if getattr(execution_session, "is_docker", False):
-        return execution_session.run(cmd, cwd=cwd, timeout=timeout)
-    return run_sandboxed(cmd, cwd=cwd, timeout=timeout)
+        return execution_session.run(cmd, cwd=cwd, timeout=timeout, env=env)
+    return run_sandboxed(cmd, cwd=cwd, timeout=timeout, env=env)
 
 
 def _strip_shell_success_mask(cmd: str) -> str:
@@ -86,6 +119,48 @@ def _filter_code_test_commands(commands: List[str]) -> tuple[List[str], List[str
         else:
             code_tests.append(cleaned)
     return code_tests, service_commands
+
+
+def _readme_requirements_from_clone(clone_dir: Path) -> Optional[str]:
+    for filename in _README_REQUIREMENT_FILES:
+        readme_path = clone_dir / filename
+        if not readme_path.is_file():
+            continue
+        try:
+            readme_text = readme_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+
+        kept_lines: list[str] = []
+        in_non_requirement_section = False
+        for raw_line in readme_text.splitlines():
+            line = raw_line.rstrip()
+            if re.match(r"^\s{0,3}#+\s+", line):
+                in_non_requirement_section = bool(
+                    _README_NON_REQUIREMENT_HEADING_RE.search(line)
+                )
+                if in_non_requirement_section:
+                    continue
+            if in_non_requirement_section:
+                continue
+            if _README_NON_REQUIREMENT_LINE_RE.search(line):
+                continue
+            kept_lines.append(line)
+
+        cleaned = "\n".join(kept_lines).strip()
+        if not cleaned:
+            continue
+        if len(cleaned) > 12000:
+            cleaned = cleaned[:12000].rsplit("\n", 1)[0].strip() or cleaned[:12000]
+        return (
+            "## Repository README requirements\n\n"
+            "Use the repository README as the functional acceptance standard. "
+            "Only treat currently documented, implemented behavior as requirements; "
+            "ignore TODO, planned, roadmap, future, incomplete, or explicitly unimplemented items.\n\n"
+            f"Source: {filename}\n\n"
+            f"{cleaned}"
+        )
+    return None
 
 
 def _clamp_ratio(value: float) -> float:
@@ -470,6 +545,7 @@ async def run_tests(
     tag_message: Optional[str] = None,
     tag: Optional[str] = None,
     grading_rubric: Optional[str] = None,
+    runtime_env: Optional[RuntimeEnvContext] = None,
 ) -> Dict[str, Any]:
     """
     Identify and run tests based on REPO_OVERVIEW.md.
@@ -501,6 +577,19 @@ async def run_tests(
 
     if progress_callback:
         await progress_callback("Identifying test commands...")
+
+    command_env = runtime_env.command_env() if runtime_env is not None else None
+    runtime_env_report = runtime_env.as_report() if runtime_env is not None else None
+    if runtime_env is not None:
+        if progress_callback:
+            await progress_callback(
+                "Runtime env prepared: "
+                f"{len(runtime_env.env)} supplied key(s), "
+                f"{len(runtime_env.missing_required_keys)} missing detected key(s)"
+            )
+        if runtime_env.should_fail_on_missing():
+            missing = ", ".join(runtime_env.missing_required_keys)
+            raise RuntimeError(f"Missing required runtime env key(s): {missing}")
 
     # Try static detection first (cheap), then LLM
     test_info = _detect_frameworks_statically(clone_dir)
@@ -594,6 +683,7 @@ async def run_tests(
                         cmd,
                         cwd=clone_dir,
                         timeout=setup_timeout,
+                        env=command_env,
                     )
                     if progress_callback and result.returncode != 0:
                         await progress_callback(f"Setup warning: {result.stderr[:200]}")
@@ -616,6 +706,7 @@ async def run_tests(
                         cmd,
                         cwd=clone_dir,
                         timeout=setup_timeout,
+                        env=command_env,
                     )
                     if progress_callback and result.returncode != 0:
                         await progress_callback(f"Service env setup warning: {result.stderr[:200]}")
@@ -652,6 +743,7 @@ async def run_tests(
                 total=0, passed=0, failed=0, score=0,
                 test_results=[],
                 grading_rubric=clean_grading_rubric,
+                runtime_env=runtime_env_report,
             )
             no_tests_result = {
                 "total": 0, "passed": 0, "failed": 0, "skipped": 0,
@@ -660,6 +752,8 @@ async def run_tests(
                 "report_path": str(test_report_path),
             }
             no_tests_result["grading_rubric"] = clean_grading_rubric
+            if runtime_env_report:
+                no_tests_result["runtime_env"] = runtime_env_report
             return no_tests_result
 
         total_passed = 0
@@ -692,6 +786,7 @@ async def run_tests(
                     modified_cmd,
                     cwd=clone_dir,
                     timeout=test_timeout,
+                    env=command_env,
                 )
 
                 duration = (datetime.now() - start_time).total_seconds()
@@ -777,6 +872,24 @@ async def run_tests(
                 await progress_callback("Analyzing tag message for required features...")
             rubric_kwargs = {"grading_rubric": clean_grading_rubric}
             features = await _extract_features_from_tag_message(tag_message, **rubric_kwargs)
+            if not features:
+                readme_tag_message = _readme_requirements_from_clone(clone_dir)
+                if readme_tag_message and readme_tag_message.strip() != str(tag_message or "").strip():
+                    if progress_callback:
+                        await progress_callback(
+                            "No testable features could be extracted from the tag message; checking README requirements..."
+                        )
+                    readme_features = await _extract_features_from_tag_message(
+                        readme_tag_message,
+                        **rubric_kwargs,
+                    )
+                    if readme_features:
+                        tag_message = readme_tag_message
+                        features = readme_features
+                        if progress_callback:
+                            await progress_callback(
+                                "Using README as functional acceptance requirements."
+                            )
             if features:
                 if progress_callback:
                     await progress_callback(
@@ -793,13 +906,14 @@ async def run_tests(
                 feature_coverage["code_relevance_ratio"] = code_relevance_ratio
                 if progress_callback:
                     await progress_callback("Collecting runtime feature evidence...")
-                runtime_evidence = await collect_runtime_evidence(
+                runtime_evidence = await _collect_runtime_evidence_with_optional_env(
                     clone_dir,
                     tag=tag or "",
                     tag_message=tag_message or "",
                     required_features=features,
                     progress_callback=progress_callback,
                     execution_session=execution_session,
+                    runtime_env=runtime_env,
                     **rubric_kwargs,
                 )
                 feature_coverage = merge_runtime_feature_coverage(
@@ -868,6 +982,7 @@ async def run_tests(
         score_breakdown=score_breakdown,
         execution_process=execution_process,
         grading_rubric=clean_grading_rubric,
+        runtime_env=runtime_env_report,
     )
 
     if progress_callback:
@@ -888,6 +1003,8 @@ async def run_tests(
         result["feature_coverage"] = feature_coverage
         result["tag_message"] = tag_message
     result["grading_rubric"] = clean_grading_rubric
+    if runtime_env_report:
+        result["runtime_env"] = runtime_env_report
     if runtime_evidence:
         result["runtime_evidence"] = runtime_evidence
     return result

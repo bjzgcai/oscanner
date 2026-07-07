@@ -30,12 +30,22 @@ echo -e "${BLUE}  Engineer Skill Evaluator - Production${NC}"
 echo -e "${BLUE}======================================${NC}\n"
 
 # Load evaluator environment variables
-EVALUATOR_ENV="${PROJECT_ROOT}/backend/evaluator/.env.local"
-if [ -f "$EVALUATOR_ENV" ]; then
-    echo -e "${GREEN}✓${NC} Loading evaluator configuration from .env.local"
+EVALUATOR_PROD_ENV="${PROJECT_ROOT}/backend/evaluator/.env.prod"
+EVALUATOR_LOCAL_ENV="${PROJECT_ROOT}/backend/evaluator/.env.local"
+if [ -f "$EVALUATOR_PROD_ENV" ]; then
+    EVALUATOR_ENV="$EVALUATOR_PROD_ENV"
+elif [ -f "$EVALUATOR_LOCAL_ENV" ]; then
+    EVALUATOR_ENV="$EVALUATOR_LOCAL_ENV"
+else
+    EVALUATOR_ENV=""
+fi
+
+export OSCANNER_ENV=production
+if [ -n "$EVALUATOR_ENV" ]; then
+    echo -e "${GREEN}✓${NC} Loading evaluator configuration from ${EVALUATOR_ENV#${PROJECT_ROOT}/}"
     export $(cat "$EVALUATOR_ENV" | grep -v '^#' | grep -v '^$' | xargs)
 else
-    echo -e "${YELLOW}⚠${NC} Warning: backend/evaluator/.env.local not found, using defaults"
+    echo -e "${YELLOW}⚠${NC} Warning: backend/evaluator/.env.prod not found, using defaults"
 fi
 
 # Set evaluator port (default: 8000)

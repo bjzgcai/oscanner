@@ -20,21 +20,33 @@ def get_project_env_paths(server_file: Path | None = None, cwd: Path | None = No
     Return project env files in load order.
 
     Priority:
-    1) Server-directory `.env`
-    2) Server-directory `.env.local` (legacy)
-    3) Current working directory `.env` (when different)
-    4) Current working directory `.env.local` (legacy, when different)
+    1) Server-directory `.env.prod` when OSCANNER_ENV=production
+    2) Server-directory `.env`
+    3) Server-directory `.env.local` (legacy)
+    4) Current working directory `.env.prod` when OSCANNER_ENV=production
+    5) Current working directory `.env` (when different)
+    6) Current working directory `.env.local` (legacy, when different)
     """
     paths: List[Path] = []
     seen: set[Path] = set()
 
     candidates: Iterable[Path] = []
+    production = os.getenv("OSCANNER_ENV", "").strip().lower() == "production"
     if server_file is not None:
         server_dir = server_file.resolve().parent
-        candidates = [server_dir / ".env", server_dir / ".env.local"]
+        candidates = [
+            *([server_dir / ".env.prod"] if production else []),
+            server_dir / ".env",
+            server_dir / ".env.local",
+        ]
     if cwd is not None:
         cwd_dir = cwd.resolve()
-        candidates = [*candidates, cwd_dir / ".env", cwd_dir / ".env.local"]
+        candidates = [
+            *candidates,
+            *([cwd_dir / ".env.prod"] if production else []),
+            cwd_dir / ".env",
+            cwd_dir / ".env.local",
+        ]
 
     for path in candidates:
         resolved = path.resolve()

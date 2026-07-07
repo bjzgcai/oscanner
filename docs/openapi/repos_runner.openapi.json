@@ -300,6 +300,42 @@
               ],
               "title": "Grading Rubric"
             }
+          },
+          {
+            "name": "runtime_env_profile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Runtime Env Profile"
+            }
+          },
+          {
+            "name": "runtime_env_required_policy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "warn",
+              "title": "Runtime Env Required Policy"
+            }
+          },
+          {
+            "name": "runtime_env_safe_defaults",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Runtime Env Safe Defaults"
+            }
           }
         ],
         "responses": {
@@ -330,7 +366,7 @@
           "runner"
         ],
         "summary": "Run All Stream",
-        "description": "Combined clone → explore → run-tests pipeline with SSE streaming progress.\n\nPipeline stages:\n1. Clone   — shallow clone (depth=1) into\n             ~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/\n             Optionally checks out a specific SHA or tag.\n2. Explore — generates REPO_OVERVIEW.md via the configured LLM to understand\n             project structure, languages, and suggested test commands.\n3. Tests   — auto-detects test framework, sets up an isolated .venv, runs tests\n             inside a sandboxed subprocess. Produces TEST_REPORT.md with a\n             0–100 score based on pass/fail metrics.\n\nIdempotency flags:\n- skip_clone:   reuse existing clone (skip re-cloning)\n- skip_explore: reuse existing REPO_OVERVIEW.md (skip LLM exploration)\n\nTag annotation scoring (Gitee only):\n- When `tag` is provided, fetches the annotated tag message from Gitee.\n- Extracts feature descriptions from the message and checks which features\n  are exercised by the test suite (via LLM). Uncovered features reduce the\n  maximum achievable score proportionally.\n\nSSE events emitted:\n- {\"event\": \"progress\", \"data\": {\"message\": \"<msg>\"}}   — pipeline log lines\n- {\"event\": \"status\",   \"data\": {\"status\": \"completed\", \"results\": {...}}}\n- {\"event\": \"status\",   \"data\": {\"status\": \"failed\",    \"error\": \"<msg>\"}}\n\nWhat is NOT covered:\n- Private repositories (no authentication support)\n- Tag annotation fetch for GitHub (Gitee-only)\n- Parallel test execution within a single repo\n- Docker / containerised test environments\n- Custom environment variable injection for test commands\n- Non-Git version control systems",
+        "description": "Combined clone → explore → run-tests pipeline with SSE streaming progress.\n\nPipeline stages:\n1. Clone   — shallow clone (depth=1) into\n             ~/.local/share/oscanner/repos/{platform}/{owner}/{repo}/{ref}/source/\n             Optionally checks out a specific SHA or tag.\n2. Explore — generates REPO_OVERVIEW.md via the configured LLM to understand\n             project structure, languages, and suggested test commands.\n3. Tests   — auto-detects test framework, sets up an isolated .venv, runs tests\n             inside a sandboxed subprocess. Produces TEST_REPORT.md with a\n             0–100 score based on pass/fail metrics.\n\nIdempotency flags:\n- skip_clone:   reuse existing clone (skip re-cloning)\n- skip_explore: reuse existing REPO_OVERVIEW.md (skip LLM exploration)\n\nTag annotation scoring (Gitee only):\n- When `tag` is provided, fetches the annotated tag message from Gitee.\n- Extracts feature descriptions from the message and checks which features\n  are exercised by the test suite (via LLM). Uncovered features reduce the\n  maximum achievable score proportionally.\n\nSSE events emitted:\n- {\"event\": \"progress\", \"data\": {\"message\": \"<msg>\"}}   — pipeline log lines\n- {\"event\": \"status\",   \"data\": {\"status\": \"completed\", \"results\": {...}}}\n- {\"event\": \"status\",   \"data\": {\"status\": \"failed\",    \"error\": \"<msg>\"}}\n\nWhat is NOT covered:\n- Private repositories (no authentication support)\n- Tag annotation fetch for GitHub (Gitee-only)\n- Parallel test execution within a single repo\n- Non-Git version control systems",
         "operationId": "run_all_stream_api_runner_run_all_post",
         "requestBody": {
           "content": {
@@ -835,6 +871,27 @@
             "exclusiveMinimum": 0.0,
             "title": "Pipeline Timeout",
             "default": 1800
+          },
+          "runtime_env_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Env Profile"
+          },
+          "runtime_env_required_policy": {
+            "type": "string",
+            "title": "Runtime Env Required Policy",
+            "default": "warn"
+          },
+          "runtime_env_safe_defaults": {
+            "type": "boolean",
+            "title": "Runtime Env Safe Defaults",
+            "default": true
           }
         },
         "type": "object",

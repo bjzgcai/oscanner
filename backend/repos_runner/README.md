@@ -25,6 +25,8 @@ directly on port `8001`.
   Ruby, PHP, .NET, Elixir, Kotlin, Swift, and generic fallback parsing.
 - Score plain repositories by code test pass rate, and tagged/requirement-based
   repositories by code tests plus functional acceptance evidence.
+- Inject reusable runtime env profiles with safe test defaults and report
+  missing detected env keys without exposing values.
 - Stream long-running work with Server-Sent Events (SSE).
 - Queue expensive jobs in process to avoid overloading the host.
 - List/delete cloned repositories and serve generated reports and runtime
@@ -113,12 +115,73 @@ export REPOS_RUNNER_DOCKER_PIDS=512
 # Optional README compatibility assistant for runtime startup commands.
 export REPOS_RUNNER_RUNTIME_COMPAT_LLM=false
 export REPOS_RUNNER_RUNTIME_COMPAT_MODEL=deepseek/deepseek-v4-pro
+
+# Optional reusable env profiles for repo-required test/runtime vars.
+export REPOS_RUNNER_RUNTIME_ENV_DIR=~/.local/share/oscanner/runtime-envs
 ```
 
 When `REPOS_RUNNER_OPENCODE_MODEL` starts with `openrouter/`, an OpenRouter key
 must be available as `OPEN_ROUTER_KEY` or `OPENROUTER_API_KEY`. The opencode
 environment also reads runner/evaluator `.env` files as a fallback for
 `OPEN_ROUTER_KEY`.
+
+## Runtime Env Profiles
+
+Some submitted repositories require many environment variables. The runner
+supports reusable dotenv profiles under
+`~/.local/share/oscanner/runtime-envs/` by default, or under
+`REPOS_RUNNER_RUNTIME_ENV_DIR` when set.
+
+Example profile:
+
+```bash
+mkdir -p ~/.local/share/oscanner/runtime-envs
+cat > ~/.local/share/oscanner/runtime-envs/course-a.env <<'EOF'
+CUSTOM_TEST_VALUE=enabled
+JWT_SECRET=test-jwt
+SESSION_SECRET=test-session
+DATABASE_URL=sqlite:///./.oscanner-test.sqlite3
+REDIS_URL=redis://127.0.0.1:6379/0
+EOF
+```
+
+The runner always blocks paid/real secret keys from profiles for now:
+`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`, and
+`AWS_SECRET_ACCESS_KEY`. Oscanner/GitHub/Gitee runner tokens are also blocked
+from repo test commands.
+
+Safe non-paid defaults are injected unless `runtime_env_safe_defaults=false`:
+
+```text
+JWT_SECRET
+SESSION_SECRET
+REDIS_URL
+DATABASE_URL
+NODE_ENV
+CI
+```
+
+The runner detects likely required env names from files such as `.env.example`,
+`.env.sample`, `docker-compose.yml`, `compose.yaml`, `package.json`,
+`pyproject.toml`, `alembic.ini`, `prisma/schema.prisma`, README files, and
+`docs/*.md`. Missing detected keys are reported separately from code failures.
+
+Use a profile with `/api/runner/run-all`:
+
+```json
+{
+  "repo_url": "https://github.com/owner/repo",
+  "runtime_env_profile": "course-a",
+  "runtime_env_required_policy": "warn",
+  "runtime_env_safe_defaults": true
+}
+```
+
+`runtime_env_required_policy` accepts:
+
+- `strict`: fail before tests when detected required env keys are missing.
+- `warn`: run tests and annotate missing env keys.
+- `best_effort`: run tests without a missing-env warning.
 
 ## API Overview
 

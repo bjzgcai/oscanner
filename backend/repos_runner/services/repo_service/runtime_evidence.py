@@ -22,6 +22,7 @@ import httpx
 from repos_runner.grading import normalize_grading_rubric
 
 from .llm import _message_text_content, _messages_create_with_fallback
+from .runtime_env import RuntimeEnvContext
 
 
 DOC_CANDIDATES = (
@@ -520,7 +521,7 @@ def _existence_evidence(path_label: str, exists: bool) -> str:
     return path_label if exists else f"{path_label} 不存在"
 
 
-def runtime_subprocess_env() -> dict[str, str]:
+def runtime_subprocess_env(runtime_env: RuntimeEnvContext | dict[str, str] | None = None) -> dict[str, str]:
     """Return a minimal env for untrusted repo runtime commands."""
     env = {}
     for key in ["PATH", "HOME", "LANG", "LC_ALL", "TMPDIR"]:
@@ -529,6 +530,11 @@ def runtime_subprocess_env() -> dict[str, str]:
             env[key] = value
     env["PYTHONUNBUFFERED"] = "1"
     env["CI"] = "1"
+    if runtime_env is not None:
+        if isinstance(runtime_env, RuntimeEnvContext):
+            env.update(runtime_env.env)
+        else:
+            env.update({str(key): str(value) for key, value in runtime_env.items()})
     return env
 
 
@@ -569,6 +575,7 @@ def _start_process(
     repo_dir: Path,
     artifact_dir: Path,
     execution_session=None,
+    runtime_env: RuntimeEnvContext | dict[str, str] | None = None,
 ) -> subprocess.Popen | None:
     command = command_item["command"]
     use_shell = any(token in command for token in SHELL_CONTROL_TOKENS)
@@ -584,7 +591,7 @@ def _start_process(
             command_item["command"],
             cwd=repo_dir / command_item.get("cwd", "."),
             log_path=log_path,
-            env=runtime_subprocess_env(),
+            env=runtime_subprocess_env(runtime_env),
         )
         return None
 
@@ -594,7 +601,7 @@ def _start_process(
         return subprocess.Popen(
             args,
             cwd=repo_dir / command_item.get("cwd", "."),
-            env=runtime_subprocess_env(),
+            env=runtime_subprocess_env(runtime_env),
             stdin=subprocess.DEVNULL,
             stdout=log_file,
             stderr=subprocess.STDOUT,
@@ -610,6 +617,7 @@ async def _run_check_command(
     artifact_dir: Path,
     timeout: int = 90,
     execution_session=None,
+    runtime_env: RuntimeEnvContext | dict[str, str] | None = None,
 ) -> dict[str, Any]:
     args = shlex.split(command_item["command"])
     if args and args[0] == "python":
@@ -623,7 +631,7 @@ async def _run_check_command(
                 result = execution_session.run(
                     command_item["command"],
                     cwd=repo_dir / command_item.get("cwd", "."),
-                    env=runtime_subprocess_env(),
+                    env=runtime_subprocess_env(runtime_env),
                     timeout=timeout,
                 )
                 output = (result.stdout or "") + (result.stderr or "")
@@ -631,7 +639,7 @@ async def _run_check_command(
                 result = subprocess.run(
                     args,
                     cwd=repo_dir / command_item.get("cwd", "."),
-                    env=runtime_subprocess_env(),
+                    env=runtime_subprocess_env(runtime_env),
                     check=False,
                     text=True,
                     stdout=subprocess.PIPE,
@@ -1183,6 +1191,7 @@ async def collect_runtime_evidence(
     service_timeout: float = DEFAULT_SERVICE_TIMEOUT_SECONDS,
     execution_session=None,
     grading_rubric: str | None = None,
+    runtime_env: RuntimeEnvContext | dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Start documented services and collect tag-driven runtime/static evidence."""
     clone_dir = Path(clone_dir)
@@ -1235,13 +1244,20 @@ async def collect_runtime_evidence(
                         clone_dir,
                         artifact_dir,
                         execution_session=execution_session,
+                        runtime_env=runtime_env,
                     )
                 )
                 continue
             try:
                 if progress_callback:
                     await progress_callback(f"Starting documented service: {command}")
-                proc = _start_process(item, clone_dir, artifact_dir, execution_session)
+                proc = _start_process(
+                    item,
+                    clone_dir,
+                    artifact_dir,
+                    execution_session,
+                    runtime_env=runtime_env,
+                )
                 if proc is not None:
                     processes.append(proc)
             except Exception as error:

@@ -13,6 +13,8 @@ from repos_runner.services.repo_service import (
     parse_repo_url,
     parse_repo_url_with_ref,
     fetch_gitee_tag_message,
+    build_runtime_env_context,
+    detect_required_env_keys,
 )
 __all__ = [
     "clone_repository",
@@ -25,4 +27,6 @@ __all__ = [
     "parse_repo_url",
     "parse_repo_url_with_ref",
     "fetch_gitee_tag_message",
+    "build_runtime_env_context",
+    "detect_required_env_keys",
 ]

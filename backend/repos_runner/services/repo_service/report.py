@@ -110,6 +110,7 @@ async def _generate_test_report(
     score_breakdown: Optional[Dict[str, Any]] = None,
     execution_process: Optional[List[str]] = None,
     grading_rubric: Optional[str] = None,
+    runtime_env: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Generate TEST_REPORT.md for analyzed repository."""
     pass_rate = (passed / total * 100) if total > 0 else 0
@@ -174,6 +175,33 @@ async def _generate_test_report(
 
     report += _format_features_to_test_section(tag_message)
     report += _format_execution_process_section(execution_process)
+
+    if runtime_env:
+        supplied_keys = runtime_env.get("supplied_keys") or []
+        detected_keys = runtime_env.get("detected_required_keys") or []
+        missing_keys = runtime_env.get("missing_required_keys") or []
+        blocked_keys = runtime_env.get("blocked_secret_keys") or []
+        safe_default_keys = runtime_env.get("safe_default_keys") or []
+        profile = runtime_env.get("profile") or "未选择"
+        policy = runtime_env.get("required_policy") or "warn"
+
+        report += "## 运行环境变量\n\n"
+        report += f"- **Profile**：{profile}\n"
+        report += f"- **缺失策略**：{policy}\n"
+        report += f"- **已注入变量数**：{len(supplied_keys)}\n"
+        if safe_default_keys:
+            report += "- **安全测试默认值**：" + "、".join(f"`{key}`" for key in safe_default_keys) + "\n"
+        if detected_keys:
+            report += "- **检测到仓库可能需要的变量**：" + "、".join(f"`{key}`" for key in detected_keys) + "\n"
+        else:
+            report += "- **检测到仓库可能需要的变量**：无\n"
+        if missing_keys:
+            report += "- **缺失变量**：" + "、".join(f"`{key}`" for key in missing_keys) + "\n"
+        else:
+            report += "- **缺失变量**：无\n"
+        if blocked_keys:
+            report += "- **未注入付费/真实密钥**：" + "、".join(f"`{key}`" for key in blocked_keys) + "\n"
+        report += "\n"
 
     report += f"""
 

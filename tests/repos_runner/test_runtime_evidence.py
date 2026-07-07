@@ -737,6 +737,105 @@ def test_run_tests_scores_code_and_functionality_independently(monkeypatch, tmp_
     assert "功能验收得分**：70/70" in report
 
 
+def test_run_tests_falls_back_to_readme_when_forwarded_tag_message_has_no_features(monkeypatch, tmp_path):
+    from repos_runner.services.repo_service import runner as runner_service
+
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+    overview = clone_dir / "REPO_OVERVIEW_class-01.md"
+    overview.write_text("overview", encoding="utf-8")
+    (clone_dir / "README.md").write_text(
+        """# DeepSeek Summarizer
+
+Small Node/Express summarizer app that includes:
+
+- A browser UI served from public/index.html
+- JSON API endpoints for health checks and summarization
+- PostgreSQL persistence for generated summaries
+- Automatic SQL table creation on server startup
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        runner_service,
+        "_detect_frameworks_statically",
+        lambda _clone_dir: {
+            "language": "python",
+            "test_commands": [],
+            "setup_commands": [],
+        },
+    )
+    monkeypatch.setattr(runner_service, "_find_test_files", lambda _clone_dir, _language: [])
+    monkeypatch.setattr(runner_service, "ensure_repo_venv", lambda _clone_path: sys.executable)
+    monkeypatch.setattr(runner_service, "_parse_json_report", lambda _clone_dir: None)
+
+    extracted_messages = []
+
+    async def _fake_extract_features(message, grading_rubric=None):
+        extracted_messages.append(message)
+        if "DeepSeek Summarizer" not in message:
+            return []
+        return [
+            "Browser UI served from public/index.html",
+            "JSON API endpoints for health checks and summarization",
+            "PostgreSQL persistence for generated summaries",
+            "Automatic SQL table creation on server startup",
+        ]
+
+    async def _fake_check_feature_coverage(_clone_dir, features, grading_rubric=None):
+        return {
+            "covered": list(features),
+            "not_covered": [],
+            "coverage_ratio": 1.0,
+            "test_files_found": [],
+        }
+
+    async def _fake_collect_runtime_evidence(
+        _clone_dir,
+        tag="",
+        tag_message="",
+        required_features=None,
+        progress_callback=None,
+        execution_session=None,
+        grading_rubric=None,
+    ):
+        return {
+            "summary": {"passed": len(required_features or []), "total": len(required_features or [])},
+            "covered_features": list(required_features or []),
+            "checks": [],
+        }
+
+    monkeypatch.setattr(runner_service, "_extract_features_from_tag_message", _fake_extract_features)
+    monkeypatch.setattr(runner_service, "_check_feature_coverage", _fake_check_feature_coverage)
+    monkeypatch.setattr(runner_service, "collect_runtime_evidence", _fake_collect_runtime_evidence)
+
+    progress_messages = []
+
+    async def _progress(message):
+        progress_messages.append(message)
+
+    result = asyncio.run(
+        runner_service.run_tests(
+            str(clone_dir),
+            str(overview),
+            progress_callback=_progress,
+            tag_message="## Course tag requirements\n\nclass-01",
+            tag="class-01",
+        )
+    )
+
+    assert len(extracted_messages) == 2
+    assert extracted_messages[0] == "## Course tag requirements\n\nclass-01"
+    assert "Repository README requirements" in extracted_messages[1]
+    assert "DeepSeek Summarizer" in extracted_messages[1]
+    assert result["tag_message"] == extracted_messages[1]
+    assert result["feature_coverage"]["coverage_ratio"] == 1.0
+    assert "JSON API endpoints for health checks and summarization" in result["feature_coverage"]["covered"]
+    assert any("checking README requirements" in message for message in progress_messages)
+    assert "Using README as functional acceptance requirements." in progress_messages
+
+
 def test_run_tests_applies_runtime_evidence_to_score(monkeypatch, tmp_path):
     from repos_runner.services.repo_service import runner as runner_service
 

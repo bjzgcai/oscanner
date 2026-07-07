@@ -42,6 +42,7 @@ from evaluator.services import (
     get_or_create_evaluator, evaluate_author_incremental, get_empty_evaluation,
     merge_evaluations_logic
 )
+from evaluator.services.provider_quota_guard import install_provider_quota_guard
 from evaluator.routes import plugins, config, data, evaluation, batch, benchmark, trajectory, runner_proxy, checkers, github, gitee
 
 # Load environment variables
@@ -53,6 +54,7 @@ from evaluator.routes import plugins, config, data, evaluation, batch, benchmark
 # 4) User config dotfile (~/.local/share/oscanner/.env.local by default)
 # 5) Default dotenv behavior (`.env` if present)
 load_runtime_env(server_file=Path(__file__), cwd=Path.cwd())
+install_provider_quota_guard()
 LOG_PATH = configure_service_logging("evaluator")
 
 OPENAPI_TAGS = [

@@ -16,6 +16,7 @@ from evaluator.config import (
     get_github_token,
     get_gitee_token,
 )
+from evaluator.services.provider_quota_guard import snapshot_provider_quota
 from evaluator.utils import parse_repo_url
 
 router = APIRouter()
@@ -164,6 +165,12 @@ async def llm_status():
         "has_oscanner_llm_api_key": bool(os.getenv("OSCANNER_LLM_API_KEY")),
         "default_model": DEFAULT_LLM_MODEL,
     }
+
+
+@router.get("/api/config/provider-quota")
+async def get_provider_quota_status():
+    """Return local daily upstream provider quota usage."""
+    return snapshot_provider_quota()
 
 
 @router.post("/api/config/check-platform-tokens")

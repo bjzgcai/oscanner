@@ -41,6 +41,7 @@ from .parsing import (
 from .coverage import _extract_features_from_tag_message, _check_feature_coverage
 from .report import _generate_test_report
 from .runtime_evidence import collect_runtime_evidence, merge_runtime_feature_coverage
+from .runtime_env import build_runtime_env_context, detect_required_env_keys
 from .runner import run_tests
 from .lifecycle import list_repos, delete_repo
 
@@ -91,6 +92,8 @@ __all__ = [
     # runtime evidence
     "collect_runtime_evidence",
     "merge_runtime_feature_coverage",
+    "build_runtime_env_context",
+    "detect_required_env_keys",
     # runner
     "run_tests",
     # lifecycle

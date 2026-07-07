@@ -40,6 +40,9 @@ class RunAllRequest(BaseModel):
     setup_timeout: int = Field(default=300, gt=0)    # Seconds per setup command
     test_timeout: int = Field(default=600, gt=0)     # Seconds per test command
     pipeline_timeout: float = Field(default=1800, gt=0)  # Seconds for the whole run-all pipeline
+    runtime_env_profile: Optional[str] = None  # Reusable env profile under runtime-envs/
+    runtime_env_required_policy: str = "warn"  # strict, warn, or best_effort
+    runtime_env_safe_defaults: bool = True  # Inject safe non-paid test defaults
 
 
 class BatchRunRequest(BaseModel):
