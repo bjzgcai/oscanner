@@ -4,8 +4,53 @@ All notable changes to Oscanner Skill Evaluator are summarized from the git
 history.
 
 The package version in `pyproject.toml` is currently `0.1.6`; later work has not
-been tagged as a release in this repository. Latest commit covered: `c935a77` on
-2026-06-10.
+been tagged as a release in this repository. Latest commit covered: `1ca9ea4` on
+2026-07-07.
+
+## 2026-07
+
+### Added
+
+- Added GitHub and Gitee identity-collection flows that accept profile URLs,
+  repository URLs, email identities, and plain GitHub usernames, expanding
+  profiles into owned repositories and collecting repository-level commits,
+  PRs, reviews, issues, comments, approvals, and maintainer decisions.
+- Added a Gitee profile analysis backend route, admin page, navigation entry,
+  and focused route tests.
+- Added a reusable GitHub collector, provider API documentation, and
+  legal/privacy guidance for GitHub and Gitee data collection.
+- Added persistent backend logging, OpenAPI export tooling, generated evaluator
+  and repo-runner OpenAPI specs, and API documentation.
+- Added evaluator queueing for one-off trajectory analysis, including streaming
+  and polling routes with queue tests.
+- Added an OpenRouter provider quota guard with a status endpoint and
+  configuration coverage.
+- Added repository-runner runtime environment controls, runtime evidence
+  enrichment, production startup settings, and regression tests.
+- Added an OScanner introduction document covering positioning, architecture,
+  and comparison with SonarQube.
+
+### Changed
+
+- Changed GitHub profile URLs to expand into owned repositories and GitHub
+  repository URLs to scan the requested repository directly.
+- Changed URL-only repository scans to collect all visible commits when no
+  email identity is supplied, with fallback attribution to the repository owner
+  when owner-filtered commit lookup returns no results.
+- Updated GitHub and Gitee analysis UIs to support richer identity input and
+  collaboration evidence returned from repository scans.
+- Changed the default frontend plugin setting to `zgc`.
+- Updated local agent guidance for engineering-data collection identity rules.
+
+### Fixed
+
+- Fixed frontend API base-path handling so configured Oscanner API prefixes are
+  preserved.
+- Fixed Python 3.9 startup compatibility by postponing annotation evaluation and
+  avoiding evaluated `str | None` Pydantic fields.
+- Fixed development startup so the Python executable can be overridden.
+- Aligned repository-runner Python-version expectations with the project
+  runtime configuration.
 
 ## 2026-06
 
