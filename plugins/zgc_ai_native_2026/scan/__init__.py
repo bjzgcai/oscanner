@@ -939,6 +939,23 @@ class CommitEvaluatorModerate:
         sections.extend(self._build_conclusion(final_scores, all_reasonings, is_chinese=is_chinese))
         return "\n".join(sections).strip()
 
+    def _apply_collaboration_subscore(self, scores: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._latest_collaboration_evidence:
+            scores.pop("mastery_professionalism_collaboration", None)
+            return scores
+
+        collaboration_score = int(self._latest_collaboration_evidence.get("subscore", 0) or 0)
+        current_score = scores.get("mastery_professionalism")
+        if isinstance(current_score, (int, float)):
+            scores["mastery_professionalism"] = max(
+                0,
+                min(100, int(round((float(current_score) * 0.7) + (collaboration_score * 0.3)))),
+            )
+        else:
+            scores["mastery_professionalism"] = collaboration_score
+        scores.pop("mastery_professionalism_collaboration", None)
+        return scores
+
     def __del__(self):
         """Clean up HTTP client on object destruction."""
         if hasattr(self, '_http_client'):
@@ -2441,10 +2458,7 @@ class CommitEvaluatorModerate:
                     final_scores[dim] = 0
             else:
                 final_scores[dim] = 0
-        if self._latest_collaboration_evidence:
-            final_scores["mastery_professionalism_collaboration"] = int(
-                self._latest_collaboration_evidence.get("subscore", 0) or 0
-            )
+        final_scores = self._apply_collaboration_subscore(final_scores)
         
         final_scores["reasoning"] = self._format_structured_reasoning(
             final_scores,
@@ -2478,11 +2492,7 @@ class CommitEvaluatorModerate:
                 content = self._complete_chat(m, prompt, label="生成整体评估")
                 print(f"[LLM] Response received ({len(content)} chars), parsing...")
                 result = self._parse_llm_response_with_retry(content, prompt, m)
-                if self._latest_collaboration_evidence:
-                    result["mastery_professionalism_collaboration"] = int(
-                        self._latest_collaboration_evidence.get("subscore", 0) or 0
-                    )
-                return result
+                return self._apply_collaboration_subscore(result)
 
             except KeyError as e:
                 last_err = f"KeyError accessing response structure: {e}"
@@ -2767,16 +2777,6 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
         out: Dict[str, Any] = {}
         for k in self.dimensions.keys():
             out[k] = int(round((int(prev.get(k, 0)) + int(new.get(k, 0))) / 2))
-        if "mastery_professionalism_collaboration" in prev or "mastery_professionalism_collaboration" in new:
-            out["mastery_professionalism_collaboration"] = int(
-                round(
-                    (
-                        int(prev.get("mastery_professionalism_collaboration", 0) or 0)
-                        + int(new.get("mastery_professionalism_collaboration", 0) or 0)
-                    )
-                    / 2
-                )
-            )
         # Use the new reasoning which already consolidates previous + new evidence
         nr = str(new.get("reasoning", "")).strip()
         out["reasoning"] = nr if nr else str(prev.get("reasoning", "")).strip()

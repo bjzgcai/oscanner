@@ -583,8 +583,9 @@ keys from 0 to 100:
 - `mastery_professionalism`: engineering maturity, collaboration,
   documentation, handoff quality, trade-offs, security, and performance work
 
-The plugin may also add fields such as `mastery_professionalism_collaboration`,
-`token_usage`, checker evidence, warnings, and structured markdown reasoning.
+The plugin folds collaboration evidence into `mastery_professionalism`. It may
+also add fields such as `token_usage`, checker evidence, warnings, and
+structured markdown reasoning.
 
 For large prompts, the plugin evaluates commits in token-budgeted sequential
 chunks and carries previous chunk findings into later chunks. The response marks

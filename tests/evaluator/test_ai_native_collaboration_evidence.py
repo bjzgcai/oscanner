@@ -14,7 +14,7 @@ def _load_ai_native_plugin():
     return plugin
 
 
-def test_ai_native_adds_collaboration_evidence_block_and_subscore(monkeypatch):
+def test_ai_native_adds_collaboration_evidence_block_into_mastery_professionalism(monkeypatch):
     plugin = _load_ai_native_plugin()
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
@@ -88,7 +88,8 @@ def test_ai_native_adds_collaboration_evidence_block_and_subscore(monkeypatch):
         "Ada",
     )
 
-    assert merged["mastery_professionalism_collaboration"] >= 50
+    assert "mastery_professionalism_collaboration" not in merged
+    assert merged["mastery_professionalism"] == 72
     reasoning = merged["reasoning"]
     mastery_section = reasoning.split("## Engineering Mastery & Professionalism", 1)[1]
     assert "Collaboration Evidence:" in mastery_section
