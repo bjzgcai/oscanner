@@ -1,6 +1,7 @@
 """Service modules for evaluator business logic."""
 
 from evaluator.services.plugin_service import (
+    get_plugin_rubric,
     get_plugins_snapshot,
     resolve_plugin_id,
 )
@@ -27,6 +28,7 @@ from evaluator.services.trajectory_service import (
 
 __all__ = [
     "get_plugins_snapshot",
+    "get_plugin_rubric",
     "resolve_plugin_id",
     "extract_github_data",
     "extract_gitee_data",

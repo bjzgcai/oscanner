@@ -81,7 +81,7 @@ app = FastAPI(
     ),
     version="0.1.6",
     license_info={"name": "Apache-2.0"},
-    servers=[{"url": "http://localhost:8000", "description": "Local evaluator service"}],
+    servers=[{"url": "/", "description": "Current evaluator service"}],
     openapi_tags=OPENAPI_TAGS,
 )
 

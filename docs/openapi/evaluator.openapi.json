@@ -11,8 +11,8 @@
   },
   "servers": [
     {
-      "url": "http://localhost:8000",
-      "description": "Local evaluator service"
+      "url": "/",
+      "description": "Current evaluator service"
     }
   ],
   "paths": {
@@ -50,6 +50,54 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plugins/rubric": {
+      "get": {
+        "tags": [
+          "plugins"
+        ],
+        "summary": "Get Rubric",
+        "description": "Get a plugin's Markdown evaluation rubric; defaults to the default plugin.",
+        "operationId": "get_rubric_api_plugins_rubric_get",
+        "parameters": [
+          {
+            "name": "plugin_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Plugin Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }

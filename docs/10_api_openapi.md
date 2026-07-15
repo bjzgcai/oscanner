@@ -81,6 +81,7 @@ Primary responsibilities:
 | --- | --- | --- |
 | `GET` | `/api/plugins` | List installed evaluator plugins. |
 | `GET` | `/api/plugins/default` | Return the default plugin ID. |
+| `GET` | `/api/plugins/rubric` | Return the default plugin's Markdown rubric; pass `plugin_id` to select an installed plugin. |
 | `GET` | `/api/config/llm` | Return masked local LLM configuration. |
 | `POST` | `/api/config/llm` | Update local LLM configuration. |
 | `GET` | `/api/llm/status` | Check whether an LLM key is configured. |

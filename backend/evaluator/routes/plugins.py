@@ -1,8 +1,10 @@
 """Plugin management routes."""
 
-from fastapi import APIRouter
+from typing import Optional
 
-from evaluator.services import get_plugins_snapshot
+from fastapi import APIRouter, Query
+
+from evaluator.services import get_plugin_rubric, get_plugins_snapshot
 
 router = APIRouter()
 
@@ -45,3 +47,9 @@ async def get_default_plugin():
     _ = plugins
 
     return {"success": True, "default": default_id}
+
+
+@router.get("/api/plugins/rubric")
+async def get_rubric(plugin_id: Optional[str] = Query(default=None)):
+    """Get a plugin's Markdown evaluation rubric; defaults to the default plugin."""
+    return {"success": True, "plugin": get_plugin_rubric(plugin_id)}

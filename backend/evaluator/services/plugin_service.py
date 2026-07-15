@@ -43,3 +43,41 @@ def resolve_plugin_id(requested: Optional[str]) -> str:
     if default_id:
         return default_id
     raise HTTPException(status_code=500, detail="No plugins discovered (plugins/ directory missing?)")
+
+
+def get_plugin_rubric(requested: Optional[str] = None) -> dict[str, str]:
+    """Return the Markdown rubric for a requested plugin or the default plugin."""
+    plugins, default_id = get_plugins_snapshot()
+    plugin_id = (requested or default_id or "").strip()
+
+    for meta, plugin_dir in plugins:
+        if meta.plugin_id != plugin_id:
+            continue
+
+        rubric_path = plugin_dir / "rubric.md"
+        if not rubric_path.is_file():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Plugin '{plugin_id}' does not provide a rubric",
+            )
+        try:
+            rubric = rubric_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to read rubric for plugin '{plugin_id}'",
+            ) from exc
+
+        return {
+            "id": meta.plugin_id,
+            "name": meta.name,
+            "version": meta.version,
+            "rubric": rubric,
+        }
+
+    if plugin_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Plugin '{plugin_id}' not found",
+        )
+    raise HTTPException(status_code=500, detail="No plugins discovered (plugins/ directory missing?)")
