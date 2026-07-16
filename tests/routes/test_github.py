@@ -350,7 +350,8 @@ async def test_analyze_github_collects_cached_gitee_commits_by_author_and_commit
     assert result["success"] is True
     assert result["repos_scanned"] == 1
     assert result["summary"]["matched_repo_count"] == 1
-    assert result["summary"]["commit_count"] == 1
+    assert result["summary"]["available_commit_count"] == 1
+    assert "commit_count" not in result["summary"]
     assert result["commits"][0]["matched_email"] == "alice@example.com"
     assert result["commits"][0]["repo_full_name"] == "owner/repo"
     assert {role["role"] for role in result["commits"][0]["matched_roles"]} == {"author", "committer"}
@@ -437,7 +438,7 @@ async def test_evaluate_global_github_scores_email_matched_commits(tmp_path, mon
     class FakeEvaluator:
         def evaluate_engineer(self, *, commits, username, max_commits, load_files):
             assert username == "alice@example.com"
-            assert max_commits == 150
+            assert max_commits == 1000
             assert load_files is False
             assert commits[0]["commit"]["author"]["email"] == "alice@example.com"
             return {
@@ -480,6 +481,7 @@ async def test_evaluate_global_github_scores_email_matched_commits(tmp_path, mon
         "model": "test-model",
         "plugin": "zgc_ai_native_2026",
         "language": "en-US",
+        "max_github_commits_per_role": 1000,
     })
 
     assert result["success"] is True
@@ -488,7 +490,7 @@ async def test_evaluate_global_github_scores_email_matched_commits(tmp_path, mon
     assert result["evaluation"]["plugin"] == "zgc_ai_native_2026"
     assert result["evaluation"]["total_commits_analyzed"] == 1
     assert result["evaluation"]["evidence_links"][0]["url"].endswith("/commit/" + "c" * 40)
-    assert fetch_kwargs["max_commits_per_role"] == 10
+    assert fetch_kwargs["max_commits_per_role"] == 1000
 
 
 @pytest.mark.asyncio
@@ -797,11 +799,12 @@ def test_global_github_evaluation_keeps_email_and_profile_identities(tmp_path, m
         scan_mod=FakeScanModule,
         all_commits=commits,
         collaboration_items=[],
+        commit_limit=1000,
     )
 
     assert captured["username"] == "alice@example.com,github:alice,alice"
     assert captured["commits"] == commits
-    assert captured["max_commits"] == 150
+    assert captured["max_commits"] == 1000
     assert captured["load_files"] is False
     assert result["emails"] == ["alice@example.com"]
     assert result["identity_keys"] == ["alice@example.com", "github:alice"]

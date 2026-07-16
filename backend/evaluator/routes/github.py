@@ -1286,14 +1286,14 @@ def _cache_global_github_evidence(
             "repo_full_name": f"{owner}/{repo}",
             "repo_url": f"https://github.com/{owner}/{repo}",
             "data_dir": str(data_dir),
-            "commit_count": len(repo_commits),
+            "available_commit_count": len(repo_commits),
             "collaboration_evidence_count": len(repo_evidence),
         })
 
     return {
         "github_xdg_cache": {
             "repo_count": len(cached_repositories),
-            "commit_count": cached_commit_count,
+            "available_commit_count": cached_commit_count,
             "collaboration_evidence_count": cached_evidence_count,
             "repositories": cached_repositories,
         }
@@ -1338,7 +1338,7 @@ def _github_global_analysis_payload(
         "matched_repos": sorted(matched_repos.values(), key=lambda item: item["repo_full_name"]),
         "summary": {
             "matched_repo_count": len(matched_repos),
-            "commit_count": len(all_commits),
+            "available_commit_count": len(all_commits),
             "collaboration_evidence_count": len(collaboration_items),
         },
         "commits_by_email": commits_by_email,
@@ -1565,6 +1565,7 @@ def _evaluate_global_github_commits(
     scan_mod: Any,
     all_commits: List[Dict[str, Any]],
     collaboration_items: List[Dict[str, Any]],
+    commit_limit: int,
 ) -> Dict[str, Any]:
     collaboration_payload = {
         "requested_sources": DEFAULT_EVIDENCE_SOURCES,
@@ -1593,7 +1594,7 @@ def _evaluate_global_github_commits(
     evaluation = evaluator.evaluate_engineer(
         commits=all_commits,
         username=identity_label,
-        max_commits=150,
+        max_commits=commit_limit,
         load_files=False,
     )
     evaluation["email"] = emails[0] if emails else ""
@@ -1646,6 +1647,7 @@ async def _build_global_github_evaluation_payload(
         github_profiles=github_profiles,
         github_repos=github_repos,
     )
+    payload["summary"]["commit_limit"] = prepared["github_commit_limit"]
 
     all_commits = payload["commits"]
     if progress:
@@ -1653,7 +1655,7 @@ async def _build_global_github_evaluation_payload(
             "title": "GitHub 证据采集完成",
             "status": "done",
             "matched_repo_count": payload["summary"]["matched_repo_count"],
-            "commit_count": payload["summary"]["commit_count"],
+            "available_commit_count": payload["summary"]["available_commit_count"],
             "collaboration_evidence_count": payload["summary"]["collaboration_evidence_count"],
         })
 
@@ -1664,7 +1666,7 @@ async def _build_global_github_evaluation_payload(
         progress("section", {
             "title": "缓存 GitHub 证据到 XDG",
             "status": "running",
-            "commit_count": len(all_commits),
+            "available_commit_count": len(all_commits),
         })
     cache_summary = await asyncio.to_thread(
         _cache_global_github_evidence,
@@ -1684,7 +1686,7 @@ async def _build_global_github_evaluation_payload(
         progress("section", {
             "title": "运行能力评估",
             "status": "running",
-            "commit_count": len(all_commits),
+            "available_commit_count": len(all_commits),
             "plugin": prepared["plugin_id"],
         })
 
@@ -1700,6 +1702,7 @@ async def _build_global_github_evaluation_payload(
         scan_mod=prepared["scan_mod"],
         all_commits=all_commits,
         collaboration_items=collaboration_items,
+        commit_limit=prepared["github_commit_limit"],
     )
     payload["evaluation"] = evaluation
     payload["metadata"] = {
@@ -1760,12 +1763,13 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
             github_profiles=github_profiles,
             github_repos=github_repos,
         )
+        payload["summary"]["commit_limit"] = prepared["github_commit_limit"]
 
         yield _format_sse_event("section", {
             "title": "GitHub 证据采集完成",
             "status": "done",
             "matched_repo_count": payload["summary"]["matched_repo_count"],
-            "commit_count": payload["summary"]["commit_count"],
+            "available_commit_count": payload["summary"]["available_commit_count"],
             "collaboration_evidence_count": payload["summary"]["collaboration_evidence_count"],
         })
 
@@ -1776,7 +1780,7 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
         yield _format_sse_event("section", {
             "title": "缓存 GitHub 证据到 XDG",
             "status": "running",
-            "commit_count": len(all_commits),
+            "available_commit_count": len(all_commits),
         })
         cache_summary = await asyncio.to_thread(
             _cache_global_github_evidence,
@@ -1794,7 +1798,7 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
         yield _format_sse_event("section", {
             "title": "运行能力评估",
             "status": "running",
-            "commit_count": len(all_commits),
+            "available_commit_count": len(all_commits),
             "plugin": prepared["plugin_id"],
         })
 
@@ -1810,6 +1814,7 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
             scan_mod=prepared["scan_mod"],
             all_commits=all_commits,
             collaboration_items=collaboration_items,
+            commit_limit=prepared["github_commit_limit"],
         )
         payload["evaluation"] = evaluation
         payload["metadata"] = {
@@ -1960,7 +1965,7 @@ async def analyze_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
         "matched_repos": sorted(matched_repos.values(), key=lambda item: (item["platform"], item["repo_full_name"])),
         "summary": {
             "matched_repo_count": len(matched_repos),
-            "commit_count": len(all_commits),
+            "available_commit_count": len(all_commits),
             "collaboration_evidence_count": len(collaboration_items),
         },
         "commits_by_email": commits_by_email,

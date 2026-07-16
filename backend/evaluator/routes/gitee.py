@@ -515,7 +515,7 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
             "success": True,
             "mode": sync_result["mode"],
             "changed": sync_result["changed"],
-            "commit_count": len(repo_commits),
+            "available_commit_count": len(repo_commits),
             "data_dir": sync_result["data_dir"],
         })
 
@@ -542,7 +542,7 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
 
     matched_repos = [
         item for item in sync_results
-        if item.get("success") and item.get("commit_count", 0) > 0
+        if item.get("success") and item.get("available_commit_count", 0) > 0
     ]
     return {
         "success": True,
@@ -553,7 +553,6 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
         "summary": {
             "repo_count": len(repositories),
             "matched_repo_count": len(matched_repos),
-            "commit_count": len(selected_commits),
             "available_commit_count": len(all_commits),
             "collaboration_evidence_count": len(collaboration_items),
             "commit_limit": commit_limit,
@@ -668,7 +667,7 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
         "success": True,
         "mode": sync_result["mode"],
         "changed": sync_result["changed"],
-        "commit_count": len(selected_commits),
+        "available_commit_count": len(all_commits),
         "data_dir": sync_result["data_dir"],
     }]
     return {
@@ -681,7 +680,6 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
         "summary": {
             "repo_count": 1,
             "matched_repo_count": 1,
-            "commit_count": len(selected_commits),
             "available_commit_count": len(all_commits),
             "collaboration_evidence_count": len(collaboration_items),
             "commit_limit": commit_limit,
@@ -747,7 +745,7 @@ async def _stream_profile_evaluation(request_body: Dict[str, Any]):
             "title": "Gitee 数据同步完成",
             "status": "done",
             "repo_count": payload["summary"]["repo_count"],
-            "commit_count": payload["summary"]["commit_count"],
+            "available_commit_count": payload["summary"]["available_commit_count"],
             "collaboration_evidence_count": payload["summary"]["collaboration_evidence_count"],
         })
         yield _format_sse_event("section", {

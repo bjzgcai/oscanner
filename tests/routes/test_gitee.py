@@ -196,6 +196,7 @@ async def test_gitee_profile_evaluate_uses_latest_matching_commits(tmp_path, mon
     assert result["success"] is True
     assert result["summary"]["commit_limit"] == 1
     assert result["summary"]["available_commit_count"] == 2
+    assert "commit_count" not in result["summary"]
     assert result["commits"][0]["sha"] == "b" * 40
     assert result["evaluation"]["total_commits_analyzed"] == 1
 

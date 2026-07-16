@@ -8,7 +8,7 @@
 2. 同一请求中的 email、profile URL 和 repository URL 是并集关系，不得因为存在 email 而丢弃 profile/repository 身份。
 3. 采集阶段必须在每条证据上保留归属信息，如 `matched_email`、`matched_login`、`matched_identity` 和 `matched_roles`。
 4. 评估阶段先按归属筛选，再应用 commit 数量上限。不允许无关的较新 commit 挤掉属于用户的较旧 commit。
-5. `collected_commit_count` 与 `total_commits_analyzed` 是不同概念，前端和 API 不得混用。
+5. Commit 数量只使用 `available_commit_count` 和 `total_commits_analyzed`，前端和 API 不得混用。
 
 ## 2. 身份输入语义
 
@@ -43,7 +43,7 @@
 6. 按 `(platform, repo_full_name, sha)` 去重 commit，按时间倒序排列。协作证据按来源、URL、login 和 commit SHA 等字段去重。
 7. 将采集结果写入 XDG 数据目录，供评估、链接展示和后续轨迹分析使用。
 8. 评分身份是 email、`github:<login>`、裸 login 和 repository identity 的并集。评估器必须优先识别 commit 上的显式 `matched_*` 归属，然后才使用 author/committer 名称或 email 兜底。
-9. 归属筛选完成后，再取最新的评分上限（当前全局评估上限为 150 commits）。
+9. 归属筛选完成后，再取最新的评分上限。请求上限最高为 1000 commits，`total_commits_analyzed` 记录实际进入评分的数量。
 
 ## 4. Gitee 采集流程
 
@@ -75,9 +75,10 @@
 | 字段 | 含义 |
 | --- | --- |
 | `matched_repo_count` / `repo_count` | 身份范围内采集或命中的仓库数 |
-| `commit_count` / `collected_commit_count` | 采集后、评分前的去重 commit 数 |
-| `available_commit_count` | 应用本次评估上限前的可用 commit 数 |
-| `total_commits_analyzed` | 实际进入 rubric/LLM 评分的 commit 数 |
+| `available_commit_count` | 完成身份归属和去重后、应用本次评估上限前，可用于评分的 commit 数 |
+| `total_commits_analyzed` | 应用评估上限后，实际进入 rubric/LLM 评分的 commit 数；该值不大于 `available_commit_count` |
+
+示例：身份归属和去重后有 820 个可用 commits，本次上限为 500，则 `available_commit_count` 为 820，`total_commits_analyzed` 为 500。
 | `collaboration_evidence_count` | 去重后的非 commit 协作证据数 |
 
 ## 7. 必须覆盖的测试
