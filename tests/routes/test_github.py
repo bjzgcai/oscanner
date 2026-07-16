@@ -37,6 +37,32 @@ def test_parse_github_identity_request_accepts_mixed_emails_profiles_and_repos()
     assert parsed["github_repos"] == ["https://github.com/openai/codex"]
 
 
+def test_github_repo_commit_collection_paginates_to_requested_limit(monkeypatch):
+    calls = []
+
+    def fake_get_json(client, url, *, warnings, params=None):
+        calls.append(params)
+        page = params["page"]
+        return [{"sha": f"{page}-{index}"} for index in range(params["per_page"])]
+
+    monkeypatch.setattr(github, "_github_get_json", fake_get_json)
+
+    commits = github._github_paginated_repo_commits(
+        object(),
+        owner="owner",
+        repo="repo",
+        warnings=[],
+        max_commits=250,
+    )
+
+    assert len(commits) == 250
+    assert calls == [
+        {"per_page": 100, "page": 1},
+        {"per_page": 100, "page": 2},
+        {"per_page": 50, "page": 3},
+    ]
+
+
 def test_github_repository_commits_matches_supplied_email_without_owner_fallback(monkeypatch):
     sha = "e" * 40
     list_commit = {"sha": sha}
@@ -535,7 +561,7 @@ async def test_evaluate_global_github_passes_requested_commit_limit(tmp_path, mo
 
 
 @pytest.mark.asyncio
-async def test_evaluate_global_github_caps_requested_commit_limit_at_100(tmp_path, monkeypatch):
+async def test_evaluate_global_github_caps_requested_commit_limit_at_1000(tmp_path, monkeypatch):
     commit = github._serialize_commit(
         commit={
             "sha": "e" * 40,
@@ -587,11 +613,11 @@ async def test_evaluate_global_github_caps_requested_commit_limit_at_100(tmp_pat
 
     result = await github.evaluate_global_github({
         "emails": "alice@example.com",
-        "max_github_commits_per_role": 250,
+        "max_github_commits_per_role": 2500,
     })
 
     assert result["success"] is True
-    assert fetch_kwargs["max_commits_per_role"] == 100
+    assert fetch_kwargs["max_commits_per_role"] == 1000
 
 
 @pytest.mark.asyncio

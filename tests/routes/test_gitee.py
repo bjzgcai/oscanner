@@ -11,6 +11,11 @@ def test_gitee_profile_route_is_registered():
     assert "/api/gitee/profile/evaluate" in route_paths
 
 
+def test_gitee_commit_limit_supports_1000_and_clamps_larger_values():
+    assert gitee._parse_commit_limit(1000) == 1000
+    assert gitee._parse_commit_limit(2500) == 1000
+
+
 @pytest.mark.asyncio
 async def test_gitee_profile_evaluate_uses_latest_matching_commits(tmp_path, monkeypatch):
     older = gitee._serialize_commit(

@@ -38,10 +38,10 @@ DEFAULT_EVIDENCE_SOURCES = [
     "approvals",
     "maintainer_decisions",
 ]
-MAX_COMMITS_PER_REPO_EMAIL = 100
+MAX_COMMITS_PER_REPO_EMAIL = 1000
 GITHUB_API_BASE = "https://api.github.com"
 GITHUB_SEARCH_COMMITS_PER_ROLE = 10
-GITHUB_MAX_SEARCH_COMMITS_PER_ROLE = 100
+GITHUB_MAX_SEARCH_COMMITS_PER_ROLE = 1000
 GITHUB_SEARCH_EVIDENCE_PER_QUERY = 100
 GITHUB_LOGIN_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
 GITHUB_RESERVED_PATHS = {
@@ -681,6 +681,37 @@ def _github_profile_repositories(
     return repos[:max_repositories]
 
 
+def _github_paginated_repo_commits(
+    client: httpx.Client,
+    *,
+    owner: str,
+    repo: str,
+    warnings: List[str],
+    max_commits: int,
+    author: str = "",
+) -> List[Dict[str, Any]]:
+    commits: List[Dict[str, Any]] = []
+    page = 1
+    while len(commits) < max_commits:
+        per_page = min(100, max_commits - len(commits))
+        params: Dict[str, Any] = {"per_page": per_page, "page": page}
+        if author:
+            params["author"] = author
+        payload = _github_get_json(
+            client,
+            f"{GITHUB_API_BASE}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/commits",
+            warnings=warnings,
+            params=params,
+        )
+        if not isinstance(payload, list) or not payload:
+            break
+        commits.extend(item for item in payload if isinstance(item, dict))
+        if len(payload) < per_page:
+            break
+        page += 1
+    return commits[:max_commits]
+
+
 def _github_profile_repo_commits(
     client: httpx.Client,
     *,
@@ -700,20 +731,15 @@ def _github_profile_repo_commits(
         owner, repo = full_name.split("/", 1)
         matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
 
-        payload = _github_get_json(
+        repo_commits = _github_paginated_repo_commits(
             client,
-            f"{GITHUB_API_BASE}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/commits",
+            owner=owner,
+            repo=repo,
             warnings=warnings,
-            params={
-                "author": login,
-                "per_page": min(100, max(1, max_commits_per_repo)),
-                "page": 1,
-            },
+            max_commits=max_commits_per_repo,
+            author=login,
         )
-        if not isinstance(payload, list) or not payload:
-            continue
-
-        for item in payload[:max_commits_per_repo]:
+        for item in repo_commits:
             if not isinstance(item, dict):
                 continue
             sha = _commit_sha(item)
@@ -759,20 +785,14 @@ def _github_repository_commits(
             continue
 
         matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
-        payload = _github_get_json(
+        repo_commits = _github_paginated_repo_commits(
             client,
-            f"{GITHUB_API_BASE}/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/commits",
+            owner=owner,
+            repo=repo,
             warnings=warnings,
-            params={
-                "per_page": min(100, max(1, max_commits_per_repo)),
-                "page": 1,
-            },
+            max_commits=max_commits_per_repo,
         )
-
-        if not isinstance(payload, list) or not payload:
-            continue
-
-        for item in payload[:max_commits_per_repo]:
+        for item in repo_commits:
             if not isinstance(item, dict):
                 continue
             sha = _commit_sha(item)
