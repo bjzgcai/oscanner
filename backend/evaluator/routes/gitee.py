@@ -23,7 +23,6 @@ from evaluator.services.extraction_service import extract_gitee_data, sync_gitee
 from evaluator.utils import (
     get_author_from_commit,
     get_emails_from_commit,
-    is_commit_by_author,
     is_valid_email_identity,
     load_commits_from_local,
     normalize_email_identity,
@@ -36,7 +35,6 @@ GITEE_API_BASE = "https://gitee.com/api/v5"
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 DEFAULT_COMMIT_LIMIT = 10
 MAX_COMMIT_LIMIT = 1000
-DEFAULT_SYNC_COMMITS_PER_REPO = 100
 MAX_PROFILE_REPOS = 200
 DEFAULT_EVIDENCE_SOURCES = [
     "commit_diffs",
@@ -354,7 +352,7 @@ def _sync_one_repo(
     )
 
     commits = load_commits_from_local(data_dir, limit=None)
-    if emails is not None:
+    if emails:
         author_commits = []
         for commit in commits:
             for email in emails:
@@ -373,7 +371,6 @@ def _sync_one_repo(
         author_commits = [
             _serialize_commit(commit, owner=owner, repo=name, username=repo.get("username", ""))
             for commit in commits
-            if is_commit_by_author(commit, repo.get("username", ""))
         ]
     serialized = author_commits
     serialized.sort(key=_sort_key, reverse=True)
@@ -475,7 +472,9 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
 
     username = _parse_username(request_body.get("username"))
     commit_limit = _parse_commit_limit(request_body.get("commit_limit"))
-    sync_commits_per_repo = min(1000, max(DEFAULT_SYNC_COMMITS_PER_REPO, commit_limit))
+    # Profile attribution requires the complete visible history from every
+    # profile repository; commit_limit is applied only after attribution.
+    sync_commits_per_repo = 0
     model = str(request_body.get("model") or DEFAULT_LLM_MODEL)
     plugin_id = resolve_plugin_id(str(request_body.get("plugin") or ""))
     language = str(request_body.get("language") or "zh-CN")
@@ -565,7 +564,8 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
         "warnings": warnings,
         "limitations": [
             "Gitee profile mode evaluates repositories returned by /api/v5/users/{username}/repos?type=all.",
-            f"Evaluation uses the latest {commit_limit} matching commits sorted by commit author/committer date.",
+            "All commits from every visible profile repository are attributed to the profile user regardless of commit identity.",
+            f"Evaluation uses the latest {commit_limit} attributed commits sorted by commit author/committer date.",
         ],
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -602,7 +602,9 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
 
     emails = _parse_optional_email_list(request_body.get("emails") or request_body.get("email") or request_body.get("author_emails"))
     commit_limit = _parse_commit_limit(request_body.get("commit_limit"))
-    sync_commits_per_repo = min(1000, max(DEFAULT_SYNC_COMMITS_PER_REPO, commit_limit))
+    # Repository attribution may need the complete history to find exact email
+    # matches.  The evaluation limit is applied after collection and matching.
+    sync_commits_per_repo = 0
     model = str(request_body.get("model") or DEFAULT_LLM_MODEL)
     plugin_id = resolve_plugin_id(str(request_body.get("plugin") or ""))
     language = str(request_body.get("language") or "zh-CN")
@@ -618,13 +620,14 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
         "repo": repo_name,
         "repo_full_name": f"{owner}/{repo_name}",
         "repo_url": f"https://gitee.com/{owner}/{repo_name}",
+        "username": f"gitee:{owner}/{repo_name}",
     }
     warnings: List[str] = []
     sync_result = await asyncio.to_thread(
         _sync_one_repo,
         repo_item,
         sync_commits_per_repo=sync_commits_per_repo,
-        emails=emails,
+        emails=emails or None,
     )
     warnings.extend(sync_result["warnings"])
 
@@ -635,12 +638,17 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
     collaboration_items.sort(key=_sort_key, reverse=True)
 
     if not selected_commits:
+        detail = (
+            "No Gitee commits matched the supplied emails in this repository"
+            if emails
+            else "No Gitee commits found in this repository"
+        )
         raise HTTPException(
             status_code=404,
-            detail="No Gitee commits matched the supplied emails in this repository",
+            detail=detail,
         )
 
-    identity_label = emails[0] if len(emails) == 1 else "email identities"
+    identity_label = ",".join(emails) if emails else repo_item["username"]
     evaluation = await asyncio.to_thread(
         _evaluate_profile_commits,
         username=identity_label,
@@ -684,7 +692,11 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
         "warnings": warnings,
         "limitations": [
             "Gitee repository mode only scans the supplied repository URL.",
-            "Commits are matched only by supplied emails against author.email and committer.email.",
+            (
+                "Commits are matched only by supplied emails against author.email and committer.email; zero matches do not fall back to all commits."
+                if emails
+                else "No emails were supplied, so all commits in the repository are attributed to the evaluated user."
+            ),
         ],
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),

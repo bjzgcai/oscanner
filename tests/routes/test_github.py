@@ -218,10 +218,85 @@ def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path,
 
     assert warnings == []
     assert "https://api.github.com/users/owner/repos" in fetched_urls
-    assert list(commits_by_identity) == ["github:owner/repo"]
-    assert commits_by_identity["github:owner/repo"][0]["sha"] == sha
+    assert list(commits_by_identity) == ["github:owner"]
+    assert commits_by_identity["github:owner"][0]["sha"] == sha
+    assert commits_by_identity["github:owner"][0]["matched_identity"] == "github:owner"
+    assert commits_by_identity["github:owner"][0]["source"] == "github_profile_all_commits"
     assert matched_repos["github:owner/repo"]["repo_full_name"] == "owner/repo"
     assert collaboration_items[0]["url"] == "https://github.com/owner/repo/pull/1"
+
+
+def test_fetch_global_github_profile_keeps_all_commits_when_email_is_supplied(tmp_path, monkeypatch):
+    sha = "3" * 40
+    detail_commit = {
+        "sha": sha,
+        "html_url": f"https://github.com/owner/repo/commit/{sha}",
+        "commit": {
+            "author": {"name": "Different Identity", "email": "different@example.com"},
+            "committer": {"name": "Another Identity", "email": "another@example.com"},
+            "message": "feat: profile-wide evidence",
+        },
+    }
+
+    def fake_get_json(client, url, *, warnings, params=None):
+        if url.endswith("/users/owner"):
+            return {"login": "owner", "html_url": "https://github.com/owner"}
+        if url.endswith("/users/owner/repos"):
+            return [{"full_name": "owner/repo"}]
+        if url.endswith("/repos/owner/repo/commits") and params and params.get("page") == 1:
+            return [{"sha": sha}]
+        return []
+
+    monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_github_get_json", fake_get_json)
+    monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: detail_commit)
+    monkeypatch.setattr(github, "_github_search_items", lambda *args, **kwargs: [])
+    monkeypatch.setattr(github, "_collaboration_items_for_repo", lambda **kwargs: ([], []))
+    monkeypatch.setattr(github, "_github_commit_linked_evidence", lambda *args, **kwargs: [])
+    monkeypatch.setattr(github, "_github_evidence_for_logins", lambda *args, **kwargs: [])
+
+    commits_by_identity, matched_repos, _, warnings = github._fetch_global_github_evidence(
+        ["requested@example.com"],
+        github_profiles=["https://github.com/owner"],
+        max_commits_per_role=10,
+    )
+
+    assert warnings == []
+    profile_commit = commits_by_identity["github:owner"][0]
+    assert profile_commit["sha"] == sha
+    assert profile_commit["commit"]["author"]["email"] == "different@example.com"
+    assert profile_commit["matched_identity"] == "github:owner"
+    assert matched_repos["github:owner/repo"]["repo_full_name"] == "owner/repo"
+
+
+def test_github_repository_with_email_does_not_fallback_to_unmatched_commits(monkeypatch):
+    sha = "4" * 40
+    detail_commit = {
+        "sha": sha,
+        "commit": {
+            "author": {"name": "Other", "email": "other@example.com"},
+            "committer": {"name": "Other", "email": "other@example.com"},
+            "message": "feat: unrelated commit",
+        },
+    }
+
+    monkeypatch.setattr(
+        github,
+        "_github_get_json",
+        lambda client, url, *, warnings, params=None: [{"sha": sha}],
+    )
+    monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: detail_commit)
+
+    commits_by_identity, matched_repos = github._github_repository_commits(
+        object(),
+        repo_urls=["https://github.com/owner/repo"],
+        emails=["requested@example.com"],
+        warnings=[],
+        max_commits_per_repo=1,
+    )
+
+    assert commits_by_identity == {"requested@example.com": []}
+    assert matched_repos["github:owner/repo"]["repo_full_name"] == "owner/repo"
 
 
 @pytest.mark.asyncio
@@ -645,7 +720,7 @@ async def test_evaluate_global_github_scores_profile_identity_without_email(tmp_
 
     class FakeEvaluator:
         def evaluate_engineer(self, *, commits, username, max_commits, load_files):
-            assert username == "github:alice"
+            assert username == "github:alice,alice"
             assert commits[0]["matched_identity"] == "@alice"
             return {
                 "username": username,
@@ -683,6 +758,53 @@ async def test_evaluate_global_github_scores_profile_identity_without_email(tmp_
     assert result["evaluation"]["email"] == ""
     assert result["evaluation"]["identity_keys"] == ["github:alice"]
     assert fetch_kwargs["github_profiles"] == ["https://github.com/alice"]
+
+
+def test_global_github_evaluation_keeps_email_and_profile_identities(tmp_path, monkeypatch):
+    captured = {}
+
+    class FakeEvaluator:
+        def evaluate_engineer(self, *, commits, username, max_commits, load_files):
+            captured.update({
+                "commits": commits,
+                "username": username,
+                "max_commits": max_commits,
+                "load_files": load_files,
+            })
+            return {"total_commits_analyzed": len(commits), "scores": {}}
+
+    class FakeScanModule:
+        @staticmethod
+        def create_commit_evaluator(**kwargs):
+            return FakeEvaluator()
+
+    commits = [
+        {"sha": "1" * 40, "matched_email": "alice@example.com"},
+        {"sha": "2" * 40, "matched_login": "alice", "matched_identity": "@alice"},
+    ]
+
+    monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_global_github_evidence_links", lambda commits: [])
+
+    result = github._evaluate_global_github_commits(
+        api_key="test-key",
+        emails=["alice@example.com"],
+        identity_keys=["alice@example.com", "github:alice"],
+        model="test-model",
+        plugin_id="zgc_ai_native_2026",
+        language="en-US",
+        meta=None,
+        scan_mod=FakeScanModule,
+        all_commits=commits,
+        collaboration_items=[],
+    )
+
+    assert captured["username"] == "alice@example.com,github:alice,alice"
+    assert captured["commits"] == commits
+    assert captured["max_commits"] == 150
+    assert captured["load_files"] is False
+    assert result["emails"] == ["alice@example.com"]
+    assert result["identity_keys"] == ["alice@example.com", "github:alice"]
 
 
 @pytest.mark.asyncio

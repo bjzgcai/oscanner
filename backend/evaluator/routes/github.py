@@ -692,8 +692,9 @@ def _github_paginated_repo_commits(
 ) -> List[Dict[str, Any]]:
     commits: List[Dict[str, Any]] = []
     page = 1
-    while len(commits) < max_commits:
-        per_page = min(100, max_commits - len(commits))
+    unlimited = max_commits <= 0
+    while unlimited or len(commits) < max_commits:
+        per_page = 100 if unlimited else min(100, max_commits - len(commits))
         params: Dict[str, Any] = {"per_page": per_page, "page": page}
         if author:
             params["author"] = author
@@ -709,20 +710,25 @@ def _github_paginated_repo_commits(
         if len(payload) < per_page:
             break
         page += 1
-    return commits[:max_commits]
+    return commits if unlimited else commits[:max_commits]
 
 
 def _github_profile_repo_commits(
     client: httpx.Client,
     *,
     login: str,
-    public_email: str,
     warnings: List[str],
-    max_commits_per_repo: int,
 ) -> tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    """Collect every visible commit from every repository under a profile.
+
+    Profile URLs are an explicit broad attribution signal.  Commit email,
+    local Git username, and provider login are intentionally not used as
+    filters because those values commonly change across a user's history.
+    """
     commits: List[Dict[str, Any]] = []
     matched_repos: Dict[str, Dict[str, Any]] = {}
     repositories = _github_profile_repositories(client, login=login, warnings=warnings)
+    identity_key = f"github:{login}"
 
     for repository in repositories:
         full_name = str(repository.get("full_name") or "").strip()
@@ -736,8 +742,7 @@ def _github_profile_repo_commits(
             owner=owner,
             repo=repo,
             warnings=warnings,
-            max_commits=max_commits_per_repo,
-            author=login,
+            max_commits=0,
         )
         for item in repo_commits:
             if not isinstance(item, dict):
@@ -752,13 +757,14 @@ def _github_profile_repo_commits(
                 platform="github",
                 owner=owner,
                 repo=repo,
-                matched_email=public_email,
-                matched_login=login,
             )
-            serialized["source"] = "github_profile_repo_commits"
+            serialized["matched_login"] = login
+            serialized["matched_identity"] = identity_key
+            serialized["matched_identity_type"] = "github_profile"
+            serialized["source"] = "github_profile_all_commits"
             commits.append(serialized)
 
-    commits = _dedupe_by_key(commits, ("platform", "repo_full_name", "sha", "matched_identity"))
+    commits = _dedupe_by_key(commits, ("platform", "repo_full_name", "sha"))
     commits.sort(key=_sort_key, reverse=True)
     return commits, matched_repos
 
@@ -1342,9 +1348,9 @@ def _github_global_analysis_payload(
         "warnings": warnings,
         "limitations": [
             "GitHub email identities are searched globally with author-email and committer-email qualifiers.",
-            "When GitHub repository URLs are supplied with emails, commits are fetched only from those repositories and matched by supplied emails.",
-            "When GitHub owner or repository URLs are supplied without emails, all visible commits are collected for those repositories without author filtering.",
-            "GitHub profile URL identities use public profile email when available, and collect commits from public repositories owned by the resolved profile login.",
+            "Repository URLs use conservative attribution: all commits when emails are absent, otherwise only exact author/committer email matches with no fallback.",
+            "Profile URLs use broad attribution: all visible commits in every owner repository are attributed to the profile regardless of commit email, name, or login.",
+            "When multiple identity inputs are supplied, their independently collected evidence is combined and deduplicated by platform, repository, and SHA.",
             "GitHub issue/PR/review evidence uses GitHub logins resolved from matching commits; email-only accounts with no resolved login may only have commit and commit-associated PR evidence.",
             "GitHub search is limited to repositories visible to the configured token and to repository default branches.",
         ],
@@ -1370,85 +1376,73 @@ def _fetch_global_github_evidence(
             github_profiles=github_profiles or [],
             warnings=warnings,
         )
-        repo_scoped = bool(github_repos)
-        url_only_scope = not emails and bool((github_profiles or []) or (github_repos or []))
-        scoped_repo_urls = list(github_repos or [])
-        if url_only_scope:
-            for profile in resolved_profiles.values():
-                login = profile["login"]
-                profile_repos = _github_profile_repositories(client, login=login, warnings=warnings)
-                for repository in profile_repos:
-                    full_name = str(repository.get("full_name") or "").strip()
-                    if "/" not in full_name:
-                        continue
-                    scoped_repo_urls.append(f"https://github.com/{full_name}")
-            scoped_repo_urls = _dedupe_strings(scoped_repo_urls)
-            repo_scoped = bool(scoped_repo_urls)
-
         search_emails = _dedupe_strings([*emails, *public_profile_emails])
-        if not repo_scoped and not url_only_scope:
-            for email in search_emails:
-                commits_by_email.setdefault(email, [])
-                found_by_sha: Dict[str, Dict[str, Any]] = {}
-                for role, qualifier, sort in (
-                    ("author", "author-email", "author-date"),
-                    ("committer", "committer-email", "committer-date"),
-                ):
-                    search_items = _github_search_items(
-                        client,
-                        endpoint="commits",
-                        q=f"{qualifier}:{email}",
-                        warnings=warnings,
-                        sort=sort,
-                        order="desc",
-                        max_items=max_commits_per_role,
+        for email in search_emails:
+            commits_by_email.setdefault(email, [])
+            found_by_sha: Dict[str, Dict[str, Any]] = {}
+            for role, qualifier, sort in (
+                ("author", "author-email", "author-date"),
+                ("committer", "committer-email", "committer-date"),
+            ):
+                search_items = _github_search_items(
+                    client,
+                    endpoint="commits",
+                    q=f"{qualifier}:{email}",
+                    warnings=warnings,
+                    sort=sort,
+                    order="desc",
+                    max_items=max_commits_per_role,
+                )
+                for item in search_items:
+                    sha = _commit_sha(item)
+                    repo_parts = _github_repo_parts_from_item(item)
+                    if not sha or repo_parts is None:
+                        continue
+                    owner, repo = repo_parts
+                    detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
+                    commit = detail or item
+                    roles = _matched_roles_for_email(commit, email)
+                    if not roles:
+                        warnings.append(f"github commit {owner}/{repo}@{sha[:8]} matched {qualifier} search but email was not visible in fetched commit")
+                        continue
+
+                    for matched_role in roles:
+                        if matched_role.get("github_login"):
+                            github_logins.add(matched_role["github_login"])
+
+                    serialized = _serialize_commit(
+                        commit=commit,
+                        platform="github",
+                        owner=owner,
+                        repo=repo,
+                        matched_email=email,
                     )
-                    for item in search_items:
-                        sha = _commit_sha(item)
-                        repo_parts = _github_repo_parts_from_item(item)
-                        if not sha or repo_parts is None:
-                            continue
-                        owner, repo = repo_parts
-                        detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
-                        commit = detail or item
-                        roles = _matched_roles_for_email(commit, email)
-                        if not roles:
-                            warnings.append(f"github commit {owner}/{repo}@{sha[:8]} matched {qualifier} search but email was not visible in fetched commit")
-                            continue
+                    serialized["search_role"] = role
+                    serialized["source"] = "github_global_commit_search"
+                    found_by_sha[sha] = serialized
+                    matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
 
-                        for matched_role in roles:
-                            if matched_role.get("github_login"):
-                                github_logins.add(matched_role["github_login"])
+            commits_by_email[email].extend(found_by_sha.values())
 
-                        serialized = _serialize_commit(
-                            commit=commit,
-                            platform="github",
-                            owner=owner,
-                            repo=repo,
-                            matched_email=email,
-                        )
-                        serialized["search_role"] = role
-                        serialized["source"] = "github_global_commit_search"
-                        found_by_sha[sha] = serialized
-                        matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
-
-                commits_by_email[email].extend(found_by_sha.values())
-
-        if url_only_scope:
+        # Explicit repository URLs are conservative: all commits only when no
+        # email was supplied; otherwise retain exact author/committer matches.
+        if github_repos and not emails:
             repo_commits_by_identity, repo_matched_repos = _github_repository_all_commits(
                 client,
-                repo_urls=scoped_repo_urls,
+                repo_urls=github_repos,
+                warnings=warnings,
+                max_commits_per_repo=0,
+            )
+        elif github_repos:
+            repo_commits_by_identity, repo_matched_repos = _github_repository_commits(
+                client,
+                repo_urls=github_repos,
+                emails=emails,
                 warnings=warnings,
                 max_commits_per_repo=0,
             )
         else:
-            repo_commits_by_identity, repo_matched_repos = _github_repository_commits(
-                client,
-                repo_urls=github_repos or [],
-                emails=emails,
-                warnings=warnings,
-                max_commits_per_repo=max_commits_per_role,
-            )
+            repo_commits_by_identity, repo_matched_repos = {}, {}
         for identity_key, commits in repo_commits_by_identity.items():
             commits_by_email.setdefault(identity_key, [])
             commits_by_email[identity_key].extend(commits)
@@ -1461,21 +1455,23 @@ def _fetch_global_github_evidence(
                         github_logins.add(str(role["github_login"]))
         matched_repos.update(repo_matched_repos)
 
-        for profile in ([] if repo_scoped or url_only_scope else resolved_profiles.values()):
+        # Profile URLs are broad attribution signals.  Every visible commit in
+        # every profile repository belongs to the profile identity, regardless
+        # of whether emails were also supplied or what commit identity says.
+        profile_repo_items: Dict[str, Dict[str, Any]] = {}
+        for profile in resolved_profiles.values():
             login = profile["login"]
             identity_key = f"github:{login}"
-            public_email = profile.get("public_email") or ""
             github_logins.add(login)
             profile_commits, profile_repos = _github_profile_repo_commits(
                 client,
                 login=login,
-                public_email=public_email,
                 warnings=warnings,
-                max_commits_per_repo=max_commits_per_role,
             )
             commits_by_email.setdefault(identity_key, [])
             commits_by_email[identity_key].extend(profile_commits)
             matched_repos.update(profile_repos)
+            profile_repo_items.update(profile_repos)
 
         github_commits = [
             commit
@@ -1483,8 +1479,11 @@ def _fetch_global_github_evidence(
             for commit in email_commits
         ]
         evidence = _github_commit_linked_evidence(client, commits=github_commits, warnings=warnings)
-        if url_only_scope:
-            for repo_item in repo_matched_repos.values():
+        broad_evidence_repos = dict(profile_repo_items)
+        if github_repos and not emails:
+            broad_evidence_repos.update(repo_matched_repos)
+        if broad_evidence_repos:
+            for repo_item in broad_evidence_repos.values():
                 owner = str(repo_item.get("owner") or "").strip()
                 repo = str(repo_item.get("repo") or "").strip()
                 if not owner or not repo:
@@ -1578,7 +1577,19 @@ def _evaluate_global_github_commits(
         language=language,
         collaboration_evidence=collaboration_payload,
     )
-    identity_label = ",".join(emails or identity_keys)
+    # Global collection can attribute evidence through several identities at
+    # once.  Keep every identity for scoring: using ``emails or identity_keys``
+    # discarded profile/repository attribution whenever an email was present.
+    identity_aliases = _dedupe_strings([*emails, *identity_keys])
+    for identity_key in identity_keys:
+        if not identity_key.lower().startswith("github:"):
+            continue
+        github_identity = identity_key.split(":", 1)[1].strip()
+        # A profile identity is ``github:<login>``.  Add the bare login so the
+        # evaluator can also match GitHub's author/committer login fields.
+        if github_identity and "/" not in github_identity:
+            identity_aliases.append(github_identity)
+    identity_label = ",".join(_dedupe_strings(identity_aliases))
     evaluation = evaluator.evaluate_engineer(
         commits=all_commits,
         username=identity_label,

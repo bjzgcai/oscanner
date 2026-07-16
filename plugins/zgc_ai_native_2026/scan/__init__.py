@@ -1151,8 +1151,12 @@ class CommitEvaluatorModerate:
     ) -> Dict[str, Any]:
         if not commits:
             return self._get_empty_evaluation(username)
-        analyzed_commits = commits if max_commits is None else commits[: int(max_commits)]
-        author_commits = [c for c in analyzed_commits if self._is_commit_by_author(c, username)]
+        # Collection may combine email, profile, and repository identities.
+        # Attribute first, then cap, so unrelated recent candidates cannot
+        # push the user's older matching commits out of the evaluation window.
+        author_commits = [c for c in commits if self._is_commit_by_author(c, username)]
+        if max_commits is not None:
+            author_commits = author_commits[: int(max_commits)]
         if not author_commits:
             return self._get_empty_evaluation(username)
         if self._commits_exceed_prompt_budget(author_commits, username, load_files=load_files):
@@ -1238,6 +1242,25 @@ class CommitEvaluatorModerate:
         aliases = [alias.strip().lower() for alias in username.split(',') if alias.strip()]
         if not aliases:
             return False
+
+        # Routes that collect evidence from explicit identities record the
+        # attribution on the serialized commit.  Honor it directly, including
+        # profile logins whose commit email may be private or a noreply alias.
+        attributed_identities = {
+            str(commit.get(key) or "").strip().lower()
+            for key in ("matched_email", "matched_login", "matched_identity")
+            if str(commit.get(key) or "").strip()
+        }
+        for role in commit.get("matched_roles") or []:
+            if not isinstance(role, dict):
+                continue
+            attributed_identities.update(
+                str(role.get(key) or "").strip().lower()
+                for key in ("email", "github_login")
+                if str(role.get(key) or "").strip()
+            )
+        if attributed_identities.intersection(aliases):
+            return True
 
         email_aliases = {alias for alias in aliases if "@" in alias}
         if email_aliases and any(email.lower() in email_aliases for email in _commit_emails(commit)):

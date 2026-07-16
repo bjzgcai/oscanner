@@ -16,6 +16,84 @@ def test_gitee_commit_limit_supports_1000_and_clamps_larger_values():
     assert gitee._parse_commit_limit(2500) == 1000
 
 
+def test_gitee_profile_sync_attributes_all_commits_regardless_of_identity(tmp_path, monkeypatch):
+    commit = {
+        "sha": "9" * 40,
+        "commit": {
+            "author": {"name": "Different User", "email": "different@example.com"},
+            "committer": {"name": "Another User", "email": "another@example.com"},
+            "message": "feat: profile-wide gitee evidence",
+        },
+    }
+    data_dir = tmp_path / "gitee" / "owner" / "repo"
+
+    monkeypatch.setattr(gitee, "get_platform_data_dir", lambda *args: data_dir)
+    monkeypatch.setattr(gitee, "extract_gitee_data", lambda *args, **kwargs: True)
+    monkeypatch.setattr(gitee, "load_commits_from_local", lambda *args, **kwargs: [commit])
+    monkeypatch.setattr(
+        gitee,
+        "fetch_collaboration_evidence",
+        lambda **kwargs: {"items": [], "warnings": []},
+    )
+
+    result = gitee._sync_one_repo(
+        {
+            "owner": "owner",
+            "repo": "repo",
+            "repo_url": "https://gitee.com/owner/repo",
+            "username": "profile-owner",
+        },
+        sync_commits_per_repo=0,
+    )
+
+    assert len(result["commits"]) == 1
+    assert result["commits"][0]["matched_identity"] == "profile-owner"
+    assert result["commits"][0]["commit"]["author"]["email"] == "different@example.com"
+
+
+def test_gitee_repository_sync_with_email_keeps_only_exact_matches(tmp_path, monkeypatch):
+    commits = [
+        {
+            "sha": "7" * 40,
+            "commit": {
+                "author": {"name": "Matched", "email": "requested@example.com"},
+                "message": "feat: matched",
+            },
+        },
+        {
+            "sha": "8" * 40,
+            "commit": {
+                "author": {"name": "Other", "email": "other@example.com"},
+                "message": "feat: unmatched",
+            },
+        },
+    ]
+    data_dir = tmp_path / "gitee" / "owner" / "repo"
+
+    monkeypatch.setattr(gitee, "get_platform_data_dir", lambda *args: data_dir)
+    monkeypatch.setattr(gitee, "extract_gitee_data", lambda *args, **kwargs: True)
+    monkeypatch.setattr(gitee, "load_commits_from_local", lambda *args, **kwargs: commits)
+    monkeypatch.setattr(
+        gitee,
+        "fetch_collaboration_evidence",
+        lambda **kwargs: {"items": [], "warnings": []},
+    )
+
+    result = gitee._sync_one_repo(
+        {
+            "owner": "owner",
+            "repo": "repo",
+            "repo_url": "https://gitee.com/owner/repo",
+            "username": "gitee:owner/repo",
+        },
+        sync_commits_per_repo=0,
+        emails=["requested@example.com"],
+    )
+
+    assert [commit["sha"] for commit in result["commits"]] == ["7" * 40]
+    assert result["commits"][0]["matched_email"] == "requested@example.com"
+
+
 @pytest.mark.asyncio
 async def test_gitee_profile_evaluate_uses_latest_matching_commits(tmp_path, monkeypatch):
     older = gitee._serialize_commit(

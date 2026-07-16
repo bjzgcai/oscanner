@@ -105,13 +105,27 @@
 
 ---
 
+### 11_user_evidence_collection.md
+**GitHub / Gitee 用户证据采集与合并工作流**
+
+定义用户身份输入、GitHub/Gitee 证据归属规则、去重、评估上限以及跨平台合并语义。
+
+**主要内容**：
+- email、profile URL 和 repository URL 的身份语义
+- GitHub 全局搜索与 profile/repository 证据采集
+- Gitee profile/repository 采集与本地缓存逻辑
+- 身份归属、去重、评分窗口和 GitHub/Gitee 结果合并
+
+---
+
 ## 文档阅读顺序建议
 
 ### 新用户入门
 1. [01_architecture.md](01_architecture.md) - 了解项目整体架构
 2. [02_directory_structure.md](02_directory_structure.md) - 了解目录结构
 3. [03_evaluation_architecture.md](03_evaluation_architecture.md) - 了解评估功能
-4. [10_api_openapi.md](10_api_openapi.md) - 了解 API/OpenAPI 集成方式
+4. [11_user_evidence_collection.md](11_user_evidence_collection.md) - 了解用户证据归属与跨平台合并
+5. [10_api_openapi.md](10_api_openapi.md) - 了解 API/OpenAPI 集成方式
 
 ### 开发者深入
 1. [06_trajectory_evaluation.md](06_trajectory_evaluation.md) - 了解轨迹评估
