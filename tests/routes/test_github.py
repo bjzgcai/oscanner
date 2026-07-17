@@ -63,6 +63,115 @@ def test_github_repo_commit_collection_paginates_to_requested_limit(monkeypatch)
     ]
 
 
+def test_github_request_retries_after_rate_limit_reset(monkeypatch):
+    request = github.httpx.Request("GET", "https://api.github.com/rate_limit")
+    responses = [
+        github.httpx.Response(
+            403,
+            request=request,
+            headers={"x-ratelimit-remaining": "0", "x-ratelimit-reset": "101"},
+            json={"message": "API rate limit exceeded"},
+        ),
+        github.httpx.Response(200, request=request, json={"ok": True}),
+    ]
+
+    class FakeClient:
+        def get(self, url, params=None):
+            return responses.pop(0)
+
+    sleeps = []
+    monkeypatch.setattr(github.time, "time", lambda: 100)
+    monkeypatch.setattr(github.time, "sleep", sleeps.append)
+
+    response = github._github_request_with_rate_limit_retry(FakeClient(), str(request.url))
+
+    assert response.status_code == 200
+    assert sleeps == [2.0]
+
+
+def test_github_commit_collection_marks_failed_page_incomplete(monkeypatch):
+    warnings = []
+    monkeypatch.setattr(github, "_github_get_json", lambda *args, **kwargs: None)
+
+    commits = github._github_paginated_repo_commits(
+        object(),
+        owner="owner",
+        repo="repo",
+        warnings=warnings,
+        max_commits=100,
+    )
+
+    assert commits == []
+    assert warnings[0].startswith(github.GITHUB_COLLECTION_INCOMPLETE_PREFIX)
+
+
+def test_github_incomplete_payload_omits_authoritative_available_count():
+    payload = github._github_global_analysis_payload(
+        emails=["alice@example.com"],
+        commits_by_email={"alice@example.com": [{"platform": "github", "repo_full_name": "owner/repo", "sha": "1"}]},
+        matched_repos={"github:owner/repo": github._github_repo_item("github", "owner", "repo")},
+        collaboration_items=[],
+        warnings=[f"{github.GITHUB_COLLECTION_INCOMPLETE_PREFIX} github rate limit exhausted"],
+    )
+
+    assert payload["success"] is False
+    assert payload["incomplete"] is True
+    assert payload["summary"]["commit_count_is_authoritative"] is False
+    assert payload["summary"]["partial_commit_count"] == 1
+    assert "available_commit_count" not in payload["summary"]
+
+
+def test_github_profile_collection_reuses_complete_cache_and_stops_at_known_sha(tmp_path, monkeypatch):
+    repo_dir = tmp_path / "github" / "owner" / "repo"
+    repo_dir.mkdir(parents=True)
+    cached_sha = "a" * 40
+    new_sha = "b" * 40
+    cached_commit = github._serialize_commit(
+        commit={
+            "sha": cached_sha,
+            "commit": {"author": {"email": "old@example.com"}, "committer": {}, "message": "cached"},
+        },
+        platform="github",
+        owner="owner",
+        repo="repo",
+    )
+    (repo_dir / "commits_list.json").write_text(json.dumps([cached_commit]), encoding="utf-8")
+    (repo_dir / "sync_state.json").write_text(json.dumps({"collection_complete": True}), encoding="utf-8")
+    new_commit = {
+        "sha": new_sha,
+        "commit": {"author": {"email": "new@example.com"}, "committer": {}, "message": "new"},
+    }
+    cached_list_item = {
+        "sha": cached_sha,
+        "commit": {"author": {"email": "old@example.com"}, "committer": {}, "message": "cached"},
+    }
+    commit_page_calls = []
+
+    def fake_get_json(client, url, *, warnings, params=None):
+        if url.endswith("/users/owner/repos"):
+            return [{"full_name": "owner/repo"}]
+        if url.endswith("/repos/owner/repo/commits"):
+            commit_page_calls.append(params["page"])
+            return [new_commit, cached_list_item]
+        return []
+
+    monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_github_get_json", fake_get_json)
+    monkeypatch.setattr(
+        github,
+        "_github_commit_detail",
+        lambda *args, **kwargs: pytest.fail("profile collection should not fetch per-commit details"),
+    )
+
+    commits, matched_repos = github._github_profile_repo_commits(
+        object(), login="owner", warnings=[]
+    )
+
+    assert commit_page_calls == [1]
+    assert {_commit["sha"] for _commit in commits} == {new_sha, cached_sha}
+    assert matched_repos["github:owner/repo"]["repo_full_name"] == "owner/repo"
+
+
 def test_github_repository_commits_matches_supplied_email_without_owner_fallback(monkeypatch):
     sha = "e" * 40
     list_commit = {"sha": sha}
@@ -187,12 +296,13 @@ def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path,
         if url.endswith("/users/owner/repos"):
             return [{"full_name": "owner/repo"}]
         if url.endswith("/repos/owner/repo/commits") and params and params.get("page") == 1:
-            return [{"sha": sha}]
+            return [detail_commit]
         if url.endswith("/repos/owner/repo/commits"):
             return []
         return []
 
     monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_github_rate_limit_preflight", lambda *args, **kwargs: True)
     monkeypatch.setattr(github, "_github_get_json", fake_get_json)
     monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: detail_commit)
     monkeypatch.setattr(github, "_collaboration_items_for_repo", lambda **kwargs: ([{
@@ -244,10 +354,11 @@ def test_fetch_global_github_profile_keeps_all_commits_when_email_is_supplied(tm
         if url.endswith("/users/owner/repos"):
             return [{"full_name": "owner/repo"}]
         if url.endswith("/repos/owner/repo/commits") and params and params.get("page") == 1:
-            return [{"sha": sha}]
+            return [detail_commit]
         return []
 
     monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_github_rate_limit_preflight", lambda *args, **kwargs: True)
     monkeypatch.setattr(github, "_github_get_json", fake_get_json)
     monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: detail_commit)
     monkeypatch.setattr(github, "_github_search_items", lambda *args, **kwargs: [])

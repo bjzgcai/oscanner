@@ -11,6 +11,7 @@ from urllib.parse import quote, urlsplit
 import asyncio
 import httpx
 import re
+import time
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
@@ -43,6 +44,9 @@ GITHUB_API_BASE = "https://api.github.com"
 GITHUB_SEARCH_COMMITS_PER_ROLE = 10
 GITHUB_MAX_SEARCH_COMMITS_PER_ROLE = 1000
 GITHUB_SEARCH_EVIDENCE_PER_QUERY = 100
+GITHUB_RATE_LIMIT_MAX_RETRIES = 2
+GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS = 120
+GITHUB_COLLECTION_INCOMPLETE_PREFIX = "[commit-collection-incomplete]"
 GITHUB_LOGIN_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
 GITHUB_RESERVED_PATHS = {
     "apps",
@@ -554,7 +558,8 @@ def _github_search_items(
     page = 1
 
     while len(items) < max_items:
-        response = client.get(
+        response = _github_request_with_rate_limit_retry(
+            client,
             f"{GITHUB_API_BASE}/search/{endpoint}",
             params={
                 "q": q,
@@ -567,12 +572,18 @@ def _github_search_items(
         try:
             response.raise_for_status()
         except Exception as exc:
-            warnings.append(f"github search {endpoint} failed for {q!r}: {exc}")
+            warnings.append(
+                f"{GITHUB_COLLECTION_INCOMPLETE_PREFIX} "
+                f"github search {endpoint} failed for {q!r}: {exc}"
+            )
             break
 
         payload = response.json()
         if isinstance(payload, dict) and payload.get("incomplete_results"):
-            warnings.append(f"github search {endpoint} returned incomplete results for {q!r}")
+            warnings.append(
+                f"{GITHUB_COLLECTION_INCOMPLETE_PREFIX} "
+                f"github search {endpoint} returned incomplete results for {q!r}"
+            )
         page_items = payload.get("items") if isinstance(payload, dict) else []
         if not isinstance(page_items, list) or not page_items:
             break
@@ -584,6 +595,84 @@ def _github_search_items(
     return items[:max_items]
 
 
+def _github_rate_limit_wait_seconds(response: httpx.Response) -> Optional[float]:
+    if response.status_code not in {403, 429}:
+        return None
+
+    retry_after = str(response.headers.get("retry-after") or "").strip()
+    if retry_after:
+        try:
+            return max(0.0, float(retry_after))
+        except ValueError:
+            pass
+
+    remaining = str(response.headers.get("x-ratelimit-remaining") or "").strip()
+    reset_at = str(response.headers.get("x-ratelimit-reset") or "").strip()
+    message = ""
+    try:
+        payload = response.json()
+        message = str(payload.get("message") or "") if isinstance(payload, dict) else ""
+    except Exception:
+        pass
+    if remaining != "0" and "rate limit" not in message.lower():
+        return None
+    try:
+        return max(0.0, float(reset_at) - time.time() + 1.0)
+    except ValueError:
+        return None
+
+
+def _github_request_with_rate_limit_retry(
+    client: httpx.Client,
+    url: str,
+    *,
+    params: Optional[Dict[str, Any]] = None,
+) -> httpx.Response:
+    response: Optional[httpx.Response] = None
+    for attempt in range(GITHUB_RATE_LIMIT_MAX_RETRIES + 1):
+        response = client.get(url, params=params)
+        wait_seconds = _github_rate_limit_wait_seconds(response)
+        if wait_seconds is None or response.status_code < 400:
+            return response
+        if attempt >= GITHUB_RATE_LIMIT_MAX_RETRIES or wait_seconds > GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS:
+            return response
+        time.sleep(wait_seconds)
+    assert response is not None
+    return response
+
+
+def _github_rate_limit_preflight(client: httpx.Client, warnings: List[str]) -> bool:
+    for attempt in range(GITHUB_RATE_LIMIT_MAX_RETRIES + 1):
+        try:
+            response = _github_request_with_rate_limit_retry(client, f"{GITHUB_API_BASE}/rate_limit")
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as exc:
+            warnings.append(f"{GITHUB_COLLECTION_INCOMPLETE_PREFIX} github rate-limit preflight failed: {exc}")
+            return False
+
+        resources = payload.get("resources") if isinstance(payload, dict) else {}
+        blocked = []
+        reset_times = []
+        for resource_name in ("core", "search"):
+            resource = resources.get(resource_name) if isinstance(resources, dict) else {}
+            if isinstance(resource, dict) and int(resource.get("remaining") or 0) <= 0:
+                blocked.append(resource_name)
+                reset_times.append(float(resource.get("reset") or 0))
+        if not blocked:
+            return True
+        wait_seconds = max(reset_times, default=0) - time.time() + 1.0
+        if attempt < GITHUB_RATE_LIMIT_MAX_RETRIES and 0 <= wait_seconds <= GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS:
+            time.sleep(wait_seconds)
+            continue
+        warnings.append(
+            f"{GITHUB_COLLECTION_INCOMPLETE_PREFIX} github rate-limit preflight exhausted: "
+            f"{', '.join(blocked)}"
+        )
+        return False
+    return False
+
+
 def _github_get_json(
     client: httpx.Client,
     url: str,
@@ -592,7 +681,7 @@ def _github_get_json(
     params: Optional[Dict[str, Any]] = None,
 ) -> Any:
     try:
-        response = client.get(url, params=params)
+        response = _github_request_with_rate_limit_retry(client, url, params=params)
         response.raise_for_status()
         return response.json()
     except Exception as exc:
@@ -671,6 +760,10 @@ def _github_profile_repositories(
             },
         )
         if not isinstance(payload, list) or not payload:
+            if payload is None:
+                warnings.append(
+                    f"{GITHUB_COLLECTION_INCOMPLETE_PREFIX} failed to list repositories for profile {login}"
+                )
             break
         repos.extend(item for item in payload if isinstance(item, dict))
         if len(payload) < 100:
@@ -681,6 +774,13 @@ def _github_profile_repositories(
     return repos[:max_repositories]
 
 
+def _github_cached_repo_snapshot(owner: str, repo: str) -> tuple[List[Dict[str, Any]], bool]:
+    data_dir = get_data_dir() / "github" / owner / repo
+    commits = _read_json_list(data_dir / "commits_list.json")
+    sync_state = _read_json_dict(data_dir / "sync_state.json")
+    return commits, sync_state.get("collection_complete") is True
+
+
 def _github_paginated_repo_commits(
     client: httpx.Client,
     *,
@@ -689,6 +789,7 @@ def _github_paginated_repo_commits(
     warnings: List[str],
     max_commits: int,
     author: str = "",
+    stop_shas: Optional[set[str]] = None,
 ) -> List[Dict[str, Any]]:
     commits: List[Dict[str, Any]] = []
     page = 1
@@ -704,9 +805,16 @@ def _github_paginated_repo_commits(
             warnings=warnings,
             params=params,
         )
+        if payload is None:
+            warnings.append(
+                f"{GITHUB_COLLECTION_INCOMPLETE_PREFIX} failed to collect commits for {owner}/{repo}"
+            )
+            break
         if not isinstance(payload, list) or not payload:
             break
         commits.extend(item for item in payload if isinstance(item, dict))
+        if stop_shas and any(_commit_sha(item) in stop_shas for item in payload if isinstance(item, dict)):
+            break
         if len(payload) < per_page:
             break
         page += 1
@@ -737,23 +845,26 @@ def _github_profile_repo_commits(
         owner, repo = full_name.split("/", 1)
         matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
 
+        cached_commits, cached_complete = _github_cached_repo_snapshot(owner, repo)
+        cached_shas = {_commit_sha(item) for item in cached_commits if _commit_sha(item)}
+
         repo_commits = _github_paginated_repo_commits(
             client,
             owner=owner,
             repo=repo,
             warnings=warnings,
             max_commits=0,
+            stop_shas=cached_shas if cached_complete else None,
         )
+        serialized_commits: List[Dict[str, Any]] = []
         for item in repo_commits:
             if not isinstance(item, dict):
                 continue
             sha = _commit_sha(item)
             if not sha:
                 continue
-            detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
-            commit = detail or item
             serialized = _serialize_commit(
-                commit=commit,
+                commit=item,
                 platform="github",
                 owner=owner,
                 repo=repo,
@@ -762,7 +873,18 @@ def _github_profile_repo_commits(
             serialized["matched_identity"] = identity_key
             serialized["matched_identity_type"] = "github_profile"
             serialized["source"] = "github_profile_all_commits"
-            commits.append(serialized)
+            serialized_commits.append(serialized)
+
+        for cached in cached_commits:
+            if not isinstance(cached, dict) or not _commit_sha(cached):
+                continue
+            reused = dict(cached)
+            reused["matched_login"] = login
+            reused["matched_identity"] = identity_key
+            reused["matched_identity_type"] = "github_profile"
+            reused["source"] = "github_profile_cache"
+            serialized_commits.append(reused)
+        commits.extend(_dedupe_by_key(serialized_commits, ("platform", "repo_full_name", "sha")))
 
     commits = _dedupe_by_key(commits, ("platform", "repo_full_name", "sha"))
     commits.sort(key=_sort_key, reverse=True)
@@ -804,9 +926,11 @@ def _github_repository_commits(
             sha = _commit_sha(item)
             if not sha:
                 continue
-            detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
-            commit = detail or item
             for email in normalized_emails:
+                commit = item
+                if not _matched_roles_for_email(commit, email):
+                    detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
+                    commit = detail or item
                 if not _matched_roles_for_email(commit, email):
                     continue
                 serialized = _serialize_commit(
@@ -863,6 +987,11 @@ def _github_repository_all_commits(
                     "page": page,
                 },
             )
+            if payload is None:
+                warnings.append(
+                    f"{GITHUB_COLLECTION_INCOMPLETE_PREFIX} failed to collect commits for {owner}/{repo}"
+                )
+                break
             if not isinstance(payload, list) or not payload:
                 break
 
@@ -872,10 +1001,8 @@ def _github_repository_all_commits(
                 sha = _commit_sha(item)
                 if not sha:
                     continue
-                detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
-                commit = detail or item
                 serialized = _serialize_commit(
-                    commit=commit,
+                    commit=item,
                     platform="github",
                     owner=owner,
                     repo=repo,
@@ -1205,6 +1332,10 @@ def _cache_global_github_evidence(
         commits_dir.mkdir(parents=True, exist_ok=True)
 
         repo_commits = _dedupe_by_key(grouped_commits.get((owner, repo), []), ("sha",))
+        profile_collection_complete = any(
+            str(commit.get("source") or "") in {"github_profile_all_commits", "github_profile_cache"}
+            for commit in repo_commits
+        )
         for commit in repo_commits:
             sha = _commit_sha(commit)
             if not sha:
@@ -1236,6 +1367,7 @@ def _cache_global_github_evidence(
             "last_synced_at": now,
             "last_commit_sha": _commit_sha(merged_index[0]) if merged_index else None,
             "total_commits_fetched": len(merged_index),
+            "collection_complete": profile_collection_complete,
             "sync_history": [
                 {
                     "synced_at": now,
@@ -1326,9 +1458,25 @@ def _github_global_analysis_payload(
         *emails,
         *[identity for identity in identity_keys if is_valid_email_identity(identity)],
     ])
+    incomplete_warnings = [
+        warning for warning in warnings
+        if str(warning).startswith(GITHUB_COLLECTION_INCOMPLETE_PREFIX)
+    ]
+    collection_complete = not incomplete_warnings
+    summary = {
+        "matched_repo_count": len(matched_repos),
+        "collaboration_evidence_count": len(collaboration_items),
+        "commit_count_is_authoritative": collection_complete,
+    }
+    if collection_complete:
+        summary["available_commit_count"] = len(all_commits)
+    else:
+        summary["partial_commit_count"] = len(all_commits)
 
     return {
-        "success": True,
+        "success": collection_complete,
+        "incomplete": not collection_complete,
+        "collection_complete": collection_complete,
         "emails": resolved_emails,
         "github_profiles": github_profiles or [],
         "github_repos": github_repos or [],
@@ -1336,16 +1484,13 @@ def _github_global_analysis_payload(
         "scope": "github_global",
         "repos_scanned": len(matched_repos),
         "matched_repos": sorted(matched_repos.values(), key=lambda item: item["repo_full_name"]),
-        "summary": {
-            "matched_repo_count": len(matched_repos),
-            "available_commit_count": len(all_commits),
-            "collaboration_evidence_count": len(collaboration_items),
-        },
+        "summary": summary,
         "commits_by_email": commits_by_email,
         "commits_by_identity": commits_by_email,
         "commits": all_commits,
         "collaboration_evidence": collaboration_items,
         "warnings": warnings,
+        "collection_errors": incomplete_warnings,
         "limitations": [
             "GitHub email identities are searched globally with author-email and committer-email qualifiers.",
             "Repository URLs use conservative attribution: all commits when emails are absent, otherwise only exact author/committer email matches with no fallback.",
@@ -1371,6 +1516,8 @@ def _fetch_global_github_evidence(
     github_logins = set()
 
     with httpx.Client(headers=_github_headers(), timeout=httpx.Timeout(25.0, connect=5.0)) as client:
+        if not _github_rate_limit_preflight(client, warnings):
+            return commits_by_email, matched_repos, [], warnings
         resolved_profiles, public_profile_emails = _resolve_github_profile_identities(
             client,
             github_profiles=github_profiles or [],
@@ -1399,8 +1546,10 @@ def _fetch_global_github_evidence(
                     if not sha or repo_parts is None:
                         continue
                     owner, repo = repo_parts
-                    detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
-                    commit = detail or item
+                    commit = item
+                    if not _matched_roles_for_email(commit, email):
+                        detail = _github_commit_detail(client, owner=owner, repo=repo, sha=sha, warnings=warnings)
+                        commit = detail or item
                     roles = _matched_roles_for_email(commit, email)
                     if not roles:
                         warnings.append(f"github commit {owner}/{repo}@{sha[:8]} matched {qualifier} search but email was not visible in fetched commit")
@@ -1649,6 +1798,16 @@ async def _build_global_github_evaluation_payload(
     )
     payload["summary"]["commit_limit"] = prepared["github_commit_limit"]
 
+    if not payload["collection_complete"]:
+        if progress:
+            progress("section", {
+                "title": "GitHub 证据采集不完整",
+                "status": "failed",
+                "matched_repo_count": payload["summary"]["matched_repo_count"],
+                "commit_count_is_authoritative": False,
+            })
+        return payload
+
     all_commits = payload["commits"]
     if progress:
         progress("section", {
@@ -1764,6 +1923,16 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
             github_repos=github_repos,
         )
         payload["summary"]["commit_limit"] = prepared["github_commit_limit"]
+
+        if not payload["collection_complete"]:
+            yield _format_sse_event("section", {
+                "title": "GitHub 证据采集不完整",
+                "status": "failed",
+                "matched_repo_count": payload["summary"]["matched_repo_count"],
+                "commit_count_is_authoritative": False,
+            })
+            yield _format_sse_event("result", payload)
+            return
 
         yield _format_sse_event("section", {
             "title": "GitHub 证据采集完成",
@@ -1951,28 +2120,45 @@ async def analyze_github(request_body: Dict[str, Any]) -> Dict[str, Any]:
         for commit in commits_by_email[email]
     ]
     all_commits.sort(key=_sort_key, reverse=True)
-    cache_summary = _cache_global_github_evidence(
-        commits=all_commits,
-        matched_repos=matched_repos,
-        collaboration_items=collaboration_items,
+    collection_errors = [
+        warning for warning in warnings
+        if str(warning).startswith(GITHUB_COLLECTION_INCOMPLETE_PREFIX)
+    ]
+    collection_complete = not collection_errors
+    cache_summary = (
+        _cache_global_github_evidence(
+            commits=all_commits,
+            matched_repos=matched_repos,
+            collaboration_items=collaboration_items,
+        )
+        if collection_complete
+        else {}
     )
+    summary = {
+        "matched_repo_count": len(matched_repos),
+        "collaboration_evidence_count": len(collaboration_items),
+        "commit_count_is_authoritative": collection_complete,
+    }
+    if collection_complete:
+        summary["available_commit_count"] = len(all_commits)
+    else:
+        summary["partial_commit_count"] = len(all_commits)
 
     return {
-        "success": True,
+        "success": collection_complete,
+        "incomplete": not collection_complete,
+        "collection_complete": collection_complete,
         "emails": emails,
         "scope": "global_github_search_plus_cached_gitee",
         "repos_scanned": len(gitee_repositories),
         "matched_repos": sorted(matched_repos.values(), key=lambda item: (item["platform"], item["repo_full_name"])),
-        "summary": {
-            "matched_repo_count": len(matched_repos),
-            "available_commit_count": len(all_commits),
-            "collaboration_evidence_count": len(collaboration_items),
-        },
+        "summary": summary,
         "commits_by_email": commits_by_email,
         "commits": all_commits,
         "collaboration_evidence": collaboration_items,
         "cache": cache_summary,
         "warnings": warnings,
+        "collection_errors": collection_errors,
         "limitations": [
             "GitHub commits are searched globally with author-email and committer-email qualifiers.",
             "GitHub issue/PR/review evidence uses GitHub logins resolved from matching commits; email-only accounts with no resolved login may only have commit and commit-associated PR evidence.",
