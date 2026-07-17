@@ -121,6 +121,13 @@ def test_github_incomplete_payload_omits_authoritative_available_count():
     assert "available_commit_count" not in payload["summary"]
 
 
+def test_github_commit_index_accepts_empty_message():
+    entry = github._github_commit_index_entry({"sha": "a" * 40, "commit": {"message": ""}})
+
+    assert entry["sha"] == "a" * 40
+    assert entry["message"] == ""
+
+
 def test_github_profile_collection_reuses_complete_cache_and_stops_at_known_sha(tmp_path, monkeypatch):
     repo_dir = tmp_path / "github" / "owner" / "repo"
     repo_dir.mkdir(parents=True)

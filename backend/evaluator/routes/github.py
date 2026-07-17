@@ -1254,6 +1254,7 @@ def _global_github_evidence_links(commits: List[Dict[str, Any]]) -> List[Dict[st
 
 def _github_commit_index_entry(commit: Dict[str, Any]) -> Dict[str, Any]:
     files = commit.get("files") or []
+    message_lines = _commit_message(commit).splitlines()
     filenames = [
         str(file_item.get("filename") or file_item.get("path") or "")
         for file_item in files
@@ -1262,7 +1263,7 @@ def _github_commit_index_entry(commit: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "sha": _commit_sha(commit),
         "hash": _commit_sha(commit),
-        "message": _commit_message(commit).splitlines()[0][:100],
+        "message": message_lines[0][:100] if message_lines else "",
         "author": get_author_from_commit(commit) or "",
         "date": _commit_date(commit),
         "files_changed": len(filenames),
