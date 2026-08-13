@@ -179,6 +179,78 @@ def test_github_profile_collection_reuses_complete_cache_and_stops_at_known_sha(
     assert matched_repos["github:owner/repo"]["repo_full_name"] == "owner/repo"
 
 
+def test_github_profile_fork_without_submitted_email_contributes_no_commits(tmp_path, monkeypatch):
+    fetched_urls = []
+
+    def fake_get_json(client, url, *, warnings, params=None):
+        fetched_urls.append(url)
+        if url.endswith("/users/owner/repos"):
+            return [{"full_name": "owner/forked", "fork": True}]
+        return []
+
+    monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_github_get_json", fake_get_json)
+
+    commits, matched_repos = github._github_profile_repo_commits(
+        object(), login="owner", emails=[], warnings=[]
+    )
+
+    assert commits == []
+    assert matched_repos["github:owner/forked"]["fork"] is True
+    assert not any(url.endswith("/repos/owner/forked/commits") for url in fetched_urls)
+
+
+def test_github_profile_fork_keeps_only_submitted_email_matches(tmp_path, monkeypatch):
+    matched_sha = "c" * 40
+    unmatched_sha = "d" * 40
+    commits_page = [
+        {
+            "sha": matched_sha,
+            "commit": {
+                "author": {"email": "requested@example.com"},
+                "committer": {"email": "other@example.com"},
+                "message": "matched fork work",
+            },
+        },
+        {
+            "sha": unmatched_sha,
+            "commit": {
+                "author": {"email": "upstream@example.com"},
+                "committer": {"email": "upstream@example.com"},
+                "message": "inherited upstream history",
+            },
+        },
+    ]
+
+    def fake_get_json(client, url, *, warnings, params=None):
+        if url.endswith("/users/owner/repos"):
+            return [{"full_name": "owner/forked", "fork": True}]
+        if url.endswith("/repos/owner/forked/commits"):
+            return commits_page
+        return []
+
+    monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(github, "_github_get_json", fake_get_json)
+    monkeypatch.setattr(
+        github,
+        "_github_commit_detail",
+        lambda *args, **kwargs: pytest.fail("fork email filtering should use commit-list identities"),
+    )
+
+    commits, matched_repos = github._github_profile_repo_commits(
+        object(),
+        login="owner",
+        emails=["Requested@Example.com"],
+        warnings=[],
+    )
+
+    assert [commit["sha"] for commit in commits] == [matched_sha]
+    assert commits[0]["matched_email"] == "requested@example.com"
+    assert commits[0]["matched_identity"] == "github:owner"
+    assert commits[0]["source"] == "github_profile_fork_email_commits"
+    assert matched_repos["github:owner/forked"]["fork"] is True
+
+
 def test_github_repository_commits_matches_supplied_email_without_owner_fallback(monkeypatch):
     sha = "e" * 40
     list_commit = {"sha": sha}

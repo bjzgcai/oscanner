@@ -257,7 +257,7 @@ def _serialize_commit(
     }
 
 
-def _repo_from_api_item(item: Dict[str, Any], username: str) -> Optional[Dict[str, str]]:
+def _repo_from_api_item(item: Dict[str, Any], username: str) -> Optional[Dict[str, Any]]:
     namespace = item.get("namespace") if isinstance(item.get("namespace"), dict) else {}
     owner_item = item.get("owner") if isinstance(item.get("owner"), dict) else {}
     owner = str(namespace.get("path") or namespace.get("name") or owner_item.get("login") or "").strip()
@@ -272,6 +272,7 @@ def _repo_from_api_item(item: Dict[str, Any], username: str) -> Optional[Dict[st
         "repo": repo,
         "repo_full_name": f"{owner}/{repo}",
         "repo_url": str(item.get("html_url") or f"https://gitee.com/{owner}/{repo}"),
+        "fork": bool(item.get("fork")),
     }
 
 
@@ -279,8 +280,8 @@ def _gitee_params(token: str, **extra: Any) -> Dict[str, Any]:
     return {"access_token": token, **extra}
 
 
-def _fetch_profile_repositories(username: str, token: str) -> List[Dict[str, str]]:
-    repositories: List[Dict[str, str]] = []
+def _fetch_profile_repositories(username: str, token: str) -> List[Dict[str, Any]]:
+    repositories: List[Dict[str, Any]] = []
     seen = set()
     page = 1
 
@@ -321,7 +322,7 @@ def _fetch_profile_repositories(username: str, token: str) -> List[Dict[str, str
 
 
 def _sync_one_repo(
-    repo: Dict[str, str],
+    repo: Dict[str, Any],
     *,
     sync_commits_per_repo: int,
     emails: Optional[List[str]] = None,
@@ -352,7 +353,7 @@ def _sync_one_repo(
     )
 
     commits = load_commits_from_local(data_dir, limit=None)
-    if emails:
+    if emails is not None:
         author_commits = []
         for commit in commits:
             for email in emails:
@@ -471,6 +472,9 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
         )
 
     username = _parse_username(request_body.get("username"))
+    emails = _parse_optional_email_list(
+        request_body.get("emails") or request_body.get("email") or request_body.get("author_emails")
+    )
     commit_limit = _parse_commit_limit(request_body.get("commit_limit"))
     # Profile attribution requires the complete visible history from every
     # profile repository; commit_limit is applied only after attribution.
@@ -495,11 +499,14 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
 
     for repo in repositories:
         repo_with_username = {**repo, "username": username}
+        sync_kwargs: Dict[str, Any] = {"sync_commits_per_repo": sync_commits_per_repo}
+        if repo.get("fork"):
+            sync_kwargs["emails"] = emails
         try:
             sync_result = await asyncio.to_thread(
                 _sync_one_repo,
                 repo_with_username,
-                sync_commits_per_repo=sync_commits_per_repo,
+                **sync_kwargs,
             )
         except Exception as exc:
             warnings.append(f"{repo['repo_full_name']}: {exc}")
@@ -525,7 +532,10 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
     collaboration_items.sort(key=_sort_key, reverse=True)
 
     if not selected_commits:
-        raise HTTPException(status_code=404, detail=f"No Gitee commits found for '{username}' in profile repositories")
+        detail = f"No Gitee commits found for '{username}' in profile repositories"
+        if any(repo.get("fork") for repo in repositories) and not emails:
+            detail += "; fork repository commits require submitted email identities"
+        raise HTTPException(status_code=404, detail=detail)
 
     evaluation = await asyncio.to_thread(
         _evaluate_profile_commits,
@@ -547,11 +557,13 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
     return {
         "success": True,
         "username": username,
+        "emails": emails,
         "scope": "gitee_profile",
         "repos_scanned": len(repositories),
         "matched_repos": matched_repos,
         "summary": {
             "repo_count": len(repositories),
+            "fork_repo_count": sum(1 for repo in repositories if repo.get("fork")),
             "matched_repo_count": len(matched_repos),
             "available_commit_count": len(all_commits),
             "collaboration_evidence_count": len(collaboration_items),
@@ -563,7 +575,7 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
         "warnings": warnings,
         "limitations": [
             "Gitee profile mode evaluates repositories returned by /api/v5/users/{username}/repos?type=all.",
-            "All commits from every visible profile repository are attributed to the profile user regardless of commit identity.",
+            "Non-fork profile repositories use broad attribution; fork repositories remain scanned but contribute only commits whose author or committer email exactly matches a submitted email.",
             f"Evaluation uses the latest {commit_limit} attributed commits sorted by commit author/committer date.",
         ],
         "metadata": {

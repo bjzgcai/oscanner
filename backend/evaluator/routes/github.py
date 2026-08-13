@@ -825,25 +825,34 @@ def _github_profile_repo_commits(
     client: httpx.Client,
     *,
     login: str,
+    emails: Optional[List[str]] = None,
     warnings: List[str],
 ) -> tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     """Collect every visible commit from every repository under a profile.
 
-    Profile URLs are an explicit broad attribution signal.  Commit email,
-    local Git username, and provider login are intentionally not used as
-    filters because those values commonly change across a user's history.
+    Profile URLs are a broad attribution signal for owned repositories. Fork
+    repositories remain in scope, but their commits require an exact submitted
+    author/committer email match so inherited upstream history is not attributed
+    to the profile owner.
     """
     commits: List[Dict[str, Any]] = []
     matched_repos: Dict[str, Dict[str, Any]] = {}
     repositories = _github_profile_repositories(client, login=login, warnings=warnings)
     identity_key = f"github:{login}"
+    normalized_emails = _dedupe_strings([normalize_email_identity(email) for email in emails or []])
 
     for repository in repositories:
         full_name = str(repository.get("full_name") or "").strip()
         if "/" not in full_name:
             continue
         owner, repo = full_name.split("/", 1)
-        matched_repos[f"github:{owner}/{repo}"] = _github_repo_item("github", owner, repo)
+        is_fork = bool(repository.get("fork"))
+        repo_item = _github_repo_item("github", owner, repo)
+        repo_item["fork"] = is_fork
+        matched_repos[f"github:{owner}/{repo}"] = repo_item
+
+        if is_fork and not normalized_emails:
+            continue
 
         cached_commits, cached_complete = _github_cached_repo_snapshot(owner, repo)
         cached_shas = {_commit_sha(item) for item in cached_commits if _commit_sha(item)}
@@ -863,26 +872,53 @@ def _github_profile_repo_commits(
             sha = _commit_sha(item)
             if not sha:
                 continue
+            commit = item
+            matched_email = ""
+            if is_fork:
+                matched_email = next(
+                    (email for email in normalized_emails if _matched_roles_for_email(commit, email)),
+                    "",
+                )
+                if not matched_email:
+                    continue
             serialized = _serialize_commit(
-                commit=item,
+                commit=commit,
                 platform="github",
                 owner=owner,
                 repo=repo,
+                matched_email=matched_email,
             )
             serialized["matched_login"] = login
             serialized["matched_identity"] = identity_key
             serialized["matched_identity_type"] = "github_profile"
-            serialized["source"] = "github_profile_all_commits"
+            serialized["source"] = (
+                "github_profile_fork_email_commits"
+                if is_fork
+                else "github_profile_all_commits"
+            )
             serialized_commits.append(serialized)
 
         for cached in cached_commits:
             if not isinstance(cached, dict) or not _commit_sha(cached):
                 continue
             reused = dict(cached)
+            if is_fork:
+                matched_email = next(
+                    (email for email in normalized_emails if _matched_roles_for_email(reused, email)),
+                    "",
+                )
+                if not matched_email:
+                    continue
+                reused["matched_email"] = matched_email
+                reused["matched_roles"] = _matched_roles_for_email(reused, matched_email)
             reused["matched_login"] = login
             reused["matched_identity"] = identity_key
             reused["matched_identity_type"] = "github_profile"
-            reused["source"] = "github_profile_cache"
+            reused["source"] = (
+                "github_profile_fork_email_cache"
+                if is_fork
+                else "github_profile_cache"
+            )
             serialized_commits.append(reused)
         commits.extend(_dedupe_by_key(serialized_commits, ("platform", "repo_full_name", "sha")))
 
@@ -1466,6 +1502,7 @@ def _github_global_analysis_payload(
     collection_complete = not incomplete_warnings
     summary = {
         "matched_repo_count": len(matched_repos),
+        "fork_repo_count": sum(1 for repo in matched_repos.values() if repo.get("fork")),
         "collaboration_evidence_count": len(collaboration_items),
         "commit_count_is_authoritative": collection_complete,
     }
@@ -1495,7 +1532,7 @@ def _github_global_analysis_payload(
         "limitations": [
             "GitHub email identities are searched globally with author-email and committer-email qualifiers.",
             "Repository URLs use conservative attribution: all commits when emails are absent, otherwise only exact author/committer email matches with no fallback.",
-            "Profile URLs use broad attribution: all visible commits in every owner repository are attributed to the profile regardless of commit email, name, or login.",
+            "Profile URLs use broad attribution for non-fork repositories; fork repositories remain scanned but contribute only commits whose author or committer email exactly matches a submitted email.",
             "When multiple identity inputs are supplied, their independently collected evidence is combined and deduplicated by platform, repository, and SHA.",
             "GitHub issue/PR/review evidence uses GitHub logins resolved from matching commits; email-only accounts with no resolved login may only have commit and commit-associated PR evidence.",
             "GitHub search is limited to repositories visible to the configured token and to repository default branches.",
@@ -1605,9 +1642,8 @@ def _fetch_global_github_evidence(
                         github_logins.add(str(role["github_login"]))
         matched_repos.update(repo_matched_repos)
 
-        # Profile URLs are broad attribution signals.  Every visible commit in
-        # every profile repository belongs to the profile identity, regardless
-        # of whether emails were also supplied or what commit identity says.
+        # Profile URLs broadly attribute owned repositories. Fork repositories
+        # stay in scope but only contribute exact submitted email matches.
         profile_repo_items: Dict[str, Dict[str, Any]] = {}
         for profile in resolved_profiles.values():
             login = profile["login"]
@@ -1616,6 +1652,7 @@ def _fetch_global_github_evidence(
             profile_commits, profile_repos = _github_profile_repo_commits(
                 client,
                 login=login,
+                emails=emails,
                 warnings=warnings,
             )
             commits_by_email.setdefault(identity_key, [])

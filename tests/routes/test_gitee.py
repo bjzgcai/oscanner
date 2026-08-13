@@ -51,6 +51,55 @@ def test_gitee_profile_sync_attributes_all_commits_regardless_of_identity(tmp_pa
     assert result["commits"][0]["commit"]["author"]["email"] == "different@example.com"
 
 
+def test_gitee_profile_repo_item_preserves_fork_flag():
+    repo = gitee._repo_from_api_item(
+        {
+            "namespace": {"path": "owner"},
+            "path": "forked",
+            "html_url": "https://gitee.com/owner/forked",
+            "fork": True,
+        },
+        "owner",
+    )
+
+    assert repo is not None
+    assert repo["fork"] is True
+
+
+def test_gitee_fork_sync_with_no_submitted_emails_contributes_no_commits(tmp_path, monkeypatch):
+    commit = {
+        "sha": "6" * 40,
+        "commit": {
+            "author": {"name": "Upstream", "email": "upstream@example.com"},
+            "message": "inherited upstream history",
+        },
+    }
+    data_dir = tmp_path / "gitee" / "owner" / "forked"
+
+    monkeypatch.setattr(gitee, "get_platform_data_dir", lambda *args: data_dir)
+    monkeypatch.setattr(gitee, "extract_gitee_data", lambda *args, **kwargs: True)
+    monkeypatch.setattr(gitee, "load_commits_from_local", lambda *args, **kwargs: [commit])
+    monkeypatch.setattr(
+        gitee,
+        "fetch_collaboration_evidence",
+        lambda **kwargs: {"items": [], "warnings": []},
+    )
+
+    result = gitee._sync_one_repo(
+        {
+            "owner": "owner",
+            "repo": "forked",
+            "repo_url": "https://gitee.com/owner/forked",
+            "username": "profile-owner",
+            "fork": True,
+        },
+        sync_commits_per_repo=0,
+        emails=[],
+    )
+
+    assert result["commits"] == []
+
+
 def test_gitee_repository_sync_with_email_keeps_only_exact_matches(tmp_path, monkeypatch):
     commits = [
         {
@@ -92,6 +141,81 @@ def test_gitee_repository_sync_with_email_keeps_only_exact_matches(tmp_path, mon
 
     assert [commit["sha"] for commit in result["commits"]] == ["7" * 40]
     assert result["commits"][0]["matched_email"] == "requested@example.com"
+
+
+@pytest.mark.asyncio
+async def test_gitee_profile_filters_only_fork_repositories_by_submitted_emails(tmp_path, monkeypatch):
+    commit = gitee._serialize_commit(
+        {
+            "sha": "5" * 40,
+            "commit": {
+                "author": {"name": "Owner", "email": "other@example.com"},
+                "message": "owned repository history",
+            },
+        },
+        owner="owner",
+        repo="owned",
+        username="owner",
+    )
+    calls = []
+
+    def fake_sync(repo, *, sync_commits_per_repo, emails=None):
+        calls.append((repo["repo"], emails))
+        return {
+            "repo": repo,
+            "data_dir": str(tmp_path / "gitee" / "owner" / repo["repo"]),
+            "changed": True,
+            "mode": "extract",
+            "commits": [commit] if repo["repo"] == "owned" else [],
+            "collaboration_evidence": [],
+            "warnings": [],
+        }
+
+    monkeypatch.setattr(gitee, "get_gitee_token", lambda: "gitee-token")
+    monkeypatch.setattr(gitee, "get_llm_api_key", lambda: "llm-key")
+    monkeypatch.setattr(gitee, "resolve_plugin_id", lambda plugin: plugin or "test-plugin")
+    monkeypatch.setattr(
+        gitee,
+        "load_scan_module",
+        lambda plugin_id: (SimpleNamespace(version="1.0.0"), object(), tmp_path / "scan.py"),
+    )
+    monkeypatch.setattr(
+        gitee,
+        "_fetch_profile_repositories",
+        lambda username, token: [
+            {
+                "owner": "owner",
+                "repo": "owned",
+                "repo_full_name": "owner/owned",
+                "repo_url": "https://gitee.com/owner/owned",
+                "fork": False,
+            },
+            {
+                "owner": "owner",
+                "repo": "forked",
+                "repo_full_name": "owner/forked",
+                "repo_url": "https://gitee.com/owner/forked",
+                "fork": True,
+            },
+        ],
+    )
+    monkeypatch.setattr(gitee, "_sync_one_repo", fake_sync)
+    monkeypatch.setattr(
+        gitee,
+        "_evaluate_profile_commits",
+        lambda **kwargs: {"total_commits_analyzed": len(kwargs["commits"])},
+    )
+
+    result = await gitee._build_profile_payload({
+        "username": "owner",
+        "emails": ["Requested@Example.com"],
+        "commit_limit": 10,
+    })
+
+    assert calls == [("owned", None), ("forked", ["requested@example.com"])]
+    assert result["emails"] == ["requested@example.com"]
+    assert result["summary"]["fork_repo_count"] == 1
+    assert result["summary"]["available_commit_count"] == 1
 
 
 @pytest.mark.asyncio

@@ -70,12 +70,18 @@ This matters because senior engineering work often appears in:
 - Release management and maintainer decisions.
 - Cross-team collaboration outside direct commits.
 
-### Forks and Stars Are Intentionally Excluded
+### Fork and Star Counts Are Intentionally Excluded
 
 Fork and star counts are not considered in scoring. They are easy to manipulate,
 are weak evidence for contribution quality, and can reward popularity rather than
 engineering behavior. If they are ever shown in the UI, they should be labeled as
 context only, not score inputs.
+
+Fork repositories themselves remain in profile evaluation scope. Commits from a
+fork are eligible for scoring only when the commit author or committer email
+exactly matches an email explicitly submitted with the evaluation request. This
+prevents inherited upstream history from being attributed to the profile owner.
+Without a submitted email match, a fork contributes no commits.
 
 ### Email-Based Identity Expansion Needs Privacy Controls
 
@@ -165,8 +171,8 @@ future deployment guide should cover:
   - Resolution links to commits or PRs.
 - Separate contribution signals into "direct code", "review", "issue/design",
   and "maintenance" evidence so the model can reason over each explicitly.
-- Keep forks and stars excluded from scoring unless a future rubric explicitly
-  treats them as non-scoring context.
+- Keep fork/star popularity counts excluded from scoring unless a future rubric
+  explicitly treats them as non-scoring context.
 
 ### Phase 4: Identity and Consent
 
