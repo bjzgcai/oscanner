@@ -138,6 +138,32 @@ def test_ai_native_part_evaluation_parse_failure_raises_by_default(monkeypatch):
         evaluator._evaluate_part_with_llm("commits", "commit context", "https://gitee.com/org/repo")
 
 
+def test_ai_native_part_evaluation_retries_null_initial_content(monkeypatch):
+    plugin = _load_scan_plugin("zgc_ai_native_2026", "test_ai_native_part_null_content_retry")
+    evaluator = plugin.create_commit_evaluator(data_dir="", api_key="test-key", model="test-model")
+    valid_content = (
+        '{"spec_quality":81,"cloud_architecture":82,'
+        '"ai_engineering":83,"mastery_professionalism":84,"reasoning":"fixed"}'
+    )
+
+    monkeypatch.setattr(evaluator, "_complete_chat", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        evaluator._http_client,
+        "post",
+        lambda *_args, **_kwargs: _FakeValidRetryResponse(valid_content),
+    )
+
+    result = evaluator._evaluate_part_with_llm(
+        "commits",
+        "commit context",
+        "https://github.com/example",
+    )
+
+    assert result["spec_quality"] == 81
+    assert result["reasoning"] == "fixed"
+    assert result["_part_name"] == "commits"
+
+
 def test_analyze_group_repositories_bubbles_llm_parse_failure(monkeypatch):
     from types import SimpleNamespace
 

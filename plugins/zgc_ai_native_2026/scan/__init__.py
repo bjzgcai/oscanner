@@ -2413,7 +2413,8 @@ class CommitEvaluatorModerate:
         for m in models_to_try:
             try:
                 content = self._complete_chat(m, prompt, label=f"评估{part_label}")
-                print(f"[Multi-Stage] Part {part_name} response received ({len(content)} chars)")
+                content_length = len(content) if isinstance(content, str) else 0
+                print(f"[Multi-Stage] Part {part_name} response received ({content_length} chars)")
                 result = self._parse_llm_response_with_retry(content, prompt, m)
                 result["_part_name"] = part_name  # Mark which part this result came from
                 return result
@@ -2513,7 +2514,8 @@ class CommitEvaluatorModerate:
                 print(f"[DEBUG] Request config: temperature=0.3, max_tokens=4000")
 
                 content = self._complete_chat(m, prompt, label="生成整体评估")
-                print(f"[LLM] Response received ({len(content)} chars), parsing...")
+                content_length = len(content) if isinstance(content, str) else 0
+                print(f"[LLM] Response received ({content_length} chars), parsing...")
                 result = self._parse_llm_response_with_retry(content, prompt, m)
                 return self._apply_collaboration_subscore(result)
 
