@@ -1,4 +1,6 @@
 import importlib.util
+import threading
+import time
 from pathlib import Path
 
 
@@ -83,7 +85,7 @@ def test_ai_native_chunks_when_full_prompt_exceeds_token_budget(monkeypatch):
             "username": username,
             "total_commits_analyzed": len(commits),
             "chunked": True,
-            "chunking_strategy": "sequential",
+            "chunking_strategy": "parallel",
             "scores": {"reasoning": "split by token budget"},
         },
     )
@@ -96,7 +98,7 @@ def test_ai_native_chunks_when_full_prompt_exceeds_token_budget(monkeypatch):
     )
 
     assert result["chunked"] is True
-    assert result["chunking_strategy"] == "sequential"
+    assert result["chunking_strategy"] == "parallel"
 
 
 def test_ai_native_truncates_single_commit_that_exceeds_token_budget(monkeypatch):
@@ -140,3 +142,85 @@ def test_ai_native_truncates_single_commit_that_exceeds_token_budget(monkeypatch
     assert "warnings" in result
     assert result["input_budget_errors"][0]["type"] == "single_commit_exceeds_budget"
     assert "A single commit exceeds the LLM input budget" in result["input_budget_errors"][0]["message"]
+
+
+def test_ai_native_sizes_chunks_using_exact_final_prompt(monkeypatch):
+    plugin = _load_ai_native_plugin()
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="en-US",
+        max_input_tokens=6500,
+    )
+    monkeypatch.setattr(evaluator, "_estimate_tokens", lambda text: len(text))
+
+    commits = [_commit(idx, patch="+" + ("x" * 3500)) for idx in range(1, 4)]
+    chunks, _ = evaluator._split_commits_for_prompt_budget(commits, "alice", load_files=False)
+
+    assert len(chunks) > 1
+    for idx, chunk in enumerate(chunks, 1):
+        context = evaluator._build_chunked_context(
+            chunk,
+            "alice",
+            chunk_idx=idx,
+            total_chunks=len(chunks),
+            file_contents={},
+            repo_structure=None,
+        )
+        assert evaluator._prompt_token_count(context, "alice", chunk_idx=idx) <= evaluator.max_input_tokens
+
+
+def test_ai_native_evaluates_chunks_independently_in_parallel(monkeypatch):
+    plugin = _load_ai_native_plugin()
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="en-US",
+        max_input_tokens=100_000,
+    )
+    chunks = [[_commit(1)], [_commit(2), _commit(3), _commit(4)]]
+    monkeypatch.setattr(
+        evaluator,
+        "_split_commits_for_prompt_budget",
+        lambda commits, username, load_files: (chunks, []),
+    )
+
+    state_lock = threading.Lock()
+    active = 0
+    max_active = 0
+    seen_contexts = []
+
+    def fake_evaluate(context, username, chunk_idx=None):
+        nonlocal active, max_active
+        with state_lock:
+            active += 1
+            max_active = max(max_active, active)
+            seen_contexts.append(context)
+        time.sleep(0.05)
+        with state_lock:
+            active -= 1
+        score = 20 if chunk_idx == 1 else 80
+        return {
+            "spec_quality": score,
+            "cloud_architecture": score,
+            "ai_engineering": score,
+            "mastery_professionalism": score,
+            "reasoning": f"chunk {chunk_idx} evidence",
+        }
+
+    monkeypatch.setattr(evaluator, "_evaluate_with_llm", fake_evaluate)
+
+    result = evaluator._evaluate_engineer_chunked(
+        [commit for chunk in chunks for commit in chunk],
+        "alice",
+        load_files=False,
+    )
+
+    assert max_active == 2
+    assert all("PREVIOUS EVALUATION" not in context for context in seen_contexts)
+    assert result["chunking_strategy"] == "parallel"
+    assert result["chunks_processed"] == 2
+    assert result["scores"]["spec_quality"] == 65
+    assert result["scores"]["chunks_merged"] == 2
