@@ -20,6 +20,7 @@ from evaluator.paths import get_data_dir
 from evaluator.plugin_registry import PluginLoadError, load_scan_module
 from evaluator.services import resolve_plugin_id
 from evaluator.services.collaboration_evidence import fetch_collaboration_evidence
+from evaluator.services.profile_sampling import sample_profile_commits, candidate_window, annotate_evaluation
 from evaluator.utils import (
     get_author_from_commit,
     get_emails_from_commit,
@@ -466,6 +467,8 @@ def _serialize_commit(
         "date": _commit_date(commit),
         "url": _commit_url(platform, owner, repo, sha, commit),
         "stats": _commit_stats(commit),
+        "files": commit.get("files") or [],
+        "parents": commit.get("parents") or [],
     }
 
 
@@ -1665,6 +1668,29 @@ def _fetch_global_github_evidence(
             for email_commits in commits_by_email.values()
             for commit in email_commits
         ]
+        if resolved_profiles:
+            detail_candidates = candidate_window(github_commits, min(500, max(50, max_commits_per_role * 5)))
+            for commit in detail_candidates:
+                if commit.get("files"):
+                    continue
+                detail_warnings = []
+                detail = _github_commit_detail(
+                    client, owner=commit["owner"], repo=commit["repo"],
+                    sha=commit["sha"], warnings=detail_warnings,
+                )
+                if detail and detail.get("files"):
+                    commit["files"] = detail["files"]
+                    commit["stats"] = _commit_stats(detail)
+                    commit["parents"] = detail.get("parents") or []
+                    commit["detail_incomplete"] = len(detail["files"]) >= 300
+                else:
+                    commit["detail_incomplete"] = True
+                    warnings.append(f"Commit detail unavailable: {commit['repo_full_name']}@{commit['sha']}")
+                if detail_warnings:
+                    # Detail failures reduce confidence without invalidating
+                    # an otherwise complete commit inventory.
+                    warnings.append("Some commit details could not be loaded; evidence is partial.")
+                    break
         evidence = _github_commit_linked_evidence(client, commits=github_commits, warnings=warnings)
         broad_evidence_repos = dict(profile_repo_items)
         if github_repos and not emails:
@@ -1887,6 +1913,9 @@ async def _build_global_github_evaluation_payload(
             "plugin": prepared["plugin_id"],
         })
 
+    sampled_commits, sampling_summary = sample_profile_commits(all_commits, prepared["github_commit_limit"])
+    payload["commits"] = sampled_commits
+    payload["summary"].update(sampling_summary)
     evaluation = await asyncio.to_thread(
         _evaluate_global_github_commits,
         api_key=prepared["api_key"],
@@ -1897,11 +1926,15 @@ async def _build_global_github_evaluation_payload(
         language=prepared["language"],
         meta=prepared["meta"],
         scan_mod=prepared["scan_mod"],
-        all_commits=all_commits,
+        all_commits=sampled_commits,
         collaboration_items=collaboration_items,
         commit_limit=prepared["github_commit_limit"],
     )
     payload["evaluation"] = evaluation
+    if payload.get("warnings"):
+        sampling_summary["evidence_confidence"] = "low"
+        payload["summary"].update(sampling_summary)
+    annotate_evaluation(evaluation, sampling_summary, sampled_commits)
     payload["metadata"] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "source": "github_global_email_evaluation",
@@ -2009,6 +2042,9 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
             "plugin": prepared["plugin_id"],
         })
 
+        sampled_commits, sampling_summary = sample_profile_commits(all_commits, prepared["github_commit_limit"])
+        payload["commits"] = sampled_commits
+        payload["summary"].update(sampling_summary)
         evaluation = await asyncio.to_thread(
             _evaluate_global_github_commits,
             api_key=prepared["api_key"],
@@ -2019,11 +2055,15 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
             language=prepared["language"],
             meta=prepared["meta"],
             scan_mod=prepared["scan_mod"],
-            all_commits=all_commits,
+            all_commits=sampled_commits,
             collaboration_items=collaboration_items,
             commit_limit=prepared["github_commit_limit"],
         )
         payload["evaluation"] = evaluation
+        if payload.get("warnings"):
+            sampling_summary["evidence_confidence"] = "low"
+            payload["summary"].update(sampling_summary)
+        annotate_evaluation(evaluation, sampling_summary, sampled_commits)
         payload["metadata"] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "source": "github_global_email_evaluation",

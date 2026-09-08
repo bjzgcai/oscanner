@@ -19,6 +19,7 @@ from evaluator.plugin_registry import PluginLoadError, load_scan_module
 from evaluator.services import resolve_plugin_id
 from evaluator.services.collaboration_evidence import fetch_collaboration_evidence
 from evaluator.services.evaluation_service import build_evidence_links
+from evaluator.services.profile_sampling import sample_profile_commits, annotate_evaluation
 from evaluator.services.extraction_service import extract_gitee_data, sync_gitee_data_incremental
 from evaluator.utils import (
     get_author_from_commit,
@@ -527,8 +528,7 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
         })
 
     all_commits = _dedupe_commits(all_commits)
-    all_commits.sort(key=_sort_key, reverse=True)
-    selected_commits = all_commits[:commit_limit]
+    selected_commits, sampling_summary = sample_profile_commits(all_commits, commit_limit)
     collaboration_items.sort(key=_sort_key, reverse=True)
 
     if not selected_commits:
@@ -550,6 +550,9 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
         collaboration_items=collaboration_items,
     )
 
+    if warnings:
+        sampling_summary["evidence_confidence"] = "low"
+    annotate_evaluation(evaluation, sampling_summary, selected_commits)
     matched_repos = [
         item for item in sync_results
         if item.get("success") and item.get("available_commit_count", 0) > 0
@@ -568,6 +571,7 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
             "available_commit_count": len(all_commits),
             "collaboration_evidence_count": len(collaboration_items),
             "commit_limit": commit_limit,
+            **sampling_summary,
         },
         "commits": selected_commits,
         "collaboration_evidence": collaboration_items,
@@ -576,7 +580,7 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
         "limitations": [
             "Gitee profile mode evaluates repositories returned by /api/v5/users/{username}/repos?type=all.",
             "Non-fork profile repositories use broad attribution; fork repositories remain scanned but contribute only commits whose author or committer email exactly matches a submitted email.",
-            f"Evaluation uses the latest {commit_limit} attributed commits sorted by commit author/committer date.",
+            "Evaluation uses quality-aware samples across repositories and commit categories.",
         ],
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),

@@ -2619,6 +2619,15 @@ class CommitEvaluatorModerate:
 
     def _build_evaluation_prompt(self, context: str, username: str, chunk_idx: Optional[int] = None) -> str:
 
+        context += (
+            "\nEVIDENCE COVERAGE POLICY: Missing file paths, diffs, tests or deployment artifacts "
+            "in a sample mean insufficient evidence, not absence of personal ability. "
+            "Documentation-only commits cannot establish L1 engineering ability. "
+            "Explicitly mark unsupported dimensions as insufficient evidence in reasoning. "
+            "Any required numeric score describes observed evidence only, not a definitive personal level. "
+            "Do not infer file contents or engineering quality from commit titles. "
+            "Distinguish repository ownership from verified individual authorship."
+        )
         is_chinese = self.language == "zh-CN"
 
         # Build previous checkpoint context if available

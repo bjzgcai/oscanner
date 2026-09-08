@@ -358,6 +358,7 @@ def test_github_repository_all_commits_fetches_repo_without_email_filter(monkeyp
 def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path, monkeypatch):
     sha = "2" * 40
     detail_commit = {
+        "files": [{"filename": "src/main.py", "patch": "+print(1)"}],
         "sha": sha,
         "html_url": f"https://github.com/owner/repo/commit/{sha}",
         "commit": {
@@ -367,6 +368,11 @@ def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path,
         },
     }
     fetched_urls = []
+    detail_calls = []
+
+    def fetch_detail(*args, **kwargs):
+        detail_calls.append(kwargs["sha"])
+        return detail_commit
 
     def fake_get_json(client, url, *, warnings, params=None):
         fetched_urls.append(url)
@@ -375,7 +381,7 @@ def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path,
         if url.endswith("/users/owner/repos"):
             return [{"full_name": "owner/repo"}]
         if url.endswith("/repos/owner/repo/commits") and params and params.get("page") == 1:
-            return [detail_commit]
+            return [{key: value for key, value in detail_commit.items() if key != "files"}]
         if url.endswith("/repos/owner/repo/commits"):
             return []
         return []
@@ -383,7 +389,7 @@ def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path,
     monkeypatch.setattr(github, "get_data_dir", lambda: tmp_path)
     monkeypatch.setattr(github, "_github_rate_limit_preflight", lambda *args, **kwargs: True)
     monkeypatch.setattr(github, "_github_get_json", fake_get_json)
-    monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: detail_commit)
+    monkeypatch.setattr(github, "_github_commit_detail", fetch_detail)
     monkeypatch.setattr(github, "_collaboration_items_for_repo", lambda **kwargs: ([{
         "source": "pr_discussions",
         "label": "PR #1",
@@ -407,6 +413,8 @@ def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path,
 
     assert warnings == []
     assert "https://api.github.com/users/owner/repos" in fetched_urls
+    assert detail_calls == [sha]
+    assert commits_by_identity["github:owner"][0]["files"][0]["patch"] == "+print(1)"
     assert list(commits_by_identity) == ["github:owner"]
     assert commits_by_identity["github:owner"][0]["sha"] == sha
     assert commits_by_identity["github:owner"][0]["matched_identity"] == "github:owner"
@@ -418,6 +426,7 @@ def test_fetch_global_github_evidence_expands_owner_url_without_emails(tmp_path,
 def test_fetch_global_github_profile_keeps_all_commits_when_email_is_supplied(tmp_path, monkeypatch):
     sha = "3" * 40
     detail_commit = {
+        "files": [{"filename": "src/main.py", "patch": "+print(1)"}],
         "sha": sha,
         "html_url": f"https://github.com/owner/repo/commit/{sha}",
         "commit": {
