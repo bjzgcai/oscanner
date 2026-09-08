@@ -203,18 +203,21 @@ class CommitEvaluatorModerate:
     ):
         self.api_key = (
             api_key
+            or os.getenv("INTERNAL_LLM_API_KEY")
             or os.getenv("OSCANNER_LLM_API_KEY")
             or os.getenv("OPENAI_API_KEY")
             or os.getenv("OPEN_ROUTER_KEY")
         )
         self.api_base_url = (
             api_base_url
+            or os.getenv("INTERNAL_LLM_BASE_URL")
             or os.getenv("OSCANNER_LLM_BASE_URL")
             or os.getenv("OPENAI_BASE_URL")
             or "https://openrouter.ai/api/v1"
         )
         self.api_url = (
             chat_completions_url
+            or os.getenv("INTERNAL_LLM_CHAT_COMPLETIONS_URL")
             or os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL")
             or f"{self.api_base_url.rstrip('/')}/chat/completions"
         )
@@ -228,7 +231,7 @@ class CommitEvaluatorModerate:
                 max_input_tokens = 190_000
         self.max_input_tokens = int(max_input_tokens)
         self.data_dir = Path(data_dir) if data_dir else None
-        self.model = model or os.getenv("OSCANNER_LLM_MODEL") or "deepseek/deepseek-v4-pro"
+        self.model = model or os.getenv("INTERNAL_LLM_QUESTION_MODEL") or os.getenv("OSCANNER_LLM_MODEL") or "deepseek/deepseek-v4-pro"
         self.fallback_models = fallback_models
         self.rubric_text = (rubric_text or "").strip()
         self.language = language
