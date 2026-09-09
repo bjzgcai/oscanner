@@ -14,7 +14,8 @@ KINDS = {"support", "limitation", "counterevidence"}
 
 
 def prose(value):
-    if not isinstance(value, str) or not value.strip() or RATING.search(value):
+    checked = re.sub(r"\bL[12]\s*(?:[- ]?(?:norm|loss|regulari[sz](?:ation|er))|范数|正则化|损失)", "technical term", value, flags=re.I) if isinstance(value, str) else ""
+    if not isinstance(value, str) or not value.strip() or RATING.search(checked):
         raise ValueError("Use nonempty qualitative prose without numerical scores or level claims")
     return value.strip()
 
@@ -165,7 +166,7 @@ class EvidenceAssessmentMixin:
             cleaned.append({"dimension": fact["dimension"], "kind": fact["kind"], "text": prose(fact.get("text")), "refs": sorted(set(refs))})
         return cleaned
 
-    def _extract_evidence_batch(self, batch):
+    def _extract_evidence_batch(self, batch, depth=0):
         instruction = (
             "Extract engineering evidence, NOT capability scores. Return JSON {\"facts\":[{\"dimension\":key,"
             "\"kind\":\"support|limitation|counterevidence\",\"text\":\"qualitative observation\",\"refs\":[\"source id\"]}]}. "
@@ -176,7 +177,15 @@ class EvidenceAssessmentMixin:
             "Keep observations concise; consolidate similar evidence with all relevant refs. No scores or L1-L5 claims. "
             f"Write observations in {self.language}."
         )
-        return self._evidence_json(instruction, batch, lambda value: self._validate_facts(value, {s['id'] for s in batch}), "Extract evidence")
+        try:
+            return self._evidence_json(instruction, batch, lambda value: self._validate_facts(value, {s['id'] for s in batch}), "Extract evidence")
+        except RuntimeError:
+            if depth >= 3 or len(batch) < 2:
+                raise
+            middle = len(batch) // 2
+            print(f"[Evidence] Retrying extraction as smaller batches (depth {depth + 1})", flush=True)
+            return (self._extract_evidence_batch(batch[:middle], depth + 1)
+                    + self._extract_evidence_batch(batch[middle:], depth + 1))
 
     @staticmethod
     def _dedupe_facts(facts):
