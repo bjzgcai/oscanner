@@ -1106,7 +1106,7 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
             "max_tokens": 4000 if emit_tokens else 12000,
         }
 
-        if not self.progress_callback:
+        if not self.progress_callback and emit_tokens:
             resp = self._http_client.post(
                 self.api_url,
                 headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},

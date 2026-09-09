@@ -68,8 +68,8 @@ class EvidenceAssessmentMixin:
                     return validated
                 except (ValueError, KeyError, TypeError) as exc:
                     failure = str(exc)
-                except Exception:
-                    failure = "Model request failed"
+                except Exception as exc:
+                    failure = f"Model request failed ({type(exc).__name__})"
         raise RuntimeError(f"{label} failed after retries: {failure}")
 
     def _evidence_sources(self, commits, load_files=False):

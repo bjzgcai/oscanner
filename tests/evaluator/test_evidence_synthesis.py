@@ -73,6 +73,26 @@ def test_invalid_model_response_fails_without_fallback_scores(monkeypatch):
         ev.synthesize_evidence([], [])
 
 
+def test_internal_evidence_uses_stream_transport_without_emitting_tokens(monkeypatch):
+    ev = evaluator()
+    calls = []
+    class Response:
+        is_success = True
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def iter_lines(self):
+            yield 'data: ' + json.dumps({'choices': [{'delta': {'content': '{"facts":[]}'}}]})
+            yield 'data: [DONE]'
+    def stream(*args, **kwargs):
+        calls.append(kwargs['json'])
+        return Response()
+    monkeypatch.setattr(ev._http_client, 'stream', stream)
+    assert ev._complete_chat('test', 'evidence', label='Extract', emit_tokens=False) == '{"facts":[]}'
+    assert calls[0]['stream'] is True
+
+
 def test_intermediate_ratings_and_unknown_references_rejected():
     ev = evaluator()
     for text, refs in [('Score: 50/100', ['x']), ('Looks like L4', ['x']), ('Visible tests', ['unknown'])]:
