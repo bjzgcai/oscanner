@@ -91,6 +91,7 @@ def test_internal_evidence_uses_stream_transport_without_emitting_tokens(monkeyp
     monkeypatch.setattr(ev._http_client, 'stream', stream)
     assert ev._complete_chat('test', 'evidence', label='Extract', emit_tokens=False) == '{"facts":[]}'
     assert calls[0]['stream'] is True
+    assert calls[0]['response_format'] == {'type': 'json_object'}
 
 
 def test_intermediate_ratings_and_unknown_references_rejected():

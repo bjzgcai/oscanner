@@ -1105,6 +1105,8 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
             "temperature": 0.3,
             "max_tokens": 4000 if emit_tokens else 12000,
         }
+        if not emit_tokens:
+            payload["response_format"] = {"type": "json_object"}
 
         if not self.progress_callback and emit_tokens:
             resp = self._http_client.post(
