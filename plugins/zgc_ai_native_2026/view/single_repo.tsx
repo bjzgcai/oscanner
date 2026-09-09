@@ -12,18 +12,11 @@ import {
 } from 'chart.js';
 import type { PluginSingleRepoViewProps } from '../../_shared/view/types';
 import ReasoningMarkdown from './ReasoningMarkdown';
+import { averageScore, canonicalScores, DIMENSION_KEYS, levelFromScore } from './capabilityScores';
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-function levelFromScore(score: number): string {
-  if (score >= 85) return 'L5';
-  if (score >= 70) return 'L4';
-  if (score >= 50) return 'L3';
-  if (score >= 30) return 'L2';
-  return 'L1';
-}
-
-function levelColor(level: string): string {
+function levelColor(level: string | null): string {
   if (level === 'L5') return 'purple';
   if (level === 'L4') return 'geekblue';
   if (level === 'L3') return 'green';
@@ -68,9 +61,8 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
     );
   }
   const s = evaluation?.scores || {};
-  const keys = ['spec_quality', 'cloud_architecture', 'ai_engineering', 'mastery_professionalism'];
-  const avg =
-    keys.reduce((acc, k) => acc + (typeof s[k] === 'number' ? (s[k] as number) : 0), 0) / (keys.length || 1);
+  const scores = canonicalScores(s);
+  const avg = averageScore(scores);
   const lvl = levelFromScore(avg);
   const reasoning = typeof s.reasoning === 'string' ? (s.reasoning as string) : '';
 
@@ -82,12 +74,7 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
     { key: 'mastery_professionalism', label: t('plugin.zgc_ai_native_2026.dim.mastery_professionalism') },
   ];
 
-  const scoreValue = (key: string) => {
-    const raw = s[key];
-    const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : 0;
-    if (!Number.isFinite(n)) return 0;
-    return Math.max(0, Math.min(100, n));
-  };
+  const scoreValue = (key: string) => scores[key];
 
   const chartData = {
     labels: dims.map((d) => d.label),
@@ -138,7 +125,7 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
         </h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Tag color={levelColor(lvl)}>
-            {lvl} ({t('plugin.zgc_ai_native_2026.single.tag.avg')} {avg.toFixed(1)})
+            {lvl || 'Incomplete'} ({t('plugin.zgc_ai_native_2026.single.tag.avg')} {avg?.toFixed(1) ?? 'N/A'})
           </Tag>
           <div style={{ color: '#9CA3AF', fontSize: 12 }}>
             <span style={{ color: '#93C5FD', fontWeight: 800, marginRight: 10 }}>
@@ -159,12 +146,12 @@ export default function PluginView(props: PluginSingleRepoViewProps) {
           {t('plugin.zgc_ai_native_2026.single.section.mapping')}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {keys.map((k) => {
-            const v = typeof s[k] === 'number' ? (s[k] as number) : 0;
+          {DIMENSION_KEYS.map((k) => {
+            const v = scores[k];
             const lv = levelFromScore(v);
             return (
               <Tag key={k} color={levelColor(lv)}>
-                {k}: {v} → {lv}
+                {k}: {v ?? 'N/A'} → {lv ?? 'N/A'}
               </Tag>
             );
           })}

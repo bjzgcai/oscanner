@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Descriptions, Space, Tag } from 'antd';
 import type { PluginTrajectoryCheckpointViewProps } from '../../_shared/view/types';
 import ReasoningMarkdown from './ReasoningMarkdown';
+import { canonicalScores, DIMENSION_KEYS, levelFromScore } from './capabilityScores';
 
 export default function PluginTrajectoryCheckpointView(props: PluginTrajectoryCheckpointViewProps) {
   const { checkpoint, previousCheckpoint, t: tFromProps } = props;
@@ -13,18 +14,19 @@ export default function PluginTrajectoryCheckpointView(props: PluginTrajectoryCh
   
   const { evaluation } = checkpoint;
   const scores = evaluation.scores;
+  const dimensions = canonicalScores(scores);
   const repoUrl = Array.isArray(checkpoint.repos_analyzed) ? checkpoint.repos_analyzed[0] : undefined;
 
   // Get all dimension keys (excluding reasoning)
-  const dimensionKeys = Object.keys(scores).filter(
-    (key) => key !== 'reasoning' && scores[key] !== null && scores[key] !== undefined
-  );
+  const dimensionKeys = DIMENSION_KEYS;
 
   // Get score color based on value
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'green';
-    if (score >= 60) return 'blue';
-    if (score >= 40) return 'orange';
+  const getScoreColor = (score: number | null) => {
+    if (score === null) return 'default';
+    if (score >= 85) return 'purple';
+    if (score >= 70) return 'green';
+    if (score >= 50) return 'blue';
+    if (score >= 30) return 'orange';
     return 'red';
   };
 
@@ -45,14 +47,14 @@ export default function PluginTrajectoryCheckpointView(props: PluginTrajectoryCh
         <h4 style={{ marginBottom: '12px' }}>{t('checkpoint.evaluation_scores')}</h4>
         <Descriptions bordered column={2} size="small">
           {dimensionKeys.map((key) => {
-            const score = scores[key] as number;
+            const score = dimensions[key];
             return (
               <Descriptions.Item
                 key={key}
                 label={getDimensionLabel(key)}
               >
                 <Tag color={getScoreColor(score)} style={{ fontSize: '14px', padding: '4px 12px' }}>
-                  {score}/100
+                  {score === null ? 'N/A' : `${score}/100 (${levelFromScore(score)})`}
                 </Tag>
               </Descriptions.Item>
             );

@@ -3,6 +3,7 @@ import { Alert, Card, Descriptions, Empty, Radio, Space, Spin } from 'antd';
 import { BarChartOutlined, RadarChartOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import type { RadioChangeEvent } from 'antd';
+import { canonicalScores, DIMENSION_KEYS, numericScore } from '../../zgc_ai_native_2026/view/capabilityScores';
 
 type ChartType = 'radar' | 'bar';
 
@@ -39,18 +40,20 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
       ? ['#7C3AED', '#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE', '#5B21B6']
       : ['#0891B2', '#1E40AF', '#059669', '#D97706', '#DC2626', '#6D28D9'];
 
-  const dimensionKeys = data.dimension_keys?.length
+  const canonical = data.plugin_used === 'zgc_ai_native_2026' || theme === 'rubric';
+  const dimensionKeys = canonical ? DIMENSION_KEYS : data.dimension_keys?.length
     ? data.dimension_keys
     : Object.keys(data.comparisons[0]?.scores || {});
   const dimensionNames = data.dimension_names?.length === dimensionKeys.length
     ? data.dimension_names
     : dimensionKeys.map((key) => key.replace(/_/g, ' '));
   const chartLabels = dimensionNames.map((name) => String(name).replace(/\s+/g, '\n'));
+  const scoreFor = (scores: Record<string, unknown>, key: string) => canonical ? canonicalScores(scores)[key] : numericScore(scores[key]);
 
   const getRadarOptions = () => {
     const seriesData = data.comparisons.map((comp, idx) => ({
       name: comp.repo,
-      value: dimensionKeys.map((key) => Number(comp.scores[key] || 0)),
+      value: dimensionKeys.map((key) => scoreFor(comp.scores, key)),
       itemStyle: { color: colors[idx % colors.length] },
     }));
 
@@ -93,7 +96,7 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
     const series = data.comparisons.map((comp, idx) => ({
       name: comp.repo,
       type: 'bar',
-      data: dimensionKeys.map((key) => Number(comp.scores[key] || 0)),
+      data: dimensionKeys.map((key) => scoreFor(comp.scores, key)),
       itemStyle: { color: colors[idx % colors.length] },
     }));
 
@@ -189,7 +192,7 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
           >
             {dimensionKeys.map((k) => (
               <Descriptions.Item key={k} label={k}>
-                {Number((data.aggregate.average_scores as any)[k] || 0).toFixed(1)}
+                {scoreFor(data.aggregate.average_scores, k)?.toFixed(1) ?? 'N/A'}
               </Descriptions.Item>
             ))}
           </Descriptions>
@@ -215,4 +218,3 @@ export default function ContributorComparisonBase(props: ContributorComparisonBa
     </div>
   );
 }
-

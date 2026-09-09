@@ -2,14 +2,7 @@ import React from 'react';
 import { Card, Tag } from 'antd';
 import ContributorComparisonBase from '../../_shared/view/ContributorComparisonBase';
 import type { PluginMultiRepoCompareViewProps } from '../../_shared/view/types';
-
-function levelFromScore(score: number): string {
-  if (score >= 85) return 'L5';
-  if (score >= 70) return 'L4';
-  if (score >= 50) return 'L3';
-  if (score >= 30) return 'L2';
-  return 'L1';
-}
+import { averageScore, levelFromScore } from './capabilityScores';
 
 export default function CompareView(props: PluginMultiRepoCompareViewProps) {
   const { data, loading, error, t: tFromProps } = props;
@@ -21,12 +14,7 @@ export default function CompareView(props: PluginMultiRepoCompareViewProps) {
   const pluginVersion = data?.comparisons?.[0]?.plugin_version || '';
 
   const avgScores = (data?.aggregate?.average_scores || {}) as Record<string, unknown>;
-  const avg =
-    (Number(avgScores.spec_quality || 0) +
-      Number(avgScores.cloud_architecture || 0) +
-      Number(avgScores.ai_engineering || 0) +
-      Number(avgScores.mastery_professionalism || 0)) /
-    4;
+  const avg = averageScore(avgScores);
   const lvl = levelFromScore(avg);
 
   return (
@@ -50,7 +38,7 @@ export default function CompareView(props: PluginMultiRepoCompareViewProps) {
             {t('plugin.zgc_ai_native_2026.compare.tag.active')}
           </Tag>
           <Tag color="geekblue" style={{ fontWeight: 900 }}>
-            {lvl} ({t('plugin.zgc_ai_native_2026.compare.tag.avg')} {Number.isFinite(avg) ? avg.toFixed(1) : '0.0'})
+            {lvl || 'Incomplete'} ({t('plugin.zgc_ai_native_2026.compare.tag.avg')} {avg?.toFixed(1) ?? 'N/A'})
           </Tag>
           <Tag color="blue" style={{ fontWeight: 900 }}>
             plugin={pluginUsed}
@@ -65,5 +53,4 @@ export default function CompareView(props: PluginMultiRepoCompareViewProps) {
     </Card>
   );
 }
-
 

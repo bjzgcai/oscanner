@@ -4,6 +4,7 @@ import { Card } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { useI18n } from './I18nContext';
 import { TrajectoryData, TrajectoryCheckpoint } from '@/types/trajectory';
+import { trajectoryScores } from '../../../plugins/zgc_ai_native_2026/view/capabilityScores';
 
 interface TrajectoryChartsProps {
   trajectory: TrajectoryData;
@@ -22,25 +23,8 @@ export default function TrajectoryCharts({ trajectory }: TrajectoryChartsProps) 
   // Get plugin ID from the first checkpoint
   const pluginId = firstCheckpoint.evaluation.plugin;
 
-  // Extract dimension keys dynamically from scores (excluding 'reasoning')
-  const getDimensionKeys = (scores: any): string[] => {
-    return Object.keys(scores).filter(
-      (key) => key !== 'reasoning' && scores[key] !== null && scores[key] !== undefined
-    );
-  };
-
-  // Get all dimension keys from first checkpoint
-  const dimensionKeys = getDimensionKeys(firstCheckpoint.evaluation.scores);
-
-  // Extract scores from checkpoints (returns object with dimension keys)
-  const getDimensionScores = (checkpoint: TrajectoryCheckpoint) => {
-    const scores: any = checkpoint.evaluation.scores;
-    const result: Record<string, number> = {};
-    dimensionKeys.forEach((key) => {
-      result[key] = scores[key] ?? 0;
-    });
-    return result;
-  };
+  const getDimensionScores = (checkpoint: TrajectoryCheckpoint) => trajectoryScores(checkpoint.evaluation.scores, pluginId);
+  const dimensionKeys = Object.keys(getDimensionScores(firstCheckpoint));
 
   // Get dimension label with plugin-specific translation
   const getDimensionLabel = (dimensionKey: string): string => {
