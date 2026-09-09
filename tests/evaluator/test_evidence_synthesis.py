@@ -92,6 +92,10 @@ def test_internal_evidence_uses_stream_transport_without_emitting_tokens(monkeyp
     assert ev._complete_chat('test', 'evidence', label='Extract', emit_tokens=False) == '{"facts":[]}'
     assert calls[0]['stream'] is True
     assert calls[0]['response_format'] == {'type': 'json_object'}
+    ev._complete_chat('glm', 'evidence', label='Extract evidence', emit_tokens=False)
+    assert calls[-1]['thinking'] == {'type': 'disabled'}
+    ev._complete_chat('glm', 'evidence', label='Final evidence assessment', emit_tokens=False)
+    assert 'thinking' not in calls[-1]
 
 
 def test_intermediate_ratings_and_unknown_references_rejected():

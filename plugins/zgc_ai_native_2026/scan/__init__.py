@@ -1107,6 +1107,9 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         }
         if not emit_tokens:
             payload["response_format"] = {"type": "json_object"}
+            if label == "Extract evidence" and model.lower().startswith("glm"):
+                # Extraction records source facts; retain reasoning for synthesis.
+                payload["thinking"] = {"type": "disabled"}
 
         if not self.progress_callback and emit_tokens:
             resp = self._http_client.post(
