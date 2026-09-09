@@ -44,6 +44,7 @@ from evaluator.services import (
 )
 from evaluator.services.provider_quota_guard import install_provider_quota_guard
 from evaluator.routes import plugins, config, data, evaluation, batch, benchmark, trajectory, runner_proxy, checkers, github, gitee
+from evaluator.routes import synthesis
 
 # Load environment variables
 #
@@ -120,6 +121,7 @@ app.include_router(runner_proxy.router, tags=["runner"])
 app.include_router(checkers.router, tags=["checkers"])
 app.include_router(github.router, tags=["github"])
 app.include_router(gitee.router, tags=["gitee"])
+app.include_router(synthesis.router, tags=["evaluation"])
 
 
 # Optional: serve bundled dashboard static files (exported Next.js build) if present.

@@ -101,47 +101,22 @@ def test_ai_native_chunks_when_full_prompt_exceeds_token_budget(monkeypatch):
     assert result["chunking_strategy"] == "parallel"
 
 
-def test_ai_native_truncates_single_commit_that_exceeds_token_budget(monkeypatch):
-    plugin = _load_ai_native_plugin()
-    evaluator = plugin.create_commit_evaluator(
-        data_dir="",
-        api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
-        language="en-US",
-        max_input_tokens=6000,
-    )
-    monkeypatch.setattr(evaluator, "_estimate_tokens", lambda text: len(text))
-
-    seen_contexts = []
-
-    def fake_evaluate(context, username, chunk_idx=None):
-        seen_contexts.append(context)
-        assert "+xxxxxxxxxx" in context
-        assert "truncated to fit LLM input budget" in context
-        assert len(evaluator._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)) <= evaluator.max_input_tokens
-        return {
-            "spec_quality": 70,
-            "cloud_architecture": 70,
-            "ai_engineering": 70,
-            "mastery_professionalism": 70,
-            "reasoning": "evaluated from truncated input",
-        }
-
-    monkeypatch.setattr(evaluator, "_evaluate_with_llm", fake_evaluate)
-
-    result = evaluator.evaluate_engineer(
-        commits=[_commit(1, patch="+" + ("x" * 20_000))],
-        username="alice",
-        max_commits=None,
-        load_files=False,
-    )
-
-    assert seen_contexts
-    assert result["scores"]["reasoning"] == "evaluated from truncated input"
-    assert result["input_truncated"] is True
-    assert "warnings" in result
-    assert result["input_budget_errors"][0]["type"] == "single_commit_exceeds_budget"
-    assert "A single commit exceeds the LLM input budget" in result["input_budget_errors"][0]["message"]
+def test_ai_native_splits_single_commit_without_discarding_input(monkeypatch):
+    evaluator = _load_ai_native_plugin().create_commit_evaluator(
+        data_dir="", api_key="test-key", max_input_tokens=6000)
+    seen = []
+    def extract(batch):
+        seen.extend(batch)
+        return []
+    monkeypatch.setattr(evaluator, "_extract_evidence_batch", extract)
+    monkeypatch.setattr(evaluator, "synthesize_evidence", lambda sources, facts: {"scores": {"reasoning": "final"}})
+    result = evaluator._evaluate_engineer_chunked(
+        [_commit(1, patch="+" + ("x" * 40000))], "alice", load_files=False)
+    assert len(seen) > 2
+    assert not result.get("input_truncated")
+    fragments = [source for source in seen if source.get("path") == "file_1.py"]
+    fragments.sort(key=lambda source: source.get("fragment", 0))
+    assert sum(source["content"].count("x") for source in fragments) == 40000
 
 
 def test_ai_native_sizes_chunks_using_exact_final_prompt(monkeypatch):
@@ -171,56 +146,32 @@ def test_ai_native_sizes_chunks_using_exact_final_prompt(monkeypatch):
         assert evaluator._prompt_token_count(context, "alice", chunk_idx=idx) <= evaluator.max_input_tokens
 
 
-def test_ai_native_evaluates_chunks_independently_in_parallel(monkeypatch):
-    plugin = _load_ai_native_plugin()
-    evaluator = plugin.create_commit_evaluator(
-        data_dir="",
-        api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
-        language="en-US",
-        max_input_tokens=100_000,
-    )
-    chunks = [[_commit(1)], [_commit(2), _commit(3), _commit(4)]]
-    monkeypatch.setattr(
-        evaluator,
-        "_split_commits_for_prompt_budget",
-        lambda commits, username, load_files: (chunks, []),
-    )
-
-    state_lock = threading.Lock()
+def test_ai_native_extracts_chunks_in_parallel_and_scores_once(monkeypatch):
+    evaluator = _load_ai_native_plugin().create_commit_evaluator(
+        data_dir="", api_key="test-key", max_input_tokens=100000)
+    monkeypatch.setattr(evaluator, "_source_batches", lambda sources: [sources[:2], sources[2:]])
     active = 0
-    max_active = 0
-    seen_contexts = []
-
-    def fake_evaluate(context, username, chunk_idx=None):
-        nonlocal active, max_active
-        with state_lock:
+    maximum = 0
+    lock = threading.Lock()
+    synthesis_calls = []
+    def extract(batch):
+        nonlocal active, maximum
+        with lock:
             active += 1
-            max_active = max(max_active, active)
-            seen_contexts.append(context)
+            maximum = max(maximum, active)
         time.sleep(0.05)
-        with state_lock:
+        with lock:
             active -= 1
-        score = 20 if chunk_idx == 1 else 80
-        return {
-            "spec_quality": score,
-            "cloud_architecture": score,
-            "ai_engineering": score,
-            "mastery_professionalism": score,
-            "reasoning": f"chunk {chunk_idx} evidence",
-        }
-
-    monkeypatch.setattr(evaluator, "_evaluate_with_llm", fake_evaluate)
-
-    result = evaluator._evaluate_engineer_chunked(
-        [commit for chunk in chunks for commit in chunk],
-        "alice",
-        load_files=False,
-    )
-
-    assert max_active == 2
-    assert all("PREVIOUS EVALUATION" not in context for context in seen_contexts)
-    assert result["chunking_strategy"] == "parallel"
-    assert result["chunks_processed"] == 2
-    assert result["scores"]["spec_quality"] == 65
-    assert result["scores"]["chunks_merged"] == 2
+        return [{"dimension": "spec_quality", "kind": "support", "text": "Visible tests", "refs": [batch[0]["id"]]}]
+    def synthesize(sources, facts):
+        synthesis_calls.append(facts)
+        return {"scores": {"spec_quality": 57, "reasoning": "final"}}
+    monkeypatch.setattr(evaluator, "_extract_evidence_batch", extract)
+    monkeypatch.setattr(evaluator, "synthesize_evidence", synthesize)
+    result = evaluator._evaluate_engineer_chunked([_commit(i) for i in range(1, 5)], "alice", load_files=False)
+    assert maximum == 2
+    assert len(synthesis_calls) == 1
+    assert len(synthesis_calls[0]) == 2
+    assert result["scores"]["spec_quality"] == 57
+    assert "chunks_merged" not in result["scores"]
+    assert result["chunking_strategy"] == "evidence_synthesis"

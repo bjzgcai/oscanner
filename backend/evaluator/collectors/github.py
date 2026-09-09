@@ -253,6 +253,17 @@ class GitHubCollector:
 
             commit_data = response.json()
 
+            next_url = getattr(response, 'links', {}).get('next', {}).get('url')
+            while next_url:
+                if not next_url.startswith(api_url + '?'):
+                    raise RuntimeError("Unexpected commit pagination URL")
+                response = requests.get(next_url, headers=self._get_headers(), timeout=30)
+                response.raise_for_status()
+                commit_data.setdefault('files', []).extend(response.json().get('files', []))
+                next_url = getattr(response, 'links', {}).get('next', {}).get('url')
+            if len(commit_data.get('files', [])) >= 3000:
+                raise RuntimeError("GitHub commit exceeds the complete file listing limit")
+
             return commit_data
 
         except requests.exceptions.RequestException as e:

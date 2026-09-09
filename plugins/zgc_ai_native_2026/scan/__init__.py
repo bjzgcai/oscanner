@@ -21,6 +21,7 @@ import json
 import math
 import os
 import re
+import runpy
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -34,6 +35,7 @@ def _load_rubric_summary() -> str:
 
 
 _RUBRIC_SUMMARY = _load_rubric_summary()
+EvidenceAssessmentMixin = runpy.run_path(str(Path(__file__).with_name("evidence.py")))["EvidenceAssessmentMixin"]
 
 
 def _commit_identity_values(identity: Any) -> List[str]:
@@ -172,7 +174,7 @@ def create_commit_evaluator(
     )
 
 
-class CommitEvaluatorModerate:
+class CommitEvaluatorModerate(EvidenceAssessmentMixin):
     """
     Self-contained evaluator for the AI-Native 2026 rubric.
 
@@ -333,7 +335,7 @@ class CommitEvaluatorModerate:
     @staticmethod
     def _commit_message(commit: Dict[str, Any]) -> str:
         raw = commit.get("message") or commit.get("commit", {}).get("message") or ""
-        return str(raw).splitlines()[0].strip()
+        return str(raw).splitlines()[0].strip() if str(raw).splitlines() else ""
 
     @staticmethod
     def _commit_files(commit: Dict[str, Any], limit: int = 6) -> List[str]:
@@ -1096,12 +1098,12 @@ class CommitEvaluatorModerate:
 
         return summary
 
-    def _complete_chat(self, model: str, prompt: str, *, label: str) -> str:
+    def _complete_chat(self, model: str, prompt: str, *, label: str, emit_tokens: bool = True) -> str:
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.3,
-            "max_tokens": 4000,
+            "max_tokens": 4000 if emit_tokens else 12000,
         }
 
         if not self.progress_callback:
@@ -1144,7 +1146,8 @@ class CommitEvaluatorModerate:
                 if delta is None:
                     continue
                 content_parts.append(delta)
-                self._emit_progress("token", {"content": delta, "label": label})
+                if emit_tokens:
+                    self._emit_progress("token", {"content": delta, "label": label})
 
         content = "".join(content_parts)
         self._record_chat_token_usage(prompt=prompt, content=content, provider_usage=provider_usage)
@@ -1197,56 +1200,16 @@ class CommitEvaluatorModerate:
             load_files=load_files,
             include_all_repo_snapshot=True,
         ):
-            return self._evaluate_engineer_chunked(analyzed_commits, repo_label, load_files=load_files)
+            result = self._evaluate_engineer_chunked(analyzed_commits, repo_label, load_files=load_files)
+            result["scope"] = "full_repo"
+            return result
         return self._evaluate_repository_standard(analyzed_commits, repo_label, load_files=load_files)
 
     def _evaluate_repository_standard(self, commits: List[Dict[str, Any]], repo_label: str, *, load_files: bool) -> Dict[str, Any]:
-        self._reset_token_usage()
-        file_contents: Dict[str, str] = {}
-        repo_structure: Optional[Dict[str, Any]] = None
-        if load_files and self.data_dir:
-            file_contents = self._load_context_files(commits, include_all_repo_snapshot=True)
-            repo_structure = self._load_repo_structure()
-
-        context_parts, checker_raw_analysis = self._build_context_parts(
-            commits,
-            repo_label,
-            file_contents=file_contents,
-            repo_structure=repo_structure,
-            commit_limit=None,
-        )
-
-        partial_results: List[Dict[str, Any]] = []
-        for part_name, part_context in context_parts.items():
-            if part_context:
-                part_result = self._evaluate_part_with_llm(part_name, part_context, repo_label, chunk_idx=None)
-                partial_results.append(part_result)
-
-        if partial_results:
-            scores = self._merge_partial_evaluations(partial_results, repo_label, checker_raw_analysis=checker_raw_analysis)
-        else:
-            context = self._build_commit_context(
-                commits,
-                repo_label,
-                file_contents=file_contents,
-                repo_structure=repo_structure,
-                commit_limit=None,
-            )
-            scores = self._evaluate_with_llm(context, repo_label)
-
-        result = {
-            "username": repo_label,
-            "total_commits_analyzed": len(commits),
-            "files_loaded": len(file_contents),
-            "mode": "moderate",
-            "scores": scores,
-            "commits_summary": self._summarize_commits(commits),
-            "scope": "full_repo",
-        }
-        token_usage = self._summarize_token_usage()
-        if token_usage:
-            result["token_usage"] = token_usage
+        result = self._evaluate_evidence(commits, repo_label, load_files=load_files)
+        result["scope"] = "full_repo"
         return result
+
 
     def _is_commit_by_author(self, commit: Dict[str, Any], username: str) -> bool:
         aliases = [alias.strip().lower() for alias in username.split(',') if alias.strip()]
@@ -1293,79 +1256,18 @@ class CommitEvaluatorModerate:
         return False
 
     def _evaluate_engineer_standard(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
-        self._reset_token_usage()
-        file_contents: Dict[str, str] = {}
-        repo_structure: Optional[Dict[str, Any]] = None
-        if load_files and self.data_dir:
-            file_contents = self._load_context_files(commits)
-            repo_structure = self._load_repo_structure()
-        
-        # Use multi-stage evaluation: split context into parts and evaluate separately
-        context_parts, checker_raw_analysis = self._build_context_parts(commits, username, file_contents=file_contents, repo_structure=repo_structure)
-        
-        # Evaluate each part separately
-        partial_results: List[Dict[str, Any]] = []
-        for part_name, part_context in context_parts.items():
-            if part_context:  # Only evaluate non-empty parts
-                part_result = self._evaluate_part_with_llm(part_name, part_context, username, chunk_idx=None)
-                partial_results.append(part_result)
-        
-        # Merge all partial results
-        if partial_results:
-            scores = self._merge_partial_evaluations(partial_results, username, checker_raw_analysis=checker_raw_analysis)
-        else:
-            # Fallback to single-stage if no parts
-            context = self._build_commit_context(commits, username, file_contents=file_contents, repo_structure=repo_structure)
-            scores = self._evaluate_with_llm(context, username)
-        
-        result = {
-            "username": username,
-            "total_commits_analyzed": len(commits),
-            "files_loaded": len(file_contents),
-            "mode": "moderate",
-            "scores": scores,
-            "commits_summary": self._summarize_commits(commits),
-        }
-        token_usage = self._summarize_token_usage()
-        if token_usage:
-            result["token_usage"] = token_usage
-        return result
+        return self._evaluate_evidence(commits, username, load_files=load_files)
+
 
     def _prompt_token_count(self, context: str, username: str, *, chunk_idx: Optional[int] = None) -> int:
         prompt = self._build_evaluation_prompt(context, username, chunk_idx=chunk_idx)
         return self._estimate_tokens(prompt)
 
     def _commits_exceed_prompt_budget(
-        self,
-        commits: List[Dict[str, Any]],
-        username: str,
-        *,
-        load_files: bool,
-        include_all_repo_snapshot: bool = False,
+        self, commits, username, *, load_files, include_all_repo_snapshot=False,
     ) -> bool:
-        file_contents: Dict[str, str] = {}
-        repo_structure: Optional[Dict[str, Any]] = None
-        if load_files and self.data_dir:
-            file_contents = self._load_context_files(
-                commits,
-                include_all_repo_snapshot=include_all_repo_snapshot,
-            )
-            repo_structure = self._load_repo_structure()
-        context = self._build_commit_context(
-            commits,
-            username,
-            file_contents=file_contents,
-            repo_structure=repo_structure,
-            commit_limit=None,
-        )
-        prompt_tokens = self._prompt_token_count(context, username)
-        if prompt_tokens > self.max_input_tokens:
-            print(
-                f"[Chunking] Prompt estimate {prompt_tokens} tokens exceeds "
-                f"budget {self.max_input_tokens}; splitting into independent chunks"
-            )
-            return True
-        return False
+        # Only estimate here. Source extraction performs exact budgeting without running checkers twice.
+        return self._estimate_tokens(json.dumps(commits, ensure_ascii=False)) + 2500 > self.max_input_tokens
 
     def _commit_has_input_truncation(self, commits: List[Dict[str, Any]]) -> bool:
         return any(bool(c.get("_oscanner_input_truncated")) for c in commits)
@@ -1534,14 +1436,8 @@ class CommitEvaluatorModerate:
         return chunks, input_budget_errors
 
     def _evaluate_engineer_chunked(self, commits: List[Dict[str, Any]], username: str, *, load_files: bool) -> Dict[str, Any]:
-        chunks, input_budget_errors = self._split_commits_for_prompt_budget(commits, username, load_files=load_files)
-        print(f"[Chunking] Using token-budget PARALLEL mode with {len(chunks)} independent chunks")
-        return self._evaluate_chunks_parallel(
-            chunks,
-            username,
-            load_files=load_files,
-            input_budget_errors=input_budget_errors,
-        )
+        return self._evaluate_evidence(commits, username, load_files=load_files)
+
 
     def _chunk_parallelism(self, chunk_count: int) -> int:
         configured = os.getenv("OSCANNER_LLM_CHUNK_CONCURRENCY", "4")

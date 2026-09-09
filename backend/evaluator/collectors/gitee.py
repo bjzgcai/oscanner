@@ -278,17 +278,9 @@ class GiteeCollector:
             return commit_data
 
         except requests.exceptions.RequestException as e:
-            error_detail = str(e)
-            # Try to get more detailed error info from response
-            if hasattr(e, 'response') and e.response is not None:
-                try:
-                    error_body = e.response.json()
-                    error_detail = f"{e} - Response: {error_body}"
-                except:
-                    error_detail = f"{e} - Response text: {e.response.text}"
-
-            print(f"[API] Error fetching commit {commit_sha}: {error_detail}")
-            raise Exception(f"Failed to fetch commit data: {error_detail}")
+            status = e.response.status_code if e.response is not None else "network error"
+            # Gitee credentials are query parameters; never log request exception URLs.
+            raise RuntimeError(f"Failed to fetch Gitee commit {commit_sha}: {status}") from None
 
     def fetch_commits_list(self, owner: str, repo: str, limit: int = 100, is_enterprise: bool = False, **kwargs) -> List[Dict[str, Any]]:
         """
