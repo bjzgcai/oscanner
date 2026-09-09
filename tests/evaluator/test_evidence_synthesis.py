@@ -128,3 +128,23 @@ def test_unavailable_original_commit_fails(monkeypatch, tmp_path):
     archived.pop('files')
     with pytest.raises(ValueError, match='Original commit unavailable'):
         synthesis.recover_commits([archived])
+
+
+def test_github_pagination_accepts_repository_id_links(monkeypatch, tmp_path):
+    import requests
+    sha = 'a' * 40
+    calls = []
+    class Response:
+        def __init__(self, index):
+            self.links = {'next': {'url': f'https://api.github.com/repositories/123/commits/{sha}?page=2'}} if index == 1 else {}
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {'sha': sha, 'files': [{'filename': f'file-{len(calls)}'}]}
+    def get(url, **kwargs):
+        calls.append(url)
+        return Response(len(calls))
+    monkeypatch.setattr(requests, 'get', get)
+    result = synthesis.GitHubCollector(data_dir=str(tmp_path)).fetch_commit_data('owner', 'repo', sha)
+    assert len(result['files']) == 2
+    assert len(calls) == 2

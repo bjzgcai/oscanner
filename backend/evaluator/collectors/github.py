@@ -9,6 +9,7 @@ import re
 import os
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from evaluator.paths import get_data_dir
 
@@ -255,7 +256,11 @@ class GitHubCollector:
 
             next_url = getattr(response, 'links', {}).get('next', {}).get('url')
             while next_url:
-                if not next_url.startswith(api_url + '?'):
+                parsed_next = urlsplit(next_url)
+                expected_host = urlsplit(self.base_url).netloc
+                allowed_path = parsed_next.path == f'/repos/{owner}/{repo}/commits/{commit_sha}' or bool(
+                    re.fullmatch(r'/repositories/\d+/commits/' + re.escape(commit_sha), parsed_next.path))
+                if parsed_next.scheme != 'https' or parsed_next.netloc != expected_host or not allowed_path:
                     raise RuntimeError("Unexpected commit pagination URL")
                 response = requests.get(next_url, headers=self._get_headers(), timeout=30)
                 response.raise_for_status()
