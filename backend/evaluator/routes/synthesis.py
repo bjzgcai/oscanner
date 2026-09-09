@@ -87,7 +87,7 @@ def recover_commits(commits):
             if str(detail.get("sha") or "").lower() != commit["sha"]:
                 raise ValueError(f"Recovered commit SHA mismatch: {identity}")
             # GitHub's single response can truncate large commits at the page boundary.
-            if commit["platform"] == "github" and len(detail["files"]) >= 3000:
+            if commit["platform"] == "github" and len(detail["files"]) >= 3000 and not detail.get('file_listing_complete'):
                 raise ValueError(f"Original commit file listing incomplete: {identity}")
             with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, delete=False) as handle:
                 json.dump(detail, handle, ensure_ascii=False)

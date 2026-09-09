@@ -148,3 +148,37 @@ def test_github_pagination_accepts_repository_id_links(monkeypatch, tmp_path):
     result = synthesis.GitHubCollector(data_dir=str(tmp_path)).fetch_commit_data('owner', 'repo', sha)
     assert len(result['files']) == 2
     assert len(calls) == 2
+
+
+def test_git_recovery_keeps_original_snapshot(monkeypatch, tmp_path):
+    import subprocess
+    import os
+    repo = tmp_path / 'source'
+    repo.mkdir()
+    env = {**os.environ, 'GIT_AUTHOR_NAME': 'Test', 'GIT_AUTHOR_EMAIL': 'test@example.com',
+           'GIT_COMMITTER_NAME': 'Test', 'GIT_COMMITTER_EMAIL': 'test@example.com'}
+    def run(*args):
+        return subprocess.run(['git', '-C', str(repo), *args], env=env, check=True, capture_output=True).stdout
+    run('init')
+    (repo / 'main.py').write_text('print("original")\n')
+    (repo / 'dist').mkdir()
+    (repo / 'dist/generated.js').write_text('generated\n')
+    (repo / 'image.bin').write_bytes(b'\0binary')
+    run('add', '.')
+    run('commit', '-m', 'original')
+    sha = run('rev-parse', 'HEAD').decode().strip()
+    (repo / 'newer.py').write_text('not in original snapshot\n')
+    run('add', '.')
+    run('commit', '-m', 'newer')
+    real_run = subprocess.run
+    def local_fetch(args, **kwargs):
+        args = [str(repo) if arg == 'https://github.com/owner/repo.git' else arg for arg in args]
+        return real_run(args, **kwargs)
+    monkeypatch.setattr(subprocess, 'run', local_fetch)
+    collector = synthesis.GitHubCollector(data_dir=str(tmp_path / 'cache'))
+    files = collector._large_commit_files('owner', 'repo', sha)
+    by_name = {file['filename']: file for file in files}
+    assert set(by_name) == {'main.py', 'dist/generated.js', 'image.bin'}
+    assert 'original' in by_name['main.py']['patch']
+    assert by_name['image.bin']['patch_unavailable'] == 'binary file'
+    assert 'generated' in by_name['dist/generated.js']['patch_unavailable']

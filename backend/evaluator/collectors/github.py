@@ -8,6 +8,10 @@ from typing import Dict, List, Optional, Any
 import re
 import os
 import json
+import hashlib
+import base64
+import subprocess
+import fcntl
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -267,13 +271,54 @@ class GitHubCollector:
                 commit_data.setdefault('files', []).extend(response.json().get('files', []))
                 next_url = getattr(response, 'links', {}).get('next', {}).get('url')
             if len(commit_data.get('files', [])) >= 3000:
-                raise RuntimeError("GitHub commit exceeds the complete file listing limit")
+                commit_data['files'] = self._large_commit_files(owner, repo, commit_sha)
+                commit_data['file_listing_complete'] = True
 
             return commit_data
 
         except requests.exceptions.RequestException as e:
             print(f"[API] Error fetching commit {commit_sha}: {e}")
             raise Exception(f"Failed to fetch commit data: {e}")
+
+    def _large_commit_files(self, owner: str, repo: str, sha: str) -> List[Dict[str, Any]]:
+        """Recover an API-capped commit by immutable SHA in an isolated bare repository."""
+        if not all(re.fullmatch(r'[A-Za-z0-9_.-]+', part) for part in (owner, repo)) or not re.fullmatch(r'[0-9a-fA-F]{40,64}', sha):
+            raise ValueError("Invalid immutable commit identity")
+        key = hashlib.sha256(f'{owner}/{repo}@{sha}'.encode()).hexdigest()
+        root = self.data_dir / 'historical_git'
+        root.mkdir(parents=True, exist_ok=True)
+        directory = root / key
+        def git(*args, authenticated=False):
+            env = {**os.environ, 'GIT_TERMINAL_PROMPT': '0'}
+            if authenticated and self.token:
+                encoded = base64.b64encode(('x-access-token:' + self.token).encode()).decode()
+                env.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='http.https://github.com/.extraheader', GIT_CONFIG_VALUE_0='Authorization: Basic ' + encoded)
+            result = subprocess.run(['git', *args], env=env, capture_output=True, timeout=300)
+            if result.returncode:
+                raise RuntimeError(f'Git recovery failed for {owner}/{repo}@{sha}')
+            return result.stdout
+        with (root / (key + '.lock')).open('a') as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            if not directory.exists():
+                git('init', '--bare', str(directory))
+            git('-C', str(directory), 'fetch', '--depth=2', '--no-tags', f'https://github.com/{owner}/{repo}.git', sha, authenticated=True)
+            records = git('-C', str(directory), 'diff-tree', '--root', '--first-parent', '--no-commit-id', '-r', '--numstat', '-z', sha)
+            files = []
+            for record in records.split(b'\0'):
+                if not record:
+                    continue
+                added, deleted, raw_path = record.split(b'\t', 2)
+                path = raw_path.decode('utf-8', errors='replace')
+                item = {'filename': path, 'additions': int(added) if added.isdigit() else 0, 'deletions': int(deleted) if deleted.isdigit() else 0}
+                generated = any(part in path.split('/') for part in ('node_modules', 'dist', 'build', '__pycache__', '.next'))
+                if added == b'-' or deleted == b'-':
+                    item['patch_unavailable'] = 'binary file'
+                elif generated:
+                    item['patch_unavailable'] = 'generated build artifact; not engineering implementation evidence'
+                else:
+                    item['patch'] = git('-C', str(directory), 'show', '--format=', '--no-ext-diff', '--no-textconv', '--first-parent', sha, '--', path).decode('utf-8', errors='replace')
+                files.append(item)
+            return files
 
     def fetch_commits_list(self, owner: str, repo: str, limit: int = 100, **kwargs) -> List[Dict[str, Any]]:
         """
