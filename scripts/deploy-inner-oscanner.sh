@@ -3,9 +3,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env.local}"
 
-SSH_TARGET="${OSCANNER_DEPLOY_SSH_TARGET:-ubuntu@10.1.132.63}"
-REMOTE_PATH="${OSCANNER_DEPLOY_REMOTE_PATH:-/data/app}"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  source "$ENV_FILE"
+  set +a
+fi
+
+SSH_TARGET="${OSCANNER_DEPLOY_SSH_TARGET:?Set OSCANNER_DEPLOY_SSH_TARGET in .env.local}"
+REMOTE_PATH="${OSCANNER_DEPLOY_REMOTE_PATH:?Set OSCANNER_DEPLOY_REMOTE_PATH in .env.local}"
 REMOTE_NAME="${OSCANNER_DEPLOY_REMOTE_NAME:-origin}"
 DEPLOY_REF="${OSCANNER_DEPLOY_REF:-}"
 

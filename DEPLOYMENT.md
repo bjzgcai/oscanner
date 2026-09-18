@@ -25,7 +25,7 @@ This will automatically:
 
 Create these files on the remote server before first deployment:
 
-**`/data/app/backend/evaluator/.env.local`**
+**`<REMOTE_PATH>/backend/evaluator/.env.local`**
 ```bash
 # Server Configuration
 PORT=8000
@@ -43,7 +43,7 @@ GITEE_TOKEN=your_enterprise_gitee_token_here
 # GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-**`/data/app/frontend/webapp/.env.local`**
+**`<REMOTE_PATH>/frontend/webapp/.env.local`**
 ```bash
 # Webapp Server Port
 PORT=3000
@@ -71,9 +71,9 @@ You only need to ensure these are available:
 
 ```bash
 # Remote server details
-REMOTE_HOST=10.1.132.63
+REMOTE_HOST=<DEPLOY_HOST>
 REMOTE_USER=ubuntu
-REMOTE_PATH=/data/app
+REMOTE_PATH=<REMOTE_PATH>
 
 # Port configuration (for display only)
 EVALUATOR_PORT=8000
@@ -94,8 +94,8 @@ WEBAPP_PORT=3000
 
 ### Manual Deployment (on remote server)
 ```bash
-ssh ubuntu@10.1.132.63
-cd /data/app
+ssh <DEPLOY_SSH_TARGET>
+cd <REMOTE_PATH>
 git pull origin main
 ./start_production.sh --daemon
 ```
@@ -105,17 +105,17 @@ git pull origin main
 ### View Logs
 ```bash
 # From local machine
-ssh ubuntu@10.1.132.63 'tail -f /data/app/evaluator.log'
+ssh <DEPLOY_SSH_TARGET> 'tail -f <REMOTE_PATH>/evaluator.log'
 
 # On remote server
-tail -f /data/app/evaluator.log
-tail -f /data/app/frontend/webapp.log
+tail -f <REMOTE_PATH>/evaluator.log
+tail -f <REMOTE_PATH>/frontend/webapp.log
 ```
 
 ### Stop Services
 ```bash
 # From local machine
-ssh ubuntu@10.1.132.63 "pkill -f 'oscanner serve|next start'"
+ssh <DEPLOY_SSH_TARGET> "pkill -f 'oscanner serve|next start'"
 
 # On remote server
 pkill -f "oscanner serve"
@@ -132,34 +132,34 @@ pkill -f "next start"
 ## Access URLs
 
 After deployment, services will be available at:
-- **Evaluator API**: http://10.1.132.63:8000
-- **Webapp Dashboard**: http://10.1.132.63:3000
+- **Evaluator API**: http://<DEPLOY_HOST>:8000
+- **Webapp Dashboard**: http://<DEPLOY_HOST>:3000
 
 ## Troubleshooting
 
 ### Deployment fails with "Permission denied"
 Ensure your SSH key is added to the remote server:
 ```bash
-ssh-copy-id ubuntu@10.1.132.63
+ssh-copy-id <DEPLOY_SSH_TARGET>
 ```
 
 ### Services fail to start
 Check the logs on remote server:
 ```bash
-ssh ubuntu@10.1.132.63 'cat /data/app/evaluator.log'
+ssh <DEPLOY_SSH_TARGET> 'cat <REMOTE_PATH>/evaluator.log'
 ```
 
 ### Port already in use
 Stop existing processes:
 ```bash
-ssh ubuntu@10.1.132.63 "pkill -f 'oscanner serve|next start'"
+ssh <DEPLOY_SSH_TARGET> "pkill -f 'oscanner serve|next start'"
 ```
 
 ### Missing environment variables
 Verify `.env.local` files exist on remote server with required API keys:
 ```bash
-ssh ubuntu@10.1.132.63 'ls -la /data/app/backend/evaluator/.env.local'
-ssh ubuntu@10.1.132.63 'ls -la /data/app/frontend/webapp/.env.local'
+ssh <DEPLOY_SSH_TARGET> 'ls -la <REMOTE_PATH>/backend/evaluator/.env.local'
+ssh <DEPLOY_SSH_TARGET> 'ls -la <REMOTE_PATH>/frontend/webapp/.env.local'
 ```
 
 ## Security Notes

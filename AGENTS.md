@@ -126,7 +126,7 @@ Follow `.agents/rules/testing.md` for test strategy.
 
 ## Local Agent Assets
 
-- `.agents/skills/deploy/SKILL.md`: use for deploy, redeploy, setup, or production status on `10.1.132.63`.
+- `.agents/skills/deploy/SKILL.md`: use for deploy, redeploy, setup, or production status on `<DEPLOY_HOST>`.
 - `.agents/skills/test-explore/SKILL.md`: use when asked to evaluate test coverage, quality, or gaps.
 - `.agents/rules/security.md`: security and token handling rules.
 - `.agents/rules/testing.md`: testing strategy and expected coverage areas.
@@ -136,9 +136,9 @@ Follow `.agents/rules/testing.md` for test strategy.
 
 Use `.agents/skills/deploy/SKILL.md` for production work.
 
-- Host: `ubuntu@10.1.132.63`
-- SSH command: `ssh ubuntu@10.1.132.63`
-- Default remote path: `/data/app`
+- Host: `<DEPLOY_SSH_TARGET>`
+- SSH command: `ssh <DEPLOY_SSH_TARGET>`
+- Default remote path: `<REMOTE_PATH>`
 - Evaluator API: port `8000`
 - Repos Runner: port `8001`
 - Webapp: port `3000`

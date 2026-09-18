@@ -1,6 +1,6 @@
 ---
 name: deploy-inner-oscanner
-description: Use when deploying or checking internal Oscanner services on 10.1.132.63 as ubuntu, with the app and served data under /data.
+description: Use when deploying or checking internal Oscanner services on <DEPLOY_HOST> as ubuntu, with the app and served data under /data.
 ---
 
 # Deploy Inner Oscanner
@@ -9,10 +9,10 @@ Deploy Oscanner services to the internal server.
 
 ## Server Details
 
-- Host: `10.1.132.63`
+- Host: `<DEPLOY_HOST>`
 - User: `ubuntu`
-- SSH command: `ssh ubuntu@10.1.132.63`
-- Remote path: `/data/app` by default; allow `REMOTE_PATH=...` to override
+- SSH command: `ssh <DEPLOY_SSH_TARGET>`
+- Remote path: `<REMOTE_PATH>` by default; allow `REMOTE_PATH=...` to override
 - Data path: `/data`
 - Evaluator port: `8000`
 - Repos Runner port: `8001`
@@ -67,7 +67,7 @@ git push origin main
 Run:
 
 ```bash
-ssh -o ConnectTimeout=10 -o BatchMode=yes ubuntu@10.1.132.63 "echo 'SSH OK'"
+ssh -o ConnectTimeout=10 -o BatchMode=yes <DEPLOY_SSH_TARGET> "echo 'SSH OK'"
 ```
 
 If this fails, stop and report the exact error. Common causes:
@@ -77,14 +77,14 @@ If this fails, stop and report the exact error. Common causes:
 
 ## Step 3: Determine Remote Path
 
-Use `/data/app` unless the user passed `REMOTE_PATH=...`. Assign this to `RPATH`.
+Use `<REMOTE_PATH>` unless the user passed `REMOTE_PATH=...`. Assign this to `RPATH`.
 
 ## Step 4: Status Only
 
 When `--status` is passed, run:
 
 ```bash
-ssh ubuntu@10.1.132.63 "
+ssh <DEPLOY_SSH_TARGET> "
   echo '=== Running Processes ==='
   pgrep -fa 'backend.evaluator.server' || echo 'Evaluator: NOT RUNNING'
   pgrep -fa 'repos_runner.server' || echo 'Repos Runner: NOT RUNNING'
@@ -120,7 +120,7 @@ Then stop.
 When `--setup` is passed, check whether the repo already exists:
 
 ```bash
-ssh ubuntu@10.1.132.63 "test -d ${RPATH}/.git && echo EXISTS || echo MISSING"
+ssh <DEPLOY_SSH_TARGET> "test -d ${RPATH}/.git && echo EXISTS || echo MISSING"
 ```
 
 If missing, get the local remote URL:
@@ -132,7 +132,7 @@ git remote get-url origin
 Clone on the remote server:
 
 ```bash
-ssh ubuntu@10.1.132.63 "
+ssh <DEPLOY_SSH_TARGET> "
   sudo mkdir -p ${RPATH} &&
   sudo chown -R ubuntu:ubuntu ${RPATH} &&
   git clone <remote_url> ${RPATH}
@@ -163,7 +163,7 @@ This stores evaluator data under `/data/data` and repos_runner cloned repositori
 Use the auto branch identified in Step 1, or `origin/main` if no push was needed:
 
 ```bash
-ssh ubuntu@10.1.132.63 "
+ssh <DEPLOY_SSH_TARGET> "
   cd ${RPATH} &&
   git fetch origin &&
   git reset --hard <auto_branch_or_origin/main> &&
@@ -176,7 +176,7 @@ If the directory does not exist, suggest running deploy with `--setup` first.
 ## Step 7: Start or Restart Services
 
 ```bash
-ssh ubuntu@10.1.132.63 "
+ssh <DEPLOY_SSH_TARGET> "
   cd ${RPATH} &&
   chmod +x scripts/start_production.sh &&
   bash scripts/start_production.sh --daemon ${REBUILD_FLAG}
@@ -192,7 +192,7 @@ When frontend route or static-export path handling changed, prefer `deploy-inner
 Wait about 5 seconds, then check:
 
 ```bash
-ssh ubuntu@10.1.132.63 "
+ssh <DEPLOY_SSH_TARGET> "
   echo '=== Service Health Check ==='
   pgrep -fa 'backend.evaluator.server' && echo 'Evaluator: RUNNING' || echo 'Evaluator: NOT RUNNING'
   pgrep -fa 'repos_runner.server' && echo 'Repos Runner: RUNNING' || echo 'Repos Runner: NOT RUNNING'
@@ -222,17 +222,17 @@ Print a clear summary:
 ```text
 Deployment Complete
 
-Services running on 10.1.132.63:
-  Evaluator API:   http://10.1.132.63:8000
-  Evaluator Docs:  http://10.1.132.63:8000/docs
-  Repos Runner:    http://10.1.132.63:8001
-  Webapp:          http://10.1.132.63:3000
+Services running on <DEPLOY_HOST>:
+  Evaluator API:   http://<DEPLOY_HOST>:8000
+  Evaluator Docs:  http://<DEPLOY_HOST>:8000/docs
+  Repos Runner:    http://<DEPLOY_HOST>:8001
+  Webapp:          http://<DEPLOY_HOST>:3000
   Data path:       /data
 
 Useful commands:
   Check status: deploy-inner-oscanner --status
-  View logs: ssh ubuntu@10.1.132.63 'tail -f /data/app/evaluator.log /data/app/repos_runner.log'
-  Stop services: ssh ubuntu@10.1.132.63 "pkill -f 'backend.evaluator.server|repos_runner.server|serve out -l'"
+  View logs: ssh <DEPLOY_SSH_TARGET> 'tail -f <REMOTE_PATH>/evaluator.log <REMOTE_PATH>/repos_runner.log'
+  Stop services: ssh <DEPLOY_SSH_TARGET> "pkill -f 'backend.evaluator.server|repos_runner.server|serve out -l'"
   Restart: deploy-inner-oscanner
 ```
 
@@ -248,12 +248,12 @@ Useful commands:
 
 ## Important Notes
 
-- The server is reached through the default SSH configuration with `ssh ubuntu@10.1.132.63`; do not add an explicit key unless the user provides one.
+- The server is reached through the default SSH configuration with `ssh <DEPLOY_SSH_TARGET>`; do not add an explicit key unless the user provides one.
 - Backend `.env.local` with API keys must exist on the remote server before first deploy.
-- The app repository lives under `/data/app`; served runtime data lives under `/data`.
+- The app repository lives under `<REMOTE_PATH>`; served runtime data lives under `/data`.
 - Never print raw API keys or tokens from remote configuration.
 - The `uv` Python package manager is auto-installed by `start_production.sh` if missing.
 - Node.js v18 or newer must be installed on the remote server.
 - Logs are at `${RPATH}/evaluator.log`, `${RPATH}/repos_runner.log`, and `${RPATH}/frontend/webapp.log`.
 - Pushing to Gitee creates an `auto***` branch; deploy from that branch rather than `origin/main`.
-- For frontend subpath pages, verify the static export under `${RPATH}/frontend/webapp/out/oscanner` and the served route `http://10.1.132.63:3000/oscanner/` after rebuild.
+- For frontend subpath pages, verify the static export under `${RPATH}/frontend/webapp/out/oscanner` and the served route `http://<DEPLOY_HOST>:3000/oscanner/` after rebuild.
