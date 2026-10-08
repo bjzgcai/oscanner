@@ -9,7 +9,8 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import httpx
 
-from evaluator.config import get_gitee_token, get_github_token
+from evaluator.config import get_gitee_token
+from evaluator.services.github_auth import github_request
 
 
 COLLABORATION_EVIDENCE_SOURCES = {
@@ -188,13 +189,12 @@ def _fetch_platform_evidence(
 
 
 def _fetch_github_evidence(owner: str, repo: str, sources: List[str]) -> Dict[str, Any]:
-    token = get_github_token()
+    # Authorization is attached per request by github_request so a rate-limited
+    # token automatically falls back to GITHUB_TOKEN2, GITHUB_TOKEN3, ...
     headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
 
     base_url = f"https://api.github.com/repos/{owner}/{repo}"
     items: List[Dict[str, Any]] = []
@@ -207,6 +207,7 @@ def _fetch_github_evidence(owner: str, repo: str, sources: List[str]) -> Dict[st
             headers=headers,
             params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 20},
             warnings=warnings,
+            rotate_github_tokens=True,
         )
         for pull in pulls[:20]:
             if not isinstance(pull, dict):
@@ -218,16 +219,16 @@ def _fetch_github_evidence(owner: str, repo: str, sources: List[str]) -> Dict[st
 
             issue_comments: List[Dict[str, Any]] = []
             if "pr_discussions" in sources and number:
-                issue_comments = _get_json_list(client, f"{base_url}/issues/{number}/comments", headers=headers, warnings=warnings)
+                issue_comments = _get_json_list(client, f"{base_url}/issues/{number}/comments", headers=headers, warnings=warnings, rotate_github_tokens=True)
                 if issue_comments:
                     items.append(_item("pr_discussions", pr_label, f"{len(issue_comments)} discussion comments", pr_url, pull.get("updated_at")))
 
             reviews: List[Dict[str, Any]] = []
             if number and ({"review_comments", "approvals"} & set(sources)):
-                reviews = _get_json_list(client, f"{base_url}/pulls/{number}/reviews", headers=headers, warnings=warnings)
+                reviews = _get_json_list(client, f"{base_url}/pulls/{number}/reviews", headers=headers, warnings=warnings, rotate_github_tokens=True)
 
             if "review_comments" in sources and number:
-                review_comments = _get_json_list(client, f"{base_url}/pulls/{number}/comments", headers=headers, warnings=warnings)
+                review_comments = _get_json_list(client, f"{base_url}/pulls/{number}/comments", headers=headers, warnings=warnings, rotate_github_tokens=True)
                 review_count = len(review_comments) + sum(1 for review in reviews if str(review.get("body") or "").strip())
                 if review_count:
                     items.append(_item("review_comments", f"{pr_label} review discussion", f"{review_count} review comments", pr_url, pull.get("updated_at")))
@@ -248,6 +249,7 @@ def _fetch_github_evidence(owner: str, repo: str, sources: List[str]) -> Dict[st
                 headers=headers,
                 params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 30},
                 warnings=warnings,
+                rotate_github_tokens=True,
             )
             for issue in issues[:30]:
                 if not isinstance(issue, dict) or issue.get("pull_request"):
@@ -339,9 +341,13 @@ def _get_json_list(
     headers: Optional[Dict[str, str]] = None,
     params: Optional[Dict[str, Any]] = None,
     warnings: List[str],
+    rotate_github_tokens: bool = False,
 ) -> List[Dict[str, Any]]:
     try:
-        response = client.get(url, headers=headers, params=params)
+        if rotate_github_tokens:
+            response = github_request(client, "GET", url, headers=headers, params=params)
+        else:
+            response = client.get(url, headers=headers, params=params)
         response.raise_for_status()
         payload = response.json()
         return payload if isinstance(payload, list) else []

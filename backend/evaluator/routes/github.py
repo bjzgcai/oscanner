@@ -20,6 +20,11 @@ from evaluator.paths import get_data_dir
 from evaluator.plugin_registry import PluginLoadError, load_scan_module
 from evaluator.services import resolve_plugin_id
 from evaluator.services.collaboration_evidence import fetch_collaboration_evidence
+from evaluator.services.github_auth import (
+    github_rate_limit_wait_seconds,
+    github_request,
+    github_token_candidates,
+)
 from evaluator.services.profile_sampling import sample_profile_commits, candidate_window, annotate_evaluation
 from evaluator.utils import (
     get_author_from_commit,
@@ -515,14 +520,12 @@ def _collaboration_items_for_repo(
 
 
 def _github_headers() -> Dict[str, str]:
-    headers = {
+    # Authorization is attached per request so rate-limited tokens can fall
+    # back to the next configured token (see services.github_auth).
+    return {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-    token = get_github_token()
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    return headers
 
 
 def _github_repo_parts_from_item(item: Dict[str, Any]) -> tuple[str, str] | None:
@@ -599,30 +602,7 @@ def _github_search_items(
 
 
 def _github_rate_limit_wait_seconds(response: httpx.Response) -> Optional[float]:
-    if response.status_code not in {403, 429}:
-        return None
-
-    retry_after = str(response.headers.get("retry-after") or "").strip()
-    if retry_after:
-        try:
-            return max(0.0, float(retry_after))
-        except ValueError:
-            pass
-
-    remaining = str(response.headers.get("x-ratelimit-remaining") or "").strip()
-    reset_at = str(response.headers.get("x-ratelimit-reset") or "").strip()
-    message = ""
-    try:
-        payload = response.json()
-        message = str(payload.get("message") or "") if isinstance(payload, dict) else ""
-    except Exception:
-        pass
-    if remaining != "0" and "rate limit" not in message.lower():
-        return None
-    try:
-        return max(0.0, float(reset_at) - time.time() + 1.0)
-    except ValueError:
-        return None
+    return github_rate_limit_wait_seconds(response)
 
 
 def _github_request_with_rate_limit_retry(
@@ -631,17 +611,16 @@ def _github_request_with_rate_limit_retry(
     *,
     params: Optional[Dict[str, Any]] = None,
 ) -> httpx.Response:
-    response: Optional[httpx.Response] = None
-    for attempt in range(GITHUB_RATE_LIMIT_MAX_RETRIES + 1):
-        response = client.get(url, params=params)
-        wait_seconds = _github_rate_limit_wait_seconds(response)
-        if wait_seconds is None or response.status_code < 400:
-            return response
-        if attempt >= GITHUB_RATE_LIMIT_MAX_RETRIES or wait_seconds > GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS:
-            return response
-        time.sleep(wait_seconds)
-    assert response is not None
-    return response
+    return github_request(
+        client,
+        "GET",
+        url,
+        headers=_github_headers(),
+        params=params,
+        tokens=github_token_candidates(get_github_token()),
+        max_retries=GITHUB_RATE_LIMIT_MAX_RETRIES,
+        max_wait_seconds=GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS,
+    )
 
 
 def _github_rate_limit_preflight(client: httpx.Client, warnings: List[str]) -> bool:

@@ -112,6 +112,8 @@ def write_env_file(path: Path, env: Dict[str, str]) -> None:
     order = [
         "GITEE_TOKEN",
         "GITHUB_TOKEN",
+        "GITHUB_TOKEN2",
+        "GITHUB_TOKEN3",
         "OPEN_ROUTER_KEY",
         "OSCANNER_LLM_API_KEY",
         "OSCANNER_LLM_BASE_URL",

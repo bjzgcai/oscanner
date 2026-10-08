@@ -550,15 +550,20 @@ class TestGitHubCommitsFetch:
             assert "Authorization" in call_kwargs["headers"]
             assert call_kwargs["headers"]["Authorization"] == "token fake_token"
 
-    def test_fetch_github_commits_no_token(self):
+    def test_fetch_github_commits_no_token(self, monkeypatch):
         """Test GitHub commits fetch without token."""
         import requests
-        
+
         with patch('evaluator.services.extraction_service.get_github_token') as mock_token, \
              patch('requests.get') as mock_get:
-            
+
             mock_token.return_value = None
-            
+
+            # Ensure no fallback token leaks in from the loaded evaluator .env,
+            # so this genuinely exercises the unauthenticated path.
+            for env_key in ("GITHUB_TOKEN", "GITHUB_TOKEN2", "GITHUB_TOKEN3", "GITHUB_TOKEN4", "GITHUB_TOKEN5"):
+                monkeypatch.delenv(env_key, raising=False)
+
             mock_resp = Mock()
             mock_resp.status_code = 200
             mock_resp.json.return_value = [{"sha": "abc123"}]

@@ -17,7 +17,8 @@ from datetime import datetime
 from fastapi import HTTPException
 
 from evaluator.paths import get_platform_data_dir
-from evaluator.config import get_github_token, get_gitee_token
+from evaluator.config import GITHUB_TOKEN_ENV_KEYS, get_gitee_token, get_github_token
+from evaluator.services.github_auth import github_token_candidates
 from evaluator.utils import get_author_from_commit
 from evaluator.utils.data_loader import is_eval_relevant_path
 
@@ -171,7 +172,8 @@ def _github_api_headers() -> Dict[str, str]:
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "oscanner-skill-evaluator",
     }
-    gh_token = get_github_token()
+    candidates = github_token_candidates(get_github_token())
+    gh_token = candidates[0] if candidates else None
     if gh_token:
         headers["Authorization"] = f"token {gh_token}"
     return headers
@@ -877,7 +879,8 @@ def _repo_git_url(platform: str, owner: str, repo: str) -> str:
 def _inject_git_token(repo_url: str, platform: str) -> str:
     token = None
     if platform == "github":
-        token = get_github_token()
+        candidates = github_token_candidates(get_github_token())
+        token = candidates[0] if candidates else None
     elif platform == "gitee":
         token = get_gitee_token()
     if not token:
@@ -1380,6 +1383,12 @@ def extract_github_data(
             cmd.extend(["--branch", branch])
 
         cmd_env = os.environ.copy()
+        # Propagate every configured GitHub token so the extraction tool can
+        # fall back to GITHUB_TOKEN2, GITHUB_TOKEN3, ... when one is rate limited.
+        for env_key in GITHUB_TOKEN_ENV_KEYS:
+            env_token = (os.getenv(env_key) or "").strip()
+            if env_token:
+                cmd_env[env_key] = env_token
         gh_token = get_github_token()
         if gh_token:
             cmd_env["GITHUB_TOKEN"] = gh_token
@@ -1432,19 +1441,29 @@ def extract_github_data(
 def fetch_github_commits(owner: str, repo: str, limit: int = 100) -> list:
     """Fetch commits from GitHub API"""
     url = f"https://api.github.com/repos/{owner}/{repo}/commits"
-    headers = {}
-    gh_token = get_github_token()
-    if gh_token:
-        headers["Authorization"] = f"token {gh_token}"
-
     params = {"per_page": min(limit, 100)}
+    tokens: List[Optional[str]] = github_token_candidates(get_github_token()) or [None]
 
-    try:
-        response = requests.get(url, headers=headers, params=params, timeout=30)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch GitHub commits: {str(e)}")
+    last_error: Optional[Exception] = None
+    for index, token in enumerate(tokens):
+        headers: Dict[str, str] = {}
+        if token:
+            headers["Authorization"] = f"token {token}"
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as exc:
+            last_error = exc
+            status_code = getattr(exc.response, "status_code", None)
+            # Rate-limited token: retry with the next configured GitHub token.
+            if status_code in {403, 429} and index + 1 < len(tokens):
+                continue
+            break
+        except Exception as exc:
+            last_error = exc
+            break
+    raise HTTPException(status_code=500, detail=f"Failed to fetch GitHub commits: {str(last_error)}")
 
 
 def fetch_gitee_commits(owner: str, repo: str, limit: int = 100, is_enterprise: bool = False) -> list:

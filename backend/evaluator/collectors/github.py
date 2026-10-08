@@ -16,6 +16,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from evaluator.paths import get_data_dir
+from evaluator.config import get_github_tokens
 
 
 class GitHubCollector:
@@ -29,6 +30,11 @@ class GitHubCollector:
             token: GitHub personal access token for API access
             data_dir: Directory for collected GitHub data
         """
+        # Default to the primary configured token so callers that omit ``token``
+        # still authenticate (GITHUB_TOKEN, then GITHUB_TOKEN2, ...).
+        if token is None:
+            configured = get_github_tokens()
+            token = configured[0] if configured else None
         self.token = token
         self.base_url = "https://api.github.com"
         self.data_dir = Path(data_dir).expanduser() if data_dir else get_data_dir()

@@ -2,6 +2,8 @@
 
 from evaluator.config.tokens import (
     get_github_token,
+    get_github_tokens,
+    GITHUB_TOKEN_ENV_KEYS,
     get_gitee_token,
     get_llm_api_key,
     mask_secret,
@@ -18,6 +20,8 @@ from evaluator.config.env import (
 
 __all__ = [
     "get_github_token",
+    "get_github_tokens",
+    "GITHUB_TOKEN_ENV_KEYS",
     "get_gitee_token",
     "get_llm_api_key",
     "mask_secret",

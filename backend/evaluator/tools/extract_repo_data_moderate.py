@@ -25,12 +25,67 @@ from pathlib import Path
 
 DEFAULT_HTTP_TIMEOUT_SECONDS = 30
 
+# GitHub token env keys in fallback priority order. The first configured token
+# is primary; the rest are used when an earlier token hits its API rate limit.
+GITHUB_TOKEN_ENV_KEYS = ('GITHUB_TOKEN', 'GITHUB_TOKEN2', 'GITHUB_TOKEN3', 'GITHUB_TOKEN4', 'GITHUB_TOKEN5')
+
 
 def mkdir_p(path):
     os.makedirs(path, exist_ok=True)
 
 
-def http_get(url, token=None):
+def env_github_tokens():
+    """Return configured GitHub tokens in fallback priority order."""
+    tokens = []
+    for key in GITHUB_TOKEN_ENV_KEYS:
+        value = (os.environ.get(key) or '').strip()
+        if value and value not in tokens:
+            tokens.append(value)
+    return tokens
+
+
+def _candidate_tokens(token=None):
+    """Normalize a token argument into an ordered, de-duplicated token list."""
+    if isinstance(token, (list, tuple)):
+        candidates = list(token)
+    elif token:
+        candidates = [token]
+    else:
+        candidates = []
+
+    tokens = []
+    for candidate in candidates:
+        value = str(candidate or '').strip()
+        if value and value not in tokens:
+            tokens.append(value)
+    # Always append configured fallbacks (GITHUB_TOKEN2, ...) after an explicit token.
+    for value in env_github_tokens():
+        if value not in tokens:
+            tokens.append(value)
+    return tokens
+
+
+def _http_error_is_rate_limited(error):
+    """Return True when an HTTPError indicates an exhausted/limited token."""
+    if error.code not in (403, 429):
+        return False
+    headers = getattr(error, 'headers', None)
+    retry_after = ''
+    remaining = ''
+    if headers is not None:
+        retry_after = str(headers.get('retry-after') or '').strip()
+        remaining = str(headers.get('x-ratelimit-remaining') or '').strip()
+    if retry_after or remaining == '0':
+        return True
+    try:
+        body = error.read().decode().lower()
+    except Exception:
+        body = ''
+    return 'rate limit' in body or 'rate limited' in body or 'secondary rate' in body
+
+
+def _http_get_once(url, token=None):
+    """Single authenticated request. Returns (data, headers, rate_limited)."""
     headers = {
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'repo-extractor/1.0'
@@ -42,18 +97,42 @@ def http_get(url, token=None):
     try:
         with urllib.request.urlopen(req, timeout=DEFAULT_HTTP_TIMEOUT_SECONDS) as resp:
             data = resp.read().decode()
-            return data, resp.getheaders()
+            return data, resp.getheaders(), False
     except urllib.error.HTTPError as e:
         print(f'HTTPError {e.code} {url}', file=sys.stderr)
+        rate_limited = _http_error_is_rate_limited(e)
         try:
             err = e.read().decode()
             print(err, file=sys.stderr)
         except Exception:
             pass
-        return None, None
+        return None, None, rate_limited
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         print(f'HTTPError {type(e).__name__} {url}: {e}', file=sys.stderr)
+        return None, None, False
+
+
+def http_get(url, token=None):
+    """
+    GET ``url``, rotating to the next GitHub token when the current one is
+    rate limited. ``token`` may be a single token or an ordered token list.
+    """
+    tokens = _candidate_tokens(token)
+    if not tokens:
+        return _http_get_once(url, None)[:2]
+
+    for index, candidate in enumerate(tokens):
+        data, headers, rate_limited = _http_get_once(url, candidate)
+        if data is not None:
+            return data, headers
+        if rate_limited and index + 1 < len(tokens):
+            print(
+                f'GitHub rate limit hit; retrying {url} with fallback token #{index + 2}',
+                file=sys.stderr,
+            )
+            continue
         return None, None
+    return None, None
 
 
 def fetch_paginated(url_template, token=None, max_items=0):
@@ -111,8 +190,8 @@ def main():
                         help='Skip current file content downloads after commit extraction')
     args = parser.parse_args()
 
-    # Get token from args or environment
-    token = args.token or os.environ.get('GITHUB_TOKEN')
+    # Get tokens from args or environment (GITHUB_TOKEN, GITHUB_TOKEN2, ...).
+    tokens = _candidate_tokens(args.token)
 
     repo_url = args.repo_url.rstrip('/')
     if not repo_url.startswith('https://github.com/'):
@@ -134,7 +213,7 @@ def main():
     # 1. Fetch repository info
     print('\n[1/5] Fetching repository info...')
     repo_info_url = f'https://api.github.com/repos/{owner}/{repo}'
-    repo_data, _ = http_get(repo_info_url, token)
+    repo_data, _ = http_get(repo_info_url, tokens)
 
     if repo_data is None:
         print('Failed to fetch repository info', file=sys.stderr)
@@ -151,7 +230,7 @@ def main():
     # 2. Fetch repository tree structure
     print('\n[2/5] Fetching repository structure...')
     tree_url = f'https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}?recursive=1'
-    tree_data, _ = http_get(tree_url, token)
+    tree_data, _ = http_get(tree_url, tokens)
 
     if tree_data:
         tree_obj = json.loads(tree_data)
@@ -166,7 +245,7 @@ def main():
     commits_url = f'https://api.github.com/repos/{owner}/{repo}/commits'
     if args.branch:
         commits_url += f'?sha={urllib.parse.quote(args.branch, safe="")}'
-    commits_list = fetch_paginated(commits_url, token, args.max_commits)
+    commits_list = fetch_paginated(commits_url, tokens, args.max_commits)
 
     print(f'  ✓ Found {len(commits_list)} commits')
     save_json(out_dir / 'commits_list.json', commits_list)
@@ -188,7 +267,7 @@ def main():
 
         # Fetch detailed commit data
         commit_url = f'https://api.github.com/repos/{owner}/{repo}/commits/{sha}'
-        commit_data, _ = http_get(commit_url, token)
+        commit_data, _ = http_get(commit_url, tokens)
 
         if commit_data is None:
             print('✗ Failed')
@@ -251,7 +330,7 @@ def main():
 
             # Fetch current file content
             file_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{filepath}'
-            file_data, _ = http_get(file_url, token)
+            file_data, _ = http_get(file_url, tokens)
 
             if file_data is None:
                 print('✗')
@@ -276,7 +355,7 @@ def main():
                 # Download actual file content if available
                 download_url = file_obj.get('download_url')
                 if download_url:
-                    content_data, _ = http_get(download_url, token)
+                    content_data, _ = http_get(download_url, tokens)
                     if content_data:
                         with open(file_path, 'w', encoding='utf-8', errors='ignore') as f:
                             f.write(content_data)

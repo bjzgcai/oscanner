@@ -13,7 +13,7 @@ from evaluator.config import (
     apply_env_to_process,
     mask_secret,
     DEFAULT_LLM_MODEL,
-    get_github_token,
+    get_github_tokens,
     get_gitee_token,
 )
 from evaluator.services.provider_quota_guard import snapshot_provider_quota
@@ -38,6 +38,7 @@ async def get_llm_config():
         "oscanner_llm_api_key_masked": mask_secret(file_env.get("OSCANNER_LLM_API_KEY") or os.getenv("OSCANNER_LLM_API_KEY")),
         "gitee_token_masked": mask_secret(file_env.get("GITEE_TOKEN") or os.getenv("GITEE_TOKEN")),
         "github_token_masked": mask_secret(file_env.get("GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")),
+        "github_token2_masked": mask_secret(file_env.get("GITHUB_TOKEN2") or os.getenv("GITHUB_TOKEN2")),
         "oscanner_llm_base_url": file_env.get("OSCANNER_LLM_BASE_URL") or os.getenv("OSCANNER_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "",
         "oscanner_llm_chat_completions_url": file_env.get("OSCANNER_LLM_CHAT_COMPLETIONS_URL") or os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL") or "",
         "oscanner_llm_model": file_env.get("OSCANNER_LLM_MODEL") or os.getenv("OSCANNER_LLM_MODEL") or DEFAULT_LLM_MODEL,
@@ -139,6 +140,12 @@ async def set_llm_config(payload: Dict[str, Any]):
             env["GITHUB_TOKEN"] = github_token
         else:
             env.pop("GITHUB_TOKEN", None)
+    if "github_token2" in payload:
+        github_token2 = str(payload.get("github_token2") or "").strip()
+        if github_token2:
+            env["GITHUB_TOKEN2"] = github_token2
+        else:
+            env.pop("GITHUB_TOKEN2", None)
 
     # If nothing changed, still return success to keep the UI simple/idempotent.
     # (Users may click "save" without modifying fields.)
@@ -204,7 +211,7 @@ async def check_platform_tokens(payload: Dict[str, Any]):
     if not isinstance(repo_urls, list) or len(repo_urls) == 0:
         raise HTTPException(status_code=400, detail="repo_urls must be a non-empty list")
     
-    github_token = get_github_token()
+    github_tokens = get_github_tokens()
     gitee_token = get_gitee_token()
     
     repo_requirements = []
@@ -227,7 +234,7 @@ async def check_platform_tokens(payload: Dict[str, Any]):
         token_required = True
         
         if platform == "github":
-            token_configured = bool(github_token)
+            token_configured = bool(github_tokens)
             if not token_configured:
                 missing_platforms.add("github")
         elif platform == "gitee":

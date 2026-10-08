@@ -13,6 +13,7 @@ import time
 import uuid
 
 from evaluator.config import DEFAULT_LLM_MODEL, get_llm_api_key, get_github_token, get_gitee_token
+from evaluator.services.github_auth import github_token_candidates
 from evaluator.schemas import TrajectoryResponse
 from evaluator.services import (
     analyze_growth_trajectory,
@@ -171,7 +172,7 @@ def _evidence_sources_from_request(request_body: Dict[str, Any]) -> List[str]:
 
 
 def _check_platform_tokens_for_repos(repo_urls: List[str]) -> None:
-    github_token = get_github_token()
+    github_tokens = github_token_candidates(get_github_token())
     gitee_token = get_gitee_token()
     missing_platforms = []
 
@@ -181,7 +182,7 @@ def _check_platform_tokens_for_repos(repo_urls: List[str]) -> None:
             continue
 
         platform, _, _ = parsed
-        if platform == "github" and not github_token and "github" not in missing_platforms:
+        if platform == "github" and not github_tokens and "github" not in missing_platforms:
             missing_platforms.append("github")
         elif platform == "gitee" and not gitee_token and "gitee" not in missing_platforms:
             missing_platforms.append("gitee")
@@ -477,7 +478,7 @@ async def analyze_trajectory(
             )
 
         # Check platform token configuration before analysis
-        github_token = get_github_token()
+        github_tokens = github_token_candidates(get_github_token())
         gitee_token = get_gitee_token()
         missing_platforms = []
         
@@ -487,7 +488,7 @@ async def analyze_trajectory(
                 continue  # Skip invalid URLs, they'll be handled later
             
             platform, owner, repo = parsed
-            if platform == "github" and not github_token:
+            if platform == "github" and not github_tokens:
                 if "github" not in missing_platforms:
                     missing_platforms.append("github")
             elif platform == "gitee" and not gitee_token:
@@ -617,7 +618,7 @@ async def analyze_trajectory_stream(
                     "LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
                 )
 
-            github_token = get_github_token()
+            github_tokens = github_token_candidates(get_github_token())
             gitee_token = get_gitee_token()
             missing_platforms: List[str] = []
 
@@ -627,7 +628,7 @@ async def analyze_trajectory_stream(
                     continue
 
                 platform, _, _ = parsed
-                if platform == "github" and not github_token and "github" not in missing_platforms:
+                if platform == "github" and not github_tokens and "github" not in missing_platforms:
                     missing_platforms.append("github")
                 elif platform == "gitee" and not gitee_token and "gitee" not in missing_platforms:
                     missing_platforms.append("gitee")
@@ -1013,7 +1014,7 @@ async def analyze_trajectory_one_off(
             )
 
         # Check platform token configuration before analysis
-        github_token = get_github_token()
+        github_tokens = github_token_candidates(get_github_token())
         gitee_token = get_gitee_token()
         missing_platforms = []
 
@@ -1023,7 +1024,7 @@ async def analyze_trajectory_one_off(
                 continue  # Skip invalid URLs, they'll be handled later
 
             platform, owner, repo = parsed
-            if platform == "github" and not github_token:
+            if platform == "github" and not github_tokens:
                 if "github" not in missing_platforms:
                     missing_platforms.append("github")
             elif platform == "gitee" and not gitee_token:
@@ -1247,7 +1248,7 @@ async def analyze_trajectory_one_off_stream(
                     "LLM not configured. Please set OPEN_ROUTER_KEY / OPENAI_API_KEY / OSCANNER_LLM_API_KEY (or run oscanner init)."
                 )
 
-            github_token = get_github_token()
+            github_tokens = github_token_candidates(get_github_token())
             gitee_token = get_gitee_token()
             missing_platforms: List[str] = []
 
@@ -1257,7 +1258,7 @@ async def analyze_trajectory_one_off_stream(
                     continue
 
                 platform, _, _ = parsed
-                if platform == "github" and not github_token and "github" not in missing_platforms:
+                if platform == "github" and not github_tokens and "github" not in missing_platforms:
                     missing_platforms.append("github")
                 elif platform == "gitee" and not gitee_token and "gitee" not in missing_platforms:
                     missing_platforms.append("gitee")

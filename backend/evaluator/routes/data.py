@@ -13,6 +13,7 @@ from evaluator.services import (
     fetch_gitee_commits,
 )
 from evaluator.services.extraction_service import get_requests_session
+from evaluator.services.github_auth import github_token_candidates
 from evaluator.utils import get_author_from_commit, get_emails_from_commit
 
 router = APIRouter()
@@ -202,6 +203,24 @@ def _normalize_github_commit_author_nodes(nodes: Any) -> List[Dict[str, Any]]:
         item.setdefault("html_url", "")
     return _finalize_author_groups(authors_map)
 
+
+def _github_graphql_rate_limited(payload: Any) -> bool:
+    """Return True when a GraphQL payload reports an API rate limit."""
+    if not isinstance(payload, dict):
+        return False
+    errors = payload.get("errors")
+    if not isinstance(errors, list):
+        return False
+    for error in errors:
+        if not isinstance(error, dict):
+            continue
+        error_type = str(error.get("type") or "").upper()
+        message = str(error.get("message") or "").lower()
+        if "rate" in error_type.lower() or "rate limit" in message or "rate limited" in message:
+            return True
+    return False
+
+
 def _fetch_github_contributors_authors(owner: str, repo: str) -> List[Dict[str, Any]]:
     """
     Fetch GitHub authors through GraphQL commit history.
@@ -209,21 +228,23 @@ def _fetch_github_contributors_authors(owner: str, repo: str) -> List[Dict[str, 
     GitHub's REST contributors API groups by GitHub account/email. For evaluator
     identity selection, use raw Git commit author name + email instead.
     """
-    github_token = get_github_token()
-    if not github_token:
+    # Honor a monkeypatched/legacy primary token and append fallback tokens.
+    github_tokens = github_token_candidates(get_github_token())
+    if not github_tokens:
         print("[GitHub Authors] GitHub token not configured; skipping GraphQL author API")
         return []
 
     graphql_url = "https://api.github.com/graphql"
-    headers = {
+    base_headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "oscanner-skill-evaluator",
-        "Authorization": f"Bearer {github_token}",
     }
 
     nodes: List[Dict[str, Any]] = []
     cursor = None
+    token_index = 0
     while True:
+        headers = {**base_headers, "Authorization": f"Bearer {github_tokens[token_index]}"}
         try:
             response = get_requests_session().post(
                 graphql_url,
@@ -243,6 +264,13 @@ def _fetch_github_contributors_authors(owner: str, repo: str) -> List[Dict[str, 
             return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 
         if response.status_code != 200:
+            if response.status_code in {403, 429} and token_index + 1 < len(github_tokens):
+                token_index += 1
+                print(
+                    f"[GitHub Authors] GraphQL author API rate limited for {owner}/{repo}; "
+                    f"retrying with GitHub fallback token #{token_index + 1}"
+                )
+                continue
             print(f"[GitHub Authors] GraphQL author API returned {response.status_code} for {owner}/{repo}")
             return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 
@@ -253,6 +281,13 @@ def _fetch_github_contributors_authors(owner: str, repo: str) -> List[Dict[str, 
             return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 
         if not isinstance(payload, dict) or payload.get("errors"):
+            if _github_graphql_rate_limited(payload) and token_index + 1 < len(github_tokens):
+                token_index += 1
+                print(
+                    f"[GitHub Authors] GraphQL author API rate limited for {owner}/{repo}; "
+                    f"retrying with GitHub fallback token #{token_index + 1}"
+                )
+                continue
             print(f"[GitHub Authors] GraphQL author API returned errors for {owner}/{repo}: {payload.get('errors') if isinstance(payload, dict) else payload}")
             return [] if not nodes else _normalize_github_commit_author_nodes(nodes)
 

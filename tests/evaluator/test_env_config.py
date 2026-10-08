@@ -15,7 +15,7 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 import evaluator.config.env as env_config
-from evaluator.config.env import get_project_env_paths, load_runtime_env
+from evaluator.config.env import get_project_env_paths, load_runtime_env, write_env_file
 
 
 def test_get_project_env_paths_prefers_server_dir_env_and_deduplicates(tmp_path):
@@ -94,3 +94,21 @@ def test_load_runtime_env_restores_non_empty_file_value_over_empty_process_var(t
 
     assert loaded == [server_env.resolve()]
     assert os.getenv("OPEN_ROUTER_KEY") == "server-key"
+
+
+def test_write_env_file_preserves_fallback_github_token(tmp_path):
+    """Dashboard saves must not drop GITHUB_TOKEN2 (the fallback token)."""
+    env_path = tmp_path / ".env.local"
+
+    write_env_file(
+        env_path,
+        {
+            "GITHUB_TOKEN": "primary-token",
+            "GITHUB_TOKEN2": "fallback-token",
+            "OPEN_ROUTER_KEY": "sk-or-test",
+        },
+    )
+
+    lines = env_path.read_text(encoding="utf-8").splitlines()
+    assert "GITHUB_TOKEN=primary-token" in lines
+    assert "GITHUB_TOKEN2=fallback-token" in lines

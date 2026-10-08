@@ -76,10 +76,11 @@ def test_github_request_retries_after_rate_limit_reset(monkeypatch):
     ]
 
     class FakeClient:
-        def get(self, url, params=None):
+        def request(self, method, url, headers=None, params=None, json=None, content=None):
             return responses.pop(0)
 
     sleeps = []
+    monkeypatch.setattr(github, "github_token_candidates", lambda primary=None: [])
     monkeypatch.setattr(github.time, "time", lambda: 100)
     monkeypatch.setattr(github.time, "sleep", sleeps.append)
 
