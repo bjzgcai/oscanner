@@ -8,6 +8,7 @@ import { exportHomePageMD } from '../utils/mdExport';
 import { useAppSettings } from './AppSettingsContext';
 import { useUserSettings } from './UserSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
+import { evaluationFetch } from '../utils/evaluationFetch';
 import { parseRepoUrl } from '../utils/repoUrl.mjs';
 import { useI18n } from './I18nContext';
 
@@ -171,7 +172,7 @@ export default function SingleRepoAnalysis() {
       if (!authorEmail) {
         throw new Error(`No commit email found for ${author.author}`);
       }
-      const response = await fetch(
+      const response = await evaluationFetch(
         `${API_SERVER_URL}/api/evaluate/${ownerToUse}/${repoToUse}/${encodeURIComponent(authorEmail)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformToUse)}&plugin=${encodeURIComponent(pluginId || '')}`,
         {
           method: 'POST',

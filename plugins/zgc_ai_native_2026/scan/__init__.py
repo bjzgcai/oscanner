@@ -253,8 +253,19 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         self._latest_collaboration_evidence: Optional[Dict[str, Any]] = None
         
         # Create HTTP client with connection pooling for better performance
-        # httpx.Client is more efficient than requests for concurrent operations
-        self._http_client = httpx.Client(timeout=httpx.Timeout(90.0, connect=10.0))
+        # httpx.Client is more efficient than requests for concurrent operations.
+        # Full-context evidence batches can take several minutes per call, so the
+        # LLM timeout is configurable and defaults to a generous window.
+        env_llm_timeout = os.getenv("OSCANNER_LLM_TIMEOUT_SECONDS")
+        try:
+            llm_timeout_seconds = (
+                max(30.0, min(3600.0, float(env_llm_timeout)))
+                if env_llm_timeout
+                else 900.0
+            )
+        except (TypeError, ValueError):
+            llm_timeout_seconds = 900.0
+        self._http_client = httpx.Client(timeout=httpx.Timeout(llm_timeout_seconds, connect=10.0))
         
         self.dimensions = {
             "spec_quality": "Specification & Built-in Quality",
@@ -1103,12 +1114,13 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.3,
-            "max_tokens": 4000 if emit_tokens else 12000,
+            "max_tokens": 4000 if emit_tokens else 32000,
         }
         if not emit_tokens:
             payload["response_format"] = {"type": "json_object"}
-            if label == "Extract evidence" and model.lower().startswith("glm"):
-                # Extraction records source facts; retain reasoning for synthesis.
+            if model.lower().startswith("glm"):
+                # glm reasoning consumes the token budget and returns empty
+                # content with response_format; disable thinking for all calls.
                 payload["thinking"] = {"type": "disabled"}
 
         if not self.progress_callback and emit_tokens:

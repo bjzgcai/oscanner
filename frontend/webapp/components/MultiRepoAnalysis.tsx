@@ -17,6 +17,7 @@ import type { ContributorComparisonData } from '../types';
 import { useAppSettings } from './AppSettingsContext';
 import { useUserSettings } from './UserSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
+import { evaluationFetch } from '../utils/evaluationFetch';
 import { formatEmailListError, parseEmailList } from '../utils/emailIdentity.mjs';
 import { parseRepoUrl } from '../utils/repoUrl.mjs';
 import PluginViewRenderer from './PluginViewRenderer';
@@ -397,7 +398,7 @@ export default function MultiRepoAnalysis() {
 
       try {
         setEvaluationProgress(10);
-        const response = await fetch(
+        const response = await evaluationFetch(
           `${API_SERVER_URL}/api/evaluate/${owner}/${repo}/${encodeURIComponent(evaluationIdentity)}?model=${encodeURIComponent(model)}&platform=${encodeURIComponent(platformParam)}&plugin=${encodeURIComponent(pluginId || '')}&language=${encodeURIComponent(locale)}`,
           {
             method: 'POST',
@@ -451,7 +452,7 @@ export default function MultiRepoAnalysis() {
         const fallbackEmail = (selected?.email || '').trim().toLowerCase();
         const emails = parsedEmails.emails.length > 0 ? parsedEmails.emails : (fallbackEmail ? [fallbackEmail] : []);
 
-        const response = await fetch(`${API_SERVER_URL}/api/batch/compare-contributor`, {
+        const response = await evaluationFetch(`${API_SERVER_URL}/api/batch/compare-contributor`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

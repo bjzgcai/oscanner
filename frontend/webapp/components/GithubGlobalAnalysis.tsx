@@ -27,6 +27,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { getApiBaseUrl } from "../utils/apiBase";
+import { evaluationFetch } from "../utils/evaluationFetch";
 import { useAppSettings } from "./AppSettingsContext";
 import PluginViewRenderer from "./PluginViewRenderer";
 
@@ -613,7 +614,7 @@ export default function GithubGlobalAnalysis() {
         MAX_COMMIT_LIMIT,
         Math.max(1, commitLimit ?? DEFAULT_COMMIT_LIMIT),
       );
-      const response = await fetch(`${apiBase}/api/github/evaluate`, {
+      const response = await evaluationFetch(`${apiBase}/api/github/evaluate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -28,6 +28,50 @@ def _commit(idx: int, patch: str = "+print('ok')") -> dict:
     }
 
 
+def _llm_read_timeout(evaluator) -> float:
+    return float(evaluator._http_client.timeout.read)
+
+
+def test_ai_native_llm_timeout_defaults_to_900_seconds(monkeypatch):
+    monkeypatch.delenv("OSCANNER_LLM_TIMEOUT_SECONDS", raising=False)
+    plugin = _load_ai_native_plugin()
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="en-US",
+    )
+
+    assert _llm_read_timeout(evaluator) == 900.0
+
+
+def test_ai_native_llm_timeout_respects_env_and_clamps(monkeypatch):
+    plugin = _load_ai_native_plugin()
+
+    for env_value, expected in (("120", 120.0), ("1", 30.0), ("9999", 3600.0)):
+        monkeypatch.setenv("OSCANNER_LLM_TIMEOUT_SECONDS", env_value)
+        evaluator = plugin.create_commit_evaluator(
+            data_dir="",
+            api_key="test-key",
+            model="deepseek/deepseek-v4-pro",
+            language="en-US",
+        )
+        assert _llm_read_timeout(evaluator) == expected
+
+
+def test_ai_native_llm_timeout_falls_back_on_invalid_env(monkeypatch):
+    monkeypatch.setenv("OSCANNER_LLM_TIMEOUT_SECONDS", "not-a-number")
+    plugin = _load_ai_native_plugin()
+    evaluator = plugin.create_commit_evaluator(
+        data_dir="",
+        api_key="test-key",
+        model="deepseek/deepseek-v4-pro",
+        language="en-US",
+    )
+
+    assert _llm_read_timeout(evaluator) == 900.0
+
+
 def test_ai_native_does_not_chunk_only_because_commit_count(monkeypatch):
     plugin = _load_ai_native_plugin()
     evaluator = plugin.create_commit_evaluator(

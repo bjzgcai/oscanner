@@ -26,6 +26,7 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { getApiBaseUrl } from "../utils/apiBase";
+import { evaluationFetch } from "../utils/evaluationFetch";
 import { useAppSettings } from "./AppSettingsContext";
 import PluginViewRenderer from "./PluginViewRenderer";
 
@@ -470,7 +471,7 @@ export default function GiteeProfileAnalysis() {
     setResult(null);
 
     try {
-      const response = await fetch(`${apiBase}/api/gitee/profile/evaluate`, {
+      const response = await evaluationFetch(`${apiBase}/api/gitee/profile/evaluate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
