@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './apiBase';
+import { evaluationFetch } from './evaluationFetch';
 import type {
   DatasetStats,
   TestRepository,
@@ -88,7 +89,7 @@ export const validationApi = {
     plugin_id?: string;
     model?: string;
   }): Promise<ValidationRunResponse> => {
-    const response = await fetch(`${API_BASE}/api/benchmark/validate`, {
+    const response = await evaluationFetch(`${API_BASE}/api/benchmark/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),

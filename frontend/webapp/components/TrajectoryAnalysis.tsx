@@ -10,6 +10,7 @@ import GrowthReport from './GrowthReport';
 import LlmConfigModal from './LlmConfigModal';
 import PluginCheckpointRenderer from './PluginCheckpointRenderer';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { evaluationFetch } from '@/utils/evaluationFetch';
 import { isValidEmail } from '@/utils/emailIdentity.mjs';
 import { parseRepoUrl, validateRepoUrl } from '@/utils/repoUrl.mjs';
 import { TrajectoryData, TrajectoryResponse, TrajectoryCheckpoint } from '@/types/trajectory';
@@ -228,7 +229,7 @@ export default function TrajectoryAnalysis() {
 
       console.log('[Trajectory] Starting analysis:', { url, email: primaryEmail, emails, repoUrl: repoUrl.trim() });
 
-      const response = await fetch(url, {
+      const response = await evaluationFetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
