@@ -12,13 +12,14 @@ import tempfile
 import requests
 import urllib.parse
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Callable, List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from fastapi import HTTPException
 
 from evaluator.paths import get_platform_data_dir
 from evaluator.config import GITHUB_TOKEN_ENV_KEYS, get_gitee_token, get_github_token
 from evaluator.services.github_auth import github_token_candidates
+from evaluator.services.provider_quota_guard import ProviderQuotaExceeded
 from evaluator.utils import get_author_from_commit
 from evaluator.utils.data_loader import is_eval_relevant_path
 
@@ -40,6 +41,25 @@ _TRANSIENT_GIT_CLONE_ERRORS = (
     "The requested URL returned error: 503",
     "The requested URL returned error: 504",
 )
+
+
+class CommitSyncQuotaExceeded(RuntimeError):
+    """Raised when the provider API rejects a commit fetch because quota is exhausted."""
+
+
+def _response_is_quota_limited(resp: Optional[requests.Response]) -> bool:
+    """Return True when a response indicates exhausted or throttled provider quota."""
+    if resp is None or resp.status_code not in (403, 429):
+        return False
+    if str(resp.headers.get("retry-after") or "").strip():
+        return True
+    if str(resp.headers.get("x-ratelimit-remaining") or "").strip() == "0":
+        return True
+    try:
+        message = str((resp.json() or {}).get("message") or "").lower()
+    except Exception:
+        message = (resp.text or "").lower()[:500]
+    return "rate limit" in message or "secondary rate" in message or "abuse" in message
 
 
 def get_requests_session() -> requests.Session:
@@ -229,6 +249,10 @@ def _fetch_github_commit_detail(
     detail_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{sha}"
     try:
         dresp = session.get(detail_url, headers=_github_api_headers(), timeout=30)
+        if _response_is_quota_limited(dresp):
+            raise CommitSyncQuotaExceeded(
+                f"GitHub API quota exhausted while fetching commit {sha} (HTTP {dresp.status_code})"
+            )
         if dresp.status_code == 200:
             detail = dresp.json()
             return detail if isinstance(detail, dict) else commit
@@ -262,13 +286,26 @@ def sync_github_commits_by_sha(owner: str, repo: str, shas: List[str]) -> bool:
 
     print(f"[GitHub Boundary Sync] Fetching {len(missing_shas)} requested commits for {owner}/{repo}")
     session = get_requests_session()
+    details_by_sha, _fallback_file_contents, quota_exhausted = _collect_commit_details_with_git_fallback(
+        "github",
+        owner,
+        repo,
+        missing_shas,
+        lambda sha: _fetch_github_commit_detail(session, owner, repo, {"sha": sha}),
+        validate=lambda sha, detail: _get_commit_sha(detail) == sha and isinstance(detail.get("commit"), dict),
+        log_prefix="GitHub Boundary Sync",
+    )
+    if quota_exhausted and not details_by_sha:
+        raise CommitSyncQuotaExceeded(
+            "GitHub API quota exhausted and git clone fallback produced no commit details"
+        )
+
     new_details: List[Dict[str, Any]] = []
     new_index_entries: List[Dict[str, Any]] = []
 
     for sha in missing_shas:
-        detail = _fetch_github_commit_detail(session, owner, repo, {"sha": sha})
-        if _get_commit_sha(detail) != sha or not isinstance(detail.get("commit"), dict):
-            print(f"[GitHub Boundary Sync] Commit {sha} could not be fetched as a usable commit")
+        detail = details_by_sha.get(sha)
+        if not detail:
             continue
 
         _save_json(commits_dir / f"{sha}.json", detail)
@@ -399,6 +436,10 @@ def _fetch_gitee_commit_detail(
     detail_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits/{sha}"
     try:
         dresp = session.get(detail_url, params={"access_token": gitee_token}, timeout=30)
+        if _response_is_quota_limited(dresp):
+            raise CommitSyncQuotaExceeded(
+                f"Gitee API quota exhausted while fetching commit {sha} (HTTP {dresp.status_code})"
+            )
         if dresp.status_code == 200:
             detail = dresp.json()
             return detail if isinstance(detail, dict) else commit
@@ -445,20 +486,33 @@ def sync_gitee_commits_by_sha(owner: str, repo: str, shas: List[str]) -> bool:
 
     print(f"[Gitee Boundary Sync] Fetching {len(missing_shas)} requested commits for {owner}/{repo}")
     session = get_requests_session()
+    details_by_sha, git_file_contents, quota_exhausted = _collect_commit_details_with_git_fallback(
+        "gitee",
+        owner,
+        repo,
+        missing_shas,
+        lambda sha: _fetch_gitee_commit_detail(session, owner, repo, gitee_token, {"sha": sha}),
+        validate=lambda sha, detail: _get_commit_sha(detail) == sha and isinstance(detail.get("commit"), dict),
+        log_prefix="Gitee Boundary Sync",
+        collect_file_contents=True,
+    )
+    if quota_exhausted and not details_by_sha:
+        raise CommitSyncQuotaExceeded(
+            "Gitee API quota exhausted and git clone fallback produced no commit details"
+        )
+
     new_details: List[Dict[str, Any]] = []
     new_index_entries: List[Dict[str, Any]] = []
     files_context: Dict[str, int] = {}
 
     for sha in missing_shas:
-        detail = _fetch_gitee_commit_detail(session, owner, repo, gitee_token, {"sha": sha})
-        if _get_commit_sha(detail) != sha or not isinstance(detail.get("commit"), dict):
-            print(f"[Gitee Boundary Sync] Commit {sha} could not be fetched as a usable commit")
+        detail = details_by_sha.get(sha)
+        if not detail:
             continue
 
         _save_json(commits_dir / f"{sha}.json", detail)
-        new_details.append(detail)
-
         index_entry = _build_commit_index_entry(detail)
+        new_details.append(detail)
         new_index_entries.append(index_entry)
         for filename in index_entry.get("files") or []:
             files_context[filename] = files_context.get(filename, 0) + 1
@@ -468,15 +522,20 @@ def sync_gitee_commits_by_sha(owner: str, repo: str, shas: List[str]) -> bool:
 
     _save_json(commits_list_path, _merge_by_sha(new_details, local_commits, 0))
     _save_json(commits_index_path, _merge_by_sha(new_index_entries, local_index, 0))
-    _write_gitee_file_context(
-        session,
-        owner,
-        repo,
-        gitee_token,
-        files_dir,
-        files_context,
-        max_files=100,
-    )
+    _write_gitee_file_context_from_contents(files_dir, git_file_contents)
+    remaining_context = {
+        filepath: count for filepath, count in files_context.items() if filepath not in git_file_contents
+    }
+    if remaining_context and not quota_exhausted:
+        _write_gitee_file_context(
+            session,
+            owner,
+            repo,
+            gitee_token,
+            files_dir,
+            remaining_context,
+            max_files=100,
+        )
     _save_json(
         data_dir / "repo_info.json",
         {"name": f"{owner}/{repo}", "full_name": f"{owner}/{repo}", "owner": owner, "platform": "gitee"},
@@ -496,7 +555,10 @@ def sync_gitee_commits_by_sha(owner: str, repo: str, shas: List[str]) -> bool:
             ],
         },
     )
-    _try_write_gitee_repo_snapshot(session, owner, repo, gitee_token, data_dir)
+    if not quota_exhausted:
+        _try_write_gitee_repo_snapshot(session, owner, repo, gitee_token, data_dir)
+    else:
+        print("[Gitee Boundary Sync] Skipped API file context and repo snapshot after quota exhaustion")
     return True
 
 
@@ -1054,17 +1116,15 @@ def _parse_git_diff_by_file(diff_text: str) -> Dict[str, str]:
     patches: Dict[str, str] = {}
     current_file = None
     current_lines: List[str] = []
+    header_re = re.compile(r"^diff --git a/(.*) b/(.*)$")
 
     for line in diff_text.splitlines():
         if line.startswith("diff --git "):
             if current_file and current_lines:
                 patches[current_file] = "\n".join(current_lines)
             current_lines = [line]
-            parts = line.split(" ")
-            if len(parts) >= 4 and parts[3].startswith("b/"):
-                current_file = parts[3][2:]
-            else:
-                current_file = None
+            match = header_re.match(line)
+            current_file = match.group(2) if match else None
             continue
         if current_file is not None:
             current_lines.append(line)
@@ -1073,6 +1133,354 @@ def _parse_git_diff_by_file(diff_text: str) -> Dict[str, str]:
         patches[current_file] = "\n".join(current_lines)
 
     return patches
+
+
+_GIT_COMMIT_FIELD_SEP = "\x1f"
+_GIT_COMMIT_RECORD_SEP = "\x1e"
+_GIT_COMMIT_METADATA_FORMAT = "%H%x1f%an%x1f%ae%x1f%aI%x1f%cn%x1f%ce%x1f%cI%x1f%P%x1f%B%x1e"
+
+
+def _parse_name_status_z(output: str) -> List[Tuple[str, str, str]]:
+    """Parse ``git diff-tree -z --name-status`` into (status_code, old_path, new_path)."""
+    tokens = output.split("\0")
+    entries: List[Tuple[str, str, str]] = []
+    i = 0
+    while i < len(tokens):
+        status_tok = tokens[i].strip()
+        if not status_tok:
+            break
+        code = status_tok[0].upper()
+        if code in ("R", "C") and i + 2 < len(tokens):
+            entries.append((code, tokens[i + 1], tokens[i + 2]))
+            i += 3
+        elif i + 1 < len(tokens):
+            entries.append((code, tokens[i + 1], tokens[i + 1]))
+            i += 2
+        else:
+            break
+    return entries
+
+
+def _parse_numstat_z(output: str, entries: List[Tuple[str, str, str]]) -> List[Tuple[int, int]]:
+    """Parse ``git diff-tree -z --numstat`` positionally against name-status entries."""
+    tokens = output.split("\0")
+    stats: List[Tuple[int, int]] = []
+    i = 0
+    for status_code, _old_path, _new_path in entries:
+        if i >= len(tokens) or not tokens[i]:
+            stats.append((0, 0))
+            continue
+        parts = tokens[i].split("\t", 2)
+        if len(parts) < 3:
+            stats.append((0, 0))
+            i += 1
+            continue
+        adds_text, dels_text = parts[0], parts[1]
+        # Rename/copy entries emit "adds\tdels\t", then the old and new
+        # paths as separate NUL-separated tokens (three tokens total).
+        i += 3 if status_code in ("R", "C") else 1
+        adds = int(adds_text) if adds_text.isdigit() else 0
+        dels = int(dels_text) if dels_text.isdigit() else 0
+        stats.append((adds, dels))
+    return stats
+
+
+def _build_git_commit_files(
+    name_status_output: str,
+    numstat_output: str,
+    patch_output: str,
+) -> List[Dict[str, Any]]:
+    """Build a GitHub-API-shaped ``files`` array from git diff-tree outputs."""
+    entries = _parse_name_status_z(name_status_output)
+    stats = _parse_numstat_z(numstat_output, entries)
+    patches = _parse_git_diff_by_file(patch_output)
+
+    files: List[Dict[str, Any]] = []
+    for (status_code, old_path, new_path), (additions, deletions) in zip(entries, stats):
+        filename = new_path or old_path
+        if not filename:
+            continue
+        patch_text = patches.get(filename) or ""
+        if "Binary files" in patch_text or "GIT binary patch" in patch_text:
+            patch_text = ""
+        entry: Dict[str, Any] = {
+            "filename": filename,
+            "status": _map_git_status(status_code),
+            "additions": additions,
+            "deletions": deletions,
+            "changes": additions + deletions,
+            "patch": patch_text,
+        }
+        if status_code in ("R", "C") and old_path and old_path != new_path:
+            entry["previous_filename"] = old_path
+        files.append(entry)
+    return files
+
+
+def _build_commit_detail_from_git(
+    clone_dir: Path,
+    sha: str,
+    *,
+    platform: str,
+    owner: str,
+    repo: str,
+) -> Optional[Dict[str, Any]]:
+    """Build a provider-API-shaped commit detail for one commit from a cloned repo."""
+    meta_result = _run_git(
+        ["git", "show", "-s", f"--format={_GIT_COMMIT_METADATA_FORMAT}", sha],
+        cwd=clone_dir,
+        timeout=60,
+    )
+    if meta_result.returncode != 0:
+        return None
+
+    record = meta_result.stdout.split(_GIT_COMMIT_RECORD_SEP)[0].rstrip("\n")
+    fields = record.split(_GIT_COMMIT_FIELD_SEP)
+    if len(fields) < 9:
+        return None
+    (
+        commit_sha,
+        author_name,
+        author_email,
+        author_date,
+        committer_name,
+        committer_email,
+        committer_date,
+        parents_raw,
+        message,
+    ) = fields[:9]
+    if not commit_sha.strip():
+        return None
+
+    name_status = _run_git(
+        ["git", "diff-tree", "--no-commit-id", "--root", "-r", "-M", "-z", "--name-status", commit_sha],
+        cwd=clone_dir,
+        timeout=120,
+    )
+    numstat = _run_git(
+        ["git", "diff-tree", "--no-commit-id", "--root", "-r", "-M", "-z", "--numstat", commit_sha],
+        cwd=clone_dir,
+        timeout=120,
+    )
+    patch = _run_git(
+        ["git", "diff-tree", "--no-commit-id", "--root", "-p", "-M", commit_sha],
+        cwd=clone_dir,
+        timeout=120,
+    )
+
+    files = _build_git_commit_files(name_status.stdout, numstat.stdout, patch.stdout)
+    additions = sum(item["additions"] for item in files)
+    deletions = sum(item["deletions"] for item in files)
+
+    if platform == "gitee":
+        commit_url = f"https://gitee.com/{owner}/{repo}/commit/{commit_sha}"
+        api_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits/{commit_sha}"
+    else:
+        commit_url = f"https://github.com/{owner}/{repo}/commit/{commit_sha}"
+        api_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{commit_sha}"
+
+    return {
+        "sha": commit_sha,
+        "commit": {
+            "author": {"name": author_name, "email": author_email, "date": author_date},
+            "committer": {"name": committer_name, "email": committer_email, "date": committer_date},
+            "message": message,
+        },
+        "author": None,
+        "committer": None,
+        "parents": [{"sha": parent.strip()} for parent in parents_raw.split() if parent.strip()],
+        "html_url": commit_url,
+        "url": api_url,
+        "files": files,
+        "stats": {"additions": additions, "deletions": deletions, "total": additions + deletions},
+    }
+
+
+def _git_commit_details_from_clone_dir(
+    clone_dir: Path,
+    shas: List[str],
+    *,
+    platform: str,
+    owner: str,
+    repo: str,
+) -> Dict[str, Dict[str, Any]]:
+    details: Dict[str, Dict[str, Any]] = {}
+    for sha in shas:
+        detail = _build_commit_detail_from_git(clone_dir, sha, platform=platform, owner=owner, repo=repo)
+        if detail is None:
+            print(f"[{platform.capitalize()} Boundary Sync] Commit {sha} not reachable in cloned history")
+            continue
+        details[sha] = detail
+    return details
+
+
+def _read_git_file_contents(
+    clone_dir: Path,
+    shas_newest_first: List[str],
+    filenames: List[str],
+    *,
+    max_files: int = 100,
+    max_file_bytes: int = DEFAULT_REPO_SNAPSHOT_MAX_FILE_BYTES,
+) -> Dict[str, str]:
+    """Read the newest available content for changed files directly from git objects."""
+    contents: Dict[str, str] = {}
+    for filename in filenames[:max_files]:
+        for sha in shas_newest_first:
+            try:
+                result = _run_git(["git", "show", f"{sha}:{filename}"], cwd=clone_dir, timeout=60)
+            except Exception:
+                continue
+            if result.returncode != 0:
+                continue
+            if len(result.stdout.encode("utf-8")) > max_file_bytes or "\x00" in result.stdout:
+                break
+            contents[filename] = result.stdout
+            break
+    return contents
+
+
+def _fetch_commit_details_via_git_clone(
+    platform: str,
+    owner: str,
+    repo: str,
+    shas: List[str],
+    *,
+    collect_file_contents: bool = False,
+) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, str]]:
+    """Clone the repository and build API-shaped commit details without provider API calls."""
+    if not shas:
+        return {}, {}
+
+    repo_url = _inject_git_token(_repo_git_url(platform, owner, repo), platform)
+    try:
+        with tempfile.TemporaryDirectory(prefix=f"{platform}_{owner}_{repo}_commitsync_") as tmpdir:
+            clone_dir = Path(tmpdir) / "repo"
+            clone_variants = [
+                ["git", "clone", "--filter=blob:none", "--no-checkout", repo_url, str(clone_dir)],
+                ["git", "clone", "--no-checkout", repo_url, str(clone_dir)],
+            ]
+            result = None
+            for variant_index, clone_cmd in enumerate(clone_variants):
+                if variant_index > 0:
+                    # git clone requires an empty target; clear the failed
+                    # partial clone before trying the next strategy.
+                    shutil.rmtree(clone_dir, ignore_errors=True)
+                result = _run_git_clone_with_retries(clone_cmd, clone_dir=clone_dir, timeout=600)
+                if result.returncode == 0:
+                    break
+            if result is None or result.returncode != 0:
+                error_text = _mask_url_credentials(result.stderr or result.stdout or "") if result else ""
+                print(
+                    f"⚠ {platform.capitalize()} Boundary Sync git fallback clone failed: "
+                    f"{error_text.strip()[:300]}"
+                )
+                return {}, {}
+
+            details = _git_commit_details_from_clone_dir(
+                clone_dir, shas, platform=platform, owner=owner, repo=repo
+            )
+
+            file_contents: Dict[str, str] = {}
+            if collect_file_contents and details:
+                ordered_shas: List[str] = []
+                rev_result = _run_git(
+                    ["git", "rev-list", "--topo-order", *details.keys()],
+                    cwd=clone_dir,
+                    timeout=60,
+                )
+                if rev_result.returncode == 0:
+                    # rev-list yields newest-first in topological order.
+                    ordered_shas = [sha for sha in rev_result.stdout.split() if sha in details]
+                if not ordered_shas:
+                    ordered_shas = [
+                        sha
+                        for sha, detail in sorted(
+                            details.items(),
+                            key=lambda item: item[1].get("commit", {}).get("author", {}).get("date") or "",
+                            reverse=True,
+                        )
+                    ]
+                filename_freq: Dict[str, int] = {}
+                for detail in details.values():
+                    for file_entry in detail.get("files") or []:
+                        filename = file_entry.get("filename")
+                        if filename:
+                            filename_freq[filename] = filename_freq.get(filename, 0) + 1
+                ranked_filenames = [name for name, _count in sorted(filename_freq.items(), key=lambda kv: -kv[1])]
+                file_contents = _read_git_file_contents(clone_dir, ordered_shas, ranked_filenames)
+
+            return details, file_contents
+    except Exception as exc:
+        print(f"⚠ {platform.capitalize()} Boundary Sync git fallback failed: {exc}")
+        return {}, {}
+
+
+def _collect_commit_details_with_git_fallback(
+    platform: str,
+    owner: str,
+    repo: str,
+    shas: List[str],
+    fetch_one: Callable[[str], Dict[str, Any]],
+    *,
+    validate: Callable[[str, Dict[str, Any]], bool],
+    log_prefix: str,
+    collect_file_contents: bool = False,
+) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, str], bool]:
+    """
+    Fetch commit details one by one via the provider API; on quota exhaustion,
+    fall back to a git clone for the remaining commits.
+
+    Returns ``(details_by_sha, file_contents, quota_exhausted)`` where
+    ``details_by_sha`` is keyed by the requested sha.
+    """
+    details_by_sha: Dict[str, Dict[str, Any]] = {}
+    file_contents: Dict[str, str] = {}
+    quota_exhausted = False
+
+    for sha in shas:
+        try:
+            detail = fetch_one(sha)
+        except (ProviderQuotaExceeded, CommitSyncQuotaExceeded) as exc:
+            quota_exhausted = True
+            print(f"[{log_prefix}] API quota exhausted ({exc}); falling back to git clone")
+            break
+        if not validate(sha, detail):
+            print(f"[{log_prefix}] Commit {sha} could not be fetched as a usable commit")
+            continue
+        details_by_sha[sha] = detail
+
+    if quota_exhausted:
+        remaining_shas = [sha for sha in shas if sha not in details_by_sha]
+        if remaining_shas:
+            print(f"[{log_prefix}] Git fallback: building {len(remaining_shas)} commit details via clone")
+            git_details, git_file_contents = _fetch_commit_details_via_git_clone(
+                platform,
+                owner,
+                repo,
+                remaining_shas,
+                collect_file_contents=collect_file_contents,
+            )
+            details_by_sha.update(git_details)
+            file_contents.update(git_file_contents)
+
+    return details_by_sha, file_contents, quota_exhausted
+
+
+def _write_gitee_file_context_from_contents(files_dir: Path, file_contents: Dict[str, str]) -> int:
+    """Write git-read file contents into the gitee files context directory."""
+    written = 0
+    for filepath, content in file_contents.items():
+        if not _is_safe_repo_api_path(filepath):
+            continue
+        file_path = files_dir / filepath
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(file_path, "w", encoding="utf-8", errors="ignore") as f:
+                f.write(content)
+            written += 1
+        except OSError:
+            continue
+    return written
 
 
 def _extract_github_data_via_git(
@@ -1547,17 +1955,38 @@ def sync_github_data_incremental(
         return False
 
     print(f"[GitHub Incremental] Fetching details for {len(latest_commits)} new commits")
+    commits_by_sha = {
+        sha: commit for commit in latest_commits if (sha := _get_commit_sha(commit))
+    }
+    requested_shas = list(commits_by_sha)
+    details_by_sha, _fallback_file_contents, quota_exhausted = _collect_commit_details_with_git_fallback(
+        "github",
+        owner,
+        repo,
+        requested_shas,
+        lambda sha: _fetch_github_commit_detail(
+            session, owner, repo, commits_by_sha.get(sha) or {"sha": sha}
+        ),
+        validate=lambda sha, detail: _get_commit_sha(detail) == sha
+        and isinstance(detail.get("commit"), dict),
+        log_prefix="GitHub Incremental",
+    )
+    if quota_exhausted and not details_by_sha:
+        raise CommitSyncQuotaExceeded(
+            "GitHub API quota exhausted and git clone fallback produced no commit details"
+        )
+
     new_details: List[Dict[str, Any]] = []
     new_index_entries: List[Dict[str, Any]] = []
 
-    for commit in latest_commits:
-        detail = _fetch_github_commit_detail(session, owner, repo, commit)
-        sha = _get_commit_sha(detail)
-        if not sha:
+    for sha in requested_shas:
+        detail = details_by_sha.get(sha)
+        if not detail:
             continue
+        detail_sha = _get_commit_sha(detail) or sha
 
-        _save_json(commits_dir / f"{sha}.json", detail)
-        _write_commit_diff_file(commits_dir, sha, detail)
+        _save_json(commits_dir / f"{detail_sha}.json", detail)
+        _write_commit_diff_file(commits_dir, detail_sha, detail)
         new_details.append(detail)
         new_index_entries.append(_build_commit_index_entry(detail))
 
@@ -1670,18 +2099,39 @@ def sync_gitee_data_incremental(
     if max_commits > 0:
         new_commit_summaries = new_commit_summaries[:max_commits]
     print(f"[Gitee Incremental] Fetching details for {len(new_commit_summaries)} new commits")
+    commits_by_sha = {
+        sha: commit for commit in new_commit_summaries if (sha := _get_commit_sha(commit))
+    }
+    requested_shas = list(commits_by_sha)
+    details_by_sha, git_file_contents, quota_exhausted = _collect_commit_details_with_git_fallback(
+        "gitee",
+        owner,
+        repo,
+        requested_shas,
+        lambda sha: _fetch_gitee_commit_detail(
+            session, owner, repo, gitee_token, commits_by_sha.get(sha) or {"sha": sha}
+        ),
+        validate=lambda sha, detail: _get_commit_sha(detail) == sha
+        and isinstance(detail.get("commit"), dict),
+        log_prefix="Gitee Incremental",
+        collect_file_contents=True,
+    )
+    if quota_exhausted and not details_by_sha:
+        raise CommitSyncQuotaExceeded(
+            "Gitee API quota exhausted and git clone fallback produced no commit details"
+        )
 
     new_details: List[Dict[str, Any]] = []
     new_index_entries: List[Dict[str, Any]] = []
     files_context: Dict[str, int] = {}
 
-    for commit in new_commit_summaries:
-        detail = _fetch_gitee_commit_detail(session, owner, repo, gitee_token, commit)
-        sha = _get_commit_sha(detail)
-        if not sha:
+    for sha in requested_shas:
+        detail = details_by_sha.get(sha)
+        if not detail:
             continue
+        detail_sha = _get_commit_sha(detail) or sha
 
-        _save_json(commits_dir / f"{sha}.json", detail)
+        _save_json(commits_dir / f"{detail_sha}.json", detail)
         new_details.append(detail)
 
         index_entry = _build_commit_index_entry(detail)
@@ -1698,16 +2148,21 @@ def sync_gitee_data_incremental(
     _save_json(commits_list_path, merged_commits)
     _save_json(commits_index_path, merged_index)
 
-    files_fetched = _write_gitee_file_context(
-        session,
-        owner,
-        repo,
-        gitee_token,
-        files_dir,
-        files_context,
-        max_files=100,
-        branch=branch,
-    )
+    files_fetched = _write_gitee_file_context_from_contents(files_dir, git_file_contents)
+    remaining_context = {
+        filepath: count for filepath, count in files_context.items() if filepath not in git_file_contents
+    }
+    if remaining_context and not quota_exhausted:
+        files_fetched += _write_gitee_file_context(
+            session,
+            owner,
+            repo,
+            gitee_token,
+            files_dir,
+            remaining_context,
+            max_files=100,
+            branch=branch,
+        )
 
     _save_json(
         data_dir / "repo_info.json",
@@ -1734,7 +2189,10 @@ def sync_gitee_data_incremental(
         f"[Gitee Incremental] Added {len(new_details)} commits, "
         f"updated {files_fetched} file contents"
     )
-    _try_write_gitee_repo_snapshot(session, owner, repo, gitee_token, data_dir)
+    if not quota_exhausted:
+        _try_write_gitee_repo_snapshot(session, owner, repo, gitee_token, data_dir)
+    else:
+        print("[Gitee Incremental] Skipped API file context and repo snapshot after quota exhaustion")
     return True
 
 
