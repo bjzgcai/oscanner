@@ -550,18 +550,24 @@ def test_ai_native_plugin_evaluate_repository_uses_all_commits_without_chunking(
 
 def test_ai_native_plugin_evaluate_repository_reports_provider_token_usage(monkeypatch):
     evaluator = _load_scan_plugin("zgc_ai_native_2026", "usage_evidence").create_commit_evaluator(data_dir="", api_key="test", language="zh-CN")
-    class FakeResponse:
+    class FakeStreamResponse:
         is_success = True
         def __init__(self, payload):
             self.payload = payload
-        def json(self):
-            return {"choices": [{"message": {"content": _evidence_response(self.payload["messages"][0]["content"])}}],
-                    "usage": {"prompt_tokens": 1001, "completion_tokens": 101, "total_tokens": 1102}}
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def iter_lines(self):
+            content = _evidence_response(self.payload["messages"][0]["content"])
+            yield "data: " + json.dumps({"choices": [{"delta": {"content": content}}]})
+            yield "data: " + json.dumps({"usage": {"prompt_tokens": 1001, "completion_tokens": 101, "total_tokens": 1102}})
+            yield "data: [DONE]"
     calls = []
-    def post(*args, json=None, **kwargs):
+    def stream(method, url, json=None, **kwargs):
         calls.append(json)
-        return FakeResponse(json)
-    monkeypatch.setattr(evaluator._http_client, "post", post)
+        return FakeStreamResponse(json)
+    monkeypatch.setattr(evaluator._http_client, "stream", stream)
     result = evaluator.evaluate_repository(commits=[{"sha": "sha-1", "files": [{"filename": "test.py", "patch": "+test()"}]}], repo_label="repo", load_files=False)
     assert len(calls) == 2
     assert result["token_usage"] == {"input_tokens": 2002, "output_tokens": 202, "total_tokens": 2204, "source": "provider"}

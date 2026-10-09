@@ -685,6 +685,9 @@ async def analyze_trajectory_stream(
 
         while True:
             if task.done():
+                # Let pending call_soon_threadsafe callbacks run once before
+                # draining, so events emitted just before completion are not lost.
+                await asyncio.sleep(0)
                 while not queue.empty():
                     event, data = queue.get_nowait()
                     yield format_sse_event(event, data)
@@ -892,6 +895,9 @@ async def _group_analyse_code_event_stream(
 
     while True:
         if task.done():
+            # Let pending call_soon_threadsafe callbacks run once before
+            # draining, so events emitted just before completion are not lost.
+            await asyncio.sleep(0)
             while not queue.empty():
                 event, data = queue.get_nowait()
                 yield format_sse_event(event, data)
@@ -1389,6 +1395,10 @@ async def analyze_trajectory_one_off_stream(
 
                 while True:
                     if task.done():
+                        # Let pending call_soon_threadsafe callbacks run once
+                        # before draining, so events emitted just before
+                        # completion are not lost.
+                        await asyncio.sleep(0)
                         while not queue.empty():
                             event, data = queue.get_nowait()
                             yield format_sse_event(event, data)
