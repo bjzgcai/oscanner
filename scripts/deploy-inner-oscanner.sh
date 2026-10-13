@@ -105,7 +105,7 @@ resolve_deploy_ref() {
 }
 
 check_local_git_state() {
-  [ "$SKIP_GIT_CHECK" -eq 0 ] || return
+  [ "$SKIP_GIT_CHECK" -eq 0 ] || return 0
 
   log "Checking local git state"
   local status
