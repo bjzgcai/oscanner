@@ -1069,3 +1069,85 @@ async def test_stream_global_github_evaluation_emits_sections_and_result(tmp_pat
     assert "event: result" in output
     assert "GitHub 证据采集完成" in output
     assert '"success":true' in output
+
+
+def test_detail_enrichment_completes_commits_without_profiles(monkeypatch):
+    calls = []
+
+    def fake_detail(client, *, owner, repo, sha, warnings):
+        calls.append((owner, repo, sha))
+        return {
+            "files": [{"filename": "src/train.py", "patch": "+pass", "additions": 1, "deletions": 0}],
+            "stats": {"additions": 1, "deletions": 0, "total": 1},
+            "parents": [{"sha": "p" * 40}],
+        }
+
+    monkeypatch.setattr(github, "_github_commit_detail", fake_detail)
+
+    incomplete = {
+        "owner": "owner",
+        "repo": "repo",
+        "repo_full_name": "owner/repo",
+        "sha": "a" * 40,
+        "files": [],
+        "stats": {"additions": 0, "deletions": 0, "total": 0},
+    }
+    complete = {
+        "owner": "owner",
+        "repo": "repo",
+        "repo_full_name": "owner/repo",
+        "sha": "b" * 40,
+        "files": [{"filename": "docs/readme.md", "patch": "+doc", "additions": 1, "deletions": 0}],
+    }
+    warnings = []
+
+    github._enrich_github_commit_details(
+        object(),
+        commits=[incomplete, complete],
+        max_commits_per_role=100,
+        warnings=warnings,
+    )
+
+    assert calls == [("owner", "repo", "a" * 40)]
+    assert incomplete["files"][0]["filename"] == "src/train.py"
+    assert incomplete["stats"] == {"additions": 1, "deletions": 0, "total": 1, "files_changed": 1}
+    assert incomplete["parents"] == [{"sha": "p" * 40}]
+    assert incomplete["detail_incomplete"] is False
+    assert not warnings
+
+
+def test_detail_enrichment_skips_empty_commit_inventory(monkeypatch):
+    def fail_detail(*args, **kwargs):
+        raise AssertionError("detail fetch must not run for an empty commit inventory")
+
+    monkeypatch.setattr(github, "_github_commit_detail", fail_detail)
+
+    github._enrich_github_commit_details(
+        object(),
+        commits=[],
+        max_commits_per_role=100,
+        warnings=[],
+    )
+
+
+def test_detail_enrichment_marks_failures_incomplete(monkeypatch):
+    monkeypatch.setattr(github, "_github_commit_detail", lambda *args, **kwargs: None)
+
+    commit = {
+        "owner": "owner",
+        "repo": "repo",
+        "repo_full_name": "owner/repo",
+        "sha": "c" * 40,
+        "files": [],
+    }
+    warnings = []
+
+    github._enrich_github_commit_details(
+        object(),
+        commits=[commit],
+        max_commits_per_role=100,
+        warnings=warnings,
+    )
+
+    assert commit["detail_incomplete"] is True
+    assert any("Commit detail unavailable: owner/repo@" + "c" * 40 in warning for warning in warnings)

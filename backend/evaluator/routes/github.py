@@ -1522,6 +1522,45 @@ def _github_global_analysis_payload(
     }
 
 
+def _enrich_github_commit_details(
+    client: httpx.Client,
+    *,
+    commits: List[Dict[str, Any]],
+    max_commits_per_role: int,
+    warnings: List[str],
+) -> None:
+    """Fetch file-level details for commits collected without them.
+
+    Email search and repository collection return commit summaries without
+    file changes, so detail completion must run for every identity input
+    path; it must not depend on profile URLs being supplied.
+    """
+    if not commits:
+        return
+    detail_candidates = candidate_window(commits, min(500, max(50, max_commits_per_role * 5)))
+    for commit in detail_candidates:
+        if commit.get("files"):
+            continue
+        detail_warnings: List[str] = []
+        detail = _github_commit_detail(
+            client, owner=commit["owner"], repo=commit["repo"],
+            sha=commit["sha"], warnings=detail_warnings,
+        )
+        if detail and detail.get("files"):
+            commit["files"] = detail["files"]
+            commit["stats"] = _commit_stats(detail)
+            commit["parents"] = detail.get("parents") or []
+            commit["detail_incomplete"] = len(detail["files"]) >= 300
+        else:
+            commit["detail_incomplete"] = True
+            warnings.append(f"Commit detail unavailable: {commit['repo_full_name']}@{commit['sha']}")
+        if detail_warnings:
+            # Detail failures reduce confidence without invalidating
+            # an otherwise complete commit inventory.
+            warnings.append("Some commit details could not be loaded; evidence is partial.")
+            break
+
+
 def _fetch_global_github_evidence(
     emails: List[str],
     *,
@@ -1647,29 +1686,12 @@ def _fetch_global_github_evidence(
             for email_commits in commits_by_email.values()
             for commit in email_commits
         ]
-        if resolved_profiles:
-            detail_candidates = candidate_window(github_commits, min(500, max(50, max_commits_per_role * 5)))
-            for commit in detail_candidates:
-                if commit.get("files"):
-                    continue
-                detail_warnings = []
-                detail = _github_commit_detail(
-                    client, owner=commit["owner"], repo=commit["repo"],
-                    sha=commit["sha"], warnings=detail_warnings,
-                )
-                if detail and detail.get("files"):
-                    commit["files"] = detail["files"]
-                    commit["stats"] = _commit_stats(detail)
-                    commit["parents"] = detail.get("parents") or []
-                    commit["detail_incomplete"] = len(detail["files"]) >= 300
-                else:
-                    commit["detail_incomplete"] = True
-                    warnings.append(f"Commit detail unavailable: {commit['repo_full_name']}@{commit['sha']}")
-                if detail_warnings:
-                    # Detail failures reduce confidence without invalidating
-                    # an otherwise complete commit inventory.
-                    warnings.append("Some commit details could not be loaded; evidence is partial.")
-                    break
+        _enrich_github_commit_details(
+            client,
+            commits=github_commits,
+            max_commits_per_role=max_commits_per_role,
+            warnings=warnings,
+        )
         evidence = _github_commit_linked_evidence(client, commits=github_commits, warnings=warnings)
         broad_evidence_repos = dict(profile_repo_items)
         if github_repos and not emails:
