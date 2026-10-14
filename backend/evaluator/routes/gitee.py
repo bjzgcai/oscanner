@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote, urlsplit
@@ -19,7 +20,12 @@ from evaluator.plugin_registry import PluginLoadError, load_scan_module
 from evaluator.services import resolve_plugin_id
 from evaluator.services.collaboration_evidence import fetch_collaboration_evidence
 from evaluator.services.evaluation_service import build_evidence_links
-from evaluator.services.profile_sampling import sample_profile_commits, annotate_evaluation
+from evaluator.services.profile_sampling import (
+    annotate_repository_fallback,
+    normalize_collaboration_item,
+    sample_profile_commits,
+    annotate_evaluation,
+)
 from evaluator.services.extraction_service import extract_gitee_data, sync_gitee_data_incremental
 from evaluator.utils import (
     get_author_from_commit,
@@ -34,7 +40,7 @@ router = APIRouter()
 
 GITEE_API_BASE = "https://gitee.com/api/v5"
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
-DEFAULT_COMMIT_LIMIT = 10
+DEFAULT_COMMIT_LIMIT = 1000
 MAX_COMMIT_LIMIT = 1000
 MAX_PROFILE_REPOS = 200
 DEFAULT_EVIDENCE_SOURCES = [
@@ -267,6 +273,8 @@ def _repo_from_api_item(item: Dict[str, Any], username: str) -> Optional[Dict[st
         owner = username
     if not repo:
         return None
+    namespace_type = str(namespace.get("type") or "").lower()
+    owner_type = str(owner_item.get("type") or "").lower()
     return {
         "platform": "gitee",
         "owner": owner,
@@ -274,6 +282,7 @@ def _repo_from_api_item(item: Dict[str, Any], username: str) -> Optional[Dict[st
         "repo_full_name": f"{owner}/{repo}",
         "repo_url": str(item.get("html_url") or f"https://gitee.com/{owner}/{repo}"),
         "fork": bool(item.get("fork")),
+        "organization_context": namespace_type in {"organization", "group", "enterprise"} or owner_type in {"organization", "group", "enterprise"},
     }
 
 
@@ -288,10 +297,15 @@ def _fetch_profile_repositories(username: str, token: str) -> List[Dict[str, Any
 
     with httpx.Client(timeout=httpx.Timeout(25.0, connect=5.0)) as client:
         while len(repositories) < MAX_PROFILE_REPOS:
-            response = client.get(
-                f"{GITEE_API_BASE}/users/{username}/repos",
-                params=_gitee_params(token, type="all", page=page, per_page=100),
-            )
+            for attempt in range(3):
+                response = client.get(
+                    f"{GITEE_API_BASE}/users/{username}/repos",
+                    params=_gitee_params(token, type="all", page=page, per_page=100),
+                )
+                if response.status_code not in {403, 429} and response.status_code < 500:
+                    break
+                if attempt < 2:
+                    time.sleep(0.5 * (2 ** attempt))
             if response.status_code == 404:
                 raise HTTPException(status_code=404, detail=f"Gitee user '{username}' not found")
             try:
@@ -374,6 +388,16 @@ def _sync_one_repo(
             _serialize_commit(commit, owner=owner, repo=name, username=repo.get("username", ""))
             for commit in commits
         ]
+        for serialized_commit in author_commits:
+            if repo.get("organization_context"):
+                serialized_commit["organization_context"] = True
+                serialized_commit["personal_evidence"] = False
+            elif not repo.get("fork") and repo.get("profile_mode", True):
+                serialized_commit["attribution_category"] = "profile_owned_non_fork"
+                serialized_commit["personal_evidence"] = True
+            else:
+                serialized_commit["attribution_category"] = "repo_fallback"
+                serialized_commit["personal_evidence"] = False
     serialized = author_commits
     serialized.sort(key=_sort_key, reverse=True)
 
@@ -389,6 +413,10 @@ def _sync_one_repo(
             "repo_full_name": f"{owner}/{name}",
             "repo_url": repo["repo_url"],
         })
+        evidence_items[-1] = normalize_collaboration_item(
+            evidence_items[-1],
+            [repo.get("username", "")],
+        )
 
     return {
         "repo": repo,
@@ -499,7 +527,7 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
     collaboration_items: List[Dict[str, Any]] = []
 
     for repo in repositories:
-        repo_with_username = {**repo, "username": username}
+        repo_with_username = {**repo, "username": username, "profile_mode": True}
         sync_kwargs: Dict[str, Any] = {"sync_commits_per_repo": sync_commits_per_repo}
         if repo.get("fork"):
             sync_kwargs["emails"] = emails
@@ -553,6 +581,10 @@ async def _build_profile_payload(request_body: Dict[str, Any]) -> Dict[str, Any]
     if warnings:
         sampling_summary["evidence_confidence"] = "low"
     annotate_evaluation(evaluation, sampling_summary, selected_commits)
+    if warnings:
+        evaluation["assessment_status"] = "partial_evidence"
+        evaluation["ranking_eligible"] = False
+        evaluation.setdefault("evidence_limitations", []).append("One or more Gitee repositories or evidence sources were unavailable")
     matched_repos = [
         item for item in sync_results
         if item.get("success") and item.get("available_commit_count", 0) > 0
@@ -636,6 +668,7 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
         "repo_full_name": f"{owner}/{repo_name}",
         "repo_url": f"https://gitee.com/{owner}/{repo_name}",
         "username": f"gitee:{owner}/{repo_name}",
+        "profile_mode": False,
     }
     warnings: List[str] = []
     sync_result = await asyncio.to_thread(
@@ -648,7 +681,9 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
 
     all_commits = _dedupe_commits(sync_result["commits"])
     all_commits.sort(key=_sort_key, reverse=True)
-    selected_commits = all_commits[:commit_limit]
+    if not emails:
+        annotate_repository_fallback(all_commits)
+    selected_commits, sampling_summary = sample_profile_commits(all_commits, commit_limit)
     collaboration_items = sync_result["collaboration_evidence"]
     collaboration_items.sort(key=_sort_key, reverse=True)
 
@@ -677,6 +712,10 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
         collaboration_items=collaboration_items,
         scope="gitee_repository",
     )
+    annotate_evaluation(evaluation, sampling_summary, selected_commits)
+    if warnings:
+        evaluation["assessment_status"] = "partial_evidence"
+        evaluation["ranking_eligible"] = False
 
     matched_repos = [{
         **repo_item,
@@ -699,6 +738,7 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
             "available_commit_count": len(all_commits),
             "collaboration_evidence_count": len(collaboration_items),
             "commit_limit": commit_limit,
+            **sampling_summary,
         },
         "commits": selected_commits,
         "collaboration_evidence": collaboration_items,
@@ -709,7 +749,7 @@ async def _build_repo_payload(request_body: Dict[str, Any]) -> Dict[str, Any]:
             (
                 "Commits are matched only by supplied emails against author.email and committer.email; zero matches do not fall back to all commits."
                 if emails
-                else "No emails were supplied, so all commits in the repository are attributed to the evaluated user."
+                else "No emails were supplied. Repository commits are collected as repository-context evidence and marked personal only when one contributor identity dominates the history."
             ),
         ],
         "metadata": {

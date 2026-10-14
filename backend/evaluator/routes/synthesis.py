@@ -40,6 +40,7 @@ class EvidenceSynthesisRequest(BaseModel):
     commits: list[dict[str, Any]] = Field(default_factory=list)
     collaboration_evidence: list[dict[str, Any]] = Field(default_factory=list)
     recover_original_evidence: bool = False
+    stability_runs: int = Field(default=1, ge=1, le=3)
 
 
 def recover_commits(commits):
@@ -115,7 +116,9 @@ def synthesize(request: EvidenceSynthesisRequest):
                     raise ValueError("Conflicting source identity")
                 sources[source["id"]] = source
             facts.extend(bundle.get("facts", []))
-        evaluation = evaluator.synthesize_evidence(list(sources.values()), facts)
+        source_rows = list(sources.values())
+        evaluations = [evaluator.synthesize_evidence(source_rows, facts) for _ in range(request.stability_runs)]
+        evaluation = _stabilize_evaluations(evaluations)
     elif request.commits:
         commits = recover_commits(request.commits) if request.recover_original_evidence else request.commits
         evaluation = evaluator._evaluate_evidence(commits, request.username, load_files=False)
@@ -123,6 +126,48 @@ def synthesize(request: EvidenceSynthesisRequest):
     else:
         raise ValueError("No archived commits or evidence bundles supplied")
     return {"success": True, "evaluation": evaluation}
+
+
+def _stabilize_evaluations(evaluations: list[dict[str, Any]]) -> dict[str, Any]:
+    if not evaluations:
+        raise ValueError("No synthesis evaluations were produced")
+    if len(evaluations) == 1:
+        return evaluations[0]
+
+    dimensions = tuple(evaluations[0].get("scores", {}).keys())
+    medians = {
+        dimension: sorted(int(evaluation["scores"][dimension]) for evaluation in evaluations)[len(evaluations) // 2]
+        for dimension in dimensions
+        if dimension != "reasoning"
+    }
+    representative = min(
+        evaluations,
+        key=lambda evaluation: sum(abs(int(evaluation["scores"].get(dimension, 0)) - median) for dimension, median in medians.items()),
+    )
+    representative = dict(representative)
+    representative["scores"] = {**representative["scores"], **medians}
+    assessments = dict(representative.get("dimension_assessments") or {})
+    for dimension, median in medians.items():
+        assessment = dict(assessments.get(dimension) or {})
+        assessment["score"] = median
+        assessments[dimension] = assessment
+    representative["dimension_assessments"] = assessments
+    representative["score_stability"] = {
+        "runs": len(evaluations),
+        "median_scores": medians,
+        "max_spread": max(
+            max(int(evaluation["scores"].get(dimension, 0)) for evaluation in evaluations)
+            - min(int(evaluation["scores"].get(dimension, 0)) for evaluation in evaluations)
+            for dimension in medians
+        ),
+        "human_review_required": any(
+            max(int(evaluation["scores"].get(dimension, 0)) for evaluation in evaluations)
+            - min(int(evaluation["scores"].get(dimension, 0)) for evaluation in evaluations)
+            > 10
+            for dimension in medians
+        ),
+    }
+    return representative
 
 
 @router.post("/synthesize")

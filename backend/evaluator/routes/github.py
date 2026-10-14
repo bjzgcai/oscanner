@@ -25,7 +25,13 @@ from evaluator.services.github_auth import (
     github_request,
     github_token_candidates,
 )
-from evaluator.services.profile_sampling import sample_profile_commits, candidate_window, annotate_evaluation
+from evaluator.services.profile_sampling import (
+    annotate_repository_fallback,
+    normalize_collaboration_item,
+    sample_profile_commits,
+    candidate_window,
+    annotate_evaluation,
+)
 from evaluator.utils import (
     get_author_from_commit,
     get_emails_from_commit,
@@ -47,7 +53,7 @@ DEFAULT_EVIDENCE_SOURCES = [
 ]
 MAX_COMMITS_PER_REPO_EMAIL = 1000
 GITHUB_API_BASE = "https://api.github.com"
-GITHUB_SEARCH_COMMITS_PER_ROLE = 10
+GITHUB_SEARCH_COMMITS_PER_ROLE = 1000
 GITHUB_MAX_SEARCH_COMMITS_PER_ROLE = 1000
 GITHUB_SEARCH_EVIDENCE_PER_QUERY = 100
 GITHUB_RATE_LIMIT_MAX_RETRIES = 2
@@ -809,6 +815,7 @@ def _github_profile_repo_commits(
     login: str,
     emails: Optional[List[str]] = None,
     warnings: List[str],
+    organization_profile: bool = False,
 ) -> tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     """Collect every visible commit from every repository under a profile.
 
@@ -829,11 +836,14 @@ def _github_profile_repo_commits(
             continue
         owner, repo = full_name.split("/", 1)
         is_fork = bool(repository.get("fork"))
+        owner_item = repository.get("owner") if isinstance(repository.get("owner"), dict) else {}
+        is_organization = organization_profile or str(owner_item.get("type") or "").lower() == "organization"
         repo_item = _github_repo_item("github", owner, repo)
         repo_item["fork"] = is_fork
+        repo_item["organization_context"] = is_organization
         matched_repos[f"github:{owner}/{repo}"] = repo_item
 
-        if is_fork and not normalized_emails:
+        if (is_fork or is_organization) and not normalized_emails:
             continue
 
         cached_commits, cached_complete = _github_cached_repo_snapshot(owner, repo)
@@ -856,13 +866,15 @@ def _github_profile_repo_commits(
                 continue
             commit = item
             matched_email = ""
-            if is_fork:
+            if is_fork or is_organization:
                 matched_email = next(
                     (email for email in normalized_emails if _matched_roles_for_email(commit, email)),
                     "",
                 )
                 if not matched_email:
                     continue
+            if is_organization and not matched_email:
+                continue
             serialized = _serialize_commit(
                 commit=commit,
                 platform="github",
@@ -873,6 +885,17 @@ def _github_profile_repo_commits(
             serialized["matched_login"] = login
             serialized["matched_identity"] = identity_key
             serialized["matched_identity_type"] = "github_profile"
+            serialized["organization_context"] = is_organization
+            serialized["attribution_category"] = (
+                "verified_email"
+                if matched_email
+                else "organization_or_team_context"
+                if is_organization
+                else "profile_owned_non_fork"
+                if not is_fork
+                else "repo_fallback"
+            )
+            serialized["personal_evidence"] = bool(matched_email or (not is_fork and not is_organization))
             serialized["source"] = (
                 "github_profile_fork_email_commits"
                 if is_fork
@@ -884,7 +907,8 @@ def _github_profile_repo_commits(
             if not isinstance(cached, dict) or not _commit_sha(cached):
                 continue
             reused = dict(cached)
-            if is_fork:
+            matched_email = ""
+            if is_fork or is_organization:
                 matched_email = next(
                     (email for email in normalized_emails if _matched_roles_for_email(reused, email)),
                     "",
@@ -896,6 +920,17 @@ def _github_profile_repo_commits(
             reused["matched_login"] = login
             reused["matched_identity"] = identity_key
             reused["matched_identity_type"] = "github_profile"
+            reused["organization_context"] = is_organization
+            reused["attribution_category"] = (
+                "verified_email"
+                if reused.get("matched_email")
+                else "organization_or_team_context"
+                if is_organization
+                else "profile_owned_non_fork"
+                if not is_fork
+                else "repo_fallback"
+            )
+            reused["personal_evidence"] = bool(reused.get("matched_email") or (not is_fork and not is_organization))
             reused["source"] = (
                 "github_profile_fork_email_cache"
                 if is_fork
@@ -1039,6 +1074,7 @@ def _github_repository_all_commits(
     for identity_key, commits in commits_by_identity.items():
         commits_by_identity[identity_key] = _dedupe_by_key(commits, ("platform", "repo_full_name", "sha"))
         commits_by_identity[identity_key].sort(key=_sort_key, reverse=True)
+        annotate_repository_fallback(commits_by_identity[identity_key])
     return commits_by_identity, matched_repos
 
 
@@ -1064,6 +1100,7 @@ def _resolve_github_profile_identities(
             "login": resolved_login,
             "profile_url": str(profile.get("html_url") or f"https://github.com/{resolved_login}"),
             "public_email": public_email if is_valid_email_identity(public_email) else "",
+            "account_type": str(profile.get("type") or "User"),
         }
 
     public_emails = _dedupe_strings([
@@ -1675,6 +1712,7 @@ def _fetch_global_github_evidence(
                 login=login,
                 emails=emails,
                 warnings=warnings,
+                organization_profile=profile.get("account_type") == "Organization",
             )
             commits_by_email.setdefault(identity_key, [])
             commits_by_email[identity_key].extend(profile_commits)
@@ -1718,7 +1756,11 @@ def _fetch_global_github_evidence(
             max_items_per_query=max_evidence_per_query,
         ))
 
-    return commits_by_email, matched_repos, _dedupe_by_key(evidence, ("source", "url", "github_login", "commit_sha")), warnings
+    normalized_evidence = [
+        normalize_collaboration_item(item, github_logins)
+        for item in _dedupe_by_key(evidence, ("source", "url", "github_login", "commit_sha"))
+    ]
+    return commits_by_email, matched_repos, normalized_evidence, warnings
 
 
 def _prepare_global_github_evaluation(request_body: Dict[str, Any]) -> Dict[str, Any]:
@@ -1936,6 +1978,10 @@ async def _build_global_github_evaluation_payload(
         sampling_summary["evidence_confidence"] = "low"
         payload["summary"].update(sampling_summary)
     annotate_evaluation(evaluation, sampling_summary, sampled_commits)
+    if payload.get("warnings"):
+        evaluation["assessment_status"] = "partial_evidence"
+        evaluation["ranking_eligible"] = False
+        evaluation.setdefault("evidence_limitations", []).append("Some GitHub evidence collection or detail requests were unavailable")
     payload["metadata"] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "source": "github_global_email_evaluation",
@@ -2065,6 +2111,10 @@ async def _stream_global_github_evaluation(request_body: Dict[str, Any]):
             sampling_summary["evidence_confidence"] = "low"
             payload["summary"].update(sampling_summary)
         annotate_evaluation(evaluation, sampling_summary, sampled_commits)
+        if payload.get("warnings"):
+            evaluation["assessment_status"] = "partial_evidence"
+            evaluation["ranking_eligible"] = False
+            evaluation.setdefault("evidence_limitations", []).append("Some GitHub evidence collection or detail requests were unavailable")
         payload["metadata"] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "source": "github_global_email_evaluation",

@@ -36,7 +36,7 @@ def test_final_scores_and_prose_have_one_source(monkeypatch):
             for key, score in zip(ev.dimensions, [55, 15, 34, 71])}})
     monkeypatch.setattr(ev, '_complete_chat', complete)
     result = ev._evaluate_evidence([commit()], 'alice', load_files=False)
-    assert result['scoring_policy_version'] == 'combined-evidence-v1'
+    assert result['scoring_policy_version'] == 'combined-evidence-v2'
     assert set(result['scores']) == {*ev.dimensions, 'reasoning'}
     assert result['scores']['reasoning'].count('分数:') == 4
     assert '分数: 15/100\n\n等级: L1' in result['scores']['reasoning']
@@ -50,10 +50,26 @@ def test_sources_keep_repo_and_provider_context():
     sources = ev._evidence_sources([commit(), commit(), commit('b'), commit('a', 'gitee')])
     assert len(sources) == 6
     assert len({s['id'] for s in sources}) == 6
+    assert all(s.get('attribution') == 'repo_fallback' for s in sources)
     files = [s for s in sources if s.get('path')]
     assert {s['url'] for s in files} == {
         f'https://{provider}.com/owner/{repo}/blob/{"a" * 40}/main.py'
         for provider, repo in [('github', 'a'), ('github', 'b'), ('gitee', 'a')]}
+
+
+def test_sources_keep_attribution_and_personal_evidence_context():
+    ev = evaluator()
+    row = commit()
+    row.update({
+        'attribution_category': 'verified_email',
+        'personal_evidence': True,
+        'mirror_repositories': [{'platform': 'gitee', 'repository': 'owner/a'}],
+    })
+    sources = ev._evidence_sources([row])
+
+    assert sources
+    assert all(source['attribution'] == 'verified_email' for source in sources)
+    assert all(source['personal_evidence'] is True for source in sources)
 
 
 def test_oversized_source_is_split_without_losing_tail():
@@ -174,6 +190,22 @@ def test_internal_endpoint_requires_auth(monkeypatch):
     assert client.post('/api/internal/synthesize', json={}).status_code == 401
     monkeypatch.setattr(synthesis, 'synthesize', lambda request: {'success': True})
     assert client.post('/api/internal/synthesize', json={}, headers={'X-Synthesis-Token': 'test-secret'}).status_code == 200
+
+
+def test_stability_metadata_uses_median_and_flags_large_spread():
+    dimensions = ('spec_quality', 'cloud_architecture', 'ai_engineering', 'mastery_professionalism')
+    def evaluation(spec):
+        return {
+            'scores': {**dict.fromkeys(dimensions, 50), 'spec_quality': spec, 'reasoning': 'report'},
+            'dimension_assessments': {key: {'score': 50} for key in dimensions},
+        }
+    result = synthesis._stabilize_evaluations([evaluation(40), evaluation(52), evaluation(70)])
+
+    assert result['scores']['spec_quality'] == 52
+    assert result['dimension_assessments']['spec_quality']['score'] == 52
+    assert result['score_stability']['runs'] == 3
+    assert result['score_stability']['max_spread'] == 30
+    assert result['score_stability']['human_review_required'] is True
 
 
 @pytest.mark.parametrize('provider', ['github', 'gitee'])

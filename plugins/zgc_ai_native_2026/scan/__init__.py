@@ -1113,7 +1113,7 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3,
+            "temperature": 0,
             "max_tokens": 4000 if emit_tokens else 32000,
         }
         if not emit_tokens:
@@ -2508,7 +2508,7 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         for m in models_to_try:
             try:
                 print(f"[LLM] Calling {m} at {self.api_url}")
-                print(f"[DEBUG] Request config: temperature=0.3, max_tokens=4000")
+                print("[DEBUG] Request config: temperature=0, max_tokens=4000")
 
                 content = self._complete_chat(m, prompt, label="生成整体评估")
                 content_length = len(content) if isinstance(content, str) else 0
@@ -2685,7 +2685,7 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
                     json={
                         "model": model,
                         "messages": [{"role": "user", "content": retry_prompt}],
-                        "temperature": 0.3,
+                        "temperature": 0,
                         "max_tokens": 4000,
                     },
                 )

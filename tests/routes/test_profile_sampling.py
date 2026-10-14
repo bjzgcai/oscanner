@@ -1,5 +1,5 @@
 from evaluator.services.profile_sampling import (
-    annotate_evaluation, candidate_window, file_category, sample_profile_commits,
+    annotate_evaluation, annotate_repository_fallback, candidate_window, file_category, sample_profile_commits,
 )
 
 
@@ -35,7 +35,7 @@ def test_missing_details_and_broad_attribution_are_low_confidence():
     assert summary["evidence_confidence"] == "low"
     items[0]["files"] = []
     selected, summary = sample_profile_commits(items, 10)
-    assert summary["detail_complete_count"] == 9
+    assert summary["detail_complete_count"] == 10
     result = annotate_evaluation({"scores": {"quality": 15}}, summary, selected)
     assert result["assessment_status"] == "insufficient_evidence"
     assert result["scores"]["quality"] == 15
@@ -47,6 +47,10 @@ def test_paths_not_messages_control_classification():
     assert file_category("docs/adr/001.md") == "architecture_documentation"
     assert file_category("dist/bundle.js") == "generated_or_low_signal"
     assert file_category("config/unknown.blob") == "unknown"
+    assert file_category("src/App.vue") == "source_implementation"
+    assert file_category("src/lib/plugin.svelte") == "source_implementation"
+    assert file_category("src/style/main.scss") == "source_implementation"
+    assert file_category("package-lock.json") == "generated_or_low_signal"
 
 
 def test_identical_shas_across_forks_deduplicate_but_reverts_remain():
@@ -55,6 +59,38 @@ def test_identical_shas_across_forks_deduplicate_but_reverts_remain():
     revert = {**commit("a/r", "def"), "message": "Revert abc"}
     selected, _ = sample_profile_commits([original, mirrored, revert], 10)
     assert {c["sha"] for c in selected} == {"abc", "def"}
+
+
+def test_identical_shas_across_platforms_count_once_with_mirror_metadata():
+    github_commit = commit("owner/repo", "abc")
+    gitee_commit = {
+        **commit("mirror/repo", "abc"),
+        "platform": "gitee",
+        "repo_url": "https://gitee.com/mirror/repo",
+    }
+    selected, summary = sample_profile_commits([github_commit, gitee_commit], 10)
+
+    assert len(selected) == 1
+    assert summary["sampled_commit_count"] == 1
+    assert selected[0]["mirror_repositories"][0]["platform"] == "gitee"
+
+
+def test_repository_fallback_requires_dominant_contributor():
+    solo = [commit("team/repo", str(index)) for index in range(4)]
+    for item in solo:
+        item.pop("matched_email")
+        item["author"] = "alice"
+    assert annotate_repository_fallback(solo) is True
+    assert all(item["personal_evidence"] for item in solo)
+
+    team = solo[:3] + [
+        {**commit("team/repo", "other-1"), "author": "bob"},
+        {**commit("team/repo", "other-2"), "author": "carol"},
+    ]
+    for item in team[3:]:
+        item.pop("matched_email")
+    assert annotate_repository_fallback(team) is False
+    assert not any(item["personal_evidence"] for item in team)
 
 
 def test_candidate_budget_covers_old_and_new_across_repos():

@@ -9,19 +9,33 @@ from pathlib import PurePosixPath
 from typing import Any, Iterable
 
 ENGINEERING = {"source_implementation", "test_quality", "engineering_config", "architecture_documentation"}
-SOURCE = {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".go", ".rs", ".cpp", ".c", ".h", ".cs", ".rb", ".php", ".swift", ".kt", ".sh", ".sql", ".ipynb", ".cu"}
+SOURCE = {
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".go", ".rs", ".cpp", ".c", ".h",
+    ".cs", ".rb", ".php", ".swift", ".kt", ".sh", ".sql", ".ipynb", ".cu", ".vue",
+    ".svelte", ".css", ".scss", ".sass", ".less", ".html", ".htm", ".dart", ".scala",
+    ".r", ".jl", ".m", ".mm", ".pl", ".lua", ".ex", ".exs", ".erl", ".hs", ".clj",
+}
+LOCKFILES = {
+    "package-lock.json", "poetry.lock", "uv.lock", "yarn.lock", "pnpm-lock.yaml",
+    "cargo.lock", "composer.lock", "gemfile.lock", "pipfile.lock",
+}
 QUOTAS = {"source_implementation": .45, "test_quality": .20, "engineering_config": .20, "documentation": .10}
+PERSONAL_ATTRIBUTIONS = {"verified_email", "verified_login", "profile_owned_non_fork"}
 
 
 def file_category(path: str) -> str:
     path = path.lower().removeprefix("./")
     name = PurePosixPath(path).name
     parts = PurePosixPath(path).parts
-    if any(p in {"vendor", "node_modules", "dist", "build", "__pycache__"} for p in parts) or name.endswith((".min.js", ".map", ".png", ".jpg", ".gif", ".svg")):
+    if (
+        any(p in {"vendor", "node_modules", "dist", "build", "__pycache__"} for p in parts)
+        or name in LOCKFILES
+        or name.endswith((".min.js", ".map", ".png", ".jpg", ".gif", ".svg"))
+    ):
         return "generated_or_low_signal"
     if any(p in {"test", "tests", "__tests__"} for p in parts) or name.startswith("test_") or any(p in name for p in (".spec.", ".test.", "_test.")):
         return "test_quality"
-    if path.startswith((".github/workflows/", ".circleci/")) or any(p in {"k8s", "kubernetes", "terraform", "helm"} for p in parts) or name.startswith(("dockerfile", "docker-compose", ".eslintrc", ".pre-commit-config")) or name in {"makefile", "justfile", "pyproject.toml", "package.json", "package-lock.json", "poetry.lock", "uv.lock", "tsconfig.json", "cargo.toml", "go.mod"} or name.endswith(".tf"):
+    if path.startswith((".github/workflows/", ".circleci/")) or any(p in {"k8s", "kubernetes", "terraform", "helm"} for p in parts) or name.startswith(("dockerfile", "docker-compose", ".eslintrc", ".pre-commit-config")) or name in {"makefile", "justfile", "pyproject.toml", "package.json", "tsconfig.json", "cargo.toml", "go.mod"} or name.endswith(".tf"):
         return "engineering_config"
     if any(p in {"adr", "adrs", "architecture"} for p in parts):
         return "architecture_documentation"
@@ -30,6 +44,88 @@ def file_category(path: str) -> str:
     if name.endswith((".md", ".rst", ".adoc", ".txt")) or path.startswith(("docs/", "doc/")):
         return "documentation"
     return "unknown"
+
+
+def attribution_category(commit: dict[str, Any]) -> str:
+    """Classify how strongly a collected artifact is attributed to the user."""
+    explicit = str(commit.get("attribution_category") or commit.get("attribution") or "").strip()
+    aliases = {
+        "email": "verified_email",
+        "github_login": "verified_login",
+        "commit_association": "organization_or_team_context",
+        "broad_attribution": "repo_fallback",
+    }
+    if explicit in PERSONAL_ATTRIBUTIONS | {"repo_fallback", "organization_or_team_context"}:
+        return explicit
+    if explicit in aliases:
+        return aliases[explicit]
+    if commit.get("matched_email"):
+        return "verified_email"
+    roles = commit.get("matched_roles") or []
+    if commit.get("matched_login") or any(
+        isinstance(role, dict) and role.get("github_login") for role in roles
+    ):
+        return "verified_login"
+    if commit.get("organization_context"):
+        return "organization_or_team_context"
+    source = str(commit.get("source") or "")
+    if "profile" in source and "fork" not in source:
+        return "profile_owned_non_fork"
+    return "repo_fallback"
+
+
+def _commit_actor_identity(commit: dict[str, Any]) -> str:
+    nested = commit.get("commit") if isinstance(commit.get("commit"), dict) else {}
+    author = nested.get("author") if isinstance(nested.get("author"), dict) else {}
+    login = str(author.get("login") or author.get("github_login") or "").strip()
+    if login:
+        return login.lower()
+    return str(commit.get("matched_email") or commit.get("author") or "").strip().lower()
+
+
+def annotate_repository_fallback(commits: Iterable[dict[str, Any]], *, dominant_threshold: float = 0.8) -> bool:
+    """Mark repo-only evidence personal only when one contributor dominates."""
+    items = [commit for commit in commits if isinstance(commit, dict)]
+    identities = Counter(_commit_actor_identity(commit) for commit in items if _commit_actor_identity(commit))
+    dominant = identities.most_common(1)[0][1] / max(1, sum(identities.values())) if identities else 0
+    personal = bool(identities) and dominant >= dominant_threshold
+    for commit in items:
+        if not commit.get("matched_email") and not commit.get("matched_login"):
+            commit["personal_evidence"] = personal
+    return personal
+
+
+def normalize_collaboration_item(item: dict[str, Any], identities: Iterable[str] = ()) -> dict[str, Any]:
+    """Normalize a PR/issue/review row and its actor attribution."""
+    normalized = dict(item)
+    actor = str(
+        normalized.get("actor")
+        or normalized.get("github_login")
+        or normalized.get("login")
+        or normalized.get("user")
+        or ""
+    ).strip()
+    identity_set = {str(value or "").strip().lower() for value in identities if str(value or "").strip()}
+    category = "verified_login" if actor and actor.lower() in identity_set else "organization_or_team_context"
+    normalized.update({
+        "actor": actor,
+        "action_type": str(normalized.get("action_type") or normalized.get("source") or "collaboration"),
+        "attribution_category": category,
+        "personal_evidence": category == "verified_login",
+    })
+    return normalized
+
+
+def summarize_attribution(items: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    rows = [item for item in items if isinstance(item, dict)]
+    counts = Counter(attribution_category(item) for item in rows)
+    personal = sum(bool(item.get("personal_evidence")) or attribution_category(item) in PERSONAL_ATTRIBUTIONS for item in rows)
+    return {
+        "total": len(rows),
+        "personal_evidence": personal,
+        "context_only": len(rows) - personal,
+        "counts": dict(sorted(counts.items())),
+    }
 
 
 def normalize_commit(commit: dict[str, Any]) -> dict[str, Any]:
@@ -47,11 +143,31 @@ def normalize_commit(commit: dict[str, Any]) -> dict[str, Any]:
     item["files"] = files
     item["repository"] = commit.get("repo_url") or commit.get("repo_full_name") or "unknown"
     item["committed_at"] = commit.get("date") or commit.get("committed_at") or ""
-    item["author_match_method"] = commit.get("author_match_method") or ("email" if commit.get("matched_email") else "login" if commit.get("matched_roles") else "broad_attribution")
+    item["author_match_method"] = commit.get("author_match_method") or (
+        "email" if commit.get("matched_email")
+        else "login" if commit.get("matched_login") or commit.get("matched_roles")
+        else "broad_attribution"
+    )
+    item["attribution_category"] = attribution_category(commit)
+    item["personal_evidence"] = bool(
+        commit.get("personal_evidence")
+        or item["attribution_category"] in PERSONAL_ATTRIBUTIONS
+    )
     stats = commit.get("stats") or {}
     for key in ("additions", "deletions"):
         item[key] = int(stats.get(key) or commit.get(key) or sum(int(f.get(key) or 0) for f in files))
-    item["detail_complete"] = bool(files) and not commit.get("detail_incomplete")
+    stats = commit.get("stats") if isinstance(commit.get("stats"), dict) else {}
+    legitimate_empty_diff = (
+        not files
+        and not commit.get("detail_incomplete")
+        and (
+            commit.get("empty_diff")
+            or len(commit.get("parents") or []) > 1
+            or str(commit.get("message") or "").startswith("Merge ")
+            or int(stats.get("total") or 0) == 0
+        )
+    )
+    item["detail_complete"] = (bool(files) or legitimate_empty_diff) and not commit.get("detail_incomplete")
     return item
 
 
@@ -104,15 +220,20 @@ def sample_profile_commits(commits: Iterable[dict[str, Any]], limit: int):
             fingerprint = hashlib.sha256(json.dumps(
                 sorted((f["filename"], f["patch"]) for f in files), ensure_ascii=True,
             ).encode()).hexdigest()
-            patch_key = (_repo(item), raw.get("matched_email") or raw.get("matched_identity"), fingerprint)
+            patch_key = (item["repository"], raw.get("matched_email") or raw.get("matched_identity"), fingerprint)
             if patch_key in patches:
                 continue
             patches.add(patch_key)
         # Identical Git objects mirrored across forks count once. A revert has
         # its own diff and SHA and must not be discarded by its title alone.
-        key = (item.get("platform"), item["sha"])
+        key = str(item["sha"]).lower()
         if key not in unique or _rank(item) > _rank(unique[key]):
             unique[key] = item
+        else:
+            mirrors = unique[key].setdefault("mirror_repositories", [])
+            mirror = {"platform": item.get("platform"), "repository": item.get("repo_full_name"), "url": item.get("url")}
+            if mirror not in mirrors:
+                mirrors.append(mirror)
     candidates = sorted(unique.values(), key=_rank, reverse=True)
     budget = min(max(1, int(limit)), len(candidates))
     repos = {_repo(c) for c in candidates}
@@ -152,23 +273,55 @@ def sample_profile_commits(commits: Iterable[dict[str, Any]], limit: int):
         pass
     engineering = sum(c["category"] in ENGINEERING for c in selected)
     complete = sum(c["detail_complete"] for c in selected)
-    uncertain = any(c["author_match_method"] == "broad_attribution" for c in selected)
+    uncertain = any(not c["personal_evidence"] for c in selected)
     confidence = "low" if engineering < 3 or complete < len(selected) or uncertain else "medium"
     if engineering >= 10 and complete == len(selected) and not uncertain and len(counts) >= 2:
         confidence = "high"
-    summary = {"sampling_version": "profile-v1", "available_commit_count": len(candidates), "sampled_commit_count": len(selected), "engineering_commit_count": engineering, "documentation_only_commit_count": sum(c["category"] == "documentation" for c in selected), "repository_coverage": len(counts), "available_repository_count": len(repos), "detail_complete_count": complete, "evidence_confidence": confidence}
+    attribution_summary = summarize_attribution(selected)
+    summary = {
+        "sampling_version": "profile-v2",
+        "available_commit_count": len(candidates),
+        "sampled_commit_count": len(selected),
+        "engineering_commit_count": engineering,
+        "documentation_only_commit_count": sum(c["category"] == "documentation" for c in selected),
+        "repository_coverage": len(counts),
+        "available_repository_count": len(repos),
+        "detail_complete_count": complete,
+        "attribution_summary": attribution_summary,
+        "evidence_coverage": {
+            "sampled_commit_count": len(selected),
+            "engineering_commit_count": engineering,
+            "detail_complete_count": complete,
+            "repository_coverage": len(counts),
+            "personal_evidence_count": attribution_summary["personal_evidence"],
+            "context_only_count": attribution_summary["context_only"],
+        },
+        "evidence_confidence": confidence,
+    }
     return selected, summary
 
 
 def annotate_evaluation(evaluation, summary, commits=()):
     evaluation["sampling_summary"] = dict(summary)
     evaluation["evidence_confidence"] = summary["evidence_confidence"]
-    evaluation["assessment_status"] = "insufficient_evidence" if summary["evidence_confidence"] == "low" else "evidence_based"
+    evaluation["assessment_status"] = "insufficient_evidence" if summary["evidence_confidence"] == "low" else "scored"
     evaluation["sampled_evidence"] = [
         {**{key: c.get(key) for key in ("repository", "sha", "url", "committed_at", "category", "selection_reason", "author_match_method", "additions", "deletions")},
          "files": [f["filename"] for f in c.get("files", [])]}
         for c in commits
     ]
-    if evaluation["assessment_status"] == "insufficient_evidence":
-        evaluation["evidence_notice"] = "证据不足：分数仅描述已采集样本，不能据此认定个人缺少工程能力或确定为 L1。"
+    evaluation["ranking_eligible"] = (
+        evaluation["assessment_status"] == "scored"
+        and summary.get("engineering_commit_count", 0) >= 3
+        and summary.get("attribution_summary", {}).get("context_only", 0) == 0
+    )
+    evaluation["evidence_limitations"] = []
+    if summary.get("attribution_summary", {}).get("context_only"):
+        evaluation["evidence_limitations"].append(
+            f"{summary['attribution_summary']['context_only']} items use repository or team context rather than verified personal attribution"
+        )
+    if summary.get("engineering_commit_count", 0) < 3:
+        evaluation["evidence_limitations"].append("Fewer than three engineering commits with analyzable evidence were sampled")
+    if not evaluation["ranking_eligible"]:
+        evaluation["evidence_notice"] = "证据不足或归属待确认：结果不能用于认定个人缺少工程能力，也不能直接参与排名。"
     return evaluation

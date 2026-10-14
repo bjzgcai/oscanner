@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -221,7 +222,7 @@ def _fetch_github_evidence(owner: str, repo: str, sources: List[str]) -> Dict[st
             if "pr_discussions" in sources and number:
                 issue_comments = _get_json_list(client, f"{base_url}/issues/{number}/comments", headers=headers, warnings=warnings, rotate_github_tokens=True)
                 if issue_comments:
-                    items.append(_item("pr_discussions", pr_label, f"{len(issue_comments)} discussion comments", pr_url, pull.get("updated_at")))
+                    items.append(_item("pr_discussions", pr_label, f"{len(issue_comments)} discussion comments", pr_url, pull.get("updated_at"), actor=_actor_login(pull)))
 
             reviews: List[Dict[str, Any]] = []
             if number and ({"review_comments", "approvals"} & set(sources)):
@@ -231,16 +232,16 @@ def _fetch_github_evidence(owner: str, repo: str, sources: List[str]) -> Dict[st
                 review_comments = _get_json_list(client, f"{base_url}/pulls/{number}/comments", headers=headers, warnings=warnings, rotate_github_tokens=True)
                 review_count = len(review_comments) + sum(1 for review in reviews if str(review.get("body") or "").strip())
                 if review_count:
-                    items.append(_item("review_comments", f"{pr_label} review discussion", f"{review_count} review comments", pr_url, pull.get("updated_at")))
+                    items.append(_item("review_comments", f"{pr_label} review discussion", f"{review_count} review comments", pr_url, pull.get("updated_at"), actor=_actor_login(pull)))
 
             if "approvals" in sources:
                 approvals = [review for review in reviews if str(review.get("state") or "").upper() == "APPROVED"]
                 if approvals:
-                    items.append(_item("approvals", f"{pr_label} approved", f"{len(approvals)} approval reviews", pr_url, pull.get("updated_at")))
+                    items.append(_item("approvals", f"{pr_label} approved", f"{len(approvals)} approval reviews", pr_url, pull.get("updated_at"), actor=_actor_login(pull)))
 
             if "maintainer_decisions" in sources and (pull.get("merged_at") or pull.get("state") == "closed"):
                 decision = "merged" if pull.get("merged_at") else "closed"
-                items.append(_item("maintainer_decisions", f"{pr_label} {decision}", f"maintainer decision: {decision}", pr_url, pull.get("updated_at")))
+                items.append(_item("maintainer_decisions", f"{pr_label} {decision}", f"maintainer decision: {decision}", pr_url, pull.get("updated_at"), actor=_actor_login(pull)))
 
         if "issue_triage" in sources:
             issues = _get_json_list(
@@ -264,7 +265,7 @@ def _fetch_github_evidence(owner: str, repo: str, sources: List[str]) -> Dict[st
                         detail_parts.append(f"{len(assignees)} assignees")
                     if issue.get("state") == "closed":
                         detail_parts.append("closed")
-                    items.append(_item("issue_triage", f"Issue #{issue.get('number')}: {issue.get('title')}", "; ".join(detail_parts), issue.get("html_url"), issue.get("updated_at")))
+                    items.append(_item("issue_triage", f"Issue #{issue.get('number')}: {issue.get('title')}", "; ".join(detail_parts), issue.get("html_url"), issue.get("updated_at"), actor=_actor_login(issue)))
 
     return {"items": items[:100], "warnings": warnings}
 
@@ -292,9 +293,9 @@ def _fetch_gitee_evidence(owner: str, repo: str, sources: List[str]) -> Dict[str
             url = pull.get("html_url") or pull.get("url")
             comments_count = int(pull.get("comments") or pull.get("comments_count") or 0)
             if "pr_discussions" in sources and comments_count:
-                items.append(_item("pr_discussions", label, f"{comments_count} discussion comments", url, pull.get("updated_at")))
+                items.append(_item("pr_discussions", label, f"{comments_count} discussion comments", url, pull.get("updated_at"), actor=_actor_login(pull)))
             if "approvals" in sources and (pull.get("testers") or pull.get("assignees")):
-                items.append(_item("approvals", f"{label} reviewed", "visible reviewer/tester assignment", url, pull.get("updated_at")))
+                items.append(_item("approvals", f"{label} reviewed", "visible reviewer/tester assignment", url, pull.get("updated_at"), actor=_actor_login(pull)))
             if "review_comments" in sources and number:
                 review_comments = _get_json_list(
                     client,
@@ -303,10 +304,10 @@ def _fetch_gitee_evidence(owner: str, repo: str, sources: List[str]) -> Dict[str
                     warnings=warnings,
                 )
                 if review_comments:
-                    items.append(_item("review_comments", f"{label} review discussion", f"{len(review_comments)} review comments", url, pull.get("updated_at")))
+                    items.append(_item("review_comments", f"{label} review discussion", f"{len(review_comments)} review comments", url, pull.get("updated_at"), actor=_actor_login(pull)))
             if "maintainer_decisions" in sources and (pull.get("merged_at") or pull.get("state") in {"merged", "closed"}):
                 decision = "merged" if pull.get("merged_at") or pull.get("state") == "merged" else "closed"
-                items.append(_item("maintainer_decisions", f"{label} {decision}", f"maintainer decision: {decision}", url, pull.get("updated_at")))
+                items.append(_item("maintainer_decisions", f"{label} {decision}", f"maintainer decision: {decision}", url, pull.get("updated_at"), actor=_actor_login(pull)))
 
         if "issue_triage" in sources:
             issues = _get_json_list(
@@ -329,7 +330,7 @@ def _fetch_gitee_evidence(owner: str, repo: str, sources: List[str]) -> Dict[str
                         ]
                         if part
                     )
-                    items.append(_item("issue_triage", f"Issue #{issue.get('number') or issue.get('id')}: {issue.get('title')}", detail, issue.get("html_url") or issue.get("url"), issue.get("updated_at")))
+                    items.append(_item("issue_triage", f"Issue #{issue.get('number') or issue.get('id')}: {issue.get('title')}", detail, issue.get("html_url") or issue.get("url"), issue.get("updated_at"), actor=_actor_login(issue)))
 
     return {"items": items[:100], "warnings": warnings}
 
@@ -343,20 +344,44 @@ def _get_json_list(
     warnings: List[str],
     rotate_github_tokens: bool = False,
 ) -> List[Dict[str, Any]]:
-    try:
-        if rotate_github_tokens:
-            response = github_request(client, "GET", url, headers=headers, params=params)
-        else:
-            response = client.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        payload = response.json()
-        return payload if isinstance(payload, list) else []
-    except Exception as exc:
-        warnings.append(f"{url}: {exc}")
-        return []
+    for attempt in range(3):
+        try:
+            if rotate_github_tokens:
+                response = github_request(client, "GET", url, headers=headers, params=params)
+            else:
+                response = client.get(url, headers=headers, params=params)
+            status_code = getattr(response, "status_code", None)
+            if isinstance(status_code, int) and (status_code in {403, 429} or status_code >= 500):
+                if attempt < 2:
+                    time.sleep(0.5 * (2 ** attempt))
+                    continue
+            response.raise_for_status()
+            payload = response.json()
+            return payload if isinstance(payload, list) else []
+        except Exception as exc:
+            if attempt < 2 and isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+                time.sleep(0.5 * (2 ** attempt))
+                continue
+            warnings.append(f"{url}: {exc}")
+            return []
+    warnings.append(f"{url}: exhausted collaboration evidence retries")
+    return []
 
 
-def _item(source: str, label: Any, detail: Any, url: Any = None, updated_at: Any = None) -> Dict[str, Any]:
+def _actor_login(payload: Dict[str, Any]) -> str:
+    user = payload.get("user") if isinstance(payload.get("user"), dict) else {}
+    return str(user.get("login") or user.get("username") or payload.get("login") or "").strip()
+
+
+def _item(
+    source: str,
+    label: Any,
+    detail: Any,
+    url: Any = None,
+    updated_at: Any = None,
+    *,
+    actor: Any = None,
+) -> Dict[str, Any]:
     item = {
         "source": source,
         "label": str(label or "").strip(),
@@ -366,4 +391,6 @@ def _item(source: str, label: Any, detail: Any, url: Any = None, updated_at: Any
         item["url"] = str(url)
     if updated_at:
         item["updated_at"] = str(updated_at)
+    if actor:
+        item["actor"] = str(actor)
     return item
