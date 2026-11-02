@@ -39,15 +39,20 @@ Supported key priority:
 
 - `OSCANNER_LLM_API_KEY`
 - `OPENAI_API_KEY`
-- `OPEN_ROUTER_KEY`
+- `OPEN_ROUTER_KEY` (fallback / OpenRouter-only mode)
 
 For OpenAI-compatible providers:
 
 ```bash
 OSCANNER_LLM_BASE_URL=https://api.example.com/v1
 OSCANNER_LLM_API_KEY=sk-your-key
-OSCANNER_LLM_MODEL=deepseek/deepseek-v4-pro
+OSCANNER_LLM_MODEL=glm
+OSCANNER_LLM_FALLBACK_MODEL=deepseek/deepseek-v4.1-flash-1017
 ```
+
+Internal `glm` is the default. When it times out or returns a retryable
+server/transport/unusable-output failure, Oscanner retries the request once
+through OpenRouter `deepseek/deepseek-v4.1-flash-1017`.
 
 If the provider uses a non-standard chat completions path:
 

@@ -119,7 +119,9 @@ def write_env_file(path: Path, env: Dict[str, str]) -> None:
         "OSCANNER_LLM_BASE_URL",
         "OSCANNER_LLM_CHAT_COMPLETIONS_URL",
         "OSCANNER_LLM_MODEL",
+        "OSCANNER_LLM_FALLBACK_MODEL",
         "OSCANNER_LLM_FALLBACK_MODELS",
+        "OPEN_ROUTER_BASE_URL",
         "OPENAI_API_KEY",
         "OPENAI_BASE_URL",
     ]

@@ -42,18 +42,29 @@ Rules:
 - Only include features explicitly mentioned or clearly implied by the message.
 - Ignore TODO, planned, roadmap, future, incomplete, or explicitly unimplemented items.
 """
+
+        def _validate_features(response_text: str) -> List[str]:
+            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+            if not json_match:
+                raise ValueError("No JSON array in response")
+            features = json.loads(json_match.group())
+            if not isinstance(features, list) or not features:
+                raise ValueError("Feature list must be a non-empty array")
+            if not all(isinstance(feature, str) and feature.strip() for feature in features):
+                raise ValueError("Feature entries must be non-empty strings")
+            return [str(feature) for feature in features]
+
         result = _messages_create_with_fallback(
             model=_default_requested_model(),
             require_text=True,
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
+            validate_text=_validate_features,
         )
-        text = _message_text_content(result)
-        json_match = re.search(r'\[.*\]', text, re.DOTALL)
-        if json_match:
-            features = json.loads(json_match.group())
-            if isinstance(features, list) and features:
-                return [str(f) for f in features]
+        validated = getattr(result, "_oscanner_validated", None)
+        if isinstance(validated, list):
+            return validated
+        return _validate_features(_message_text_content(result))
     except Exception:
         pass
     return []
@@ -182,17 +193,32 @@ Return ONLY a JSON object:
 
 Use only feature names from the required features list.
 """
+
+    def _validate_coverage(response_text: str) -> Dict[str, Any]:
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if not json_match:
+            raise ValueError("No JSON object in response")
+        coverage = json.loads(json_match.group())
+        if not isinstance(coverage, dict):
+            raise ValueError("Expected a JSON object")
+        for key in ("covered", "not_covered"):
+            values = coverage.get(key, [])
+            if not isinstance(values, list) or not all(isinstance(item, str) for item in values):
+                raise ValueError(f"{key} must be a string list")
+        return coverage
+
     try:
         result = _messages_create_with_fallback(
             model=_default_requested_model(),
             require_text=True,
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}],
+            validate_text=_validate_coverage,
         )
-        text = _message_text_content(result)
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
-        if json_match:
-            coverage = json.loads(json_match.group())
+        coverage = getattr(result, "_oscanner_validated", None)
+        if not isinstance(coverage, dict):
+            coverage = _validate_coverage(_message_text_content(result))
+        if coverage:
             covered = coverage.get("covered", [])
             not_covered = coverage.get("not_covered", [])
             coverage_ratio = len(covered) / len(features) if features else 1.0

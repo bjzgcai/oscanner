@@ -17,6 +17,7 @@ import type { ContributorComparisonData } from '../types';
 import { useAppSettings } from './AppSettingsContext';
 import { useUserSettings } from './UserSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
+import { INTERNAL_LLM_MODEL, OPENROUTER_LLM_MODEL } from '../utils/llmModels';
 import { evaluationFetch } from '../utils/evaluationFetch';
 import { formatEmailListError, parseEmailList } from '../utils/emailIdentity.mjs';
 import { parseRepoUrl } from '../utils/repoUrl.mjs';
@@ -240,14 +241,15 @@ export default function MultiRepoAnalysis() {
     try {
       const body: Record<string, unknown> =
         llmMode === 'openrouter'
-          ? { mode: 'openrouter', openrouter_key: openRouterKey, model }
+          ? { mode: 'openrouter', openrouter_key: openRouterKey, model: OPENROUTER_LLM_MODEL }
           : {
               mode: 'openai',
               api_key: llmApiKey,
               base_url: llmBaseUrl,
-              model,
+              model: INTERNAL_LLM_MODEL,
               chat_completions_url: llmChatUrl,
               fallback_models: llmFallbackModels,
+              openrouter_key: openRouterKey || null,
             };
 
       // Optional platform token updates (do not overwrite if empty)
@@ -280,7 +282,7 @@ export default function MultiRepoAnalysis() {
     } catch (e: unknown) {
       appendLog(`LLM settings save failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
     }
-  }, [appendLog, giteeToken, githubToken, llmApiKey, llmBaseUrl, llmChatUrl, llmFallbackModels, llmMode, model, openRouterKey, refreshLlmConfig, setLlmModalOpen]);
+  }, [appendLog, giteeToken, githubToken, llmApiKey, llmBaseUrl, llmChatUrl, llmFallbackModels, llmMode, openRouterKey, refreshLlmConfig, setLlmModalOpen]);
 
   const tickerLine = useMemo(() => {
     if (logs.length === 0) return null;

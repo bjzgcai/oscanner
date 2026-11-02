@@ -19,7 +19,7 @@ def test_ai_native_adds_collaboration_evidence_block_into_mastery_professionalis
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="en-US",
     )
     monkeypatch.setattr(evaluator, "_get_checker_list", lambda: [])

@@ -191,6 +191,21 @@ async def _parse_test_output_with_llm(output: str) -> Optional[Dict[str, int]]:
     try:
         truncated = output[-2000:] if len(output) > 2000 else output
 
+        def _validate_counts(response_text: str) -> Dict[str, int]:
+            json_match = re.search(r"\{[^}]+\}", response_text)
+            if not json_match:
+                raise ValueError("No JSON object in response")
+            result = json.loads(json_match.group())
+            if not all(k in result for k in ["passed", "failed", "total"]):
+                raise ValueError("Missing test count fields")
+            if result["total"] > 0 and result["passed"] + result["failed"] != result["total"]:
+                raise ValueError("Test counts are inconsistent")
+            return {
+                "passed": int(result["passed"]),
+                "failed": int(result["failed"]),
+                "total": int(result["total"]),
+            }
+
         prompt = f"""Parse this test output and extract the test results.
 
 Test output:
@@ -212,15 +227,12 @@ If you cannot determine the counts, return: {{"passed": 0, "failed": 0, "total":
             require_text=True,
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
+            validate_text=_validate_counts,
         )
 
         response_text = _message_text_content(message)
-        json_match = re.search(r"\{[^}]+\}", response_text)
-        if json_match:
-            result = json.loads(json_match.group())
-            if all(k in result for k in ["passed", "failed", "total"]):
-                if result["total"] > 0 and result["passed"] + result["failed"] == result["total"]:
-                    return result
+        validated = getattr(message, "_oscanner_validated", None)
+        return validated if isinstance(validated, dict) else _validate_counts(response_text)
     except Exception:
         pass
     return None

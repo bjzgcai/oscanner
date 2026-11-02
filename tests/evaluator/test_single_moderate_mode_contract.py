@@ -28,6 +28,6 @@ def test_plugin_factory_and_constructor_do_not_accept_mode(plugin_id):
         plugin.create_commit_evaluator(
             data_dir="",
             api_key="test-key",
-            model="deepseek/deepseek-v4-pro",
+            model="glm",
             mode="moderate",
         )

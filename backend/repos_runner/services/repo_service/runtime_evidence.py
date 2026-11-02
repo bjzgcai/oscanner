@@ -21,7 +21,7 @@ import httpx
 
 from repos_runner.grading import normalize_grading_rubric
 
-from .llm import _message_text_content, _messages_create_with_fallback
+from .llm import _default_requested_model, _message_text_content, _messages_create_with_fallback
 from .runtime_env import RuntimeEnvContext
 
 
@@ -33,7 +33,7 @@ DOC_CANDIDATES = (
 )
 
 DEFAULT_SERVICE_TIMEOUT_SECONDS = 75.0
-DEFAULT_RUNTIME_COMPAT_MODEL = "deepseek/deepseek-v4-pro"
+DEFAULT_RUNTIME_COMPAT_MODEL = "glm"
 SHELL_CONTROL_TOKENS = (" && ", " || ", ";")
 MAX_RELATIVE_PATH_LENGTH = 1024
 MAX_PATH_PART_LENGTH = 255
@@ -271,7 +271,7 @@ def _runtime_compat_llm_enabled() -> bool:
 
 
 def _runtime_compat_model() -> str:
-    return os.getenv("REPOS_RUNNER_RUNTIME_COMPAT_MODEL", "").strip() or DEFAULT_RUNTIME_COMPAT_MODEL
+    return os.getenv("REPOS_RUNNER_RUNTIME_COMPAT_MODEL", "").strip() or _default_requested_model()
 
 
 def _repo_path_sample(repo_dir: Path, limit: int = 250) -> list[str]:
@@ -408,17 +408,27 @@ Repository paths:
 Documents:
 {docs_text}
 """
+
+    def _validate_compatible_commands(response_text: str) -> list[dict[str, Any]]:
+        candidates = _extract_json_array(response_text)
+        if not candidates or not all(isinstance(item, dict) for item in candidates):
+            raise ValueError("Expected a non-empty JSON array of command objects")
+        return candidates
+
     try:
         message = _messages_create_with_fallback(
             model=_runtime_compat_model(),
             require_text=True,
             max_tokens=900,
             messages=[{"role": "user", "content": prompt}],
+            validate_text=_validate_compatible_commands,
         )
     except Exception:
         return []
 
-    candidates = _extract_json_array(_message_text_content(message))
+    candidates = getattr(message, "_oscanner_validated", None)
+    if not isinstance(candidates, list):
+        candidates = _validate_compatible_commands(_message_text_content(message))
     commands: list[dict[str, str]] = []
     for item in candidates:
         if not isinstance(item, dict):
@@ -1061,16 +1071,29 @@ Rules:
 - Use only localhost/127.0.0.1 URLs or endpoint paths plus ports found in the docs/commands.
 - Omit a check when the tag does not provide enough information to verify it safely.
 """
+
+    def _validate_evidence_plan(response_text: str) -> dict[str, Any]:
+        data = _extract_json_object(response_text)
+        if not isinstance(data, dict):
+            raise ValueError("Expected a JSON object")
+        for key in ("static_checks", "http_checks", "ui_checks"):
+            value = data.get(key, [])
+            if not isinstance(value, list):
+                raise ValueError(f"{key} must be an array")
+        return data
+
     try:
         message = _messages_create_with_fallback(
             model=os.getenv("REPOS_RUNNER_EVIDENCE_PLAN_MODEL", "").strip() or _runtime_compat_model(),
             require_text=True,
             max_tokens=1200,
             messages=[{"role": "user", "content": prompt}],
+            validate_text=_validate_evidence_plan,
         )
     except Exception:
         return {}
-    return _extract_json_object(_message_text_content(message))
+    validated = getattr(message, "_oscanner_validated", None)
+    return validated if isinstance(validated, dict) else _validate_evidence_plan(_message_text_content(message))
 
 
 def _build_runtime_evidence_plan(
@@ -1405,17 +1428,28 @@ Rules:
 - Mark a feature covered when the passed evidence clearly proves the same requirement, even if wording differs.
 - Do not include features that are absent, ambiguous, or only supported by failed checks.
 """
+
+    def _validate_covered_features(response_text: str) -> dict[str, Any]:
+        data = _extract_json_object(response_text)
+        covered = data.get("covered") if isinstance(data, dict) else None
+        if not isinstance(covered, list) or not all(isinstance(item, str) for item in covered):
+            raise ValueError("covered must be an array of strings")
+        return data
+
     try:
         message = _messages_create_with_fallback(
             model=os.getenv("REPOS_RUNNER_FEATURE_MATCH_MODEL", "").strip() or _runtime_compat_model(),
             require_text=True,
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
+            validate_text=_validate_covered_features,
         )
     except Exception:
         return []
 
-    data = _extract_json_object(_message_text_content(message))
+    data = getattr(message, "_oscanner_validated", None)
+    if not isinstance(data, dict):
+        data = _validate_covered_features(_message_text_content(message))
     covered = data.get("covered")
     if not isinstance(covered, list):
         return []

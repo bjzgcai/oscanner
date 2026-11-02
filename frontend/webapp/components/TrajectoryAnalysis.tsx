@@ -5,6 +5,7 @@ import { Button, Card, message, Modal, Space, Empty, Alert, Collapse, Tag, Input
 import { RiseOutlined, LoadingOutlined, CheckCircleOutlined, GithubOutlined, UserOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAppSettings } from './AppSettingsContext';
 import { useI18n } from './I18nContext';
+import { INTERNAL_LLM_MODEL } from '../utils/llmModels';
 import TrajectoryCharts from './TrajectoryCharts';
 import GrowthReport from './GrowthReport';
 import LlmConfigModal from './LlmConfigModal';
@@ -126,7 +127,7 @@ export default function TrajectoryAnalysis() {
 
   // Model items for dropdown
   const modelItems = [
-    { key: 'deepseek/deepseek-v4-pro', label: 'DeepSeek: DeepSeek V4 Pro' },
+    { key: INTERNAL_LLM_MODEL, label: 'GLM' },
   ];
   const currentModelLabel = modelItems.find((i) => i.key === model)?.label || model;
 

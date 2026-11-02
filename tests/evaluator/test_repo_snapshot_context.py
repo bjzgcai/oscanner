@@ -32,7 +32,7 @@ def test_ai_native_plugin_loads_context_cone_from_repo_snapshot(tmp_path):
     evaluator = plugin.create_commit_evaluator(
         data_dir=str(data_dir),
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
     )
     commits = [{"files": [{"filename": "web/App.tsx", "patch": "+api()"}]}]
 
@@ -63,7 +63,7 @@ def test_ai_native_plugin_loads_java_context_cone_from_repo_snapshot(tmp_path):
     evaluator = plugin.create_commit_evaluator(
         data_dir=str(data_dir),
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
     )
     commits = [{"files": [{"filename": "src/main/java/com/example/App.java", "patch": "+new UserService()"}]}]
 
@@ -82,7 +82,7 @@ def test_ai_native_context_parts_keep_repo_files_inside_commit_background():
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
     )
     commits = [
         {
@@ -112,7 +112,7 @@ def test_ai_native_merge_ignores_background_only_partial_scores():
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
     )
 
     result = evaluator._merge_partial_evaluations(
@@ -150,7 +150,7 @@ def test_ai_native_forced_checker_skips_unscoped_whole_repo_scan(tmp_path, monke
     evaluator = plugin.create_commit_evaluator(
         data_dir=str(data_dir),
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         forced_checker_id="ccn",
     )
 

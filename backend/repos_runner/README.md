@@ -83,12 +83,13 @@ Common variables:
 export RUNNER_PORT=8001
 export RUNNER_PUBLIC_BASE_URL=http://localhost:8001
 
-# Provider credentials. Secrets are optional until an LLM path is used.
+# Provider credentials. Internal GLM is primary; OpenRouter DeepSeek is fallback.
+export OSCANNER_LLM_API_KEY=...
+export OSCANNER_LLM_BASE_URL=https://llm.inner.bza.edu.cn/hub/v1
+export OSCANNER_LLM_MODEL=glm
+export OSCANNER_LLM_FALLBACK_MODEL=deepseek/deepseek-v4.1-flash-1017
 export OPEN_ROUTER_KEY=sk-or-v1-...
-export OPEN_ROUTER_BASE_URL=https://openrouter.ai/api
-export OPEN_ROUTER_PRIMARY_MODEL=deepseek/deepseek-v4-pro
-export OPEN_ROUTER_FALLBACK_MODEL=z-ai/glm-5.1
-export OPEN_ROUTER_FALLBACK_MODELS=z-ai/glm-5.1
+export OPEN_ROUTER_BASE_URL=https://openrouter.ai/api/v1
 
 # Repository host tokens, used for authenticated clone/API access.
 export GITHUB_TOKEN=...
@@ -96,8 +97,8 @@ export GITEE_TOKEN=...
 export GITEE_ENTERPRISE_TOKEN=...
 
 # LLM model selection.
-export REPOS_RUNNER_LLM_MODEL=deepseek/deepseek-v4-pro
-export REPOS_RUNNER_OPENCODE_MODEL=openrouter/deepseek/deepseek-v4-pro
+export REPOS_RUNNER_LLM_MODEL=glm
+export REPOS_RUNNER_OPENCODE_MODEL=oscanner-internal/glm
 export REPOS_RUNNER_OPENCODE_TIMEOUT=600
 
 # Expensive-job queue.
@@ -114,16 +115,17 @@ export REPOS_RUNNER_DOCKER_PIDS=512
 
 # Optional README compatibility assistant for runtime startup commands.
 export REPOS_RUNNER_RUNTIME_COMPAT_LLM=false
-export REPOS_RUNNER_RUNTIME_COMPAT_MODEL=deepseek/deepseek-v4-pro
+export REPOS_RUNNER_RUNTIME_COMPAT_MODEL=glm
 
 # Optional reusable env profiles for repo-required test/runtime vars.
 export REPOS_RUNNER_RUNTIME_ENV_DIR=~/.local/share/oscanner/runtime-envs
 ```
 
-When `REPOS_RUNNER_OPENCODE_MODEL` starts with `openrouter/`, an OpenRouter key
-must be available as `OPEN_ROUTER_KEY` or `OPENROUTER_API_KEY`. The opencode
-environment also reads runner/evaluator `.env` files as a fallback for
-`OPEN_ROUTER_KEY`.
+The runner tries OpenCode with the internal `glm` provider first, then OpenRouter
+DeepSeek. Direct messages-API calls likewise use `glm` first and DeepSeek only
+for retryable provider failures. OpenCode receives the internal custom-provider
+configuration through `OPENCODE_CONFIG_CONTENT`; API keys remain environment
+references and are never written into that JSON.
 
 ## Runtime Env Profiles
 
@@ -638,7 +640,8 @@ uv run python -m repos_runner.server
 
 Static clone and static test detection do not need an LLM key. Exploration
 fallback, LLM test detection, feature extraction, feature coverage, and optional
-runtime compatibility suggestions do. Configure `OPEN_ROUTER_KEY`.
+runtime compatibility suggestions do. Configure `OSCANNER_LLM_API_KEY` and,
+optionally, `OPEN_ROUTER_KEY` for fallback.
 
 ### Port Already In Use
 

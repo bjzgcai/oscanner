@@ -207,7 +207,7 @@ async def test_analyze_one_off_route_accepts_author_aliases(monkeypatch):
             "author_aliases": ["yyx990803", "Evan You"],
         },
         plugin="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
         forced_checker="",
         worktree_base="build",
@@ -243,7 +243,7 @@ async def test_analyze_one_off_route_accepts_author_emails(monkeypatch):
             "author_emails": ["Alice@Example.COM", "alice@work.com"],
         },
         plugin="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
         forced_checker="",
         worktree_base="build",
@@ -280,7 +280,7 @@ async def test_analyze_one_off_route_accepts_primary_email_field(monkeypatch):
             "emails": ["Alice@Example.COM", "alice@work.com"],
         },
         plugin="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
         forced_checker="",
         worktree_base="build",
@@ -317,7 +317,7 @@ async def test_analyze_one_off_stream_accepts_author_aliases(monkeypatch):
             "author_aliases": ["yyx990803", "Evan You"],
         },
         plugin="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
         forced_checker="",
         worktree_base="build",
@@ -386,7 +386,7 @@ async def test_analyze_one_off_route_uses_deepseek_only_without_synthesis(monkey
             "expected_feature": "实现用户登录功能",
         },
         plugin="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
         forced_checker="",
         worktree_base="build",
@@ -396,10 +396,10 @@ async def test_analyze_one_off_route_uses_deepseek_only_without_synthesis(monkey
     )
 
     assert result["success"] is True
-    assert models_used == ["deepseek/deepseek-v4-pro"]
-    assert result["checkpoint"]["evaluation"]["scores"]["reasoning"] == "**整体评估**\ndeepseek/deepseek-v4-pro judgement"
+    assert models_used == ["glm"]
+    assert result["checkpoint"]["evaluation"]["scores"]["reasoning"] == "**整体评估**\nglm judgement"
     assert result["model_judging"] == {
-        "primary_models": ["deepseek/deepseek-v4-pro"],
+        "primary_models": ["glm"],
         "synthesis_model": None,
         "conflicts_detected": False,
     }

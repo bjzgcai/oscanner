@@ -39,38 +39,63 @@ class EvidenceAssessmentMixin:
             raise RuntimeError(f"{label}: input exceeds model budget")
         if not self.api_key:
             raise RuntimeError("LLM not configured")
-        cache_path = None
+        cache_dir = None
         if self.data_dir:
             cache_dir = self.data_dir / "evidence_response_cache"
             cache_dir.mkdir(parents=True, exist_ok=True)
-            digest = hashlib.sha256((POLICY_VERSION + self.model + self.api_url + prompt).encode()).hexdigest()
-            cache_path = cache_dir / (digest + '.json')
-            if cache_path.exists():
-                try:
-                    return validate(json_object(cache_path.read_text()))
-                except (ValueError, KeyError, TypeError, OSError):
-                    pass
+
         failure = ""
-        for model in [self.model, *(self.fallback_models or [])]:
-            for attempt in range(2):
+        last_reason = "provider_error"
+        attempts = self._provider_attempts()
+        for provider_attempt in attempts:
+            cache_path = None
+            if cache_dir:
+                digest = hashlib.sha256(
+                    f"{POLICY_VERSION}|{provider_attempt.provider}|{provider_attempt.model}|{provider_attempt.api_url}|{prompt}".encode()
+                ).hexdigest()
+                cache_path = cache_dir / (digest + ".json")
+                if cache_path.exists():
+                    try:
+                        cached = validate(json_object(cache_path.read_text()))
+                        self._record_llm_attempt(provider_attempt, outcome="success", reason="cache_hit")
+                        return cached
+                    except (ValueError, KeyError, TypeError, OSError):
+                        pass
+
+            for correction_attempt in range(2):
                 retry_prompt = prompt
-                if attempt:
+                if correction_attempt:
                     retry_prompt += "\nReturn valid JSON matching the requested schema. Previous validation: " + failure[:180]
                 if self._estimate_tokens(retry_prompt) > self.max_input_tokens:
                     retry_prompt = prompt
                 try:
-                    content = self._complete_chat(model, retry_prompt, label=label, emit_tokens=False)
+                    content = self._complete_chat(
+                        provider_attempt.model,
+                        retry_prompt,
+                        label=label,
+                        emit_tokens=False,
+                        provider_attempt=provider_attempt,
+                    )
                     value = json_object(content)
                     validated = validate(value)
                     if cache_path:
                         with tempfile.NamedTemporaryFile(mode='w', dir=cache_path.parent, delete=False) as handle:
                             json.dump(value, handle, ensure_ascii=False)
                         os.replace(handle.name, cache_path)
+                    self._record_llm_attempt(provider_attempt, outcome="success")
                     return validated
                 except (ValueError, KeyError, TypeError) as exc:
                     failure = str(exc)
+                    last_reason = "invalid_output"
                 except Exception as exc:
                     failure = f"Model request failed ({type(exc).__name__})"
+                    last_reason = getattr(exc, "reason", "provider_error")
+                    self._record_llm_attempt(provider_attempt, outcome="failed", reason=last_reason)
+                    if not getattr(exc, "retryable", True):
+                        raise
+                    break
+            else:
+                self._record_llm_attempt(provider_attempt, outcome="failed", reason=last_reason)
         raise RuntimeError(f"{label} failed after retries: {failure}")
 
     def _evidence_sources(self, commits, load_files=False):
@@ -347,5 +372,6 @@ class EvidenceAssessmentMixin:
         result.update(username=username, total_commits_analyzed=len(commits), mode="moderate", files_loaded=0,
                       chunks_processed=len(batches), chunked=len(batches) > 1, chunking_strategy="evidence_synthesis",
                       commits_summary=self._summarize_commits(commits), token_usage=self._summarize_token_usage())
+        result["llm_provenance"] = self._summarize_llm_provenance()
         result["raw_evidence_extractions"] = parts
         return result

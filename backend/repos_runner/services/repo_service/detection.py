@@ -269,18 +269,34 @@ Return a JSON object with this exact structure:
 If no tests are found, return {{"test_commands": [], "setup_commands": [], "language": "unknown"}}
 """
 
+    def _validate_commands(response_text: str) -> Dict[str, Any]:
+        json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
+        if not json_match:
+            raise ValueError("No JSON object in response")
+        parsed = json.loads(json_match.group())
+        if not isinstance(parsed, dict):
+            raise ValueError("Expected a JSON object")
+        for key in ("test_commands", "setup_commands"):
+            value = parsed.get(key, [])
+            if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+                raise ValueError(f"{key} must be a string list")
+        if not isinstance(parsed.get("language"), str):
+            raise ValueError("language must be a string")
+        return parsed
+
     message = _messages_create_with_fallback(
         model=_default_requested_model(),
         require_text=True,
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}],
+        validate_text=_validate_commands,
     )
 
-    response_text = _message_text_content(message)
-    json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
-    if json_match:
-        try:
-            return json.loads(json_match.group())
-        except json.JSONDecodeError:
-            pass
+    validated = getattr(message, "_oscanner_validated", None)
+    if isinstance(validated, dict):
+        return validated
+    try:
+        return _validate_commands(_message_text_content(message))
+    except (ValueError, json.JSONDecodeError):
+        pass
     return {"test_commands": [], "setup_commands": [], "language": "unknown"}

@@ -372,7 +372,7 @@ class TestEnsureRepoDataSynced:
                 repo_urls=["https://gitee.com/test_owner/test_repo"],
                 aliases=["Alice"],
                 plugin_id="zgc_ai_native_2026",
-                model="deepseek/deepseek-v4-pro",
+                model="glm",
                 language="zh-CN",
                 checkpoint_strategy="none",
             )
@@ -408,7 +408,7 @@ class TestEnsureRepoDataSynced:
                 repo_urls=["https://github.com/test_owner/test_repo"],
                 aliases=["vczh@163.com"],
                 plugin_id="zgc_ai_native_2026",
-                model="deepseek/deepseek-v4-pro",
+                model="glm",
                 language="zh-CN",
                 checkpoint_strategy="none",
             )

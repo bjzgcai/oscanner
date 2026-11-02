@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import { DEFAULT_LOCALE, isLocale } from '../i18n';
 import type { Locale } from '../i18n/types';
+import { INTERNAL_LLM_MODEL } from '../utils/llmModels';
 
 const API_SERVER_URL = getApiBaseUrl();
 type AppSettings = {
@@ -31,9 +32,11 @@ const STORAGE_KEY_PLUGIN_USER_SELECTED = 'oscanner_plugin_user_selected';
 const STORAGE_KEY_LOCALE = 'oscanner_locale';
 const STORAGE_KEY_FORCED_CHECKER = 'oscanner_forced_checker_id';
 const STORAGE_KEY_WORKTREE_BASE = 'oscanner_worktree_base';
-const DEFAULT_MODEL = 'deepseek/deepseek-v4-pro';
+const DEFAULT_MODEL = INTERNAL_LLM_MODEL;
 const LEGACY_MODEL_ALIASES = new Set([
   'qwen/qwen3-coder-flash',
+  // Migrate stale browser selections from the retired gateway model.
+  'deepseek/deepseek-v4-pro',
 ]);
 const DEFAULT_PLUGIN = 'zgc_ai_native_2026';
 const DEFAULT_WORKTREE_BASE: 'build' | 'temp' = 'build';

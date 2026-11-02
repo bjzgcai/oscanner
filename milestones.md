@@ -109,6 +109,6 @@ Courses is the orchestration layer for classes, students, assignments, and repor
 
 ### Operations
 
-- Keep the default model path explicit for course scans: `deepseek/deepseek-v4-pro`.
+- Keep the default model path explicit for course scans: `glm`.
 - Keep token setup visible: `OSCANNER_LLM_API_KEY`, `GITHUB_TOKEN`, `GITEE_TOKEN`.
 - Avoid persisting raw secrets in logs or reports.

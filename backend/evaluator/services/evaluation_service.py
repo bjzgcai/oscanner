@@ -9,7 +9,7 @@ from datetime import datetime
 from urllib.parse import quote
 from fastapi import HTTPException
 
-from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL
+from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL, get_plugin_provider_kwargs
 from evaluator.plugin_registry import load_scan_module
 from evaluator.utils import is_commit_by_author
 from evaluator.services.plugin_service import resolve_plugin_id
@@ -251,6 +251,7 @@ def get_or_create_evaluator(
         data_dir=str(data_dir),
         api_key=api_key,
         model=model,
+        **get_plugin_provider_kwargs(model),
     )
     print(f"✓ Created evaluator for {owner}/{repo} via plugin={pid} scan={scan_path}")
     _ = meta

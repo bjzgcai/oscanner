@@ -3,6 +3,7 @@ Repository exploration using opencode (with messages API fallback).
 """
 
 import asyncio
+import json
 import os
 import shutil
 import subprocess
@@ -10,6 +11,8 @@ from pathlib import Path
 from typing import Optional
 
 from .llm import (
+    LLMRequestFailure,
+    DEFAULT_INTERNAL_MODEL,
     _default_requested_model,
     _get_api_clients,
     _get_model_candidates,
@@ -17,7 +20,9 @@ from .llm import (
     record_llm_response_usage,
 )
 
-DEFAULT_OPENCODE_MODEL = "openrouter/deepseek/deepseek-v4-pro"
+DEFAULT_OPENCODE_PROVIDER = "oscanner-internal"
+DEFAULT_OPENCODE_MODEL = f"{DEFAULT_OPENCODE_PROVIDER}/{DEFAULT_INTERNAL_MODEL}"
+DEFAULT_OPENCODE_FALLBACK_MODEL = "openrouter/deepseek/deepseek-v4.1-flash-1017"
 
 
 def _overview_filename(tag: Optional[str]) -> str:
@@ -43,6 +48,27 @@ def _opencode_requested_model() -> str:
         if value and value.strip():
             return value.strip()
     return DEFAULT_OPENCODE_MODEL
+
+
+def _opencode_model_chain() -> list[str]:
+    configured = _opencode_requested_model()
+    if configured and configured not in {
+        "openrouter/deepseek/deepseek-v4-pro",
+        "deepseek/deepseek-v4-pro",
+        DEFAULT_OPENCODE_FALLBACK_MODEL,
+    }:
+        primary = configured
+    else:
+        primary = DEFAULT_OPENCODE_MODEL
+
+    fallback_model = (
+        os.getenv("OSCANNER_LLM_FALLBACK_MODEL", "").strip()
+        or "deepseek/deepseek-v4.1-flash-1017"
+    )
+    if fallback_model.startswith("openrouter/"):
+        fallback_model = fallback_model.split("/", 1)[1]
+    fallback = f"openrouter/{fallback_model}"
+    return list(dict.fromkeys(model for model in [primary, fallback] if model))
 
 
 def _opencode_model_requires_openrouter_key(model: str) -> bool:
@@ -86,12 +112,61 @@ def _configured_openrouter_key() -> str:
     return ""
 
 
+def _configured_internal_key() -> str:
+    for key in ("OSCANNER_LLM_API_KEY", "INTERNAL_LLM_API_KEY", "OPENAI_API_KEY"):
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    for path in _project_env_fallback_paths():
+        for key in ("OSCANNER_LLM_API_KEY", "INTERNAL_LLM_API_KEY"):
+            value = _read_env_file_value(path, key)
+            if value:
+                return value
+    return ""
+
+
+def _configured_internal_base_url() -> str:
+    for key in ("OSCANNER_LLM_BASE_URL", "INTERNAL_LLM_BASE_URL", "OPENAI_BASE_URL"):
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    for path in _project_env_fallback_paths():
+        for key in ("OSCANNER_LLM_BASE_URL", "INTERNAL_LLM_BASE_URL"):
+            value = _read_env_file_value(path, key)
+            if value:
+                return value
+    return "https://llm.inner.bza.edu.cn/hub/v1"
+
+
+def _build_opencode_config_content() -> str:
+    return json.dumps({
+        "$schema": "https://opencode.ai/config.json",
+        "provider": {
+            DEFAULT_OPENCODE_PROVIDER: {
+                "npm": "@ai-sdk/openai-compatible",
+                "name": "Oscanner Internal Gateway",
+                "options": {
+                    "baseURL": _configured_internal_base_url(),
+                    "apiKey": "{env:OSCANNER_LLM_API_KEY}",
+                },
+                "models": {
+                    "glm": {"name": "GLM"},
+                },
+            },
+        },
+    }, ensure_ascii=False)
+
+
 def _build_opencode_env() -> dict[str, str]:
     env = {**os.environ, "NO_COLOR": "1"}
+    internal_key = _configured_internal_key()
+    if internal_key and not env.get("OSCANNER_LLM_API_KEY", "").strip():
+        env["OSCANNER_LLM_API_KEY"] = internal_key
     openrouter_key = _configured_openrouter_key()
     if openrouter_key and not env.get("OPENROUTER_API_KEY", "").strip():
         env["OPEN_ROUTER_KEY"] = openrouter_key
         env["OPENROUTER_API_KEY"] = openrouter_key
+    env["OPENCODE_CONFIG_CONTENT"] = _build_opencode_config_content()
     return env
 
 
@@ -152,6 +227,7 @@ async def _explore_via_opencode(
     progress_callback=None,
     tag_message: Optional[str] = None,
     tag: Optional[str] = None,
+    opencode_model: Optional[str] = None,
 ) -> str:
     clone_dir = Path(clone_path)
     overview_filename = _overview_filename(tag)
@@ -165,9 +241,19 @@ async def _explore_via_opencode(
 
     prompt = _build_overview_prompt(clone_dir.name, overview_filename, tag_message)
     command = ["opencode", "run", "--agent", "plan", "--dir", str(clone_dir)]
-    requested_model = _opencode_requested_model()
+    requested_model = opencode_model or _opencode_model_chain()[0]
     if _opencode_model_requires_openrouter_key(requested_model) and not _configured_openrouter_key():
-        raise RuntimeError("OPEN_ROUTER_KEY is empty; cannot use OpenRouter opencode model")
+        raise LLMRequestFailure(
+            "OPEN_ROUTER_KEY is empty; cannot use OpenRouter opencode model",
+            reason="auth_or_configuration",
+            retryable=False,
+        )
+    if requested_model.startswith(f"{DEFAULT_OPENCODE_PROVIDER}/") and not _configured_internal_key():
+        raise LLMRequestFailure(
+            "OSCANNER_LLM_API_KEY is empty; cannot use internal opencode model",
+            reason="auth_or_configuration",
+            retryable=False,
+        )
     if requested_model:
         command.extend(["--model", requested_model])
     command.append(prompt)
@@ -199,6 +285,12 @@ async def _explore_via_opencode(
 
     if process.returncode != 0:
         detail = stderr or stdout.strip() or f"exit code {process.returncode}"
+        if any(marker in detail.lower() for marker in ("401", "403", "404", "unauthorized", "forbidden", "not found")):
+            raise LLMRequestFailure(
+                f"opencode auth/config failure: {detail[:300]}",
+                reason="auth_or_configuration",
+                retryable=False,
+            )
         raise RuntimeError(f"opencode repository exploration failed: {detail}")
 
     overview_content = _extract_markdown_from_opencode_output(stdout)
@@ -233,16 +325,33 @@ async def explore_repository(
     Returns:
         Path to generated REPO_OVERVIEW_{tag}.md (or REPO_OVERVIEW.md if no tag)
     """
-    try:
-        return await _explore_via_opencode(clone_path, progress_callback, tag_message, tag)
-    except FileNotFoundError:
-        if progress_callback:
-            await progress_callback("opencode CLI not available; falling back to messages API...")
-        return await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
-    except Exception as e:
-        if progress_callback:
-            await progress_callback(f"opencode error ({e}); falling back to messages API...")
-        return await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
+    opencode_errors: list[str] = []
+    models = _opencode_model_chain()
+    for index, model in enumerate(models):
+        try:
+            return await _explore_via_opencode(
+                clone_path,
+                progress_callback,
+                tag_message,
+                tag,
+                opencode_model=model,
+            )
+        except FileNotFoundError:
+            if progress_callback:
+                await progress_callback("opencode CLI not available; falling back to messages API...")
+            break
+        except LLMRequestFailure as exc:
+            if not exc.retryable:
+                raise
+            opencode_errors.append(f"{model}: {exc}")
+        except Exception as exc:
+            opencode_errors.append(f"{model}: {exc}")
+        if progress_callback and index + 1 < len(models):
+            await progress_callback("opencode failed; trying the next configured provider...")
+
+    if progress_callback and opencode_errors:
+        await progress_callback("opencode providers failed; falling back to direct messages API...")
+    return await _explore_via_messages_api(clone_path, progress_callback, tag_message, tag)
 
 
 async def _explore_via_messages_api(
@@ -320,7 +429,7 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
 
     clients = _get_api_clients()
     if not clients:
-        raise ValueError("No API credential available. Set OPEN_ROUTER_KEY.")
+        raise ValueError("No API credential available. Set OSCANNER_LLM_API_KEY.")
 
     attempts = []
     requested_model = _default_requested_model()
@@ -336,6 +445,8 @@ Generate the markdown content for REPO_OVERVIEW.md:"""
             break
         except Exception as error:
             errors.append((provider_name, model, error))
+            if isinstance(error, LLMRequestFailure) and not error.retryable:
+                raise
             if progress_callback and idx < len(attempts) - 1:
                 await progress_callback(
                     f"{provider_name} ({model}) failed, trying fallback..."

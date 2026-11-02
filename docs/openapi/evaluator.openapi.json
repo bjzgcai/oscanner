@@ -184,6 +184,26 @@
         }
       }
     },
+    "/api/config/provider-quota": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get Provider Quota Status",
+        "description": "Return local daily upstream provider quota usage.",
+        "operationId": "get_provider_quota_status_api_config_provider_quota_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/config/check-platform-tokens": {
       "post": {
         "tags": [
@@ -400,7 +420,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "deepseek/deepseek-v4-pro",
+              "default": "glm",
               "title": "Model"
             }
           },
@@ -906,7 +926,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "deepseek/deepseek-v4-pro",
+              "default": "glm",
               "title": "Model"
             }
           },
@@ -1014,7 +1034,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "deepseek/deepseek-v4-pro",
+              "default": "glm",
               "title": "Model"
             }
           },
@@ -1216,7 +1236,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "deepseek/deepseek-v4-pro",
+              "default": "glm",
               "title": "Model"
             }
           },
@@ -1325,7 +1345,7 @@
           "trajectory"
         ],
         "summary": "Analyze Trajectory One Off Stream",
-        "description": "Stream one-off trajectory analysis as SSE.\n\nEvents:\n- section: high-level analysis phase status\n- token: raw LLM token text from OpenAI-compatible streaming chunks\n- result: final JSON payload matching /api/trajectory/analyze_one-off\n- error: user-readable failure\n- done: stream completed",
+        "description": "Stream one-off trajectory analysis as SSE.\n\nEvents:\n- section: high-level analysis phase status\n- token: raw LLM token text from OpenAI-compatible streaming chunks\n- reset_stream: clear partial output before a cross-provider retry\n- result: final JSON payload matching /api/trajectory/analyze_one-off\n- error: user-readable failure\n- done: stream completed",
         "operationId": "analyze_trajectory_one_off_stream_api_trajectory_analyze_one_off_stream_post",
         "parameters": [
           {
@@ -1344,7 +1364,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "deepseek/deepseek-v4-pro",
+              "default": "glm",
               "title": "Model"
             }
           },
@@ -1468,7 +1488,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": "deepseek/deepseek-v4-pro",
+              "default": "glm",
               "title": "Model"
             }
           },
@@ -1560,6 +1580,32 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trajectory/queue": {
+      "get": {
+        "tags": [
+          "trajectory"
+        ],
+        "summary": "Get Trajectory Queue Status",
+        "description": "Return current in-process evaluator queue state.",
+        "operationId": "get_trajectory_queue_status_api_trajectory_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Get Trajectory Queue Status Api Trajectory Queue Get"
                 }
               }
             }
@@ -2238,6 +2284,57 @@
         }
       }
     },
+    "/api/internal/synthesize": {
+      "post": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Synthesize Endpoint",
+        "operationId": "synthesize_endpoint_api_internal_synthesize_post",
+        "parameters": [
+          {
+            "name": "x-synthesis-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Synthesis-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceSynthesisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health Check",
@@ -2631,6 +2728,69 @@
         "title": "EvaluationSchema",
         "description": "Engineer evaluation result."
       },
+      "EvidenceSynthesisRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "default": "saved evaluation"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": "zh-CN"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "bundles": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Bundles"
+          },
+          "commits": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Commits"
+          },
+          "collaboration_evidence": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Collaboration Evidence"
+          },
+          "recover_original_evidence": {
+            "type": "boolean",
+            "title": "Recover Original Evidence",
+            "default": false
+          },
+          "stability_runs": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Stability Runs",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "title": "EvidenceSynthesisRequest"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2927,13 +3087,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",

@@ -15,7 +15,12 @@ GITHUB_TOKEN_ENV_KEYS = (
 )
 
 # Default model for evaluation (can be overridden per-request by query param `model=...`)
-DEFAULT_LLM_MODEL = os.getenv("INTERNAL_LLM_QUESTION_MODEL") or os.getenv("OSCANNER_LLM_MODEL", "deepseek/deepseek-v4-pro")
+DEFAULT_LLM_MODEL = (
+    os.getenv("OSCANNER_LLM_MODEL")
+    or os.getenv("INTERNAL_LLM_QUESTION_MODEL")
+    or "glm"
+)
+DEFAULT_OPENROUTER_MODEL = "deepseek/deepseek-v4.1-flash-1017"
 
 
 def get_github_token() -> Optional[str]:
@@ -50,12 +55,12 @@ def get_llm_api_key() -> Optional[str]:
 
     Priority matches the plugin evaluator contract:
     - OSCANNER_LLM_API_KEY (OpenAI-compatible bearer token)
+    - INTERNAL_LLM_API_KEY (legacy alias)
     - OPENAI_API_KEY
-    - OPEN_ROUTER_KEY
     """
     return (
-        os.getenv("INTERNAL_LLM_API_KEY")
-        or os.getenv("OSCANNER_LLM_API_KEY")
+        os.getenv("OSCANNER_LLM_API_KEY")
+        or os.getenv("INTERNAL_LLM_API_KEY")
         or os.getenv("OPENAI_API_KEY")
         or os.getenv("OPEN_ROUTER_KEY")
     )

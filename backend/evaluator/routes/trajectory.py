@@ -37,7 +37,7 @@ from evaluator.utils import (
 
 router = APIRouter()
 EXCLUDED_GITEE_AUTHORS_FOR_NULL_USERNAME = {"吴衍标"}
-ONE_OFF_PRIMARY_MODEL = "deepseek/deepseek-v4-pro"
+ONE_OFF_PRIMARY_MODEL = DEFAULT_LLM_MODEL
 ONE_OFF_PRIMARY_MODELS = (ONE_OFF_PRIMARY_MODEL,)
 _POLL_INTERRUPTED_MESSAGE = "Analysis job interrupted by server restart. Please start a new analysis."
 _trajectory_poll_store = SQLiteTrajectoryPollStore()
@@ -1198,6 +1198,7 @@ async def analyze_trajectory_one_off_stream(
     Events:
     - section: high-level analysis phase status
     - token: raw LLM token text from OpenAI-compatible streaming chunks
+    - reset_stream: clear partial output before a cross-provider retry
     - result: final JSON payload matching /api/trajectory/analyze_one-off
     - error: user-readable failure
     - done: stream completed

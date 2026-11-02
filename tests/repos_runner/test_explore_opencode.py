@@ -1,6 +1,9 @@
 """Tests for opencode-based repository exploration."""
 
 import asyncio
+import json
+
+import pytest
 
 from repos_runner.services.repo_service import explore as explore_module
 
@@ -37,6 +40,7 @@ def test_explore_repository_uses_opencode_cli(monkeypatch, tmp_path):
     async def _progress(message):
         progress_messages.append(message)
 
+    monkeypatch.setenv("OSCANNER_LLM_API_KEY", "internal-test")
     monkeypatch.setenv("OPEN_ROUTER_KEY", "sk-or-v1-test")
     monkeypatch.delenv("REPOS_RUNNER_OPENCODE_MODEL", raising=False)
     monkeypatch.delenv("OPENCODE_MODEL", raising=False)
@@ -61,7 +65,7 @@ def test_explore_repository_uses_opencode_cli(monkeypatch, tmp_path):
     assert overview_file.read_text(encoding="utf-8").startswith("# repo")
     assert captured["cmd"][:4] == ("opencode", "run", "--agent", "plan")
     model_index = captured["cmd"].index("--model")
-    assert captured["cmd"][model_index + 1] == "openrouter/deepseek/deepseek-v4-pro"
+    assert captured["cmd"][model_index + 1] == "oscanner-internal/glm"
     assert "--dir" in captured["cmd"]
     assert str(clone_dir) in captured["cmd"]
     assert captured["cwd"] == str(clone_dir)
@@ -78,6 +82,8 @@ def test_explore_repository_passes_openrouter_key_to_opencode(monkeypatch, tmp_p
         captured["env"] = kwargs.get("env")
         return _FakeProcess("# repo\n\n## Test Commands\n```\npytest\n```\n")
 
+    monkeypatch.setenv("OSCANNER_LLM_API_KEY", "internal-test")
+    monkeypatch.setenv("OSCANNER_LLM_BASE_URL", "https://llm.example/v1")
     monkeypatch.setenv("OPEN_ROUTER_KEY", "sk-or-v1-test")
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.setattr(explore_module.shutil, "which", lambda name: "/usr/bin/opencode")
@@ -91,6 +97,11 @@ def test_explore_repository_passes_openrouter_key_to_opencode(monkeypatch, tmp_p
 
     assert captured["env"]["OPEN_ROUTER_KEY"] == "sk-or-v1-test"
     assert captured["env"]["OPENROUTER_API_KEY"] == "sk-or-v1-test"
+    assert captured["env"]["OSCANNER_LLM_API_KEY"] == "internal-test"
+    config = json.loads(captured["env"]["OPENCODE_CONFIG_CONTENT"])
+    provider = config["provider"]["oscanner-internal"]
+    assert provider["options"]["baseURL"] == "https://llm.example/v1"
+    assert provider["options"]["apiKey"] == "{env:OSCANNER_LLM_API_KEY}"
 
 
 def test_opencode_env_uses_project_openrouter_key_fallback(monkeypatch, tmp_path):
@@ -107,22 +118,21 @@ def test_opencode_env_uses_project_openrouter_key_fallback(monkeypatch, tmp_path
     assert env["OPENROUTER_API_KEY"] == "sk-or-v1-fallback"
 
 
-def test_explore_repository_falls_back_when_openrouter_key_empty(monkeypatch, tmp_path):
+def test_explore_repository_uses_internal_glm_without_openrouter_key(monkeypatch, tmp_path):
     clone_dir = tmp_path / "repo"
     clone_dir.mkdir()
     progress_messages = []
 
-    async def _fake_create_subprocess_exec(*cmd, **kwargs):
-        raise AssertionError("opencode should not start without an OpenRouter key")
+    calls = []
 
-    async def _fake_messages_api(clone_path, progress_callback, tag_message=None, tag=None):
-        overview = clone_dir / "REPO_OVERVIEW.md"
-        overview.write_text("# fallback", encoding="utf-8")
-        return str(overview)
+    async def _fake_create_subprocess_exec(*cmd, **kwargs):
+        calls.append(cmd)
+        return _FakeProcess("# repo\n\n## Test Commands\n```\npytest\n```\n")
 
     async def _progress(message):
         progress_messages.append(message)
 
+    monkeypatch.setenv("OSCANNER_LLM_API_KEY", "internal-test")
     monkeypatch.setenv("OPEN_ROUTER_KEY", "")
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("REPOS_RUNNER_OPENCODE_MODEL", raising=False)
@@ -134,12 +144,27 @@ def test_explore_repository_falls_back_when_openrouter_key_empty(monkeypatch, tm
         "create_subprocess_exec",
         _fake_create_subprocess_exec,
     )
-    monkeypatch.setattr(explore_module, "_explore_via_messages_api", _fake_messages_api)
-
     overview_path = asyncio.run(explore_module.explore_repository(str(clone_dir), _progress))
 
     assert overview_path == str(clone_dir / "REPO_OVERVIEW.md")
-    assert any("OPEN_ROUTER_KEY is empty" in message for message in progress_messages)
+    assert len(calls) == 1
+    model_index = calls[0].index("--model")
+    assert calls[0][model_index + 1] == "oscanner-internal/glm"
+
+
+def test_explore_repository_does_not_fallback_when_internal_key_missing(monkeypatch, tmp_path):
+    clone_dir = tmp_path / "repo"
+    clone_dir.mkdir()
+
+    monkeypatch.setenv("OSCANNER_LLM_API_KEY", "")
+    monkeypatch.setenv("INTERNAL_LLM_API_KEY", "")
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("OPEN_ROUTER_KEY", "sk-or-v1-test")
+    monkeypatch.setattr(explore_module, "_project_env_fallback_paths", lambda: [])
+    monkeypatch.setattr(explore_module.shutil, "which", lambda name: "/usr/bin/opencode")
+
+    with pytest.raises(explore_module.LLMRequestFailure, match="OSCANNER_LLM_API_KEY"):
+        asyncio.run(explore_module.explore_repository(str(clone_dir)))
 
 
 def test_explore_repository_falls_back_when_opencode_missing(monkeypatch, tmp_path):

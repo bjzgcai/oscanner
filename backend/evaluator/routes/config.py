@@ -13,6 +13,10 @@ from evaluator.config import (
     apply_env_to_process,
     mask_secret,
     DEFAULT_LLM_MODEL,
+    DEFAULT_OPENROUTER_MODEL,
+    DEFAULT_LLM_FALLBACK_MODEL,
+    DEFAULT_OPENROUTER_BASE_URL,
+    get_openrouter_provider_config,
     get_github_tokens,
     get_gitee_token,
 )
@@ -30,10 +34,17 @@ async def get_llm_config():
     path = get_user_env_path()
     file_env = parse_env_file(path) if path.exists() else {}
     api_key = get_llm_api_key()
+    has_compatible_key = bool(
+        file_env.get("INTERNAL_LLM_API_KEY")
+        or file_env.get("OSCANNER_LLM_API_KEY")
+        or os.getenv("INTERNAL_LLM_API_KEY")
+        or os.getenv("OSCANNER_LLM_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+    )
     cfg = {
         "configured": bool(api_key),
         "path": str(path),
-        "mode": "openrouter" if (file_env.get("OPEN_ROUTER_KEY") or os.getenv("OPEN_ROUTER_KEY")) else "openai",
+        "mode": "openai" if has_compatible_key else "openrouter",
         "openrouter_key_masked": mask_secret(file_env.get("OPEN_ROUTER_KEY") or os.getenv("OPEN_ROUTER_KEY")),
         "oscanner_llm_api_key_masked": mask_secret(file_env.get("OSCANNER_LLM_API_KEY") or os.getenv("OSCANNER_LLM_API_KEY")),
         "gitee_token_masked": mask_secret(file_env.get("GITEE_TOKEN") or os.getenv("GITEE_TOKEN")),
@@ -42,7 +53,11 @@ async def get_llm_config():
         "oscanner_llm_base_url": file_env.get("OSCANNER_LLM_BASE_URL") or os.getenv("OSCANNER_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "",
         "oscanner_llm_chat_completions_url": file_env.get("OSCANNER_LLM_CHAT_COMPLETIONS_URL") or os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL") or "",
         "oscanner_llm_model": file_env.get("OSCANNER_LLM_MODEL") or os.getenv("OSCANNER_LLM_MODEL") or DEFAULT_LLM_MODEL,
+        "oscanner_llm_fallback_model": file_env.get("OSCANNER_LLM_FALLBACK_MODEL") or os.getenv("OSCANNER_LLM_FALLBACK_MODEL") or DEFAULT_LLM_FALLBACK_MODEL,
         "oscanner_llm_fallback_models": file_env.get("OSCANNER_LLM_FALLBACK_MODELS") or os.getenv("OSCANNER_LLM_FALLBACK_MODELS") or "",
+        "openrouter_base_url": file_env.get("OPEN_ROUTER_BASE_URL") or os.getenv("OPEN_ROUTER_BASE_URL") or DEFAULT_OPENROUTER_BASE_URL,
+        "fallback_configured": bool(get_openrouter_provider_config()),
+        "fallback_provider": "openrouter",
     }
     return cfg
 
@@ -74,9 +89,8 @@ async def set_llm_config(payload: Dict[str, Any]):
         elif not existing_key:
             raise HTTPException(status_code=400, detail="openrouter_key is required")
         # allow optional model override
-        model = str(payload.get("model") or "").strip()
-        if model:
-            env["OSCANNER_LLM_MODEL"] = model
+        model = str(payload.get("model") or "").strip() or DEFAULT_OPENROUTER_MODEL
+        env["OSCANNER_LLM_MODEL"] = model
         # clear openai-compatible fields only when a mode is explicitly selected
         # (keeps config consistent and avoids ambiguity)
         env.pop("OSCANNER_LLM_API_KEY", None)
@@ -90,6 +104,8 @@ async def set_llm_config(payload: Dict[str, Any]):
         model = str(payload.get("model") or "").strip()
         chat_url = str(payload.get("chat_completions_url") or "").strip()
         fb = str(payload.get("fallback_models") or "").strip()
+        fallback_model = str(payload.get("fallback_model") or "").strip()
+        openrouter_key = str(payload.get("openrouter_key") or "").strip()
 
         existing_api_key = (env.get("OSCANNER_LLM_API_KEY") or os.getenv("OSCANNER_LLM_API_KEY") or "").strip()
         existing_base_url = (env.get("OSCANNER_LLM_BASE_URL") or os.getenv("OSCANNER_LLM_BASE_URL") or "").strip()
@@ -118,8 +134,15 @@ async def set_llm_config(payload: Dict[str, Any]):
             env["OSCANNER_LLM_FALLBACK_MODELS"] = fb
         else:
             env.pop("OSCANNER_LLM_FALLBACK_MODELS", None)
-        # clear openrouter key to avoid ambiguity
-        env.pop("OPEN_ROUTER_KEY", None)
+        env["OSCANNER_LLM_FALLBACK_MODEL"] = fallback_model or env.get(
+            "OSCANNER_LLM_FALLBACK_MODEL",
+            DEFAULT_LLM_FALLBACK_MODEL,
+        )
+        env.setdefault("OPEN_ROUTER_BASE_URL", DEFAULT_OPENROUTER_BASE_URL)
+        if openrouter_key:
+            env["OPEN_ROUTER_KEY"] = openrouter_key
+        # Keep OpenRouter credentials available for runner and helper tasks.
+        # The internal-compatible API key remains the evaluator's primary key.
     elif mode in ("", "none"):
         # Allow partial updates for non-LLM fields (e.g., platform tokens) without forcing users
         # to re-enter LLM secrets (inputs are intentionally not hydrated in the UI).

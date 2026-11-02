@@ -597,7 +597,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             else:
                 set_model = _prompt("Set OSCANNER_LLM_MODEL? (y/N)", "N").lower().startswith("y")
                 if set_model:
-                    new_env["OSCANNER_LLM_MODEL"] = _prompt("OSCANNER_LLM_MODEL", "deepseek/deepseek-v4-pro")
+                    new_env["OSCANNER_LLM_MODEL"] = _prompt("OSCANNER_LLM_MODEL", "deepseek/deepseek-v4.1-flash-1017")
 
     else:
         # base url
@@ -665,7 +665,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                 elif decision != "__REUSE__":
                     new_env["OSCANNER_LLM_MODEL"] = decision
             else:
-                new_env["OSCANNER_LLM_MODEL"] = _prompt("OSCANNER_LLM_MODEL", "deepseek/deepseek-v4-pro")
+                new_env["OSCANNER_LLM_MODEL"] = _prompt("OSCANNER_LLM_MODEL", "glm")
 
         # fallbacks (optional)
         if args.fallback_models is not None:

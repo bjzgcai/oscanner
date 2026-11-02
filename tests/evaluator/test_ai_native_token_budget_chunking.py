@@ -38,7 +38,7 @@ def test_ai_native_llm_timeout_defaults_to_900_seconds(monkeypatch):
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="en-US",
     )
 
@@ -53,7 +53,7 @@ def test_ai_native_llm_timeout_respects_env_and_clamps(monkeypatch):
         evaluator = plugin.create_commit_evaluator(
             data_dir="",
             api_key="test-key",
-            model="deepseek/deepseek-v4-pro",
+            model="glm",
             language="en-US",
         )
         assert _llm_read_timeout(evaluator) == expected
@@ -65,7 +65,7 @@ def test_ai_native_llm_timeout_falls_back_on_invalid_env(monkeypatch):
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="en-US",
     )
 
@@ -77,7 +77,7 @@ def test_ai_native_does_not_chunk_only_because_commit_count(monkeypatch):
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="en-US",
         max_input_tokens=1_000_000,
     )
@@ -112,7 +112,7 @@ def test_ai_native_chunks_when_full_prompt_exceeds_token_budget(monkeypatch):
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="en-US",
         max_input_tokens=250,
     )
@@ -168,7 +168,7 @@ def test_ai_native_sizes_chunks_using_exact_final_prompt(monkeypatch):
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="en-US",
         max_input_tokens=6500,
     )

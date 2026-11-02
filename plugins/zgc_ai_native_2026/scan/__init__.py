@@ -24,6 +24,7 @@ import re
 import runpy
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
@@ -80,6 +81,8 @@ def _commit_emails(commit: Dict[str, Any]) -> List[str]:
 
 
 ProgressCallback = Callable[[str, Dict[str, Any]], None]
+DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_OPENROUTER_FALLBACK_MODEL = "deepseek/deepseek-v4.1-flash-1017"
 CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 INLINE_NUMBERED_ITEM_RE = re.compile(
     r"(?<!^)(?<!\n)\s+(?=(?:[1-9]|[1-9][0-9])\.\s*[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffA-Za-z])"
@@ -87,6 +90,57 @@ INLINE_NUMBERED_ITEM_RE = re.compile(
 INLINE_NUMBERED_LIST_START_RE = re.compile(
     r"([:：])\s*(?=(?:[1-9]|[1-9][0-9])\.\s*[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffA-Za-z])"
 )
+
+
+class LLMRequestError(RuntimeError):
+    """A provider request failure with safe, machine-readable retry metadata."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: str,
+        retryable: bool,
+        status_code: Optional[int] = None,
+        streamed_partial: bool = False,
+    ):
+        super().__init__(message)
+        self.reason = reason
+        self.retryable = retryable
+        self.status_code = status_code
+        self.streamed_partial = streamed_partial
+
+
+@dataclass(frozen=True)
+class LLMProviderAttempt:
+    provider: str
+    model: str
+    api_key: str
+    api_url: str
+    api_base_url: str
+
+
+def _provider_chat_url(base_url: str) -> str:
+    base = (base_url or DEFAULT_OPENROUTER_BASE_URL).strip().rstrip("/")
+    if base.endswith("/chat/completions"):
+        return base
+    return f"{base}/chat/completions"
+
+
+def _classify_http_failure(status_code: int, detail: str) -> LLMRequestError:
+    retryable = status_code in {408, 429} or status_code >= 500
+    reason = (
+        "rate_limit" if status_code == 429
+        else "timeout" if status_code == 408
+        else "server_error" if status_code >= 500
+        else "auth_or_configuration"
+    )
+    return LLMRequestError(
+        f"HTTP {status_code}: {detail[:200]}",
+        reason=reason,
+        retryable=retryable,
+        status_code=status_code,
+    )
 
 
 def extract_stream_delta(line: str) -> Optional[str]:
@@ -149,6 +203,11 @@ def create_commit_evaluator(
     data_dir: str,
     api_key: str,
     model: Optional[str] = None,
+    api_base_url: Optional[str] = None,
+    chat_completions_url: Optional[str] = None,
+    fallback_models: Optional[List[str]] = None,
+    provider_name: str = "internal",
+    provider_fallbacks: Optional[List[Dict[str, Any]]] = None,
     language: str = "en-US",
     previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
     forced_checker_id: Optional[str] = None,
@@ -162,6 +221,11 @@ def create_commit_evaluator(
         data_dir=data_dir,
         api_key=api_key,
         model=model,
+        api_base_url=api_base_url,
+        chat_completions_url=chat_completions_url,
+        fallback_models=fallback_models,
+        provider_name=provider_name,
+        provider_fallbacks=provider_fallbacks,
         rubric_text=_RUBRIC_SUMMARY,
         language=language,
         previous_checkpoint_scores=previous_checkpoint_scores,
@@ -194,6 +258,8 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         api_base_url: Optional[str] = None,
         chat_completions_url: Optional[str] = None,
         fallback_models: Optional[List[str]] = None,
+        provider_name: str = "internal",
+        provider_fallbacks: Optional[List[Dict[str, Any]]] = None,
         rubric_text: Optional[str] = None,
         language: str = "en-US",
         previous_checkpoint_scores: Optional[Dict[str, Any]] = None,
@@ -203,19 +269,37 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         collaboration_evidence: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[ProgressCallback] = None,
     ):
-        self.api_key = (
-            api_key
+        internal_key = (
+            os.getenv("OSCANNER_LLM_API_KEY")
             or os.getenv("INTERNAL_LLM_API_KEY")
-            or os.getenv("OSCANNER_LLM_API_KEY")
             or os.getenv("OPENAI_API_KEY")
-            or os.getenv("OPEN_ROUTER_KEY")
+            or ""
+        ).strip()
+        openrouter_key = (
+            os.getenv("OPEN_ROUTER_KEY")
+            or os.getenv("OPENROUTER_API_KEY")
+            or ""
+        ).strip()
+        openrouter_only = (
+            bool(api_key)
+            and not internal_key
+            and bool(openrouter_key)
+            and str(api_key).strip() == openrouter_key
+            and provider_fallbacks is None
         )
+        self.api_key = api_key or internal_key or (openrouter_key if openrouter_only else "")
         self.api_base_url = (
             api_base_url
-            or os.getenv("INTERNAL_LLM_BASE_URL")
-            or os.getenv("OSCANNER_LLM_BASE_URL")
-            or os.getenv("OPENAI_BASE_URL")
-            or "https://openrouter.ai/api/v1"
+            or (
+                os.getenv("OPEN_ROUTER_BASE_URL")
+                or os.getenv("OPENROUTER_BASE_URL")
+                or DEFAULT_OPENROUTER_BASE_URL
+                if openrouter_only
+                else os.getenv("INTERNAL_LLM_BASE_URL")
+                or os.getenv("OSCANNER_LLM_BASE_URL")
+                or os.getenv("OPENAI_BASE_URL")
+                or "https://llm.inner.bza.edu.cn/hub/v1"
+            )
         )
         self.api_url = (
             chat_completions_url
@@ -228,13 +312,19 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
             if env_max_input_tokens:
                 max_input_tokens = int(env_max_input_tokens)
             elif str(model or "").strip() == "deepseek/deepseek-v4-pro":
+                # Preserve the old model's large-context budget for explicit legacy requests.
                 max_input_tokens = 1_000_000
             else:
                 max_input_tokens = 190_000
         self.max_input_tokens = int(max_input_tokens)
         self.data_dir = Path(data_dir) if data_dir else None
-        self.model = model or os.getenv("INTERNAL_LLM_QUESTION_MODEL") or os.getenv("OSCANNER_LLM_MODEL") or "deepseek/deepseek-v4-pro"
-        self.fallback_models = fallback_models
+        self.model = model or os.getenv("OSCANNER_LLM_MODEL") or os.getenv("INTERNAL_LLM_QUESTION_MODEL") or "glm"
+        self.provider_name = (
+            "openrouter" if openrouter_only
+            else (provider_name or "internal").strip() or "internal"
+        )
+        self.fallback_models = list(fallback_models or [])
+        self.provider_fallbacks = [] if openrouter_only else self._resolve_provider_fallbacks(provider_fallbacks)
         self.rubric_text = (rubric_text or "").strip()
         self.language = language
         self.previous_checkpoint_scores = previous_checkpoint_scores
@@ -245,6 +335,8 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         self.progress_callback = progress_callback
         self._token_usage_records: List[Dict[str, Any]] = []
         self._token_usage_lock = threading.Lock()
+        self._llm_attempt_records: List[Dict[str, Any]] = []
+        self._llm_attempt_lock = threading.Lock()
         self._latest_dimension_evidence: Dict[str, List[Dict[str, Any]]] = {}
 
         # Checker API base URL (default to localhost, can be overridden via env)
@@ -288,6 +380,159 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
 
         self._file_cache: Dict[str, str] = {}
         self._repo_structure: Optional[Dict[str, Any]] = None
+
+    def _resolve_provider_fallbacks(
+        self,
+        configured: Optional[List[Dict[str, Any]]],
+    ) -> List[Dict[str, str]]:
+        if configured is not None:
+            rows = configured
+        else:
+            fallback_key = (os.getenv("OPEN_ROUTER_KEY") or os.getenv("OPENROUTER_API_KEY") or "").strip()
+            if not fallback_key:
+                return []
+            fallback_base = (
+                os.getenv("OPEN_ROUTER_BASE_URL")
+                or os.getenv("OPENROUTER_BASE_URL")
+                or DEFAULT_OPENROUTER_BASE_URL
+            ).strip()
+            fallback_model = (
+                os.getenv("OSCANNER_LLM_FALLBACK_MODEL")
+                or DEFAULT_OPENROUTER_FALLBACK_MODEL
+            ).strip()
+            rows = [{
+                "provider": "openrouter",
+                "model": fallback_model,
+                "api_key": fallback_key,
+                "base_url": fallback_base,
+                "chat_completions_url": os.getenv("OPEN_ROUTER_CHAT_COMPLETIONS_URL", ""),
+            }]
+
+        resolved: List[Dict[str, str]] = []
+        seen: Set[Tuple[str, str, str]] = set()
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            provider = str(row.get("provider") or "openrouter").strip()
+            model = str(row.get("model") or "").strip()
+            if model.startswith("openrouter/"):
+                model = model.split("/", 1)[1]
+            api_key = str(row.get("api_key") or "").strip()
+            base_url = str(row.get("base_url") or row.get("api_base_url") or DEFAULT_OPENROUTER_BASE_URL).strip()
+            chat_url = str(row.get("chat_completions_url") or "").strip()
+            api_url = chat_url or _provider_chat_url(base_url)
+            if not model or not api_key:
+                continue
+            identity = (provider, model, api_url)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            resolved.append({
+                "provider": provider,
+                "model": model,
+                "api_key": api_key,
+                "base_url": base_url,
+                "api_url": api_url,
+            })
+        return resolved
+
+    def _provider_attempts(self, requested_model: Optional[str] = None) -> List[LLMProviderAttempt]:
+        primary_model = (requested_model or self.model or "glm").strip()
+        attempts: List[LLMProviderAttempt] = [LLMProviderAttempt(
+            provider=self.provider_name,
+            model=primary_model,
+            api_key=(self.api_key or "").strip(),
+            api_url=self.api_url,
+            api_base_url=self.api_base_url,
+        )]
+
+        for fallback_model in self.fallback_models:
+            clean_model = str(fallback_model or "").strip()
+            if clean_model:
+                attempts.append(LLMProviderAttempt(
+                    provider=self.provider_name,
+                    model=clean_model,
+                    api_key=(self.api_key or "").strip(),
+                    api_url=self.api_url,
+                    api_base_url=self.api_base_url,
+                ))
+
+        for row in self.provider_fallbacks:
+            attempts.append(LLMProviderAttempt(
+                provider=row["provider"],
+                model=row["model"],
+                api_key=row["api_key"],
+                api_url=row["api_url"],
+                api_base_url=row["base_url"],
+            ))
+
+        unique: List[LLMProviderAttempt] = []
+        seen: Set[Tuple[str, str, str]] = set()
+        for attempt in attempts:
+            identity = (attempt.provider, attempt.model, attempt.api_url)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            unique.append(attempt)
+        return unique
+
+    def _record_llm_attempt(
+        self,
+        attempt: LLMProviderAttempt,
+        *,
+        outcome: str,
+        reason: str = "",
+    ) -> None:
+        record = {
+            "provider": attempt.provider,
+            "model": attempt.model,
+            "outcome": outcome,
+        }
+        if reason:
+            record["reason"] = reason
+        with self._llm_attempt_lock:
+            self._llm_attempt_records.append(record)
+
+    def _reset_llm_attempts(self) -> None:
+        with self._llm_attempt_lock:
+            self._llm_attempt_records = []
+
+    def _summarize_llm_provenance(self) -> Dict[str, Any]:
+        attempts = self._provider_attempts()
+        with self._llm_attempt_lock:
+            records = list(self._llm_attempt_records)
+        primary = attempts[0]
+        fallback = attempts[1] if len(attempts) > 1 else None
+        fallback_used = any(record.get("provider") != primary.provider for record in records)
+        return {
+            "primary": {"provider": primary.provider, "model": primary.model},
+            "fallback": (
+                {"provider": fallback.provider, "model": fallback.model}
+                if fallback else None
+            ),
+            "fallback_used": fallback_used,
+            "attempts": records,
+        }
+
+    @staticmethod
+    def _extract_chat_content(data: Dict[str, Any]) -> str:
+        choices = data.get("choices")
+        if not isinstance(choices, list) or not choices:
+            raise LLMRequestError(
+                "No choices in response",
+                reason="empty_response",
+                retryable=True,
+            )
+        first = choices[0] if isinstance(choices[0], dict) else {}
+        message = first.get("message") if isinstance(first.get("message"), dict) else {}
+        content = message.get("content")
+        if not isinstance(content, str) or not content.strip():
+            raise LLMRequestError(
+                "Response contained no final text",
+                reason="empty_response",
+                retryable=True,
+            )
+        return content
 
     def _build_expected_feature_block(self, is_chinese: bool) -> str:
         if not self.expected_feature:
@@ -1109,32 +1354,78 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
 
         return summary
 
-    def _complete_chat(self, model: str, prompt: str, *, label: str, emit_tokens: bool = True) -> str:
+    def _complete_chat(
+        self,
+        model: str,
+        prompt: str,
+        *,
+        label: str,
+        emit_tokens: bool = True,
+        provider_attempt: Optional[LLMProviderAttempt] = None,
+    ) -> str:
+        attempt = provider_attempt
+        if attempt is None:
+            attempts = self._provider_attempts(model)
+            attempt = next(
+                (candidate for candidate in attempts if candidate.model == model),
+                attempts[0],
+            )
+        if not attempt.api_key:
+            raise LLMRequestError(
+                f"LLM provider {attempt.provider} is missing an API key",
+                reason="auth_or_configuration",
+                retryable=False,
+            )
+
         payload = {
-            "model": model,
+            "model": attempt.model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0,
             "max_tokens": 4000 if emit_tokens else 32000,
         }
         if not emit_tokens:
             payload["response_format"] = {"type": "json_object"}
-            if model.lower().startswith("glm"):
+            if attempt.model.lower().startswith("glm"):
                 # glm reasoning consumes the token budget and returns empty
                 # content with response_format; disable thinking for all calls.
                 payload["thinking"] = {"type": "disabled"}
 
         if not self.progress_callback and emit_tokens:
-            resp = self._http_client.post(
-                self.api_url,
-                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                json=payload,
-            )
+            try:
+                resp = self._http_client.post(
+                    attempt.api_url,
+                    headers={"Authorization": f"Bearer {attempt.api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+            except (httpx.TimeoutException, TimeoutError) as exc:
+                raise LLMRequestError(
+                    f"{attempt.provider} request timed out",
+                    reason="timeout",
+                    retryable=True,
+                ) from exc
+            except httpx.TransportError as exc:
+                raise LLMRequestError(
+                    f"{attempt.provider} transport failed: {exc}",
+                    reason="transport",
+                    retryable=True,
+                ) from exc
+            except httpx.HTTPError as exc:
+                raise LLMRequestError(
+                    f"{attempt.provider} request failed: {exc}",
+                    reason="transport",
+                    retryable=True,
+                ) from exc
             if not resp.is_success:
-                raise RuntimeError(f"{resp.status_code} {resp.text[:200]}")
-            data = resp.json()
-            if "choices" not in data or not data["choices"]:
-                raise RuntimeError("No choices in response")
-            content = data["choices"][0]["message"]["content"]
+                raise _classify_http_failure(resp.status_code, resp.text or "")
+            try:
+                data = resp.json()
+            except Exception as exc:
+                raise LLMRequestError(
+                    f"{attempt.provider} returned invalid JSON",
+                    reason="invalid_response",
+                    retryable=True,
+                ) from exc
+            content = self._extract_chat_content(data)
             self._record_chat_token_usage(prompt=prompt, content=content, provider_usage=data.get("usage"))
             return content
 
@@ -1145,31 +1436,184 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         stream_payload["stream_options"] = {"include_usage": True}
         provider_usage: Optional[Dict[str, Any]] = None
 
-        with self._http_client.stream(
-            "POST",
-            self.api_url,
-            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-            json=stream_payload,
-        ) as resp:
-            if not resp.is_success:
-                body = resp.read().decode("utf-8", errors="replace")
-                raise RuntimeError(f"{resp.status_code} {body[:200]}")
+        try:
+            with self._http_client.stream(
+                "POST",
+                attempt.api_url,
+                headers={"Authorization": f"Bearer {attempt.api_key}", "Content-Type": "application/json"},
+                json=stream_payload,
+            ) as resp:
+                if not resp.is_success:
+                    body = resp.read().decode("utf-8", errors="replace")
+                    raise _classify_http_failure(resp.status_code, body)
 
-            for line in resp.iter_lines():
-                usage = extract_stream_usage(line)
-                if usage:
-                    provider_usage = usage
-                delta = extract_stream_delta(line)
-                if delta is None:
-                    continue
-                content_parts.append(delta)
-                if emit_tokens:
-                    self._emit_progress("token", {"content": delta, "label": label})
+                for line in resp.iter_lines():
+                    usage = extract_stream_usage(line)
+                    if usage:
+                        provider_usage = usage
+                    delta = extract_stream_delta(line)
+                    if delta is None:
+                        continue
+                    content_parts.append(delta)
+                    if emit_tokens:
+                        self._emit_progress("token", {"content": delta, "label": label})
+        except LLMRequestError:
+            partial = "".join(content_parts)
+            if partial:
+                self._record_chat_token_usage(
+                    prompt=prompt,
+                    content=partial,
+                    provider_usage=provider_usage,
+                )
+            raise
+        except (httpx.TimeoutException, TimeoutError) as exc:
+            partial = "".join(content_parts)
+            if partial:
+                self._record_chat_token_usage(prompt=prompt, content=partial, provider_usage=provider_usage)
+            raise LLMRequestError(
+                f"{attempt.provider} stream timed out",
+                reason="timeout",
+                retryable=True,
+                streamed_partial=bool(partial and emit_tokens),
+            ) from exc
+        except httpx.TransportError as exc:
+            partial = "".join(content_parts)
+            if partial:
+                self._record_chat_token_usage(prompt=prompt, content=partial, provider_usage=provider_usage)
+            raise LLMRequestError(
+                f"{attempt.provider} stream transport failed: {exc}",
+                reason="transport",
+                retryable=True,
+                streamed_partial=bool(partial and emit_tokens),
+            ) from exc
+        except httpx.HTTPError as exc:
+            partial = "".join(content_parts)
+            if partial:
+                self._record_chat_token_usage(prompt=prompt, content=partial, provider_usage=provider_usage)
+            raise LLMRequestError(
+                f"{attempt.provider} stream failed: {exc}",
+                reason="transport",
+                retryable=True,
+                streamed_partial=bool(partial and emit_tokens),
+            ) from exc
 
         content = "".join(content_parts)
+        if not content.strip():
+            raise LLMRequestError(
+                f"{attempt.provider} returned no final text",
+                reason="empty_response",
+                retryable=True,
+            )
         self._record_chat_token_usage(prompt=prompt, content=content, provider_usage=provider_usage)
         self._emit_progress("section", {"title": label, "status": "done"})
         return content
+
+    def _json_correction_prompt(
+        self,
+        original_prompt: str,
+        failure: str,
+        content: str,
+    ) -> str:
+        content_preview = content[:1000] + ("..." if len(content) > 1000 else "")
+        if self.language == "zh-CN":
+            instruction = f"""\n\n[重要] 你之前的回复格式不正确，无法解析为JSON。
+
+错误信息：{failure[:300]}
+
+你之前的回复（前1000字符）：
+{content_preview}
+
+请重新返回正确的JSON格式。必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON。"""
+        else:
+            instruction = f"""\n\n[IMPORTANT] Your previous response format was incorrect and could not be parsed as JSON.
+
+Error: {failure[:300]}
+
+Your previous response (first 1000 chars):
+{content_preview}
+
+Please return the correct JSON format again. Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly."""
+        return original_prompt + instruction
+
+    def _chat_json_with_fallback(
+        self,
+        *,
+        prompt: str,
+        parse: Callable[[str], Dict[str, Any]],
+        label: str,
+        emit_tokens: bool = True,
+        initial_model: Optional[str] = None,
+        initial_content: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        attempts = self._provider_attempts(initial_model)
+        last_failure = "no provider attempts configured"
+        last_reason = "provider_error"
+        streamed_partial = False
+
+        for attempt_index, attempt in enumerate(attempts):
+            content = initial_content if attempt_index == 0 and initial_content is not None else None
+            if content is not None and emit_tokens:
+                streamed_partial = True
+            for correction_attempt in range(2):
+                current_prompt = prompt
+                if correction_attempt:
+                    current_prompt = self._json_correction_prompt(prompt, last_failure, content or "")
+                if self._estimate_tokens(current_prompt) > self.max_input_tokens:
+                    current_prompt = prompt
+
+                if content is None or correction_attempt:
+                    try:
+                        content = self._complete_chat(
+                            attempt.model,
+                            current_prompt,
+                            label=label,
+                            emit_tokens=emit_tokens,
+                            provider_attempt=attempt,
+                        )
+                    except LLMRequestError as exc:
+                        last_failure = str(exc)
+                        last_reason = exc.reason
+                        self._record_llm_attempt(attempt, outcome="failed", reason=exc.reason)
+                        streamed_partial = streamed_partial or exc.streamed_partial
+                        if not exc.retryable:
+                            raise
+                        content = None
+                        break
+                    except Exception as exc:
+                        last_failure = str(exc)
+                        last_reason = "provider_error"
+                        self._record_llm_attempt(attempt, outcome="failed", reason="provider_error")
+                        content = None
+                        break
+
+                try:
+                    parsed = parse(content or "")
+                except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+                    last_failure = str(exc)
+                    last_reason = "invalid_output"
+                    if correction_attempt == 0:
+                        continue
+                    self._record_llm_attempt(attempt, outcome="failed", reason="invalid_output")
+                    content = None
+                    break
+
+                self._record_llm_attempt(attempt, outcome="success")
+                return parsed
+
+            if attempt_index + 1 < len(attempts):
+                next_attempt = attempts[attempt_index + 1]
+                if emit_tokens and streamed_partial:
+                    self._emit_progress("reset_stream", {
+                        "reset_stream": True,
+                        "from_provider": attempt.provider,
+                        "from_model": attempt.model,
+                        "to_provider": next_attempt.provider,
+                        "to_model": next_attempt.model,
+                        "reason": last_reason,
+                    })
+                streamed_partial = False
+
+        raise RuntimeError(f"LLM response parsing failed after retry: {last_failure}")
 
     def evaluate_engineer(
         self,
@@ -1179,6 +1623,7 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         max_commits: Optional[int] = None,
         load_files: bool = True,
     ) -> Dict[str, Any]:
+        self._reset_llm_attempts()
         if not commits:
             return self._get_empty_evaluation(username)
         # Collection may combine email, profile, and repository identities.
@@ -1208,6 +1653,7 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         object being scored is the repo's complete performance rather than a
         single contributor's trajectory.
         """
+        self._reset_llm_attempts()
         if not commits:
             return self._get_empty_evaluation(repo_label)
         analyzed_commits = commits if max_commits is None else commits[: int(max_commits)]
@@ -1586,6 +2032,7 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         token_usage = self._summarize_token_usage()
         if token_usage:
             result["token_usage"] = token_usage
+        result["llm_provenance"] = self._summarize_llm_provenance()
         return result
 
     def _extract_checker_keywords(self, commit_message: str) -> List[str]:
@@ -2404,23 +2851,17 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
                 f"LLM input exceeds model budget ({prompt_tokens} > {self.max_input_tokens} estimated tokens)."
             )
         
-        # Call LLM
-        models_to_try = [self.model] + (self.fallback_models or [])
-        last_err = None
-        for m in models_to_try:
-            try:
-                content = self._complete_chat(m, prompt, label=f"评估{part_label}")
-                content_length = len(content) if isinstance(content, str) else 0
-                print(f"[Multi-Stage] Part {part_name} response received ({content_length} chars)")
-                result = self._parse_llm_response_with_retry(content, prompt, m)
-                result["_part_name"] = part_name  # Mark which part this result came from
-                return result
-            except Exception as e:
-                last_err = str(e)
-                print(f"[Multi-Stage] Error evaluating part {part_name}: {e}")
-                continue
-        
-        raise RuntimeError(f"LLM part evaluation failed for {part_name}: {last_err}")
+        try:
+            result = self._chat_json_with_fallback(
+                prompt=prompt,
+                parse=self._parse_llm_response,
+                label=f"评估{part_label}",
+            )
+        except Exception as exc:
+            print(f"[Multi-Stage] Error evaluating part {part_name}: {exc}")
+            raise RuntimeError(f"LLM part evaluation failed for {part_name}: {exc}") from exc
+        result["_part_name"] = part_name
+        return result
     
     def _merge_partial_evaluations(self, partial_results: List[Dict[str, Any]], username: str, checker_raw_analysis: Optional[str] = None) -> Dict[str, Any]:
         """Merge multiple partial evaluation results into final scores using weighted average."""
@@ -2503,32 +2944,16 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         print(f"[DEBUG] Prompt length: {len(prompt)} chars")
         print(f"[DEBUG] Prompt sample (last 500 chars): {prompt[-500:]}")
 
-        models_to_try = [self.model] + (self.fallback_models or [])
-        last_err = None
-        for m in models_to_try:
-            try:
-                print(f"[LLM] Calling {m} at {self.api_url}")
-                print("[DEBUG] Request config: temperature=0, max_tokens=4000")
-
-                content = self._complete_chat(m, prompt, label="生成整体评估")
-                content_length = len(content) if isinstance(content, str) else 0
-                print(f"[LLM] Response received ({content_length} chars), parsing...")
-                result = self._parse_llm_response_with_retry(content, prompt, m)
-                return self._apply_collaboration_subscore(result)
-
-            except KeyError as e:
-                last_err = f"KeyError accessing response structure: {e}"
-                print(f"[ERROR] {last_err}")
-                continue
-            except Exception as e:
-                last_err = str(e)
-                print(f"[ERROR] LLM request failed for model {m}: {last_err}")
-                import traceback
-                print(f"[DEBUG] Traceback: {traceback.format_exc()}")
-                continue
-
-        print(f"[ERROR] All LLM models failed. Last error: {last_err}")
-        raise RuntimeError(f"LLM request failed for all models. last_error={last_err}")
+        try:
+            result = self._chat_json_with_fallback(
+                prompt=prompt,
+                parse=self._parse_llm_response,
+                label="生成整体评估",
+            )
+            return self._apply_collaboration_subscore(result)
+        except Exception as exc:
+            print(f"[ERROR] LLM request failed: {exc}")
+            raise RuntimeError(f"LLM request failed for all models. last_error={exc}") from exc
 
     def _estimate_tokens(self, text: str) -> int:
         return max(1, len(text))
@@ -2633,82 +3058,15 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
         )
 
     def _parse_llm_response_with_retry(self, content: str, original_prompt: str, model: str, retry_count: int = 0) -> Dict[str, Any]:
-        """Parse LLM response with retry mechanism if parsing fails."""
-        max_retries = 1  # Only retry once to avoid infinite loops
+        """Parse an LLM response, correcting once per configured provider."""
         content_text = content if isinstance(content, str) else ""
-        
-        try:
-            if not content_text.strip():
-                raise ValueError("LLM response content was empty")
-            return self._parse_llm_response(content_text)
-        except Exception as parse_error:
-            error_msg = str(parse_error)
-            print(f"[ERROR] Failed to parse LLM response: {error_msg}")
-            
-            if retry_count >= max_retries:
-                print(f"[ERROR] Max retries ({max_retries}) reached")
-                return self._handle_parse_retry_failure(error_msg)
-            
-            # Build retry prompt with original prompt and error information
-            is_chinese = self.language == "zh-CN"
-            # Show more content for better debugging (up to 1000 chars)
-            content_preview = content_text[:1000] + ("..." if len(content_text) > 1000 else "")
-            
-            if is_chinese:
-                retry_instruction = f"""\n\n[重要] 你之前的回复格式不正确，无法解析为JSON。
-
-错误信息：{error_msg}
-
-你之前的回复（前1000字符）：
-{content_preview}
-
-请重新返回正确的JSON格式。必须只返回JSON对象，不要添加任何解释性文字、markdown格式或代码块标记。直接返回JSON。"""
-            else:
-                retry_instruction = f"""\n\n[IMPORTANT] Your previous response format was incorrect and could not be parsed as JSON.
-
-Error: {error_msg}
-
-Your previous response (first 1000 chars):
-{content_preview}
-
-Please return the correct JSON format again. Return ONLY a JSON object. Do NOT add explanatory text, markdown formatting, or code block markers. Return raw JSON directly."""
-            
-            retry_prompt = original_prompt + retry_instruction
-            
-            print(f"[RETRY] Attempting to retry LLM call (attempt {retry_count + 1}/{max_retries + 1})")
-            print(f"[DEBUG] Retry prompt length: {len(retry_prompt)} chars")
-            
-            try:
-                resp = self._http_client.post(
-                    self.api_url,
-                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                    json={
-                        "model": model,
-                        "messages": [{"role": "user", "content": retry_prompt}],
-                        "temperature": 0,
-                        "max_tokens": 4000,
-                    },
-                )
-                
-                # httpx uses is_success instead of ok
-                if not resp.is_success:
-                    print(f"[ERROR] Retry LLM API returned error: {resp.status_code} {resp.text[:200]}")
-                    return self._handle_parse_retry_failure(f"Retry LLM API returned error: {resp.status_code}")
-                
-                retry_data = resp.json()
-                if "choices" not in retry_data or not retry_data["choices"]:
-                    print(f"[ERROR] No choices in retry API response")
-                    return self._handle_parse_retry_failure("No choices in retry API response")
-                
-                retry_content = retry_data["choices"][0]["message"]["content"]
-                if not isinstance(retry_content, str) or not retry_content.strip():
-                    return self._handle_parse_retry_failure("Retry LLM response content was empty")
-                print(f"[LLM] Retry response received ({len(retry_content)} chars), parsing...")
-                return self._parse_llm_response_with_retry(retry_content, original_prompt, model, retry_count + 1)
-                
-            except Exception as retry_error:
-                print(f"[ERROR] Retry LLM call failed: {retry_error}")
-                return self._handle_parse_retry_failure(str(retry_error))
+        return self._chat_json_with_fallback(
+            prompt=original_prompt,
+            parse=self._parse_llm_response,
+            label="解析评估结果",
+            initial_model=model,
+            initial_content=content_text,
+        )
 
     def _handle_parse_retry_failure(self, reason: str) -> Dict[str, Any]:
         raise RuntimeError(f"LLM response parsing failed after retry: {reason}")
@@ -2770,21 +3128,32 @@ Please return the correct JSON format again. Return ONLY a JSON object. Do NOT a
             print(f"[DEBUG] Extracted JSON: {json_str[:300]}...")
 
             data = json.loads(json_str)
+            if not isinstance(data, dict):
+                raise ValueError("Expected a JSON object")
+            missing_dimensions = [
+                key for key in self.dimensions
+                if key not in data or isinstance(data.get(key), bool)
+            ]
+            if missing_dimensions:
+                raise ValueError(
+                    "Missing numeric evaluation dimensions: "
+                    + ", ".join(missing_dimensions)
+                )
+            if not isinstance(data.get("reasoning"), str) or not data["reasoning"].strip():
+                raise ValueError("Missing non-empty reasoning")
             print(f"[DEBUG] JSON parsed successfully, keys: {list(data.keys())}")
 
             out: Dict[str, Any] = {}
             for k in self.dimensions.keys():
-                score_val = data.get(k, 0)
-                out[k] = min(100, max(0, int(score_val)))
+                try:
+                    score_val = int(data[k])
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(f"Dimension {k} must be numeric") from exc
+                out[k] = min(100, max(0, score_val))
                 print(f"[DEBUG] Dimension {k}: {score_val} -> {out[k]}")
 
-            if "reasoning" in data:
-                out["reasoning"] = self._format_reasoning(str(data["reasoning"]))
-                print(f"[DEBUG] Reasoning found, length: {len(out['reasoning'])} chars")
-            else:
-                # LLM didn't provide reasoning - add placeholder
-                print("[WARNING] LLM response missing 'reasoning' field")
-                out["reasoning"] = "LLM evaluation completed but reasoning was not provided."
+            out["reasoning"] = self._format_reasoning(str(data["reasoning"]))
+            print(f"[DEBUG] Reasoning found, length: {len(out['reasoning'])} chars")
 
             print("[SUCCESS] LLM response parsed successfully")
             return out

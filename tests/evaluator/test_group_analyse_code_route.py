@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
+from evaluator.config import DEFAULT_LLM_MODEL
 
 
 
@@ -128,17 +129,21 @@ def test_plugin_parse_retry_handles_null_retry_content(monkeypatch, plugin_id):
     evaluator = plugin.create_commit_evaluator(data_dir="", api_key="test-key", model="test-model")
 
     retry_calls = []
+    valid_content = (
+        '{"spec_quality":81,"cloud_architecture":82,'
+        '"ai_engineering":83,"mastery_professionalism":84,"reasoning":"fixed"}'
+    )
 
-    def fake_post(*_args, **_kwargs):
+    def fake_complete(*_args, **_kwargs):
         retry_calls.append(True)
-        return _FakeNullContentLlmResponse()
+        return valid_content
 
-    monkeypatch.setattr(evaluator._http_client, "post", fake_post)
+    monkeypatch.setattr(evaluator, "_complete_chat", fake_complete)
 
-    with pytest.raises(RuntimeError, match="Retry LLM response content was empty"):
-        evaluator._parse_llm_response_with_retry("not json", "original prompt", "test-model")
+    result = evaluator._parse_llm_response_with_retry("not json", "original prompt", "test-model")
 
     assert len(retry_calls) == 1
+    assert result["spec_quality"] == 81
 
 
 def test_ai_native_part_evaluation_parse_failure_raises_by_default(monkeypatch):
@@ -160,12 +165,13 @@ def test_ai_native_part_evaluation_retries_null_initial_content(monkeypatch):
         '"ai_engineering":83,"mastery_professionalism":84,"reasoning":"fixed"}'
     )
 
-    monkeypatch.setattr(evaluator, "_complete_chat", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(
-        evaluator._http_client,
-        "post",
-        lambda *_args, **_kwargs: _FakeValidRetryResponse(valid_content),
-    )
+    calls = []
+
+    def fake_complete(*_args, **_kwargs):
+        calls.append(True)
+        return valid_content
+
+    monkeypatch.setattr(evaluator, "_complete_chat", fake_complete)
 
     result = evaluator._evaluate_part_with_llm(
         "commits",
@@ -176,6 +182,7 @@ def test_ai_native_part_evaluation_retries_null_initial_content(monkeypatch):
     assert result["spec_quality"] == 81
     assert result["reasoning"] == "fixed"
     assert result["_part_name"] == "commits"
+    assert len(calls) == 1
 
 
 def test_analyze_group_repositories_bubbles_llm_parse_failure(monkeypatch):
@@ -216,7 +223,7 @@ def test_analyze_group_repositories_bubbles_llm_parse_failure(monkeypatch):
         trajectory_service.analyze_group_repositories(
             repositories=[{"id": "s1", "repo_url": "https://gitee.com/org/repo"}],
             plugin_id="zgc_ai_native_2026",
-            model="deepseek/deepseek-v4-pro",
+            model="glm",
             language="zh-CN",
         )
 
@@ -280,7 +287,7 @@ async def test_group_analyse_code_route_batches_repos_without_chunk_params(monke
                     "checkpoint": {"evaluation": {"scores": {"total": 83}}},
                 },
             ],
-            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+            "model_judging": {"primary_models": ["glm"]},
         }
 
     monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
@@ -310,7 +317,7 @@ async def test_group_analyse_code_route_batches_repos_without_chunk_params(monke
         "https://github.com/org/repo-b",
     ]
     assert all("username" not in item for item in captured["repositories"])
-    assert captured["model"] == "deepseek/deepseek-v4-pro"
+    assert captured["model"] == DEFAULT_LLM_MODEL
     assert captured["full_repo"] is True
     assert "use_chunking" not in captured
     assert captured["max_fetch_workers"] == 4
@@ -335,7 +342,7 @@ async def test_group_analyse_code_route_maps_courses_branch_to_tree_url(monkeypa
                     "checkpoint": {"evaluation": {"scores": {"total": 88}}},
                 },
             ],
-            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+            "model_judging": {"primary_models": ["glm"]},
         }
 
     monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
@@ -387,7 +394,7 @@ async def test_group_analyse_code_route_maps_single_courses_branch_to_tree_url(m
                     "checkpoint": {"evaluation": {"scores": {"total": 88}}},
                 },
             ],
-            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+            "model_judging": {"primary_models": ["glm"]},
         }
 
     monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
@@ -435,7 +442,7 @@ async def test_group_analyse_code_route_preserves_courses_tree_branch_url(monkey
                     "checkpoint": {"evaluation": {"scores": {"total": 88}}},
                 },
             ],
-            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+            "model_judging": {"primary_models": ["glm"]},
         }
 
     monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
@@ -494,7 +501,7 @@ async def test_group_analyse_code_route_streams_progress_and_final_result(monkey
                     "commits_analyzed": 12,
                 },
             ],
-            "model_judging": {"primary_models": ["deepseek/deepseek-v4-pro"]},
+            "model_judging": {"primary_models": ["glm"]},
         }
 
     monkeypatch.setattr(trajectory_route, "get_llm_api_key", lambda: "test-key")
@@ -597,7 +604,7 @@ def test_ai_native_structured_reasoning_keeps_dimension_assessments_separate():
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
     evaluator._latest_dimension_evidence = {key: [] for key in evaluator.dimensions.keys()}
@@ -651,7 +658,7 @@ def test_ai_native_structured_reasoning_accepts_spaced_ai_heading():
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
     evaluator._latest_dimension_evidence = {key: [] for key in evaluator.dimensions.keys()}
@@ -695,7 +702,7 @@ def test_ai_native_structured_reasoning_retains_mid_length_assessments():
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
     evaluator._latest_dimension_evidence = {key: [] for key in evaluator.dimensions.keys()}
@@ -735,7 +742,7 @@ def test_ai_native_structured_reasoning_breaks_inline_numbered_lists():
     evaluator = plugin.create_commit_evaluator(
         data_dir="",
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
     evaluator._latest_dimension_evidence = {key: [] for key in evaluator.dimensions.keys()}
@@ -792,7 +799,7 @@ def test_ai_native_structured_reasoning_keeps_commit_evidence_raw_text_clean(tmp
     evaluator = plugin.create_commit_evaluator(
         data_dir=str(data_dir),
         api_key="test-key",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
     evaluator._latest_dimension_evidence = {
@@ -911,7 +918,7 @@ def test_analyze_group_repositories_exposes_row_and_total_token_usage(monkeypatc
             }
         ],
         plugin_id="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
 
@@ -985,7 +992,7 @@ def test_analyze_group_repositories_adds_structured_evidence_links(monkeypatch):
             }
         ],
         plugin_id="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
 
@@ -1088,7 +1095,7 @@ def test_analyze_group_repositories_applies_per_repo_commit_ranges(monkeypatch):
             },
         ],
         plugin_id="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
 
@@ -1147,7 +1154,7 @@ def test_analyze_group_repositories_reports_repo_scoped_missing_sha(monkeypatch)
             }
         ],
         plugin_id="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
 
@@ -1231,7 +1238,7 @@ def test_analyze_group_repositories_refreshes_and_retries_missing_sha(monkeypatc
             }
         ],
         plugin_id="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
 
@@ -1325,7 +1332,7 @@ def test_analyze_group_repositories_fetches_missing_gitee_boundary_sha(monkeypat
             }
         ],
         plugin_id="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
 
@@ -1417,7 +1424,7 @@ def test_analyze_group_repositories_fetches_missing_github_boundary_sha(monkeypa
             }
         ],
         plugin_id="zgc_ai_native_2026",
-        model="deepseek/deepseek-v4-pro",
+        model="glm",
         language="zh-CN",
     )
 

@@ -8,6 +8,7 @@ import { useAppSettings } from './AppSettingsContext';
 import { getApiBaseUrl } from '../utils/apiBase';
 import { LOCALES } from '../i18n';
 import { useI18n } from './I18nContext';
+import { INTERNAL_LLM_MODEL } from '../utils/llmModels';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -33,7 +34,7 @@ export default function Navigation() {
   const apiDocsHref = apiBase ? `${apiBase}/docs` : '/docs';
 
   const modelItems = [
-    { key: 'deepseek/deepseek-v4-pro', label: 'DeepSeek: DeepSeek V4 Pro' },
+    { key: INTERNAL_LLM_MODEL, label: 'GLM' },
   ];
   const currentModelLabel = modelItems.find((i) => i.key === model)?.label || model;
 

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from evaluator.paths import get_platform_data_dir
-from evaluator.config import get_llm_api_key
+from evaluator.config import get_llm_api_key, get_plugin_provider_kwargs
 from evaluator.schemas import (
     TrajectoryData,
     TrajectoryCheckpoint,
@@ -719,6 +719,7 @@ def analyze_group_repositories(
                 "data_dir": str(data_dir),
                 "api_key": get_llm_api_key(),
                 "model": model,
+                **get_plugin_provider_kwargs(model),
                 "language": language,
                 "forced_checker_id": forced_checker_id,
                 "worktree_base": worktree_base,
@@ -1009,6 +1010,7 @@ def create_checkpoint_evaluation(
         "data_dir": str(eval_data_dir),
         "api_key": get_llm_api_key(),
         "model": model,
+        **get_plugin_provider_kwargs(model),
         "language": language,
         "previous_checkpoint_scores": previous_scores,
         "forced_checker_id": forced_checker_id,

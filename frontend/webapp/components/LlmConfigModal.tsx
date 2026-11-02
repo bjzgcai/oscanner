@@ -5,6 +5,7 @@ import { Modal, Input, Radio, message } from 'antd';
 import { useAppSettings } from './AppSettingsContext';
 import { useI18n } from './I18nContext';
 import { getApiBaseUrl } from '@/utils/apiBase';
+import { INTERNAL_LLM_MODEL, OPENROUTER_LLM_MODEL } from '@/utils/llmModels';
 
 const API_SERVER_URL = getApiBaseUrl();
 
@@ -19,6 +20,8 @@ export default function LlmConfigModal() {
   const [llmBaseUrl, setLlmBaseUrl] = useState('');
   const [llmChatUrl, setLlmChatUrl] = useState('');
   const [llmFallbackModels, setLlmFallbackModels] = useState('');
+  const [llmFallbackModel, setLlmFallbackModel] = useState(OPENROUTER_LLM_MODEL);
+  const [openRouterKeyMasked, setOpenRouterKeyMasked] = useState('');
   const [giteeToken, setGiteeToken] = useState('');
   const [giteeTokenMasked, setGiteeTokenMasked] = useState('');
   const [githubToken, setGithubToken] = useState('');
@@ -37,9 +40,11 @@ export default function LlmConfigModal() {
       setLlmApiKey('');
       setGiteeToken('');
       setGithubToken('');
-      setLlmBaseUrl(String(cfg.base_url || ''));
-      setLlmChatUrl(String(cfg.chat_url || ''));
-      setLlmFallbackModels(String(cfg.fallback_models || ''));
+      setLlmBaseUrl(String(cfg.oscanner_llm_base_url || ''));
+      setLlmChatUrl(String(cfg.oscanner_llm_chat_completions_url || ''));
+      setLlmFallbackModels(String(cfg.oscanner_llm_fallback_models || ''));
+      setLlmFallbackModel(String(cfg.oscanner_llm_fallback_model || OPENROUTER_LLM_MODEL));
+      setOpenRouterKeyMasked(String(cfg.openrouter_key_masked || ''));
       setGiteeTokenMasked(String(cfg.gitee_token_masked || ''));
       setGithubTokenMasked(String(cfg.github_token_masked || ''));
     } catch {
@@ -60,16 +65,20 @@ export default function LlmConfigModal() {
         llmMode === 'openrouter'
           ? {
               mode: 'openrouter',
-              open_router_key: openRouterKey || null,
+              openrouter_key: openRouterKey || null,
+              model: OPENROUTER_LLM_MODEL,
               gitee_token: giteeToken || null,
               github_token: githubToken || null,
             }
           : {
               mode: 'openai',
-              llm_api_key: llmApiKey || null,
-              llm_base_url: llmBaseUrl || null,
-              llm_chat_url: llmChatUrl || null,
-              llm_fallback_models: llmFallbackModels || null,
+              api_key: llmApiKey || null,
+              base_url: llmBaseUrl || null,
+              model: INTERNAL_LLM_MODEL,
+              chat_completions_url: llmChatUrl || null,
+              fallback_models: llmFallbackModels || null,
+              fallback_model: llmFallbackModel || OPENROUTER_LLM_MODEL,
+              openrouter_key: openRouterKey || null,
               gitee_token: giteeToken || null,
               github_token: githubToken || null,
             };
@@ -104,7 +113,7 @@ export default function LlmConfigModal() {
     } catch (e: unknown) {
       message.error(`LLM settings save failed: ${e instanceof Error ? e.message : String(e)}`);
     }
-  }, [giteeToken, githubToken, llmApiKey, llmBaseUrl, llmChatUrl, llmFallbackModels, llmMode, openRouterKey, refreshLlmConfig, setLlmModalOpen]);
+  }, [giteeToken, githubToken, llmApiKey, llmBaseUrl, llmChatUrl, llmFallbackModel, llmFallbackModels, llmMode, openRouterKey, refreshLlmConfig, setLlmModalOpen]);
 
   return (
     <Modal
@@ -170,8 +179,19 @@ export default function LlmConfigModal() {
             <div style={{ fontWeight: 600, marginBottom: 6 }}>OSCANNER_LLM_FALLBACK_MODELS（可选）</div>
             <Input value={llmFallbackModels} onChange={(e) => setLlmFallbackModels(e.target.value)} placeholder="model1,model2" />
           </div>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>OpenRouter 回退模型</div>
+            <Input value={llmFallbackModel} onChange={(e) => setLlmFallbackModel(e.target.value)} placeholder={OPENROUTER_LLM_MODEL} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>OPEN_ROUTER_KEY（回退）</div>
+            <Input.Password value={openRouterKey} onChange={(e) => setOpenRouterKey(e.target.value)} placeholder="sk-or-..." />
+            <div style={{ marginTop: 6, color: 'rgba(0,0,0,0.65)' }}>
+              {t('llm.current_set')} <code>{openRouterKeyMasked || t('llm.not_set')}</code> {t('llm.leave_empty_no_change')}
+            </div>
+          </div>
           <div style={{ color: 'rgba(0,0,0,0.65)' }}>
-            {t('llm.current_model')} <code>{model}</code>
+            {t('llm.current_model')} <code>{INTERNAL_LLM_MODEL} → {llmFallbackModel || OPENROUTER_LLM_MODEL}</code>
           </div>
         </div>
       )}

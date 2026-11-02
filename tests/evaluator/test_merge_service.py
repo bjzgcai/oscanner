@@ -26,7 +26,7 @@ def _ai_native_eval(name: str, spec: int, cloud: int, ai: int, mastery: int, com
 
 
 def test_merge_evaluations_preserves_ai_native_score_keys(monkeypatch):
-    monkeypatch.setattr(merge_service, "get_llm_api_key", lambda: None)
+    monkeypatch.setattr(merge_service, "get_provider_chain", lambda _model=None: [])
 
     result = merge_service.merge_evaluations_logic(
         [
@@ -67,8 +67,17 @@ def test_merge_evaluations_uses_configured_chat_completions_url(monkeypatch):
         captured["json"] = kwargs.get("json")
         return FakeResponse()
 
-    monkeypatch.setenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL", "https://llm.example/v1/chat/completions")
-    monkeypatch.setattr(merge_service, "get_llm_api_key", lambda: "fake-key")
+    monkeypatch.setattr(
+        merge_service,
+        "get_provider_chain",
+        lambda _model=None: [{
+            "provider": "internal",
+            "model": "custom-model",
+            "api_key": "fake-key",
+            "base_url": "https://llm.example/v1",
+            "chat_completions_url": "https://llm.example/v1/chat/completions",
+        }],
+    )
     monkeypatch.setattr(merge_service.requests, "post", fake_post)
 
     result = merge_service.merge_evaluations_logic(
@@ -93,7 +102,7 @@ def test_merge_evaluations_uses_configured_chat_completions_url(monkeypatch):
 
 
 def test_merge_rejects_zero_email_weights(monkeypatch):
-    monkeypatch.setattr(merge_service, "get_llm_api_key", lambda: None)
+    monkeypatch.setattr(merge_service, "get_provider_chain", lambda _model=None: [])
 
     with pytest.raises(Exception) as exc_info:
         merge_service.merge_evaluations_logic(

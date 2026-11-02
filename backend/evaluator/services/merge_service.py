@@ -1,11 +1,10 @@
 """Multi-evaluation merging service."""
 
-import os
 import requests
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 
-from evaluator.config import get_llm_api_key, DEFAULT_LLM_MODEL
+from evaluator.config import DEFAULT_LLM_MODEL, get_provider_chain
 
 
 NON_NUMERIC_SCORE_KEYS = {"reasoning", "summary", "analysis", "evidence", "recommendations"}
@@ -38,18 +37,6 @@ def _score_keys_for_evaluations(evaluations: List[Dict[str, Any]]) -> List[str]:
                 seen.add(key)
                 keys.append(key)
     return keys
-
-
-def _chat_completions_url() -> str:
-    configured_url = (os.getenv("OSCANNER_LLM_CHAT_COMPLETIONS_URL") or "").strip()
-    if configured_url:
-        return configured_url
-    base_url = (
-        os.getenv("OSCANNER_LLM_BASE_URL")
-        or os.getenv("OPENAI_BASE_URL")
-        or "https://openrouter.ai/api/v1"
-    ).strip()
-    return f"{base_url.rstrip('/')}/chat/completions"
 
 
 def merge_evaluations_logic(evaluations_data: List[Dict[str, Any]], model: str = DEFAULT_LLM_MODEL) -> Dict[str, Any]:
@@ -155,41 +142,100 @@ Create a unified analysis that:
 Write the unified analysis (3-5 paragraphs):"""
 
         # Call LLM to merge summaries
-        api_key = get_llm_api_key()
-        if not api_key:
+        provider_chain = get_provider_chain(model)
+        if not provider_chain or not provider_chain[0].get("api_key"):
             # Fallback: simple concatenation
             merged_reasoning = f"Combined analysis from {len(authors)} identities ({', '.join(authors)}):\n\n"
             merged_reasoning += summaries_text
         else:
-            try:
-                llm_response = requests.post(
-                    _chat_completions_url(),
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": model,
-                        "messages": [
-                            {"role": "user", "content": merge_prompt}
-                        ],
-                        "temperature": 0.3,
-                        "max_tokens": 1500
-                    },
-                    timeout=60
-                )
-
-                if llm_response.ok:
+            merged_reasoning = ""
+            provenance_attempts = []
+            for provider in provider_chain:
+                try:
+                    llm_response = requests.post(
+                        provider["chat_completions_url"],
+                        headers={
+                            "Authorization": f"Bearer {provider['api_key']}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": provider["model"],
+                            "messages": [
+                                {"role": "user", "content": merge_prompt}
+                            ],
+                            "temperature": 0.3,
+                            "max_tokens": 1500
+                        },
+                        timeout=60
+                    )
+                    if not llm_response.ok:
+                        retryable = llm_response.status_code in {408, 429} or llm_response.status_code >= 500
+                        reason = (
+                            "rate_limit" if llm_response.status_code == 429
+                            else "timeout" if llm_response.status_code == 408
+                            else "server_error" if llm_response.status_code >= 500
+                            else "auth_or_configuration"
+                        )
+                        provenance_attempts.append({
+                            "provider": provider["provider"],
+                            "model": provider["model"],
+                            "outcome": "failed",
+                            "reason": reason,
+                        })
+                        if not retryable:
+                            raise HTTPException(
+                                status_code=502,
+                                detail=f"LLM merge failed at {provider['provider']} ({llm_response.status_code})",
+                            )
+                        continue
                     response_data = llm_response.json()
-                    merged_reasoning = response_data["choices"][0]["message"]["content"]
-                    print(f"[Merge] ✓ LLM successfully merged summaries ({len(merged_reasoning)} chars)")
-                else:
-                    print(f"[Merge] ⚠ LLM request failed, using concatenation fallback")
-                    merged_reasoning = f"Combined analysis from {len(authors)} identities:\n\n" + summaries_text
+                    content = response_data["choices"][0]["message"]["content"]
+                    if not isinstance(content, str) or not content.strip():
+                        provenance_attempts.append({
+                            "provider": provider["provider"],
+                            "model": provider["model"],
+                            "outcome": "failed",
+                            "reason": "empty_response",
+                        })
+                        continue
+                    merged_reasoning = content
+                    provenance_attempts.append({
+                        "provider": provider["provider"],
+                        "model": provider["model"],
+                        "outcome": "success",
+                    })
+                    print(f"[Merge] LLM successfully merged summaries ({len(merged_reasoning)} chars)")
+                    break
+                except HTTPException:
+                    raise
+                except Exception as exc:
+                    provenance_attempts.append({
+                        "provider": provider["provider"],
+                        "model": provider["model"],
+                        "outcome": "failed",
+                        "reason": "transport",
+                    })
+                    print(f"[Merge] {provider['provider']} merge attempt failed ({type(exc).__name__})")
 
-            except Exception as e:
-                print(f"[Merge] ⚠ LLM merge failed: {e}, using concatenation fallback")
+            if not merged_reasoning:
                 merged_reasoning = f"Combined analysis from {len(authors)} identities:\n\n" + summaries_text
+                print("[Merge] LLM unavailable; using concatenation fallback")
+
+            merged_provenance = {
+                "primary": {
+                    "provider": provider_chain[0]["provider"],
+                    "model": provider_chain[0]["model"],
+                },
+                "fallback": (
+                    {"provider": provider_chain[1]["provider"], "model": provider_chain[1]["model"]}
+                    if len(provider_chain) > 1 else None
+                ),
+                "fallback_used": any(
+                    row.get("provider") != provider_chain[0]["provider"] and row.get("outcome") == "success"
+                    for row in provenance_attempts
+                ),
+                "attempts": provenance_attempts,
+            }
 
         # Add merged reasoning to scores
         merged_scores["reasoning"] = merged_reasoning
@@ -206,6 +252,8 @@ Write the unified analysis (3-5 paragraphs):"""
             "commits_summary": merged_commits_summary,
             "files_loaded": sum(eval_data.get("files_loaded", 0) for eval_data in evaluations)
         }
+        if "merged_provenance" in locals():
+            merged_evaluation["llm_provenance"] = merged_provenance
 
         return merged_evaluation
 
