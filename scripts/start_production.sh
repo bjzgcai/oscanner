@@ -32,20 +32,30 @@ echo -e "${BLUE}======================================${NC}\n"
 # Load evaluator environment variables
 EVALUATOR_PROD_ENV="${PROJECT_ROOT}/backend/evaluator/.env.prod"
 EVALUATOR_LOCAL_ENV="${PROJECT_ROOT}/backend/evaluator/.env.local"
-if [ -f "$EVALUATOR_PROD_ENV" ]; then
-    EVALUATOR_ENV="$EVALUATOR_PROD_ENV"
-elif [ -f "$EVALUATOR_LOCAL_ENV" ]; then
-    EVALUATOR_ENV="$EVALUATOR_LOCAL_ENV"
-else
-    EVALUATOR_ENV=""
-fi
+
+load_env_file() {
+    local env_file="$1"
+    if [ -f "$env_file" ]; then
+        echo -e "${GREEN}✓${NC} Loading configuration from ${env_file#${PROJECT_ROOT}/}"
+        set -a
+        # shellcheck disable=SC1090
+        . "$env_file"
+        set +a
+        return 0
+    fi
+    return 1
+}
 
 export OSCANNER_ENV=production
-if [ -n "$EVALUATOR_ENV" ]; then
-    echo -e "${GREEN}✓${NC} Loading evaluator configuration from ${EVALUATOR_ENV#${PROJECT_ROOT}/}"
-    export $(cat "$EVALUATOR_ENV" | grep -v '^#' | grep -v '^$' | xargs)
-else
-    echo -e "${YELLOW}⚠${NC} Warning: backend/evaluator/.env.prod not found, using defaults"
+EVALUATOR_ENV_LOADED=false
+if load_env_file "$EVALUATOR_PROD_ENV"; then
+    EVALUATOR_ENV_LOADED=true
+fi
+if load_env_file "$EVALUATOR_LOCAL_ENV"; then
+    EVALUATOR_ENV_LOADED=true
+fi
+if [ "$EVALUATOR_ENV_LOADED" = false ]; then
+    echo -e "${YELLOW}⚠${NC} Warning: backend/evaluator/.env.prod/.env.local not found, using defaults"
 fi
 
 # Set evaluator port (default: 8000)
@@ -59,23 +69,21 @@ unset PORT
 # Load repos_runner environment variables
 REPOS_RUNNER_PROD_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.prod"
 REPOS_RUNNER_LOCAL_ENV="${PROJECT_ROOT}/backend/repos_runner/.env.local"
-if [ -f "$REPOS_RUNNER_PROD_ENV" ]; then
-    REPOS_RUNNER_ENV="$REPOS_RUNNER_PROD_ENV"
-elif [ -f "$REPOS_RUNNER_LOCAL_ENV" ]; then
-    REPOS_RUNNER_ENV="$REPOS_RUNNER_LOCAL_ENV"
-else
-    REPOS_RUNNER_ENV=""
+REPOS_RUNNER_ENV_LOADED=false
+if load_env_file "$REPOS_RUNNER_PROD_ENV"; then
+    REPOS_RUNNER_ENV_LOADED=true
+fi
+if load_env_file "$REPOS_RUNNER_LOCAL_ENV"; then
+    REPOS_RUNNER_ENV_LOADED=true
+    export REPOS_RUNNER_ENV_FILE="$REPOS_RUNNER_LOCAL_ENV"
+elif [ -f "$REPOS_RUNNER_PROD_ENV" ]; then
+    export REPOS_RUNNER_ENV_FILE="$REPOS_RUNNER_PROD_ENV"
 fi
 
-if [ -n "$REPOS_RUNNER_ENV" ]; then
-    echo -e "${GREEN}✓${NC} Loading repos_runner configuration from ${REPOS_RUNNER_ENV#${PROJECT_ROOT}/}"
-    set -a
-    # shellcheck disable=SC1090
-    . "$REPOS_RUNNER_ENV"
-    set +a
-    export REPOS_RUNNER_ENV_FILE="$REPOS_RUNNER_ENV"
+if [ "$REPOS_RUNNER_ENV_LOADED" = true ]; then
     REPOS_RUNNER_PORT=${RUNNER_PORT:-${PORT:-8001}}
 else
+    echo -e "${YELLOW}⚠${NC} Warning: backend/repos_runner/.env.prod/.env.local not found, using defaults"
     REPOS_RUNNER_PORT=8001
 fi
 export REPOS_RUNNER_PORT
@@ -115,7 +123,10 @@ echo ""
 
 if [ "${OSCANNER_START_PRODUCTION_PRINT_CONFIG:-}" = "1" ]; then
     echo "EVALUATOR_PORT=${EVALUATOR_PORT}"
+    echo "EVALUATOR_LLM_MODEL=${OSCANNER_LLM_MODEL:-}"
     echo "REPOS_RUNNER_PORT=${REPOS_RUNNER_PORT}"
+    echo "RUNNER_LLM_MODEL=${REPOS_RUNNER_LLM_MODEL:-}"
+    echo "RUNNER_LLM_FALLBACK_MODEL=${OSCANNER_LLM_FALLBACK_MODEL:-}"
     echo "WEBAPP_PORT=${WEBAPP_PORT}"
     if [ -n "$WEBAPP_PUBLISH_DIR" ]; then
         echo "WEBAPP_PUBLISH_DIR=${WEBAPP_PUBLISH_DIR}"
