@@ -77,7 +77,7 @@ def _review_base_url(platform: Optional[str], owner: Optional[str], repo: Option
 
 def _dedupe_evidence_links(links: List[Dict[str, Any]], *, max_links: int = MAX_EVIDENCE_LINKS) -> List[Dict[str, Any]]:
     deduped: List[Dict[str, Any]] = []
-    seen = set()
+    positions: Dict[tuple, int] = {}
     for link in links:
         if not isinstance(link, dict):
             continue
@@ -88,9 +88,13 @@ def _dedupe_evidence_links(links: List[Dict[str, Any]], *, max_links: int = MAX_
             str(link.get("commit_sha") or ""),
             str(link.get("path") or ""),
         )
-        if key in seen:
+        if key in positions:
+            position = positions[key]
+            existing = deduped[position]
+            if not existing.get("message") and link.get("message"):
+                deduped[position] = {**existing, "message": link["message"]}
             continue
-        seen.add(key)
+        positions[key] = len(deduped)
         deduped.append(link)
         if len(deduped) >= max_links:
             break
@@ -119,6 +123,7 @@ def build_evidence_links(
             "type": "commit",
             "label": sha[:8],
             "sha": sha,
+            "message": _commit_message(commit).strip(),
             "url": f"{base_url}/commit/{quote(sha, safe='')}",
         })
 

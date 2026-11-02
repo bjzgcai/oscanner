@@ -484,6 +484,7 @@ class TestEnsureRepoDataSynced:
                 "type": "commit",
                 "label": "abc12345",
                 "sha": commit_sha,
+                "message": "Add parser",
                 "url": f"https://gitee.com/test_owner/test_repo/commit/{commit_sha}",
             },
             {

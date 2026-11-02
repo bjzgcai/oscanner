@@ -1001,6 +1001,7 @@ def test_analyze_group_repositories_adds_structured_evidence_links(monkeypatch):
         "type": "commit",
         "label": "12a27bef",
         "sha": commit_sha,
+        "message": "init",
         "url": f"https://github.com/ZGCA-HMI-Lab/SceneParser/commit/{commit_sha}",
     } in evidence_links
     assert {

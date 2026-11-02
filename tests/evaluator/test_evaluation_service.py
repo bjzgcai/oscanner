@@ -215,6 +215,7 @@ class TestEvaluateAuthorIncremental:
                 "type": "commit",
                 "label": "abc12345",
                 "sha": commit_sha,
+                "message": "Add parser",
                 "url": f"https://github.com/test_owner/test_repo/commit/{commit_sha}",
             },
             {
@@ -317,6 +318,32 @@ class TestEvaluateAuthorIncremental:
             "https://github.com/test_owner/test_repo/blob/new456/src/new.py",
             "https://github.com/test_owner/test_repo/tree/new456/src",
         ]
+
+    def test_merge_evidence_links_upgrades_existing_commit_message(self):
+        """Older evidence links should gain messages when new evidence provides them."""
+        from evaluator.services.evaluation_service import _merge_evidence_links
+
+        commit_sha = "abc1234567890abcdef"
+        url = f"https://github.com/test_owner/test_repo/commit/{commit_sha}"
+
+        merged = _merge_evidence_links(
+            [{"type": "commit", "label": "abc12345", "sha": commit_sha, "url": url}],
+            [{
+                "type": "commit",
+                "label": "abc12345",
+                "sha": commit_sha,
+                "message": "Add parser",
+                "url": url,
+            }],
+        )
+
+        assert merged == [{
+            "type": "commit",
+            "label": "abc12345",
+            "sha": commit_sha,
+            "message": "Add parser",
+            "url": url,
+        }]
 
     def test_evaluate_author_incremental_with_previous(self, temp_data_dir):
         """Test incremental evaluation with previous evaluation."""
