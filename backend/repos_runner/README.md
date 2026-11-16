@@ -83,9 +83,10 @@ Common variables:
 export RUNNER_PORT=8001
 export RUNNER_PUBLIC_BASE_URL=http://localhost:8001
 
-# Provider credentials. Internal GLM is primary; OpenRouter DeepSeek is fallback.
+# Provider credentials. A self-hosted OpenAI-compatible model is primary;
+# OpenRouter DeepSeek is the fallback.
 export OSCANNER_LLM_API_KEY=...
-export OSCANNER_LLM_BASE_URL=https://llm.inner.bza.edu.cn/hub/v1
+export OSCANNER_LLM_BASE_URL=https://llm.example.internal/v1
 export OSCANNER_LLM_MODEL=glm
 export OSCANNER_LLM_FALLBACK_MODEL=deepseek/deepseek-v4.1-flash-1017
 export OPEN_ROUTER_KEY=sk-or-v1-...
@@ -98,7 +99,7 @@ export GITEE_ENTERPRISE_TOKEN=...
 
 # LLM model selection.
 export REPOS_RUNNER_LLM_MODEL=glm
-export REPOS_RUNNER_OPENCODE_MODEL=oscanner-internal/glm
+export REPOS_RUNNER_OPENCODE_MODEL=openai-compatible/glm
 export REPOS_RUNNER_OPENCODE_TIMEOUT=600
 
 # Expensive-job queue.

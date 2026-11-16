@@ -470,7 +470,7 @@ export default function TrajectoryAnalysis() {
                   <Button
                     size="large"
                     onClick={() => {
-                      setRepoUrl('https://gitee.com/zgcai/oscanner');
+                      setRepoUrl('https://github.com/bjzgcai/oscanner');
                     }}
                     disabled={loading}
                   >

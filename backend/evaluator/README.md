@@ -202,7 +202,7 @@ Important variables:
 | `OPENAI_API_KEY` | Secondary LLM key | none |
 | `OPEN_ROUTER_KEY` | OpenRouter fallback key | none |
 | `OSCANNER_LLM_MODEL` | Default model | `glm` |
-| `OSCANNER_LLM_BASE_URL` | Internal OpenAI-compatible base URL | `https://llm.inner.bza.edu.cn/hub/v1` |
+| `OSCANNER_LLM_BASE_URL` | Internal OpenAI-compatible base URL | `https://llm.example.internal/v1` |
 | `OPENAI_BASE_URL` | Alternate OpenAI-compatible base URL | none |
 | `OSCANNER_LLM_CHAT_COMPLETIONS_URL` | Full chat completions URL override | none |
 | `OSCANNER_LLM_FALLBACK_MODEL` | OpenRouter fallback model | `deepseek/deepseek-v4.1-flash-1017` |
@@ -510,7 +510,7 @@ curl -X POST "http://localhost:8000/api/config/llm" \
   }'
 ```
 
-Configure internal GLM with OpenRouter fallback:
+Configure a self-hosted OpenAI-compatible model with OpenRouter fallback:
 
 ```bash
 curl -X POST "http://localhost:8000/api/config/llm" \
@@ -518,7 +518,7 @@ curl -X POST "http://localhost:8000/api/config/llm" \
   -d '{
     "mode": "openai",
     "api_key": "...",
-    "base_url": "https://llm.inner.bza.edu.cn/hub/v1",
+    "base_url": "https://llm.example.internal/v1",
     "model": "glm",
     "fallback_model": "deepseek/deepseek-v4.1-flash-1017",
     "openrouter_key": "sk-or-v1-..."

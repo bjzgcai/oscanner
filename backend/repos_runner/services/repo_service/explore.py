@@ -20,7 +20,7 @@ from .llm import (
     record_llm_response_usage,
 )
 
-DEFAULT_OPENCODE_PROVIDER = "oscanner-internal"
+DEFAULT_OPENCODE_PROVIDER = "openai-compatible"
 DEFAULT_OPENCODE_MODEL = f"{DEFAULT_OPENCODE_PROVIDER}/{DEFAULT_INTERNAL_MODEL}"
 DEFAULT_OPENCODE_FALLBACK_MODEL = "openrouter/deepseek/deepseek-v4.1-flash-1017"
 
@@ -135,7 +135,7 @@ def _configured_internal_base_url() -> str:
             value = _read_env_file_value(path, key)
             if value:
                 return value
-    return "https://llm.inner.bza.edu.cn/hub/v1"
+    return "https://llm.example.internal/v1"
 
 
 def _build_opencode_config_content() -> str:

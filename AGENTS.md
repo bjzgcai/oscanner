@@ -1,6 +1,6 @@
 # Oscanner Skill Evaluator - Agent Instructions
 
-These instructions apply to `/home/carter/working/oscanner`.
+These instructions apply to `/path/to/oscanner`.
 
 ## Project Overview
 

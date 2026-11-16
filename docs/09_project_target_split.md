@@ -2,7 +2,7 @@ OScanner 功能聚焦讨论
 
 现在 OScanner 里有多个功能点，职责是不清晰的，每个工具应该只做自己的事情，不要加入其他工具的功能，类似 Unix 的工具。 
 
-我们的目的是考察一个软件工程师在各方面的能力。这个能力的描述在 https://gitee.com/zgcai/oscanner/blob/main/engineer_level.md，  这是 OScanner 的最主要功能，每一个 "扫描 scan"， 或者 "检查 check" 是专注于一个数据来源。
+我们的目的是考察一个软件工程师在各方面的能力。这个能力的描述在 https://github.com/bjzgcai/oscanner/blob/main/engineer_level.md，  这是 OScanner 的最主要功能，每一个 "扫描 scan"， 或者 "检查 check" 是专注于一个数据来源。
 1） 基于工程师写的代码的实际运行情况和功能 spec 的对比， 这就是功能测试，validation。
 2）基于 git commit 中的代码质量分析，verification。
 3）其他 (例如， leetcode 测试的成绩） ... 

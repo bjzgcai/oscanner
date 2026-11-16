@@ -416,7 +416,7 @@ async def analyze_trajectory(
     Request body format:
     {
         "username": "alice@example.com",
-        "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+        "repo_urls": ["https://github.com/bjzgcai/oscanner"],
         "emails": ["alice@example.com", "alice@work.com"]
     }
 
@@ -937,7 +937,7 @@ async def analyze_trajectory_one_off(
     Request body format:
     {
         "username": "CarterWu",
-        "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+        "repo_urls": ["https://github.com/bjzgcai/oscanner"],
         "emails": ["alice@example.com", "alice@work.com"],
         "expected_feature": "Optional feature description used as an evaluation baseline"
     }

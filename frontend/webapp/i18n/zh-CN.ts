@@ -243,7 +243,7 @@ export const zhCN: Messages = {
   'settings.default_username.placeholder': '例如：CarterWu',
   'settings.default_username.help': '用于分析的默认贡献者标签',
   'settings.repo_urls.label': '仓库 URLs（每行一个，最多 5 个）',
-  'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner/tree/branch\nhttps://github.com/owner/repo',
+  'settings.repo_urls.placeholder': 'https://github.com/bjzgcai/oscanner/tree/branch\nhttps://github.com/owner/repo',
   'settings.repo_urls.help': '在开始分析时将自动填充',
   'settings.username_groups.label': '作者邮箱（逗号分隔）',
   'settings.username_groups.placeholder': '例如：alice@example.com, alice@work.com',

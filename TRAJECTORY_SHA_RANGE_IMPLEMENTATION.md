@@ -35,7 +35,7 @@ curl -X POST "http://localhost:8000/api/trajectory/analyze_one-off?checkpoint_st
   -H "Content-Type: application/json" \
   -d '{
     "username": "CarterWu",
-    "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+    "repo_urls": ["https://github.com/bjzgcai/oscanner"],
     "aliases": ["CarterWu"]
   }'
 ```
@@ -262,7 +262,7 @@ curl -X POST "http://localhost:8000/api/trajectory/analyze_one-off" \
   -H "Content-Type: application/json" \
   -d '{
     "username": "CarterWu",
-    "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+    "repo_urls": ["https://github.com/bjzgcai/oscanner"],
     "aliases": ["CarterWu", "wu-yanbiao"]
   }'
 ```
@@ -273,7 +273,7 @@ curl -X POST "http://localhost:8000/api/trajectory/analyze_one-off?start_sha=de5
   -H "Content-Type: application/json" \
   -d '{
     "username": "CarterWu",
-    "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+    "repo_urls": ["https://github.com/bjzgcai/oscanner"],
     "aliases": ["CarterWu"]
   }'
 ```
@@ -284,7 +284,7 @@ curl -X POST "http://localhost:8000/api/trajectory/analyze_one-off?start_sha=f41
   -H "Content-Type: application/json" \
   -d '{
     "username": "CarterWu",
-    "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+    "repo_urls": ["https://github.com/bjzgcai/oscanner"],
     "aliases": ["CarterWu"]
   }'
 ```

@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from typing import Dict, Any, List, Tuple, Optional
 
 
-DEFAULT_INTERNAL_BASE_URL = "https://llm.inner.bza.edu.cn/hub/v1"
+DEFAULT_INTERNAL_BASE_URL = "https://llm.example.internal/v1"
 DEFAULT_INTERNAL_MODEL = "glm"
 DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_OPENROUTER_PRIMARY_MODEL = "deepseek/deepseek-v4.1-flash-1017"

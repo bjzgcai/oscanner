@@ -3,7 +3,7 @@
 [English README](README_en.md) | [中文 README](README.md)
 
 基于 GitHub / Gitee 的 commit、diff、仓库结构与协作信号，对工程师贡献者进行 **多维度能力评估** 的工具链，包含 FastAPI 后端与可选的前端 Dashboard。
-[评选标准参考](https://gitee.com/zgcai/oscanner/blob/main/engineer_level.md)
+[评选标准参考](https://github.com/bjzgcai/oscanner/blob/main/engineer_level.md)
 
 ## 概览
 
@@ -353,10 +353,10 @@ alice@example.com, alice@work.com
 
 ## 贡献指南
 
-我们推荐通过 Gitee 自动生成 PR 的方式进行贡献。详细信息请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
+我们推荐通过 GitHub Issue 和 Pull Request 的方式进行贡献。详细信息请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 **快速开始：**
-1. 在 Gitee 上创建或选择一个 issue
+1. 在 GitHub 上创建或选择一个 issue
 2. 在 main 分支上直接开发
 3. 提交时在 commit message 中引用 issue：`fix #issue_number` 或 `关闭 #issue_number`
-4. 推送后会自动生成 PR 并关联到 issue
+4. 推送后在 GitHub 创建 PR 并关联到 issue

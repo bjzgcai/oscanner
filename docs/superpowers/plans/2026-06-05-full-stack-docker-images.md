@@ -37,10 +37,10 @@ Exclude secrets, caches, local virtualenvs, node_modules, generated frontend out
 ### Task 2: Courses Docker Assets
 
 **Files:**
-- Create: `/home/carter/working/courses/Dockerfile`
-- Create: `/home/carter/working/courses/.dockerignore`
-- Create: `/home/carter/working/courses/docker/nginx.conf`
-- Create: `/home/carter/working/courses/docker/entrypoint.sh`
+- Create: `/path/to/courses/Dockerfile`
+- Create: `/path/to/courses/.dockerignore`
+- Create: `/path/to/courses/docker/nginx.conf`
+- Create: `/path/to/courses/docker/entrypoint.sh`
 
 - [ ] **Step 1: Add Dockerfile with root-based Vite build**
 
@@ -71,7 +71,7 @@ Run shell syntax checks on entrypoints and nginx config checks if nginx is local
 
 - [ ] **Step 2: Docker build checks**
 
-Run `docker build -t oscanner-fullstack:local .` from `/home/carter/working/oscanner` and `docker build -t courses-fullstack:local .` from `/home/carter/working/courses` if Docker is available.
+Run `docker build -t oscanner-fullstack:local .` from `/path/to/oscanner` and `docker build -t courses-fullstack:local .` from `/path/to/courses` if Docker is available.
 
 - [ ] **Step 3: Review git diffs**
 

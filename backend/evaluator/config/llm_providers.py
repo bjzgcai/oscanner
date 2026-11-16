@@ -6,7 +6,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 
-DEFAULT_INTERNAL_BASE_URL = "https://llm.inner.bza.edu.cn/hub/v1"
+DEFAULT_INTERNAL_BASE_URL = "https://llm.example.internal/v1"
 DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_LLM_FALLBACK_MODEL = "deepseek/deepseek-v4.1-flash-1017"
 

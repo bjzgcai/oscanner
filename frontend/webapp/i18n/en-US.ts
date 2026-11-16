@@ -246,7 +246,7 @@ export const enUS: Messages = {
   'settings.default_username.placeholder': 'e.g., CarterWu',
   'settings.default_username.help': 'Used as the default contributor label for analysis',
   'settings.repo_urls.label': 'Repository URLs (one per line, max 5)',
-  'settings.repo_urls.placeholder': 'https://gitee.com/zgcai/oscanner/tree/branch\nhttps://github.com/owner/repo',
+  'settings.repo_urls.placeholder': 'https://github.com/bjzgcai/oscanner/tree/branch\nhttps://github.com/owner/repo',
   'settings.repo_urls.help': 'Will be auto-filled when starting analysis',
   'settings.username_groups.label': 'Author Emails (comma-separated)',
   'settings.username_groups.placeholder': 'e.g., alice@example.com, alice@work.com',

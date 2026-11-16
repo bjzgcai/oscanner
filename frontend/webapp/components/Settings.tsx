@@ -68,13 +68,13 @@ export default function Settings() {
       onOk: () => {
         // Reset to defaults
         userSettings.setDefaultUsername('CarterWu');
-        userSettings.setRepoUrls(['https://gitee.com/zgcai/oscanner']);
+        userSettings.setRepoUrls(['https://github.com/bjzgcai/oscanner']);
         userSettings.setUsernameGroups('');
 
         // Update form
         form.setFieldsValue({
           defaultUsername: 'CarterWu',
-          repoUrls: 'https://gitee.com/zgcai/oscanner',
+          repoUrls: 'https://github.com/bjzgcai/oscanner',
           usernameGroups: '',
         });
 

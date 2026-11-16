@@ -61,12 +61,12 @@
 ### Task 5: Courses Docs and Homepage
 
 **Files:**
-- Modify: `/home/carter/working/courses/backend/README.md`
-- Modify: `/home/carter/working/courses/frontend/src/pages/HomePage.jsx`
+- Modify: `/path/to/courses/backend/README.md`
+- Modify: `/path/to/courses/frontend/src/pages/HomePage.jsx`
 
 - [ ] Add supported-language copy to the course backend README.
 - [ ] Add a compact supported-language section to the homepage.
-- [ ] Run frontend verification from `/home/carter/working/courses/frontend`: `npm run build`.
+- [ ] Run frontend verification from `/path/to/courses/frontend`: `npm run build`.
 - [ ] Expected: build passes.
 
 ### Task 6: Final Verification

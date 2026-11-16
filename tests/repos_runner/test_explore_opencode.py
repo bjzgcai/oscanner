@@ -65,7 +65,7 @@ def test_explore_repository_uses_opencode_cli(monkeypatch, tmp_path):
     assert overview_file.read_text(encoding="utf-8").startswith("# repo")
     assert captured["cmd"][:4] == ("opencode", "run", "--agent", "plan")
     model_index = captured["cmd"].index("--model")
-    assert captured["cmd"][model_index + 1] == "oscanner-internal/glm"
+    assert captured["cmd"][model_index + 1] == "openai-compatible/glm"
     assert "--dir" in captured["cmd"]
     assert str(clone_dir) in captured["cmd"]
     assert captured["cwd"] == str(clone_dir)
@@ -99,7 +99,7 @@ def test_explore_repository_passes_openrouter_key_to_opencode(monkeypatch, tmp_p
     assert captured["env"]["OPENROUTER_API_KEY"] == "sk-or-v1-test"
     assert captured["env"]["OSCANNER_LLM_API_KEY"] == "internal-test"
     config = json.loads(captured["env"]["OPENCODE_CONFIG_CONTENT"])
-    provider = config["provider"]["oscanner-internal"]
+    provider = config["provider"]["openai-compatible"]
     assert provider["options"]["baseURL"] == "https://llm.example/v1"
     assert provider["options"]["apiKey"] == "{env:OSCANNER_LLM_API_KEY}"
 
@@ -149,7 +149,7 @@ def test_explore_repository_uses_internal_glm_without_openrouter_key(monkeypatch
     assert overview_path == str(clone_dir / "REPO_OVERVIEW.md")
     assert len(calls) == 1
     model_index = calls[0].index("--model")
-    assert calls[0][model_index + 1] == "oscanner-internal/glm"
+    assert calls[0][model_index + 1] == "openai-compatible/glm"
 
 
 def test_explore_repository_does_not_fallback_when_internal_key_missing(monkeypatch, tmp_path):

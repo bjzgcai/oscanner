@@ -6,18 +6,18 @@
 
 ## 中文
 
-感谢您考虑为 oscanner 做出贡献！我们推荐使用 Gitee 的自动 PR 生成功能，这是最高效的协作方式。
+感谢您考虑为 oscanner 做出贡献！请通过 GitHub Issue 和 Pull Request 参与协作。
 
-### 推荐的贡献流程（Gitee 自动 PR）
+### 推荐的贡献流程（GitHub Pull Request）
 
 1. **创建或选择 Issue**
-   - 在 [Gitee Issues](https://gitee.com/zgcai/oscanner/issues) 创建新 issue 或选择现有 issue
+   - 在 [GitHub Issues](https://github.com/bjzgcai/oscanner/issues) 创建新 issue 或选择现有 issue
    - 记下 issue 编号（例如：`#IDKYFO`）
 
 2. **在 main 分支开发**
    - Clone 仓库：
      ```bash
-     git clone https://gitee.com/zgcai/oscanner.git
+     git clone https://github.com/bjzgcai/oscanner.git
      cd oscanner
      ```
    - 直接在 main 分支上进行修改
@@ -41,9 +41,9 @@
    git push origin main
    ```
 
-5. **自动生成 PR**
-   - Gitee 会自动创建 Pull Request
-   - PR 会自动关联到引用的 issue
+5. **创建 Pull Request**
+   - 在 GitHub 上从开发分支创建 Pull Request
+   - PR 会关联到引用的 issue
    - 当 PR 合并时，关联的 issue 会自动关闭
 
 ### 无 Issue 时的提交
@@ -100,18 +100,18 @@ uv run oscanner dev --reload --install
 
 ## English
 
-Thank you for considering contributing to oscanner! We recommend using Gitee's auto-generated PR feature for the most efficient collaboration.
+Thank you for considering contributing to oscanner! Please use GitHub issues and pull requests.
 
-### Recommended Contribution Workflow (Gitee Auto PR)
+### Recommended Contribution Workflow (GitHub Pull Request)
 
 1. **Create or Select an Issue**
-   - Create a new issue or select an existing one on [Gitee Issues](https://gitee.com/zgcai/oscanner/issues)
+   - Create a new issue or select an existing one on [GitHub Issues](https://github.com/bjzgcai/oscanner/issues)
    - Note the issue number (e.g., `#IDKYFO`)
 
 2. **Develop on main Branch**
    - Clone the repository:
      ```bash
-     git clone https://gitee.com/zgcai/oscanner.git
+     git clone https://github.com/bjzgcai/oscanner.git
      cd oscanner
      ```
    - Make changes directly on the main branch
@@ -135,8 +135,8 @@ Thank you for considering contributing to oscanner! We recommend using Gitee's a
    git push origin main
    ```
 
-5. **Auto-Generated PR**
-   - Gitee automatically creates a Pull Request
+5. **Create a Pull Request**
+   - Open a Pull Request from your development branch on GitHub
    - PR is automatically linked to the referenced issue
    - Issue closes automatically when PR is merged
 
@@ -194,8 +194,7 @@ uv run oscanner dev --reload --install
 
 ## Resources
 
-- [Gitee PR-Issue Linking Guide](https://help.gitee.com/base/issue/PR)
-- [Gitee Auto PR Feature](https://gitee.com/help/articles/4346)
+- [GitHub Pull Requests](https://docs.github.com/en/pull-requests)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 
 ## Questions?

@@ -298,7 +298,7 @@ class CommitEvaluatorModerate(EvidenceAssessmentMixin):
                 else os.getenv("INTERNAL_LLM_BASE_URL")
                 or os.getenv("OSCANNER_LLM_BASE_URL")
                 or os.getenv("OPENAI_BASE_URL")
-                or "https://llm.inner.bza.edu.cn/hub/v1"
+                or "https://llm.example.internal/v1"
             )
         )
         self.api_url = (

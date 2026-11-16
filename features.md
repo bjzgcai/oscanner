@@ -69,7 +69,7 @@ Payload:
 ```json
 {
   "username": "carter@example.com",
-  "repo_urls": ["https://gitee.com/zgcai/oscanner"],
+  "repo_urls": ["https://github.com/bjzgcai/oscanner"],
   "emails": ["carter@example.com", "carter@work.com"],
   "expected_feature": "Optional feature description"
 }

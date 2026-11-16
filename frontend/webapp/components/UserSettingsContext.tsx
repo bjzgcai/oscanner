@@ -16,7 +16,7 @@ const STORAGE_KEY_REPO_URLS = 'oscanner_repo_urls';
 const STORAGE_KEY_USERNAME_GROUPS = 'oscanner_username_groups';
 
 const DEFAULT_USERNAME = 'CarterWu';
-const DEFAULT_REPO_URLS = ['https://gitee.com/zgcai/oscanner'];
+const DEFAULT_REPO_URLS = ['https://github.com/bjzgcai/oscanner'];
 const DEFAULT_USERNAME_GROUPS = '';
 
 const UserSettingsContext = createContext<UserSettings | null>(null);
